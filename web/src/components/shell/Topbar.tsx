@@ -1,0 +1,146 @@
+import { LogOut, Menu, Moon, Search, Sun } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
+
+import { useAuth } from '@/auth/AuthProvider';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { Lang } from '@/i18n';
+import { setLang } from '@/i18n';
+import { useTheme } from '@/theme/ThemeProvider';
+
+import { navItemForPath } from './nav';
+import { StatusChips, StatusMenuRows } from './StatusChips';
+
+const ROLE_KEY: Record<string, string> = {
+  owner: 'common.role_owner',
+  admin: 'common.role_admin',
+  viewer: 'common.role_viewer',
+};
+
+/** `ru | en`, a hairline pair rather than a dropdown - there are only two. */
+function LanguageSwitch() {
+  const { t, i18n } = useTranslation();
+  const current = (i18n.language?.startsWith('en') ? 'en' : 'ru') as Lang;
+
+  return (
+    <div className="mono flex h-7 items-center rounded-md border border-hairline-strong p-0.5 text-xs" role="group" aria-label={t('common.language')}>
+      {(['ru', 'en'] as const).map((lang) => (
+        <button
+          key={lang}
+          type="button"
+          onClick={() => setLang(lang)}
+          aria-pressed={current === lang}
+          className={
+            'rounded-[3px] px-1.5 py-0.5 transition-colors ' +
+            (current === lang ? 'bg-elevated text-foreground' : 'text-dim hover:text-foreground')
+          }
+        >
+          {lang}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface TopbarProps {
+  onOpenMenu: () => void;
+  onOpenCommand: () => void;
+}
+
+export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
+  const { t } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const section = navItemForPath(location.pathname);
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-hairline bg-background px-3 sm:px-5">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="lg:hidden"
+        onClick={onOpenMenu}
+        aria-label={t('shell.open_menu')}
+      >
+        <Menu />
+      </Button>
+
+      <p className="mono min-w-0 flex-1 truncate text-xs text-dim">
+        {t('shell.breadcrumb_root')}
+        {section && (
+          <>
+            <span className="px-1.5">/</span>
+            <span className="text-foreground">{t(section.labelKey)}</span>
+          </>
+        )}
+      </p>
+
+      {/*
+        Not an input: it is a button that opens the palette, so there is only
+        one search box in the product and one place typing goes.
+      */}
+      <button
+        type="button"
+        onClick={onOpenCommand}
+        className="hidden h-7 w-56 items-center gap-2 rounded-md border border-hairline-strong px-2.5 text-xs text-dim transition-colors hover:border-hairline-strong hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none md:flex xl:w-64"
+      >
+        <Search className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate">{t('shell.command_placeholder')}</span>
+        <kbd className="mono ml-auto rounded-sm border border-hairline-strong px-1 text-[10px] text-dim">
+          {isMac ? '⌘K' : 'Ctrl K'}
+        </kbd>
+      </button>
+
+      <Button type="button" variant="ghost" size="icon-sm" className="md:hidden" onClick={onOpenCommand} aria-label={t('shell.command_placeholder')}>
+        <Search />
+      </Button>
+
+      <StatusChips />
+
+      <LanguageSwitch />
+
+      <Button type="button" variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={t('common.theme')}>
+        {theme === 'dark' ? <Sun /> : <Moon />}
+      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" className="gap-2 px-1.5" />}>
+          <span className="flex size-5 items-center justify-center rounded-sm border border-hairline-strong text-[10px] font-medium text-foreground">
+            {(user?.username ?? '?').charAt(0).toUpperCase()}
+          </span>
+          <span className="hidden max-w-28 truncate sm:inline">{user?.username}</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {/* Below md the topbar has no room for the status chips, so the
+              same facts open the menu as plain rows. */}
+          <StatusMenuRows />
+          <DropdownMenuSeparator className="md:hidden" />
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="flex items-center justify-between gap-2">
+              <span className="truncate">{user?.username}</span>
+              {user && <Badge>{t(ROLE_KEY[user.role] ?? 'common.role_viewer')}</Badge>}
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => void logout()}>
+            <LogOut />
+            {t('nav.logout')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </header>
+  );
+}

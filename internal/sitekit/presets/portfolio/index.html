@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marlow Aural — field recording &amp; sound design</title>
+<style>
+  :root {
+    --ink: #f2f2ee;
+    --bg: #0b0b0c;
+    --bg2: #151517;
+    --line: #2a2a2d;
+    --lime: #c8f36a;
+    --muted: #9a9a9d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: var(--lime); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.75rem 6vw;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 700; letter-spacing: 0.04em; }
+  nav a { margin-left: 1.75rem; text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+  nav a:hover { color: var(--lime); }
+  main { max-width: 68rem; margin: 0 auto; padding: 0 6vw; }
+  section { padding: 4rem 0; border-bottom: 1px solid var(--line); }
+  section:last-child { border-bottom: none; }
+  .intro h1 { font-size: 2rem; max-width: 36rem; margin: 0 0 1rem; }
+  .intro p { color: var(--muted); max-width: 34rem; }
+  .work h2, .about h2, .services h2, .contact h2 {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--lime);
+    margin: 0 0 2rem;
+  }
+  .grid { column-count: 3; column-gap: 1.5rem; }
+  .rec { break-inside: avoid; background: var(--bg2); border: 1px solid var(--line); border-radius: 6px; padding: 1.25rem; margin: 0 0 1.5rem; }
+  .rec h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+  .rec .meta { color: var(--muted); font-size: 0.78rem; margin: 0 0 0.75rem; }
+  .wave { display: flex; align-items: flex-end; gap: 2px; height: 2.5rem; }
+  .wave span { flex: 1; background: var(--lime); opacity: 0.6; border-radius: 1px; }
+  .wave .h1 { height: 30% } .wave .h2 { height: 45% } .wave .h3 { height: 60% }
+  .wave .h4 { height: 75% } .wave .h5 { height: 85% } .wave .h6 { height: 40% }
+  .about p { max-width: 40rem; color: var(--muted); }
+  .services ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+  .services li { border-left: 2px solid var(--lime); padding-left: 0.9rem; color: var(--muted); font-size: 0.92rem; }
+  .services strong { display: block; color: var(--ink); margin-bottom: 0.2rem; }
+  address { font-style: normal; color: var(--muted); }
+  footer { padding: 2.25rem 6vw; display: flex; justify-content: space-between; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand mono">MARLOW AURAL</span>
+  <nav>
+    <a href="#work">Work</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+  </nav>
+</header>
+<main>
+  <section data-block="intro" class="intro">
+    <h1 data-variants="Sound for places that don't announce themselves|Field recording for quiet places|Recorded on location, mixed in the dark">Sound for places that don't announce themselves.</h1>
+    <p data-variants="Field recording and sound design for documentary, installation and game work, built from real rooms and real weather rather than libraries.|Field recording and sound design, sourced on location rather than pulled from a library.|Original location audio and sound design for documentary, installation and game work.">Field recording and sound design for documentary, installation and game work, built from real rooms and real weather rather than libraries.</p>
+  </section>
+
+  <section data-block="work" class="work" id="work">
+    <h2>Selected recordings</h2>
+    <div class="grid">
+      <article class="rec">
+        <h3>Culvert, 4am</h3>
+        <p class="meta mono">Underpass · 6:12 · stereo</p>
+        <div class="wave"><span class="h4"></span><span class="h2"></span><span class="h5"></span><span class="h1"></span><span class="h3"></span><span class="h6"></span></div>
+      </article>
+      <article class="rec">
+        <h3>Ferry engine room</h3>
+        <p class="meta mono">North crossing · 11:04 · mid-side</p>
+        <div class="wave"><span class="h3"></span><span class="h5"></span><span class="h1"></span><span class="h4"></span><span class="h2"></span><span class="h6"></span></div>
+      </article>
+      <article class="rec">
+        <h3>Glasshouse rain</h3>
+        <p class="meta mono">Botanic gardens · 3:48 · ambisonic</p>
+        <div class="wave"><span class="h1"></span><span class="h3"></span><span class="h5"></span><span class="h2"></span><span class="h4"></span><span class="h6"></span></div>
+      </article>
+      <article class="rec">
+        <h3>Loading dock, closing shift</h3>
+        <p class="meta mono">Freight terminal · 8:21 · stereo</p>
+        <div class="wave"><span class="h4"></span><span class="h1"></span><span class="h3"></span><span class="h5"></span><span class="h2"></span><span class="h6"></span></div>
+      </article>
+      <article class="rec">
+        <h3>Boiler house drone</h3>
+        <p class="meta mono">Disused mill · 14:02 · mono</p>
+        <div class="wave"><span class="h3"></span><span class="h2"></span><span class="h4"></span><span class="h1"></span><span class="h6"></span><span class="h5"></span></div>
+      </article>
+      <article class="rec">
+        <h3>Sea ice, breaking</h3>
+        <p class="meta mono">Northern strait · 5:33 · stereo</p>
+        <div class="wave"><span class="h2"></span><span class="h4"></span><span class="h1"></span><span class="h6"></span><span class="h3"></span><span class="h5"></span></div>
+      </article>
+    </div>
+  </section>
+
+  <section data-block="about" class="about" id="about">
+    <h2>About</h2>
+    <p>Working from a converted van fitted for overnight recording since 2017. Commissions for documentary sound, museum installation and location audio for games.</p>
+    <p data-variants="Based between assignments — available for remote sessions|Currently on the road — mixing remotely between locations|No fixed studio — sessions run wherever the van is parked">Based between assignments — available for remote sessions.</p>
+  </section>
+
+  <section data-block="services" class="services">
+    <h2>Services</h2>
+    <ul>
+      <li><strong>Field recording</strong>On-location capture, day or multi-night.</li>
+      <li><strong>Sound design</strong>Built from original source material, not libraries.</li>
+      <li><strong>Mix &amp; deliverables</strong>Stereo, mid-side or ambisonic masters.</li>
+    </ul>
+  </section>
+
+  <section data-block="contact" class="contact" id="contact">
+    <h2>Contact</h2>
+    <address>
+      Marlow Aural<br>
+      <a href="mailto:studio@marlowaural.example">studio@marlowaural.example</a>
+    </address>
+  </section>
+</main>
+<footer>
+  <span>&copy; 2026 Marlow Aural</span>
+  <span>Field recording &amp; sound design</span>
+</footer>
+</body>
+</html>

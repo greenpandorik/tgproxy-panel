@@ -1,0 +1,15 @@
+# Secrets / local env files — never commit real MASTER_KEY/SESSION_SECRET etc.
+.env
+deploy/.env
+!.env.example
+
+# Build artifacts / local data
+data/
+web/node_modules/
+web/dist/
+/panel
+tgwp-agent*
+
+# Editor/tooling scratch
+.superpowers/
+.claude/

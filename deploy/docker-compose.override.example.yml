@@ -1,0 +1,7 @@
+# Local development override: reach the panel directly on :8080 without
+# going through Caddy (no TLS, no domain needed). Copy or reference this file
+# explicitly, e.g.:
+#   docker compose -f docker-compose.yml -f docker-compose.override.example.yml up -d
+services:
+  panel:
+    ports: ["8080:8080"]

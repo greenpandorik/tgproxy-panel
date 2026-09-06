@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portage — docs</title>
+<style>
+  :root {
+    --paper: #faf7f2;
+    --ink: #1f2430;
+    --violet: #6a4fb3;
+    --line: #e4ddd0;
+    --muted: #6b7280;
+    --code-bg: #161b22;
+    --code-fg: #8fd19e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: var(--violet); }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 6vw;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 700; }
+  .brand .tag { color: var(--violet); }
+  nav.top a { margin-left: 1.5rem; color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+  main {
+    display: grid;
+    grid-template-columns: 14rem 1fr;
+    gap: 0 3.5rem;
+    max-width: 68rem;
+    margin: 0 auto;
+    padding: 3rem 6vw 5rem;
+  }
+  .side { grid-column: 1; grid-row: 1 / -1; }
+  .side h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin: 0 0 0.75rem; }
+  .side ul { list-style: none; margin: 0 0 1.5rem; padding: 0; }
+  .side li { padding: 0.3rem 0; }
+  .side a { color: var(--ink); text-decoration: none; font-size: 0.92rem; }
+  .side a:hover { color: var(--violet); }
+  article[data-block] { grid-column: 2; padding-bottom: 3rem; border-bottom: 1px solid var(--line); margin-bottom: 3rem; }
+  article[data-block]:last-of-type { border-bottom: none; }
+  article h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
+  article h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; color: var(--violet); }
+  article p { color: #33394a; max-width: 42rem; }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    margin: 0.75rem 0 1rem;
+  }
+  code.inline { background: #efe9f7; color: var(--violet); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.88em; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  .tip { border-left: 3px solid var(--violet); padding: 0.6rem 1rem; background: #f3effa; color: #3a3450; font-size: 0.92rem; }
+  footer { padding: 2rem 6vw; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Portage<span class="tag"> docs</span></span>
+  <nav class="top">
+    <a href="#intro">Getting started</a>
+    <a href="#config">Configuration</a>
+    <a href="#commands">Commands</a>
+  </nav>
+</header>
+<main>
+  <nav data-block="nav" class="side">
+    <h3>On this page</h3>
+    <ul>
+      <li><a href="#intro">Getting started</a></li>
+      <li><a href="#config">Configuration</a></li>
+      <li><a href="#commands">Commands</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+  </nav>
+
+  <article data-block="intro" id="intro">
+    <h1>Getting started</h1>
+    <p data-variants="Portage keeps every project's dependencies in its own sandbox, switched automatically per directory.|Portage builds a throwaway sandbox per project and tears it down when you leave the directory.|Portage never touches your system packages — every project gets its own disposable sandbox.">Portage keeps every project's dependencies in its own sandbox, switched automatically per directory.</p>
+    <h2>Install</h2>
+    <pre><code>curl -fsSL https://get.portage.example | sh
+portage init</code></pre>
+    <p>Once installed, run <code class="inline">portage init</code> inside a project directory to create its sandbox.</p>
+  </article>
+
+  <article data-block="config" id="config">
+    <h2>Configuration</h2>
+    <p data-variants="Settings live in a single portage.toml file at the project root.|Every project keeps its own portage.toml at the repository root.|portage.toml at the project root holds every setting — nothing else to configure.">Settings live in a single <code class="inline">portage.toml</code> file at the project root.</p>
+    <pre><code>[sandbox]
+runtime = "node@20"
+cache   = "shared"
+
+[env]
+PORT = "4000"</code></pre>
+    <p class="tip">Values under <code class="inline">[env]</code> are only visible inside the sandbox, never exported to the host shell.</p>
+  </article>
+
+  <article data-block="commands" id="commands">
+    <h2>Commands</h2>
+    <table>
+      <tr><th>Command</th><th>What it does</th></tr>
+      <tr><td><code class="inline">portage init</code></td><td>Create a sandbox for the current directory</td></tr>
+      <tr><td><code class="inline">portage run &lt;cmd&gt;</code></td><td>Run a command inside the sandbox</td></tr>
+      <tr><td><code class="inline">portage status</code></td><td>Show sandbox state and disk usage</td></tr>
+      <tr><td><code class="inline">portage remove</code></td><td>Delete the sandbox for this directory</td></tr>
+    </table>
+  </article>
+
+  <article data-block="faq" id="faq">
+    <h2>FAQ</h2>
+    <h3>Does it slow down builds?</h3>
+    <p data-variants="No — the sandbox mounts the host filesystem directly, so builds run at native speed.|No, file access is a direct mount, not a copy, so there's no build overhead.|No — nothing is copied into the sandbox, so disk and build speed match the host.">No — the sandbox mounts the host filesystem directly, so builds run at native speed.</p>
+    <h3>Can two projects share a runtime?</h3>
+    <p>Yes, set <code class="inline">cache = "shared"</code> and matching runtimes reuse the same download.</p>
+  </article>
+</main>
+<footer>
+  <span>&copy; 2026 Portage</span>
+  <span>Local sandboxes, no daemon required</span>
+</footer>
+</body>
+</html>

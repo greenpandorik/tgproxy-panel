@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tideline Notes — a lighthouse watch log</title>
+<style>
+  :root {
+    --ink: #eaf2f1;
+    --bg: #0e1e27;
+    --bg2: #16303d;
+    --brass: #d9a441;
+    --line: #24404e;
+    --muted: #93aab4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+  }
+  a { color: var(--brass); }
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 1.75rem 6vw;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg2);
+  }
+  .brand { font-weight: 700; letter-spacing: 0.02em; font-size: 1.15rem; }
+  nav a { margin-left: 1.75rem; text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+  nav a:hover { color: var(--brass); }
+  main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem 4rem;
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 4rem 6vw 5rem;
+  }
+  .intro { grid-column: 1 / -1; max-width: 40rem; }
+  .kicker { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--brass); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 0.75rem; }
+  .intro h1 { font-size: 2.1rem; margin: 0 0 1rem; }
+  .intro p { color: var(--muted); }
+  .posts { grid-column: 1; display: grid; gap: 2.25rem; }
+  .entry { border-bottom: 1px solid var(--line); padding-bottom: 1.75rem; }
+  .ts { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--brass); font-size: 0.78rem; margin-bottom: 0.4rem; }
+  .entry h2 { margin: 0 0 0.5rem; font-size: 1.25rem; }
+  .entry p { margin: 0 0 0.6rem; color: var(--muted); }
+  .more { text-decoration: none; font-size: 0.9rem; }
+  .side { grid-column: 2; }
+  .side h3 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brass); margin: 0 0 0.75rem; }
+  .side p { color: var(--muted); font-size: 0.92rem; }
+  .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .tags span {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .archive, .subscribe { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 2rem; }
+  .archive h3, .subscribe h3 { color: var(--brass); font-size: 1rem; margin: 0 0 0.75rem; }
+  .archive ul { list-style: none; margin: 0; padding: 0; }
+  .archive li { padding: 0.35rem 0; }
+  .archive a, .subscribe a { color: var(--ink); }
+  footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 2rem 6vw;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Tideline Notes</span>
+  <nav>
+    <a href="#log">Log</a>
+    <a href="#archive">Archive</a>
+    <a href="#about">About</a>
+  </nav>
+</header>
+<main>
+  <section data-block="intro" class="intro">
+    <p class="kicker">Watch log — Cape Solitude station</p>
+    <h1 data-variants="Notes from the watch|Dispatches from the shoreline|Field notes, kept nightly">Notes from the watch</h1>
+    <p>Short entries written between watches: weather, wildlife, and the small repairs that keep the light turning.</p>
+  </section>
+
+  <section data-block="posts" class="posts" id="log">
+    <article class="entry">
+      <time class="ts">2026·03·02 04:10</time>
+      <h2>Fog off the point again</h2>
+      <p>Visibility under two hundred metres by 3am. Ran the horn on the half hour until the bank lifted at dawn.</p>
+      <a class="more" href="#log">Read the entry →</a>
+    </article>
+    <article class="entry">
+      <time class="ts">2026·02·27 21:40</time>
+      <h2>Replaced the lamp changer motor</h2>
+      <p>Spare had been sitting in the store since the last inspection. Swap took forty minutes, tide permitting.</p>
+      <a class="more" href="#log">Read the entry →</a>
+    </article>
+    <article class="entry">
+      <time class="ts">2026·02·24 06:05</time>
+      <h2>Seals on the low rocks</h2>
+      <p>A dozen hauled out below the fog signal house, undisturbed by the horn test at six.</p>
+      <a class="more" href="#log">Read the entry →</a>
+    </article>
+  </section>
+
+  <aside data-block="sidebar" class="side">
+    <h3>About the keeper</h3>
+    <p data-variants="Posted most nights, weather permitting|Written between watches|Logged at the turn of the tide">Posted most nights, weather permitting</p>
+    <h3>Tags</h3>
+    <p class="tags">
+      <span>weather</span>
+      <span>repairs</span>
+      <span>wildlife</span>
+      <span>tide</span>
+    </p>
+  </aside>
+
+  <section data-block="archive" class="archive" id="archive">
+    <h3>Archive</h3>
+    <ul>
+      <li><a href="#log">February 2026 — 14 entries</a></li>
+      <li><a href="#log">January 2026 — 19 entries</a></li>
+      <li><a href="#log">December 2025 — 11 entries</a></li>
+    </ul>
+  </section>
+
+  <section data-block="subscribe" class="subscribe" id="about">
+    <h3>Keep reading</h3>
+    <p data-variants="Follow by RSS, or write in|New entries arrive by RSS|Subscribe by RSS — no account needed">Follow by RSS, or write in.</p>
+    <p><a href="mailto:keeper@tidelinenotes.example">keeper@tidelinenotes.example</a></p>
+  </section>
+</main>
+<footer>
+  <span>&copy; 2026 Tideline Notes</span>
+  <span>Cape Solitude light station</span>
+</footer>
+</body>
+</html>

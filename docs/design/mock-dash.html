@@ -1,0 +1,55 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>D</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#09090b;--bg2:#0f0f11;--bg3:#151517;--line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.12);--fg:#f4f4f5;--mute:#8b8d93;--dim:#55575f;--acc:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444;--mono:"JetBrains Mono",ui-monospace,monospace;--sans:Inter,system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--fg);font:13px/1.45 var(--sans);height:100vh;display:grid;grid-template-columns:224px 1fr;-webkit-font-smoothing:antialiased}
+.side{border-right:1px solid var(--line);display:flex;flex-direction:column;padding:12px 10px}
+.ws{display:flex;align-items:center;gap:8px;padding:8px 8px 14px;font-weight:600}.ws i{width:12px;height:12px;border:2px solid var(--fg);border-radius:2px;transform:rotate(45deg)}.ws small{margin-left:auto;font:10px var(--mono);color:var(--dim);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+.sec{font:500 10.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:14px 8px 4px}
+a{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;color:var(--mute);text-decoration:none}a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}a.on{background:var(--bg3);color:var(--fg)}a b{margin-left:auto;font:11px var(--mono);color:var(--dim);font-weight:400}
+.sfoot{margin-top:auto;padding:10px 8px;font:11px var(--mono);color:var(--dim);border-top:1px solid var(--line)}.sfoot i{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:6px}
+.main{display:flex;flex-direction:column;min-width:0}
+.top{height:48px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 20px;gap:14px}.crumb{color:var(--mute)}.crumb b{color:var(--fg);font-weight:500}
+.cmd{margin-left:auto;display:flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:6px;padding:5px 10px;color:var(--dim);width:260px;font-size:12.5px}.cmd kbd{margin-left:auto;font:11px var(--mono);border:1px solid var(--line2);border-radius:4px;padding:0 5px}
+.btn{border:1px solid var(--line2);border-radius:6px;padding:5px 10px;font-size:12.5px;color:var(--fg);background:var(--bg2)}.btn.p{background:var(--fg);color:#09090b;border-color:transparent;font-weight:500}
+.body{padding:20px;display:grid;gap:16px;grid-template-columns:repeat(12,1fr);align-content:start}
+.h{grid-column:1/-1;display:flex;align-items:baseline;gap:12px}.h h1{font-size:18px;font-weight:600;letter-spacing:-.015em}.h span{font:12px var(--mono);color:var(--dim)}
+.tile{grid-column:span 3;border:1px solid var(--line);border-radius:8px;background:var(--bg2);padding:14px 16px}.tile .l{font-size:12px;color:var(--mute);display:flex;justify-content:space-between}.tile .v{font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:6px}.tile .d{font:11.5px var(--mono);color:var(--dim);margin-top:2px}.tile .d.up{color:var(--ok)}
+.panel{border:1px solid var(--line);border-radius:8px;background:var(--bg2);overflow:hidden}.panel h3{font-size:13px;font-weight:500;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;color:var(--fg)}.panel h3 span{font:11px var(--mono);color:var(--dim)}
+.chart{grid-column:span 8}.alerts{grid-column:span 4}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th{text-align:left;font-weight:500;color:var(--dim);font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:8px 16px;border-bottom:1px solid var(--line)}td{padding:9px 16px;border-bottom:1px solid var(--line);vertical-align:middle}tr:last-child td{border:0}
+.m{font-family:var(--mono);font-size:12px}.r{text-align:right;font-variant-numeric:tabular-nums}.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:8px;background:var(--ok)}.dot.off{background:var(--err)}.dot.deg{background:var(--warn)}
+.tag{font:11px var(--mono);border:1px solid var(--line2);border-radius:4px;padding:1px 6px;color:var(--mute)}
+.nodes{grid-column:span 12}
+</style></head><body>
+<aside class="side">
+ <div class="ws"><i></i> WEB Proxy Panel <small>v1.0</small></div>
+ <div class="sec">Обзор</div>
+ <a class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Дашборд</a>
+ <a><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Мониторинг</a>
+ <div class="sec">Инфраструктура</div>
+ <a><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/></svg>Ноды <b>2/3</b></a>
+ <a><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg>Шаблоны сайтов</a>
+ <div class="sec">Доступ</div>
+ <a><svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15 12v2"/></svg>Ключи <b>7</b></a>
+ <div class="sec">Система</div>
+ <a><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Журнал аудита</a>
+ <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Настройки</a>
+ <div class="sfoot"><i></i>root · owner<br>api ok · db ok · 14:02</div>
+</aside>
+<div class="main">
+ <div class="top"><span class="crumb">панель / <b>Дашборд</b></span><div class="cmd">Поиск, команды… <kbd>⌘K</kbd></div><span class="btn">Применить всё</span><span class="btn p">Создать ключ</span></div>
+ <div class="body">
+  <div class="h"><h1>Дашборд</h1><span>обновлено 12 с назад</span></div>
+  <div class="tile"><div class="l">Ноды онлайн<span class="tag">1 офлайн</span></div><div class="v">2 <span style="color:var(--dim);font-size:16px;font-weight:400">/ 3</span></div><div class="d">hel1 без heartbeat 3 ч</div></div>
+  <div class="tile"><div class="l">Активные ключи</div><div class="v">3</div><div class="d">4 ожидают применения</div></div>
+  <div class="tile"><div class="l">Сессии</div><div class="v">90</div><div class="d up">▲ 12% за час</div></div>
+  <div class="tile"><div class="l">Трафик за сутки</div><div class="v">3.0 <span style="color:var(--dim);font-size:16px;font-weight:400">GB</span></div><div class="d">↑ 494 MB · ↓ 2.5 GB</div></div>
+  <div class="panel chart"><h3>Сессии по нодам<span>24 ч · шаг 1 мин</span></h3><svg viewBox="0 0 800 220" style="width:100%;height:220px;display:block"><g stroke="rgba(255,255,255,.06)"><line x1="40" x2="790" y1="40" y2="40"/><line x1="40" x2="790" y1="90" y2="90"/><line x1="40" x2="790" y1="140" y2="140"/><line x1="40" x2="790" y1="190" y2="190"/></g><g font-family="JetBrains Mono" font-size="10" fill="#55575f"><text x="10" y="44">80</text><text x="10" y="94">60</text><text x="10" y="144">40</text><text x="10" y="194">20</text><text x="40" y="212">21:00</text><text x="400" y="212">09:00</text><text x="760" y="212">20:19</text></g><path d="M40 150 C120 60,180 60,260 150 S400 240,480 150 S620 60,700 150 S770 180,790 165" fill="none" stroke="#3b82f6" stroke-width="1.6"/><path d="M40 160 C120 75,180 75,260 160 S400 250,480 160 S620 75,700 160 S770 190,790 175" fill="none" stroke="#a78bfa" stroke-width="1.6"/></svg><div style="padding:8px 16px;border-top:1px solid var(--line);font:11.5px var(--mono);color:var(--mute)"><span style="color:#3b82f6">▬</span> ams1 &nbsp; <span style="color:#a78bfa">▬</span> fra1 &nbsp; <span style="color:#55575f">▬</span> hel1</div></div>
+  <div class="panel alerts"><h3>Алерты<span>1 открыт</span></h3><table><tr><td><span class="dot off"></span>hel1<div class="m" style="color:var(--dim)">node_offline · 3 ч назад</div></td><td class="r"><span class="btn">Разрешить</span></td></tr></table><h3 style="border-top:1px solid var(--line)">Последние применения<span>2</span></h3><table><tr><td>ams1 <span class="tag">both</span></td><td class="r m" style="color:var(--dim)">18 с · ok</td></tr><tr><td>fra1 <span class="tag">profiles</span></td><td class="r m" style="color:var(--dim)">12 с · ok</td></tr></table></div>
+  <div class="panel nodes"><h3>Ноды<span>3</span></h3><table><tr><th>Нода</th><th>Хост</th><th>Relay</th><th>Профили</th><th class="r">Сессии</th><th class="r">Последний heartbeat</th><th></th></tr>
+  <tr><td><span class="dot"></span>Amsterdam</td><td class="m">ams1.proxy-demo.net</td><td class="m">52a5feb</td><td class="m">4 / 128</td><td class="r m">42</td><td class="r m" style="color:var(--mute)">2 с назад</td><td class="r"><span class="btn">Открыть</span></td></tr>
+  <tr><td><span class="dot"></span>Frankfurt</td><td class="m">fra1.proxy-demo.net</td><td class="m">52a5feb</td><td class="m">6 / 128</td><td class="r m">37</td><td class="r m" style="color:var(--mute)">5 с назад</td><td class="r"><span class="btn">Открыть</span></td></tr>
+  <tr><td><span class="dot off"></span>Helsinki</td><td class="m">hel1.proxy-demo.net</td><td class="m" style="color:var(--dim)">—</td><td class="m">1 / 128</td><td class="r m" style="color:var(--dim)">—</td><td class="r m" style="color:var(--err)">3 ч назад</td><td class="r"><span class="btn">Открыть</span></td></tr></table></div>
+ </div>
+</div></body></html>

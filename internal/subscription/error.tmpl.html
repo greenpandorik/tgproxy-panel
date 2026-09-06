@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru" data-theme="{{if eq .Theme "light"}}light{{else}}dark{{end}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{.PanelName}}</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --surface: #14171c;
+    --border: #262b33;
+    --text: #e7e9ec;
+    --text-dim: #9aa3ad;
+  }
+  html[data-theme="light"] {
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --border: #e1e1dd;
+    --text: #1a1c1f;
+    --text-dim: #666b73;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    max-width: 420px;
+    margin: 20px;
+    padding: 28px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    text-align: center;
+  }
+  h1 {
+    font-size: 1.05rem;
+    font-weight: 650;
+    margin: 0 0 8px;
+  }
+  p {
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    margin: 0;
+    line-height: 1.45;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>{{.PanelName}}</h1>
+    <p>{{.Message}}</p>
+  </div>
+</body>
+</html>

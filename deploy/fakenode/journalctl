@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Fake `journalctl` for the fakenode image: tails the plain log files the
+# systemctl shim writes to under /var/log/fake, supporting just the flags the
+# agent's TailLogs uses (`--no-pager -o short-iso -n N -u unit [-u unit...] [-f]`).
+set -euo pipefail
+
+LOG_DIR=/var/log/fake
+lines=10
+follow=0
+units=()
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-u)
+		units+=("$2")
+		shift 2
+		;;
+	-n)
+		lines="$2"
+		shift 2
+		;;
+	-f)
+		follow=1
+		shift
+		;;
+	--no-pager | -o)
+		# -o takes a value (format); accept and ignore both forms
+		if [[ "$1" == "-o" ]]; then shift; fi
+		shift
+		;;
+	*)
+		shift
+		;;
+	esac
+done
+
+if [[ ${#units[@]} -eq 0 ]]; then
+	units=(tproxy-server mtproxy telemt caddy)
+fi
+
+files=()
+for u in "${units[@]}"; do
+	f="$LOG_DIR/$u.log"
+	[[ -f "$f" ]] || : >"$f"
+	files+=("$f")
+done
+
+if [[ "$follow" -eq 1 ]]; then
+	exec tail -n "$lines" -f "${files[@]}"
+fi
+exec tail -n "$lines" "${files[@]}"

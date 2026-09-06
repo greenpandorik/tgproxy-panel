@@ -1,0 +1,26 @@
+FROM golang:1.26-bookworm AS build
+ARG TPROXY_COMMIT=52a5feb7fac38f68da5afef9cedd9b3bfc8473ca
+RUN git clone https://github.com/telegramdesktop/tproxy-server.git /tproxy && cd /tproxy && git checkout -q "$TPROXY_COMMIT" \
+ && CGO_ENABLED=0 go build -o /out/tproxy-server ./cmd/tproxy-server
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/tgwp-agent ./cmd/agent && CGO_ENABLED=0 go build -o /out/stubproxy ./deploy/fakenode/stubproxy
+
+FROM debian:bookworm-slim
+ARG TPROXY_COMMIT=52a5feb7fac38f68da5afef9cedd9b3bfc8473ca
+ENV TPROXY_COMMIT=${TPROXY_COMMIT}
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl procps && rm -rf /var/lib/apt/lists/*
+COPY --from=build /out/tproxy-server /out/tgwp-agent /out/stubproxy /usr/local/bin/
+COPY deploy/fakenode/systemctl deploy/fakenode/journalctl /usr/local/bin/
+COPY deploy/fakenode/config.json /etc/tproxy-server/config.json
+COPY deploy/fakenode/entrypoint.sh /entrypoint.sh
+# /srv/tproxy-site is deliberately NOT created here: the agent's site deploy
+# does a directory-level os.Rename(SiteDir, SiteDir+".old"), and a directory
+# that only exists in a lower (read-only) image layer hits EXDEV ("invalid
+# cross-device link") on its first such rename under overlay2 until the
+# directory has been copied up as a whole. entrypoint.sh creates it fresh in
+# the writable layer at container start instead, which avoids that.
+RUN chmod +x /usr/local/bin/systemctl /usr/local/bin/journalctl /entrypoint.sh && mkdir -p /etc/mtproxy /var/lib/tgwp-agent /run/fake /var/log/fake
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,0 +1,140 @@
+syntax = "proto3";
+package agent.v1;
+option go_package = "tgwebproxy/proto/agent/v1;agentv1";
+
+service AgentGateway {
+  rpc Session(stream Envelope) returns (stream Envelope);
+}
+
+message Envelope {
+  string request_id = 1;
+  oneof body {
+    Hello hello = 2;
+    Heartbeat heartbeat = 3;
+    Request request = 4;
+    Response response = 5;
+    LogChunk log_chunk = 6;
+  }
+}
+
+message Hello {
+  string agent_version = 1;
+  string tproxy_version = 2;
+  string hostname = 3;
+}
+
+message Heartbeat { HealthReport health = 1; }
+
+message HealthReport {
+  bool relay_active = 1;
+  bool mtproxy_active = 2;
+  bool caddy_active = 3;
+  bool healthz = 4;
+  bool readyz = 5;
+  string tproxy_version = 6;
+  string agent_version = 7;
+  int64 uptime_seconds = 8;
+  double cpu_percent = 9;
+  double mem_used_percent = 10;
+  double disk_used_percent = 11;
+  int32 profile_count = 12;
+}
+
+message ProfileLimits {
+  int32 max_sessions = 1;
+  int32 max_streams = 2;
+  int32 max_backend_dials_in_flight = 3;
+  int32 new_sessions_per_minute = 4;
+  int32 new_sessions_burst = 5;
+  int32 new_streams_per_minute = 6;
+  int32 new_streams_burst = 7;
+  int32 max_streams_per_session = 8;
+  int32 max_pending_per_session = 9;
+}
+
+message Profile {
+  string name = 1;
+  string secret = 2;
+  string backend = 3;
+  string carrier_mode = 4;
+  ProfileLimits limits = 5;
+
+  // Fields 10-16 are the telemt engine's per-user limits and lifecycle. The tproxy agent
+  // ignores them; the telemt agent sends them on to the control API. Zero means "no limit of
+  // this kind" (telemt's own semantics), expires_at_unix = 0 means "never expires", and
+  // `enabled` is written literally: the panel always sets it to true for a profile it wants
+  // served, so the proto3 default (false) can only mean "disable this user".
+  uint64 data_quota_bytes = 10;
+  uint64 rate_limit_up_bps = 11;
+  uint64 rate_limit_down_bps = 12;
+  uint32 max_unique_ips = 13;
+  uint32 max_tcp_conns = 14;
+  int64 expires_at_unix = 15;
+  bool enabled = 16;
+}
+
+message ProfilesFile { repeated Profile profiles = 1; }
+
+message SiteFile { string path = 1; bytes content = 2; }
+message SiteBundle { repeated SiteFile files = 1; }
+
+message Request {
+  oneof body {
+    HealthRequest health = 1;
+    GetProfilesRequest get_profiles = 2;
+    ApplyRequest apply = 3;
+    GetSiteRequest get_site = 4;
+    MetricsRequest metrics = 5;
+    StatsRequest stats = 6;
+    TailLogsRequest tail_logs = 7;
+    RestartRelayRequest restart_relay = 8;
+  }
+}
+message HealthRequest {}
+message GetProfilesRequest {}
+message ApplyRequest {
+  bool apply_profiles = 1;
+  repeated Profile profiles = 2;
+  repeated string mtproxy_secrets = 3;
+  SiteBundle site = 4;   // nil = leave site untouched
+
+  // Fields 5-6 are the telemt node's Fake-TLS listener, as the panel wants it. The tproxy
+  // agent ignores them; the telemt agent compares them against the node's live config and
+  // rewrites `[censorship] tls_domain` / `[[server.listeners]]` when they differ, which is
+  // process-deferred and therefore costs a telemt restart. An empty tls_domain and a zero
+  // classic_port both mean "the panel has no opinion", so an old panel talking to a new
+  // agent never touches the listeners.
+  string tls_domain = 5;
+  uint32 classic_port = 6;
+}
+message GetSiteRequest {}
+message MetricsRequest {}
+message StatsRequest {}
+message TailLogsRequest { repeated string services = 1; int32 lines = 2; bool follow = 3; }
+message RestartRelayRequest {}
+
+message Response {
+  string error = 1;
+  oneof body {
+    HealthReport health = 2;
+    ProfilesFile profiles = 3;
+    ApplyResult apply = 4;
+    SiteBundle site = 5;
+    MetricsText metrics = 6;
+    StatsMap stats = 7;
+    Empty empty = 8;
+  }
+}
+message ApplyResult {
+  bool ok = 1;
+  bool restarted_relay = 2;
+  bool restarted_mtproxy = 3;
+  bool rolled_back = 4;
+  string log = 5;
+}
+message MetricsText { string text = 1; }
+message StatsMap { map<string, string> values = 1; }
+message Empty {}
+
+message LogLine { string service = 1; string line = 2; int64 unix_ms = 3; }
+message LogChunk { repeated LogLine lines = 1; bool done = 2; string error = 3; }

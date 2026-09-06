@@ -1,0 +1,32 @@
+{
+	# ACME account email: certificate-expiry and problem notifications go here. The value is
+	# quoted so that an unset ACME_EMAIL is a single empty argument rather than a missing one:
+	# `caddy validate` accepts it either way, and an empty value adapts to exactly the same
+	# config as omitting the directive (anonymous ACME registration, as before). Set
+	# ACME_EMAIL in deploy/.env to actually receive the notifications.
+	email "{$ACME_EMAIL}"
+
+	# Only addresses inside RFC1918/loopback ranges may speak for a client other than
+	# themselves. Nothing but the compose network sits in front of Caddy here, so this is
+	# the honest description of the deployment - and it keeps Caddy's own client-IP
+	# resolution from believing an X-Forwarded-For written by the internet.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$PANEL_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy panel:8080 {
+		transport http {
+			versions h2c 1.1
+		}
+		# Replace, do not append. Caddy's default is to append the peer address to
+		# whatever X-Forwarded-For the client sent, so a request carrying a forged
+		# `X-Forwarded-For: 1.2.3.4` would reach the panel as "1.2.3.4, <real ip>".
+		# The panel keys its per-IP rate limits and its audit rows off this header;
+		# overwriting it with the address Caddy actually accepted the connection from
+		# makes the header say what the panel assumes it says.
+		header_up X-Forwarded-For {remote_host}
+	}
+}

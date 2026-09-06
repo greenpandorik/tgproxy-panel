@@ -1,0 +1,47 @@
+# Demo node running the REAL telemt binary from the pinned upstream release, driven by the
+# real tgwp-agent in telemt mode. Used by `make e2e-telemt`; not a production image.
+#
+# The release only ships x86_64 Linux builds, so the runtime stage is amd64 (emulated on an
+# arm64 host). The Go stage builds on the host's own architecture and cross-compiles, which
+# keeps the slow part to telemt itself.
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS build
+ARG TARGETARCH
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -o /out/tgwp-agent ./cmd/agent
+
+FROM debian:bookworm-slim
+# Same release the panel pins for real nodes (TELEMT_VERSION), but the musl asset: it is
+# statically linked, so it runs on this slim image without matching a glibc. The checksum is
+# verified before the binary is ever made executable, exactly as the install script does.
+ARG TELEMT_VERSION=3.5.5
+ARG TELEMT_SHA256_MUSL_X86_64=6be65484bb1b319798919b746e72d611d32e92aa07347c390fffc5127ff6615f
+ENV TELEMT_VERSION=${TELEMT_VERSION}
+# util-linux carries setpriv, which the systemctl shim uses to run telemt as its own account.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl procps util-linux \
+ && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+	curl -fsSL -o /tmp/telemt.tar.gz "https://github.com/telemt/telemt/releases/download/${TELEMT_VERSION}/telemt-x86_64-linux-musl.tar.gz"; \
+	echo "${TELEMT_SHA256_MUSL_X86_64}  /tmp/telemt.tar.gz" | sha256sum -c -; \
+	mkdir -p /tmp/telemt-unpack; \
+	tar -xzf /tmp/telemt.tar.gz -C /tmp/telemt-unpack; \
+	src="$(find /tmp/telemt-unpack -type f -name telemt -print -quit)"; \
+	test -n "$src"; \
+	install -o root -g root -m 0755 "$src" /usr/local/bin/telemt; \
+	rm -rf /tmp/telemt.tar.gz /tmp/telemt-unpack
+# The unprivileged account the systemctl shim drops to, matching the install script and the
+# unit init-node writes.
+RUN useradd --system --home /var/lib/telemt --shell /usr/sbin/nologin telemt
+COPY --from=build /out/tgwp-agent /usr/local/bin/
+COPY deploy/fakenode/systemctl deploy/fakenode/journalctl /usr/local/bin/
+COPY deploy/fakenode-telemt/entrypoint.sh /entrypoint.sh
+# /var/lib/telemt/public is deliberately NOT created here. The agent's site deploy renames the
+# decoy directory as a whole, and a directory that exists only in a read-only image layer hits
+# EXDEV on that first rename under overlay2. init-node creates it in the writable layer at
+# container start instead (same reasoning as deploy/Dockerfile.fakenode).
+RUN chmod +x /usr/local/bin/systemctl /usr/local/bin/journalctl /entrypoint.sh \
+ && mkdir -p /etc/telemt /var/lib/telemt /var/lib/tgwp-agent /run/fake /var/log/fake \
+ && chown telemt:telemt /etc/telemt /var/lib/telemt
+ENTRYPOINT ["/entrypoint.sh"]

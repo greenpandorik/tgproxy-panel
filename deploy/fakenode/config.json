@@ -1,0 +1,8 @@
+{
+  "public_hostname": "fakenode.local",
+  "listen": "127.0.0.1:8080",
+  "admin_listen": "127.0.0.1:8081",
+  "public_dir": "/srv/tproxy-site",
+  "profiles_file": "/etc/tproxy-server/profiles.json",
+  "limits": { "max_profiles": 128 }
+}

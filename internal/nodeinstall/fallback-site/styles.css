@@ -1,0 +1,8 @@
+:root{--ink:#1f2933;--paper:#f7f4ee;--line:#d9d2c5}
+*{box-sizing:border-box}body{margin:0;font-family:Georgia,serif;color:var(--ink);background:var(--paper)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:20px 32px;border-bottom:1px solid var(--line)}
+.brand{font-weight:700;letter-spacing:.04em}nav a{margin-left:20px;color:inherit;text-decoration:none}
+main{max-width:920px;margin:0 auto;padding:48px 24px}.hero h1{font-size:2.2rem;margin:0 0 12px}.hero p{max-width:60ch;line-height:1.6}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:40px}
+article{border:1px solid var(--line);padding:20px;background:#fff}article h2{margin:0 0 8px;font-size:1.1rem}
+footer{text-align:center;padding:32px;color:#6b7280;font-size:.9rem}

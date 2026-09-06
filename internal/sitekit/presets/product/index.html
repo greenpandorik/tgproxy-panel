@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn — offline trail mapping</title>
+<style>
+  :root {
+    --moss: #3c5a45;
+    --stone: #efe9dc;
+    --ink: #22291f;
+    --signal: #e2611c;
+    --line: #d8cfb8;
+    --muted: #5b6a5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--stone);
+    color: var(--ink);
+    font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  a { color: var(--signal); }
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 6vw;
+    background: var(--moss);
+    color: var(--stone);
+  }
+  .brand { font-weight: 800; letter-spacing: 0.03em; }
+  nav a { margin-left: 1.75rem; color: var(--stone); text-decoration: none; font-size: 0.92rem; opacity: 0.85; }
+  nav a:hover { opacity: 1; }
+  main { max-width: 68rem; margin: 0 auto; }
+  section { padding: 4.5rem 6vw; }
+  section[data-block="hero"] {
+    background: repeating-linear-gradient(0deg, transparent 0 26px, var(--line) 26px 27px);
+    text-align: center;
+  }
+  section[data-block="hero"] h1 { font-size: 2.6rem; max-width: 34rem; margin: 0 auto 1rem; }
+  section[data-block="hero"] p { max-width: 32rem; margin: 0 auto 1.5rem; color: var(--muted); font-size: 1.1rem; }
+  .cta { display: inline-block; border: 2px solid var(--moss); color: var(--moss); text-decoration: none; padding: 0.6rem 1.4rem; border-radius: 3px; font-weight: 600; }
+  h2 { font-size: 1.5rem; color: var(--moss); margin: 0 0 2rem; text-align: center; }
+  .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.75rem; }
+  .feature { border-top: 3px solid var(--signal); padding-top: 1rem; }
+  .feature h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+  .feature p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .tier { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 1.75rem; }
+  .tier.featured { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal) inset; }
+  .tier h3 { margin: 0 0 0.25rem; }
+  .price { font-size: 1.8rem; font-weight: 800; color: var(--moss); margin: 0 0 1rem; }
+  .price span { font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+  .tier ul { list-style: none; margin: 0; padding: 0; color: var(--muted); font-size: 0.92rem; }
+  .tier li { padding: 0.3rem 0; }
+  .badge { display: inline-block; background: var(--signal); color: #fff; font-size: 0.72rem; padding: 0.15rem 0.55rem; border-radius: 999px; margin-bottom: 0.5rem; }
+  .faq dt { font-weight: 700; margin-top: 1.25rem; }
+  .faq dd { margin: 0.3rem 0 0; color: var(--muted); }
+  footer { padding: 2.5rem 6vw; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">CAIRN</span>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+</header>
+<main>
+  <section data-block="hero">
+    <h1 data-variants="Trails don't need a signal|Maps that work where coverage doesn't|Offline routes for real terrain">Trails don't need a signal.</h1>
+    <p>Cairn stores contour maps, water sources and shelter locations on the device before you leave the trailhead — no connection required once you're on the path.</p>
+    <a class="cta" href="#pricing">See pricing</a>
+  </section>
+
+  <section data-block="features" id="features">
+    <h2>Built for the terrain, not the network</h2>
+    <div class="features">
+      <div class="feature">
+        <h3>Offline contour maps</h3>
+        <p data-variants="Full-resolution topography, downloaded before you leave signal|Region packs you load at home, not on the trail|Contour detail that doesn't thin out past the trailhead">Full-resolution topography, downloaded before you leave signal.</p>
+      </div>
+      <div class="feature">
+        <h3>Water &amp; shelter marks</h3>
+        <p>Community-verified spring and shelter points, refreshed each season by trail maintainers.</p>
+      </div>
+      <div class="feature">
+        <h3>Battery-aware tracking</h3>
+        <p>Position logging tuned to last a multi-day route on a single charge.</p>
+      </div>
+      <div class="feature">
+        <h3>Printable backups</h3>
+        <p>Every region exports to a single waterproof-ready sheet as a fallback.</p>
+      </div>
+    </div>
+  </section>
+
+  <section data-block="pricing" id="pricing">
+    <h2>Three ways to carry it</h2>
+    <div class="tiers">
+      <div class="tier">
+        <h3>Trailhead</h3>
+        <p class="price">Free</p>
+        <ul><li>One region pack</li><li>Contour maps</li><li>Community water marks</li></ul>
+      </div>
+      <div class="tier featured">
+        <span class="badge" data-variants="Most hikers pick this|Best for weekend trips|Recommended by trail crews">Most hikers pick this</span>
+        <h3>Basecamp</h3>
+        <p class="price">$6<span> / month</span></p>
+        <ul><li>Unlimited region packs</li><li>Offline shelter marks</li><li>Printable backups</li></ul>
+      </div>
+      <div class="tier">
+        <h3>Summit</h3>
+        <p class="price">$14<span> / month</span></p>
+        <ul><li>Everything in Basecamp</li><li>Multi-day battery mode</li><li>Priority map refreshes</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section data-block="faq" id="faq">
+    <h2>Questions before you pack</h2>
+    <dl class="faq">
+      <dt>Do I need a connection to use the maps?</dt>
+      <dd>No — every region you add downloads fully before you set out.</dd>
+      <dt>Can I use it on more than one device?</dt>
+      <dd>Basecamp and Summit sync region packs across two devices.</dd>
+      <dt>What happens if my phone dies mid-route?</dt>
+      <dd>Every region includes a printable single-sheet backup you can carry on paper.</dd>
+    </dl>
+  </section>
+</main>
+<footer>
+  <span>&copy; 2026 Cairn</span>
+  <span>No tracking beyond the route you record</span>
+</footer>
+</body>
+</html>

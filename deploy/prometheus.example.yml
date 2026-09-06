@@ -1,0 +1,21 @@
+# Example scrape config for tgwp-panel's /metrics endpoint.
+#
+# Copy the credentials_file target next to your Prometheus config (or
+# wherever prometheus.yml points below) with the panel's METRICS_TOKEN as
+# its sole contents, no trailing newline required:
+#
+#   echo -n "<METRICS_TOKEN value>" > /etc/prometheus/tgwp-token
+#   chmod 600 /etc/prometheus/tgwp-token
+#
+# Then merge this job into your prometheus.yml scrape_configs and replace
+# the target placeholder with the panel's public hostname.
+
+scrape_configs:
+  - job_name: tgwp-panel
+    metrics_path: /metrics
+    scheme: https
+    scrape_interval: 60s
+    authorization:
+      credentials_file: /etc/prometheus/tgwp-token
+    static_configs:
+      - targets: ["panel.example.com"]

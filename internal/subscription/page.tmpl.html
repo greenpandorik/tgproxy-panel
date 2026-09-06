@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ru" data-theme="{{if eq .Theme "light"}}light{{else}}dark{{end}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{.PanelName}}</title>
+<style>
+  :root {
+    --primary: {{.PrimaryColor}};
+    --accent: {{.AccentColor}};
+    --bg: #0b0d10;
+    --surface: #14171c;
+    --surface-2: #1b1f26;
+    --border: #262b33;
+    --text: #e7e9ec;
+    --text-dim: #9aa3ad;
+  }
+  html[data-theme="light"] {
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --surface-2: #f0f0ee;
+    --border: #e1e1dd;
+    --text: #1a1c1f;
+    --text-dim: #666b73;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 40px 20px 56px;
+  }
+  header.page {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .mark {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex: none;
+  }
+  h1 {
+    font-size: 1.25rem;
+    font-weight: 650;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin: 10px 0 28px;
+    max-width: 46ch;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .card-head h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .hostname {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  .card-body {
+    display: grid;
+    grid-template-columns: 108px 1fr;
+    gap: 16px;
+  }
+  .qr {
+    width: 108px;
+    height: 108px;
+    border-radius: 10px;
+    background: #fff;
+    padding: 6px;
+    display: block;
+  }
+  .card-body + .card-body { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .links { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .kind {
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .link-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 6px 6px 10px;
+  }
+  .link-row .proto {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    flex: none;
+    width: 34px;
+  }
+  .link-row .val {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+  button.copy-btn {
+    flex: none;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  button.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  button.copy-btn[data-copied="1"] { border-color: var(--accent); color: var(--accent); }
+  a.open-btn {
+    display: block;
+    text-align: center;
+    margin-top: 4px;
+    background: var(--primary);
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .notice {
+    margin-top: 22px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    font-size: 0.82rem;
+    color: var(--text-dim);
+  }
+  .notice p { margin: 0 0 6px; }
+  .notice p:last-child { margin-bottom: 0; }
+  .notice .en { font-size: 0.76rem; }
+  .support-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .support-item {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.72rem;
+  }
+  footer.page {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  footer.page a { color: var(--text-dim); }
+  .empty {
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+  }
+  @media (max-width: 420px) {
+    .card-body { grid-template-columns: 1fr; }
+    .qr { width: 96px; height: 96px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <span class="mark"></span>
+    <h1>{{.PanelName}}</h1>
+  </header>
+  <p class="lede">Добавьте сервер в Telegram: отсканируйте QR-код или скопируйте ссылку и откройте её на устройстве с Telegram.</p>
+
+  {{if .Locations}}
+    {{range .Locations}}
+    <section class="card">
+      <div class="card-head">
+        <h2>{{.Name}}</h2>
+        <span class="hostname">{{.Hostname}}</span>
+      </div>
+      {{range .Links}}
+      <div class="card-body">
+        <img class="qr" src="{{safeURL .QRDataURI}}" alt="QR">
+        <div class="links">
+          <div class="kind">{{.Label}}</div>
+          <div class="link-row">
+            <span class="proto">t.me</span>
+            <span class="val">{{.TMe}}</span>
+            <button type="button" class="copy-btn" data-copy="{{.TMe}}">Копировать</button>
+          </div>
+          <div class="link-row">
+            <span class="proto">tg://</span>
+            <span class="val">{{.Tg}}</span>
+            <button type="button" class="copy-btn" data-copy="{{.Tg}}">Копировать</button>
+          </div>
+          <a class="open-btn" href="{{safeURL .Tg}}">Открыть в Telegram</a>
+        </div>
+      </div>
+      {{end}}
+    </section>
+    {{end}}
+  {{else}}
+    <div class="empty">Для этого ключа пока нет ни одного сервера.</div>
+  {{end}}
+
+  <div class="notice">
+    <p>Поддержка приложений: Desktop — {{index .ClientSupport "desktop"}}, Android — {{index .ClientSupport "android"}}, iOS — {{index .ClientSupport "ios"}}.</p>
+    <p class="en">Client support: Desktop {{index .ClientSupport "desktop"}}, Android {{index .ClientSupport "android"}}, iOS {{index .ClientSupport "ios"}}.</p>
+  </div>
+
+  <footer class="page">
+    <span>{{if .FooterText}}{{.FooterText}}{{else}}{{.PanelName}}{{end}}</span>
+    {{if .SupportLink}}<a href="{{.SupportLink}}">Поддержка</a>{{end}}
+  </footer>
+</div>
+<script>
+document.querySelectorAll('.copy-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var value = btn.getAttribute('data-copy');
+    var done = function () {
+      var prev = btn.textContent;
+      btn.textContent = 'Скопировано';
+      btn.setAttribute('data-copied', '1');
+      setTimeout(function () {
+        btn.textContent = prev;
+        btn.removeAttribute('data-copied');
+      }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value).then(done, function () {});
+    } else {
+      var el = document.createElement('textarea');
+      el.value = value;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(el);
+    }
+  });
+});
+</script>
+</body>
+</html>

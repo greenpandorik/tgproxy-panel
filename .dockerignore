@@ -1,0 +1,17 @@
+.git
+.github
+web/node_modules
+web/dist
+data
+.superpowers
+.claude
+docs
+*.md
+panel
+tgwp-agent*
+
+# Secrets: never let these into a build-stage image layer, even transiently.
+.env
+**/.env
+*.env
+!.env.example

@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tgwp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tgwp}
+      POSTGRES_DB: tgwp
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tgwp"]
+      interval: 5s
+      retries: 10
+
+  panel:
+    # To run a published image instead of building from this checkout, replace
+    # the build block with:  image: ghcr.io/greenpandorik/tgproxy-panel:1.0.0
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.panel
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://tgwp:${POSTGRES_PASSWORD:-tgwp}@postgres:5432/tgwp?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes: [paneldata:/data]
+    expose: ["8080"]
+    # /healthz is served only once migrations have run and the HTTP server is listening, so
+    # dependants gated on service_healthy never proxy to a half-started panel. wget comes
+    # from busybox in the alpine base image; no extra package is needed.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    environment:
+      PANEL_DOMAIN: ${PANEL_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on:
+      panel:
+        condition: service_healthy
+
+  # Demo node running the real telemt binary (profile dev-telemt, driven by deploy/run-e2e-telemt.sh).
+  # telemt ships x86_64 Linux builds only, so the container is amd64 and is emulated on an
+  # arm64 host; the agent inside it is cross-compiled by the build stage.
+  fakenode-telemt:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.fakenode-telemt
+      args:
+        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.5}
+        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-6be65484bb1b319798919b746e72d611d32e92aa07347c390fffc5127ff6615f}
+    platform: linux/amd64
+    profiles: [dev-telemt]
+    environment:
+      PANEL_URL: http://panel:8080
+      INSTALL_TOKEN: ${FAKENODE_INSTALL_TOKEN:-}
+    depends_on:
+      panel:
+        condition: service_healthy
+
+  fakenode:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.fakenode
+    profiles: [dev]
+    environment:
+      PANEL_URL: http://panel:8080
+      NODE_HOSTNAME: ${FAKENODE_HOSTNAME:-fakenode.local}
+      INSTALL_TOKEN: ${FAKENODE_INSTALL_TOKEN:-}
+    depends_on:
+      panel:
+        condition: service_healthy
+
+volumes:
+  pgdata: {}
+  paneldata: {}
+  caddydata: {}

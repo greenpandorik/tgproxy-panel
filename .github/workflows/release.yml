@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  check-version:
+    name: Tag matches source version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          src="$(sed -n 's/^var Version = "\(.*\)"$/\1/p' internal/version/version.go)"
+          echo "tag=$tag source=$src"
+          [ "$tag" = "$src" ] || { echo "internal/version/version.go says $src, tag says $tag; bump the source first"; exit 1; }
+
+  binaries:
+    name: Binaries
+    needs: check-version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build SPA
+        working-directory: web
+        run: npm ci && npm run build
+      - name: Build binaries
+        run: |
+          set -eu
+          ver="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          ld="-s -w -X tgwebproxy/internal/version.Version=${ver}"
+          for os_arch in linux/amd64 linux/arm64; do
+            os="${os_arch%/*}"; arch="${os_arch#*/}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "$ld" -o "dist/panel-${os}-${arch}" ./cmd/panel
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "$ld" -o "dist/tgwp-agent-${os}-${arch}" ./cmd/agent
+          done
+          (cd dist && sha256sum * > SHA256SUMS)
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+
+  image:
+    name: Container image
+    needs: check-version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile.panel
+          push: true
+          platforms: linux/amd64
+          build-args: VERSION=${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

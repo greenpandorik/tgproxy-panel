@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Fake `systemctl` for the fakenode image: manages a handful of hardcoded
+# units as plain background processes instead of real systemd units, so the
+# real tgwp-agent (which shells out to `systemctl ...`) works unmodified.
+set -euo pipefail
+
+RUN_DIR=/run/fake
+LOG_DIR=/var/log/fake
+mkdir -p "$RUN_DIR" "$LOG_DIR"
+
+unit_cmd() {
+	case "$1" in
+	tproxy-server) echo "/usr/local/bin/tproxy-server -config /etc/tproxy-server/config.json -profiles-file /etc/tproxy-server/profiles.json" ;;
+	mtproxy) echo "/usr/local/bin/stubproxy" ;;
+	# telemt runs unprivileged on a real node (the unit sets User=telemt), and its control
+	# API rewrites /etc/telemt/telemt.toml, so the shim must drop to the same account here or
+	# the file would come back root-owned and telemt would lose access to its own config.
+	# setpriv execs in place, so the pid recorded below is telemt's own.
+	telemt) echo "/usr/bin/setpriv --reuid=telemt --regid=telemt --init-groups /usr/local/bin/telemt /etc/telemt/telemt.toml" ;;
+	caddy) echo "" ;; # no-op unit, always reported active
+	*)
+		echo "systemctl: unknown unit $1" >&2
+		exit 1
+		;;
+	esac
+}
+
+# unit_dir is the unit's WorkingDirectory. telemt is started from its state directory the way
+# the real unit does; everything else runs from /.
+unit_dir() {
+	case "$1" in
+	telemt) echo /var/lib/telemt ;;
+	*) echo / ;;
+	esac
+}
+
+pid_file() { echo "$RUN_DIR/$1.pid"; }
+log_file() { echo "$LOG_DIR/$1.log"; }
+
+is_running() {
+	local unit="$1" pf
+	pf="$(pid_file "$unit")"
+	[[ -f "$pf" ]] && kill -0 "$(cat "$pf")" 2>/dev/null
+}
+
+start_unit() {
+	local unit="$1" cmd
+	cmd="$(unit_cmd "$unit")"
+	if [[ "$unit" == "caddy" ]]; then
+		return 0
+	fi
+	if is_running "$unit"; then
+		return 0
+	fi
+	# The subshell execs into the command, so $! is the unit's own pid and not a wrapper's.
+	# shellcheck disable=SC2086
+	(cd "$(unit_dir "$unit")" && exec nohup $cmd >>"$(log_file "$unit")" 2>&1) &
+	echo $! >"$(pid_file "$unit")"
+}
+
+stop_unit() {
+	local unit="$1" pf
+	if [[ "$unit" == "caddy" ]]; then
+		return 0
+	fi
+	pf="$(pid_file "$unit")"
+	if [[ -f "$pf" ]]; then
+		kill "$(cat "$pf")" 2>/dev/null || true
+		for _ in $(seq 1 20); do
+			is_running "$unit" || break
+			sleep 0.1
+		done
+		rm -f "$pf"
+	fi
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+is-active)
+	unit="${1:-}"
+	if [[ "$unit" == "caddy" ]]; then
+		echo active
+		exit 0
+	fi
+	if is_running "$unit"; then
+		echo active
+		exit 0
+	fi
+	echo inactive
+	exit 3
+	;;
+start)
+	for unit in "$@"; do start_unit "$unit"; done
+	;;
+stop)
+	for unit in "$@"; do stop_unit "$unit"; done
+	;;
+restart)
+	for unit in "$@"; do
+		stop_unit "$unit"
+		start_unit "$unit"
+	done
+	;;
+enable | disable | daemon-reload)
+	# no-ops: there is no real systemd to reconfigure
+	exit 0
+	;;
+*)
+	echo "systemctl: unsupported command $cmd" >&2
+	exit 1
+	;;
+esac

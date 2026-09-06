@@ -1,0 +1,317 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+/*
+ * TGWP Panel design tokens - visual language v2
+ * (docs/superpowers/specs/2026-09-05-ui-redesign.md).
+ *
+ * The palette is deliberately almost colourless: three near-black surfaces,
+ * two hairline strengths, three text weights. Colour is spent only on status
+ * (ok/warn/err/info) and on the operator's own brand hue, which is injected
+ * at runtime onto <html> by ThemeProvider from GET /api/v1/branding and marks
+ * exactly four things: the active nav item, the focus ring, links and the
+ * first chart series. The primary button is *not* branded - it is --fg on
+ * --bg, so the single strongest contrast on the page always means "the main
+ * action here", whatever hue the operator picked.
+ *
+ * Dark is the default look; [data-theme="light"] mirrors every surface token.
+ * Nothing below this block should hard-code a colour.
+ */
+:root {
+  /* Surfaces: page ground, panels, hover/active. */
+  --bg: #09090b;
+  --bg-2: #0f0f11;
+  --bg-3: #151517;
+
+  /* Hairlines. --line separates, --line-2 outlines something interactive. */
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.12);
+
+  /* Text: primary, secondary, and the "machine wrote this" dim. */
+  --fg: #f4f4f5;
+  --mute: #8b8d93;
+  --dim: #55575f;
+
+  /* Status semantics. Fixed across themes and never used for decoration. */
+  --status-ok: #22c55e;
+  --status-warn: #f59e0b;
+  --status-err: #ef4444;
+  --status-info: #3b82f6;
+
+  /* Brand, overridden at runtime from /api/v1/branding (DB defaults here). */
+  --brand-primary: #3b82f6;
+  --brand-accent: #22c55e;
+
+  /* Panel-wide status aliases used by StatusBadge and the tables. */
+  --status-online: var(--status-ok);
+  --status-offline: var(--status-err);
+  --status-degraded: var(--status-warn);
+  --status-pending: var(--mute);
+
+  /*
+   * shadcn/base-ui semantic layer, mapped onto the tokens above so every
+   * component and page inherits the language without knowing about it.
+   * --primary stays the brand hue (links, focus, checkbox/switch fills);
+   * the neutral primary *button* is spelled out in button.tsx instead.
+   */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--bg-2);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-2);
+  --popover-foreground: var(--fg);
+  --primary: var(--brand-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--bg-2);
+  --secondary-foreground: var(--fg);
+  --muted: var(--bg-3);
+  --muted-foreground: var(--mute);
+  --accent: var(--bg-3);
+  --accent-foreground: var(--fg);
+  --destructive: var(--status-err);
+  --destructive-foreground: #ffffff;
+  --border: var(--line);
+  --input: var(--line-2);
+  --ring: var(--brand-primary);
+
+  /* The one shadow in the system: popovers lifting off the page. */
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  /*
+   * Chart series. Series 1 and 2 are the operator's brand pair (the spec
+   * makes brand-primary the first series and brand-accent the second); 3-8
+   * continue with the dataviz skill's dark-column categorical hues, in a
+   * fixed order that is never reassigned by rank.
+   */
+  --series-1: var(--brand-primary);
+  --series-2: var(--brand-accent);
+  --series-3: #d95926;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #9085e9;
+  --series-7: #199e70;
+  --series-8: #e66767;
+  --series-other: var(--dim);
+
+  --sidebar: var(--bg);
+  --sidebar-foreground: var(--fg);
+  --sidebar-primary: var(--brand-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--bg-3);
+  --sidebar-accent-foreground: var(--fg);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--brand-primary);
+}
+
+/* Light mirror: the same five roles, inverted. Hairlines go to black alpha. */
+:root[data-theme='light'] {
+  --bg: #fafafa;
+  --bg-2: #ffffff;
+  --bg-3: #f1f1f3;
+
+  --line: rgba(0, 0, 0, 0.08);
+  --line-2: rgba(0, 0, 0, 0.14);
+
+  --fg: #111113;
+  --mute: #6b6d75;
+  --dim: #9a9ca3;
+
+  --destructive-foreground: #ffffff;
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.14);
+
+  --series-3: #c04a1c;
+  --series-4: #a86e00;
+  --series-5: #c0396c;
+  --series-6: #6b5fd6;
+  --series-7: #12855e;
+  --series-8: #d23a3a;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /*
+   * Type scale. Base is 13px/1.45 (--text-sm, what nearly every component
+   * asks for), with 12px labels below it and an 18px page title above.
+   * Root rem stays 16px so Tailwind's spacing scale is unaffected.
+   */
+  --text-xs: 0.6875rem; /* 11px - table headers, kbd, tags */
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.8125rem; /* 13px - body, controls, table cells */
+  --text-sm--line-height: 1.45;
+  --text-base: 0.875rem; /* 14px - dialog titles */
+  --text-base--line-height: 1.4;
+  --text-lg: 1rem; /* 16px */
+  --text-lg--line-height: 1.35;
+  --text-xl: 1.125rem; /* 18px - page title */
+  --text-xl--line-height: 1.3;
+  --text-2xl: 1.625rem; /* 26px - stat value */
+  --text-2xl--line-height: 1.1;
+
+  /* Radii: 4 tags, 6 controls, 8 panels. Nothing rounder. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-1: var(--series-1);
+  --color-chart-2: var(--series-2);
+  --color-chart-3: var(--series-3);
+  --color-chart-4: var(--series-4);
+  --color-chart-5: var(--series-5);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  /*
+   * Surface/line/text utilities: bg-surface, border-hairline, text-mute, ...
+   * text-mute and text-dim are the two secondary text roles and are not
+   * interchangeable: --mute is secondary *prose* (a description, an empty
+   * state, a label), --dim is machine output and chrome (mono context lines,
+   * breadcrumbs, table headers, placeholders). Prose never uses --dim.
+   */
+  --color-surface: var(--bg-2);
+  --color-elevated: var(--bg-3);
+  --color-hairline: var(--line);
+  --color-hairline-strong: var(--line-2);
+  --color-mute: var(--mute);
+  --color-dim: var(--dim);
+
+  /* Brand utilities: bg-brand-primary, text-brand-accent, ... */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-accent: var(--brand-accent);
+
+  /* Fixed status semantics, independent of brand/theme. */
+  --color-ok: var(--status-ok);
+  --color-warn: var(--status-warn);
+  --color-err: var(--status-err);
+  --color-info: var(--status-info);
+  --color-online: var(--status-online);
+  --color-offline: var(--status-offline);
+  --color-degraded: var(--status-degraded);
+  --color-pending: var(--status-pending);
+
+  --shadow-popover: var(--shadow-popover);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+  }
+  html[data-theme='light'] {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground text-sm;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--brand-primary) 35%, transparent);
+  }
+  /* Every number in the panel is compared against the one above it. */
+  th,
+  td,
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /*
+   * .mono marks a value the machine produced - a hostname, an id, a commit,
+   * a byte count, a timestamp. It is the panel's one strong typographic
+   * signal, so it carries tabular figures and a hair of negative tracking.
+   */
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.012em;
+  }
+  .tabular,
+  .font-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Group label in the sidebar; the only uppercase in the system besides <th>. */
+  .eyebrow {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+}
+
+/* Signature motif: a soft pulsing ring behind "live" status dots (online/active). */
+@keyframes tgwp-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.tgwp-pulse-ring {
+  animation: tgwp-pulse 1.8s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tgwp-pulse-ring {
+    animation: none;
+    display: none;
+  }
+}
+
+/*
+ * Line-number gutter for the site template HTML editor (TemplateEditorPage).
+ * No code-editor dependency: numbers are generated by a CSS counter over one
+ * row-per-line div, kept in lockstep with the plain <textarea> next to it via
+ * an identical font/line-height and a synced scrollTop (see LineNumberedTextarea).
+ */
+.tgwp-editor-gutter {
+  counter-reset: line;
+}
+
+.tgwp-editor-gutter-row {
+  counter-increment: line;
+}
+
+.tgwp-editor-gutter-row::before {
+  content: counter(line);
+}

@@ -1,0 +1,42 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0b;--bg2:#101113;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--fg:#ededef;--mute:#8b8d93;--dim:#5c5e66;--acc:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--mono:"JetBrains Mono",ui-monospace,monospace;--sans:Inter,system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans);height:100vh;display:grid;grid-template-columns:1fr 520px;-webkit-font-smoothing:antialiased}
+.left{position:relative;border-right:1px solid var(--line);background:radial-gradient(1200px 600px at 20% -10%,rgba(59,130,246,.10),transparent 60%),var(--bg);padding:40px 48px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+.left:before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(700px 500px at 45% 55%,#000 30%,transparent 100%);opacity:.5}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em;position:relative}.brand i{width:14px;height:14px;border:2px solid var(--fg);border-radius:3px;display:inline-block;transform:rotate(45deg)}
+.map{position:relative;flex:1;display:flex;align-items:center;justify-content:center}
+.card{position:relative;width:560px;border:1px solid var(--line2);background:rgba(16,17,19,.85);border-radius:10px;backdrop-filter:blur(8px);font-family:var(--mono);font-size:12.5px}
+.card h4{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:12px 16px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:110px 1fr auto auto;gap:16px;padding:10px 16px;border-bottom:1px solid var(--line);align-items:center}.row:last-child{border:0}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(34,197,94,.15);display:inline-block;margin-right:8px}.dot.off{background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.15)}
+.mute{color:var(--mute)}.num{font-variant-numeric:tabular-nums;color:var(--fg)}
+.spark{height:22px;width:120px}
+.foot{position:relative;font-family:var(--mono);font-size:12px;color:var(--dim);display:flex;gap:24px}
+.right{padding:40px 64px;display:flex;flex-direction:column;justify-content:center;background:var(--bg2)}
+h1{font-size:26px;font-weight:600;letter-spacing:-.02em;margin-bottom:6px}.sub{color:var(--mute);margin-bottom:32px}
+label{display:block;font-size:12.5px;color:var(--mute);margin:0 0 6px}
+input{width:100%;height:40px;background:var(--bg);border:1px solid var(--line2);border-radius:6px;color:var(--fg);padding:0 12px;font:14px var(--sans);outline:0;margin-bottom:18px}
+input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.25)}
+button{width:100%;height:40px;border:0;border-radius:6px;background:var(--fg);color:#0a0a0b;font:500 14px var(--sans);margin-top:6px}
+.kbd{font:11px var(--mono);border:1px solid var(--line2);border-radius:4px;padding:1px 5px;color:var(--mute);margin-left:8px}
+.ver{margin-top:40px;font:12px var(--mono);color:var(--dim);display:flex;justify-content:space-between}
+</style></head><body>
+<div class="left">
+ <div class="brand"><i></i> WEB Proxy Panel</div>
+ <div class="map"><div class="card"><h4>Состояние сети</h4>
+  <div class="row"><span><span class="dot"></span>ams1</span><span class="mute">ams1.proxy-demo.net</span><span class="num">42 сессии</span><svg class="spark" viewBox="0 0 120 22"><polyline fill="none" stroke="#3b82f6" stroke-width="1.5" points="0,16 10,12 20,14 30,8 40,10 50,6 60,9 70,5 80,7 90,4 100,8 110,6 120,3"/></svg></div>
+  <div class="row"><span><span class="dot"></span>fra1</span><span class="mute">fra1.proxy-demo.net</span><span class="num">37 сессий</span><svg class="spark" viewBox="0 0 120 22"><polyline fill="none" stroke="#3b82f6" stroke-width="1.5" points="0,14 10,15 20,10 30,12 40,7 50,9 60,11 70,6 80,8 90,10 100,5 110,7 120,6"/></svg></div>
+  <div class="row"><span><span class="dot off"></span>hel1</span><span class="mute">hel1.proxy-demo.net</span><span class="num mute">офлайн · 3 ч</span><svg class="spark" viewBox="0 0 120 22"><polyline fill="none" stroke="#5c5e66" stroke-width="1.5" points="0,8 20,9 40,7 60,10 80,20 100,20 120,20"/></svg></div>
+  <div class="row"><span class="mute">relay</span><span class="mute">tproxy-server 52a5feb · применено 12 мин назад</span><span></span><span class="mute">7 ключей</span></div>
+ </div></div>
+ <div class="foot"><span>v1.0.0</span><span>api: ok</span><span>db: ok</span><span>3 ноды</span></div>
+</div>
+<div class="right">
+ <h1>Вход</h1><div class="sub">Панель управления Telegram WEB Proxy</div>
+ <label>Логин</label><input value="root">
+ <label>Пароль</label><input type="password" value="••••••••••••">
+ <button>Войти <span class="kbd">↵</span></button>
+ <div class="ver"><span>ru · en</span><span>© 2026</span></div>
+</div></body></html>
