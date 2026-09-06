@@ -239,6 +239,12 @@ Search and commands are available with `⌘K` / `Ctrl+K`.
 
 ![Command palette](screenshots/command-palette.png)
 
+The right side of the top bar carries three chips: the panel version, the project on GitHub with its star count, and nodes online. Once an hour the panel reads the latest release of `GITHUB_REPO` (default `greenpandorik/tgproxy-panel`); when a newer version exists the version chip is highlighted and links to the release page. Nothing about your installation is sent; `UPDATE_CHECK=false` in `.env` turns the GitHub calls off. On narrow screens the same information sits in the user menu.
+
+![Top bar chips](screenshots/topbar.png)
+
+![Update highlight](screenshots/topbar-update.png)
+
 ## 11. Branding
 
 Settings → Branding: name, logo, favicon, colours, default theme, login and footer texts, custom CSS. Changes apply immediately without a rebuild. Several profiles can be kept and switched.
