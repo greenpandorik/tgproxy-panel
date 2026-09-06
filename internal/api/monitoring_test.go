@@ -124,7 +124,9 @@ func TestMonitoringOverviewBucketsInSQL(t *testing.T) {
 // returns it per snapshot; the overview averages it per bucket like the other gauges.
 func TestMonitoringLoadSeries(t *testing.T) {
 	h, c, n := ownerWithNode(t)
-	base := time.Now().Add(-4 * time.Minute).Truncate(time.Minute)
+	// Aligned to a five-minute boundary so that base and base+1m never straddle
+	// a bucket, whatever the wall clock says when the test runs.
+	base := time.Now().Add(-7 * time.Minute).Truncate(5 * time.Minute)
 	for i, cpu := range []float32{20, 40} {
 		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{
 			NodeID: n.ID, SessionsLive: 1, MtproxyRaw: []byte("{}"),
@@ -134,7 +136,7 @@ func TestMonitoringLoadSeries(t *testing.T) {
 			`UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`,
 			base.Add(time.Duration(i)*time.Minute), n.ID)
 	}
-	q := "from=" + base.Add(-time.Minute).Format(time.RFC3339) + "&to=" + time.Now().Format(time.RFC3339)
+	q := "from=" + base.Format(time.RFC3339) + "&to=" + time.Now().Format(time.RFC3339)
 
 	var series struct {
 		Points []struct {
