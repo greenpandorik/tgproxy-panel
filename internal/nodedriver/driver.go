@@ -50,6 +50,10 @@ type ApplyRequest struct {
 	// domain and a zero port mean "no opinion", which is what a tproxy node always sends.
 	TLSDomain   string
 	ClassicPort uint32
+	// PublicIP is the node's public IPv4 as the panel holds it (the address the A record
+	// points at). The telemt agent rewrites the WEB vhost's public_addr when it differs,
+	// which costs a telemt restart; the tproxy agent ignores it. Empty means "no opinion".
+	PublicIP string
 }
 
 type ApplyResult struct {

@@ -115,6 +115,52 @@ func TestPatchNodeFakeTLSSettingsMarkDirty(t *testing.T) {
 	}
 }
 
+// The public IP is editable after creation: a NAT host's installer can register the egress
+// address, and the fix is to correct it in the panel. A change is desired state (it reaches
+// the node on the next apply), so it marks the node dirty; anything but an IPv4 is refused.
+func TestPatchNodePublicIPValidatesAndMarksDirty(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createEngineNode(t, c, map[string]any{"name": "n1", "hostname": "n1.test", "acme_email": "a@b.co", "public_ip": "104.239.66.187"})
+	if n.Dirty {
+		t.Fatal("a fresh node must not be dirty")
+	}
+
+	var got engineNodeResp
+	c.JSON(c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"public_ip": " 104.239.66.129 "}), &got)
+	if got.PublicIP != "104.239.66.129" {
+		t.Fatalf("public_ip = %q", got.PublicIP)
+	}
+	if !got.Dirty {
+		t.Fatal("changing public_ip must mark the node dirty")
+	}
+
+	for name, ip := range map[string]string{
+		"not an ip": "example.com",
+		"ipv6":      "2001:db8::1",
+		"port":      "104.239.66.129:443",
+		"short":     "104.239.66",
+	} {
+		resp := c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"public_ip": ip})
+		if resp.StatusCode != 422 {
+			t.Fatalf("%s: expected 422, got %d", name, resp.StatusCode)
+		}
+		resp.Body.Close() //nolint:errcheck
+	}
+	// The same rule on create.
+	resp := c.Post("/api/v1/nodes", map[string]any{"name": "x", "hostname": "e9.test", "acme_email": "a@b.co", "public_ip": "not-an-ip"})
+	if resp.StatusCode != 422 {
+		t.Fatalf("create with a bad public_ip expected 422, got %d", resp.StatusCode)
+	}
+	resp.Body.Close() //nolint:errcheck
+	// Clearing it is still allowed (the installer fills it in again).
+	c.JSON(c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"public_ip": ""}), &got)
+	if got.PublicIP != "" {
+		t.Fatalf("public_ip = %q, want empty", got.PublicIP)
+	}
+}
+
 func installToken(t *testing.T, cmd string) string {
 	t.Helper()
 	m := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)

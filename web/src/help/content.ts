@@ -76,7 +76,7 @@ export const HELP_TOPICS = {
     docs: 'engine',
   },
   'nodes.listeners': {
-    fields: ['tls_domain', 'classic_port'],
+    fields: ['tls_domain', 'classic_port', 'public_ip'],
     docs: 'engine',
   },
 

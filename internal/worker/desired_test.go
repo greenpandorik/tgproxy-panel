@@ -158,13 +158,35 @@ func TestDesiredStateCarriesListenersForTelemtOnly(t *testing.T) {
 	if des.Req.TLSDomain != dom || des.Req.ClassicPort != 9443 {
 		t.Fatalf("telemt node must carry its listener: %q %d", des.Req.TLSDomain, des.Req.ClassicPort)
 	}
+	if des.Req.PublicIP != tel.node.PublicIp {
+		t.Fatalf("telemt node must carry its public ip: %q want %q", des.Req.PublicIP, tel.node.PublicIp)
+	}
 
 	tp := newFixture(t)
 	tpDes, err := worker.DesiredState(ctx, tp.st, tp.box, tp.node.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tpDes.Req.TLSDomain != "" || tpDes.Req.ClassicPort != 0 {
-		t.Fatalf("a tproxy node has no Fake-TLS listener: %q %d", tpDes.Req.TLSDomain, tpDes.Req.ClassicPort)
+	if tpDes.Req.TLSDomain != "" || tpDes.Req.ClassicPort != 0 || tpDes.Req.PublicIP != "" {
+		t.Fatalf("a tproxy node has no Fake-TLS listener: %q %d %q", tpDes.Req.TLSDomain, tpDes.Req.ClassicPort, tpDes.Req.PublicIP)
+	}
+}
+
+// The public IP an operator corrects in the panel reaches the telemt node on the next apply.
+func TestDesiredStateCarriesPublicIPForTelemt(t *testing.T) {
+	ctx := context.Background()
+	tel := newTelemtFixture(t)
+	if _, err := tel.st.Q.UpdateNode(ctx, db.UpdateNodeParams{
+		ID: tel.node.ID, Name: tel.node.Name, PublicIp: "104.239.66.129",
+		MaxProfiles: tel.node.MaxProfiles, AcmeEmail: tel.node.AcmeEmail,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	des, err := worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if des.Req.PublicIP != "104.239.66.129" {
+		t.Fatalf("public ip = %q", des.Req.PublicIP)
 	}
 }

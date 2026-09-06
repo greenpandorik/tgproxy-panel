@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -284,7 +285,10 @@ type telemtRollback struct {
 	// (nil = the listeners were not touched). It is built before the first listener patch
 	// goes out, so a failure half-way through still restores every field.
 	prevListeners map[string]any
-	irreversible  []string // mutations telemt cannot undo from the information we hold
+	// publicAddrChanged records that web.vhosts[0].public_addr was rewritten; the vhost array
+	// itself goes back through prevVhosts, but a restart is needed for it to take effect.
+	publicAddrChanged bool
+	irreversible      []string // mutations telemt cannot undo from the information we hold
 }
 
 // telemtFakeTLSListener returns the index of the Fake-TLS listener inside `server.listeners`.
@@ -439,6 +443,71 @@ func (h *Handler) reconcileTelemtListeners(ctx context.Context, lg *applyLog, re
 	return true, nil
 }
 
+// telemtPublicAddr is the WEB vhost's public socket address for a panel-supplied IP; IPv6
+// needs brackets. The second value is false when the address is not an IP at all.
+func telemtPublicAddr(ip string) (string, bool) {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return "", false
+	}
+	if parsed.To4() == nil {
+		return "[" + ip + "]:443", true
+	}
+	return ip + ":443", true
+}
+
+// reconcileTelemtPublicAddr rewrites `web.vhosts[0].public_addr` when the panel's public IP
+// differs from the address telemt currently holds. The panel is where an operator corrects
+// the address after the installer detected the wrong side of a NAT, and telemt names it in
+// the vhost. An empty value means "the panel has no opinion" (a tproxy node, or an older
+// panel), and nothing is touched. Arrays replace wholesale, so the whole vhost list goes back
+// with only the one field changed; the previous list is kept for rollback unless the profile
+// step already recorded an earlier one, which restores this field too. The caller restarts
+// telemt when this returns true, the same way it does for a listener move.
+func (h *Handler) reconcileTelemtPublicAddr(ctx context.Context, lg *applyLog, req *agentv1.ApplyRequest, rb *telemtRollback) (bool, error) {
+	wantIP := req.GetPublicIp()
+	if wantIP == "" {
+		return false, nil
+	}
+	want, ok := telemtPublicAddr(wantIP)
+	if !ok {
+		return false, fmt.Errorf("invalid public ip %q", wantIP)
+	}
+	cfg, _, err := h.tm.GetConfig(ctx)
+	if err != nil {
+		return false, err
+	}
+	web, _ := cfg["web"].(map[string]any)
+	vhosts, _ := web["vhosts"].([]any)
+	if len(vhosts) == 0 {
+		return false, errors.New("telemt config has no web vhost")
+	}
+	vhost, _ := vhosts[0].(map[string]any)
+	cur, _ := vhost["public_addr"].(string)
+	if cur == want {
+		return false, nil
+	}
+	prev, err := copyVhosts(vhosts)
+	if err != nil {
+		return false, err
+	}
+	next, err := copyVhosts(vhosts)
+	if err != nil {
+		return false, err
+	}
+	target, _ := next[0].(map[string]any)
+	target["public_addr"] = want
+	if rb.prevVhosts == nil {
+		rb.prevVhosts = prev
+	}
+	rb.publicAddrChanged = true
+	if _, err := h.tm.PatchConfig(ctx, map[string]any{"web": map[string]any{"vhosts": next}}, false); err != nil {
+		return true, fmt.Errorf("patch web.vhosts.public_addr: %w", err)
+	}
+	lg.f("web.vhosts.public_addr %s -> %s", cur, want)
+	return true, nil
+}
+
 // restartTelemt restarts the unit and waits for the control API to report ready again. A
 // listener move is process-owned, so the config patch alone would leave telemt answering on the
 // old socket until something else restarted it.
@@ -518,13 +587,18 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 			}
 		}
 		// Listeners last: putting them back needs a restart, which also re-reads everything
-		// the steps above have already written.
+		// the steps above have already written. A restored public_addr needs that restart
+		// too, even when no listener moved.
+		restart := rb.publicAddrChanged
 		if rb.prevListeners != nil {
 			if _, err := h.tm.PatchConfig(ctx, rb.prevListeners, false); err != nil {
 				step("restore listeners", err)
 			} else {
-				step("restart telemt after listener restore", h.restartTelemt(ctx))
+				restart = true
 			}
+		}
+		if restart {
+			step("restart telemt after listener restore", h.restartTelemt(ctx))
 		}
 		res.Ok, res.RolledBack = false, restored
 		if !restored {
@@ -568,6 +642,13 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	if err != nil {
 		return rollback(err)
 	}
+	// The WEB vhost's public address is treated the same way: it is what telemt advertises
+	// for the vhost, and a restart is the one way to be sure a changed value is in effect.
+	addrChanged, err := h.reconcileTelemtPublicAddr(ctx, lg, req, rb)
+	if err != nil {
+		return rollback(err)
+	}
+	listenersChanged = listenersChanged || addrChanged
 	changed = changed || listenersChanged
 
 	if !changed {
@@ -579,7 +660,7 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	if listenersChanged {
 		// A restart re-reads the whole config, so it supersedes the runtime reload the rest
 		// of this apply would otherwise have asked for.
-		lg.f("restarting telemt: the Fake-TLS listener is process-owned")
+		lg.f("restarting telemt: the Fake-TLS listener and the vhost address are process-owned")
 		if err := h.restartTelemt(ctx); err != nil {
 			return rollback(err)
 		}

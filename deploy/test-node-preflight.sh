@@ -12,6 +12,11 @@
 #   2. TGWP_SKIP_PREFLIGHT=1 TGWP_DRY_RUN=1   -> exit 0, the warning, "dry run: stopping"
 #   3. hostname resolving to this server (/etc/hosts) -> exit 0 (dry run), the dns line is a check
 #   4. a pseudo-tty (util-linux script) answering [r] then [c] to the menu -> exit 0 (dry run)
+#   5. nat-dns: no TGWP_PUBLIC_IP; a stubbed `ip` reports the interface address and a stubbed
+#      `curl` answers api.ipify.org with a different one; the hostname resolves to the
+#      interface address -> that one is chosen ("matches DNS"), both are shown, dns is a check
+#   6. nat-mismatch: as 5 but the hostname resolves to a third address -> the interface
+#      address is chosen ("outbound interface"), the dns cross names both candidates
 #
 # Needs Docker on the host (Docker Desktop's CLI dir is added to PATH; on Apple Silicon the
 # amd64 image runs under emulation, a node is x86_64 like the real thing), Go, and shellcheck
@@ -25,8 +30,11 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE="${TEST_NODE_PREFLIGHT_IMAGE:-tgproxy-node-preflight:test}"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/tgwp-node-preflight.XXXXXX")"
 # The address the script is told is "this server" (TGWP_PUBLIC_IP), so the dns check has
-# something to compare against without touching the network.
+# something to compare against without touching the network. The NAT cases drop
+# TGWP_PUBLIC_IP and instead stub the two detection sources: SERVER_IP on the interface,
+# EGRESS_IP as the address api.ipify.org reports (a provider's egress NAT).
 SERVER_IP="203.0.113.10"
+EGRESS_IP="198.51.100.20"
 
 log() { echo "[test-node-preflight] $*"; }
 die() {
@@ -79,6 +87,24 @@ busybox httpd -p 127.0.0.1:8080 -h /www
 # The "resolving" case: an /etc/hosts entry is what getent ahostsv4 sees on a real host too
 # (docker run --add-host does not write it for a --network none container).
 if [[ -n "${ADD_HOST:-}" ]]; then echo "$ADD_HOST" >>/etc/hosts; fi
+# The NAT cases: the container has no route and no network, so the two detection sources
+# are stubbed - `ip -4 route get` answers with STUB_IFACE_IP as the source address, and a
+# curl wrapper answers api.ipify.org with STUB_IPIFY_IP while passing every other call (the
+# panel's /healthz) through to the real binary. Both values are baked in at creation.
+if [[ -n "${STUB_IFACE_IP:-}" ]]; then
+	printf '#!/bin/sh\necho "1.1.1.1 via 10.0.0.1 dev eth0 src %s uid 0"\n' "$STUB_IFACE_IP" >/usr/local/bin/ip
+	chmod 0755 /usr/local/bin/ip
+fi
+if [[ -n "${STUB_IPIFY_IP:-}" ]]; then
+	cat >/usr/local/bin/curl <<STUB
+#!/bin/bash
+for a in "\$@"; do
+	if [[ "\$a" == *api.ipify.org* ]]; then printf '%s' '$STUB_IPIFY_IP'; exit 0; fi
+done
+exec /usr/bin/curl "\$@"
+STUB
+	chmod 0755 /usr/local/bin/curl
+fi
 if [[ "${WITH_TTY:-}" == "1" ]]; then
 	# util-linux script gives the child a pseudo-terminal, so /dev/tty exists and the menu
 	# reads the answers forwarded from our stdin.
@@ -141,5 +167,20 @@ run_case menu -e WITH_TTY=1 -e TTY_INPUT=rc -e TGWP_DRY_RUN=1
 expect menu '^RESULT rc=0$' 'What now\?  \[r\] re-run the checks   \[c\] continue anyway   \[q\] quit' \
 	'continuing anyway' 'dry run: stopping before installation' '^RESULT apt-get=not-called$'
 [[ "$(grep -c 'no A record for node.test' "$WORK/menu.log")" -ge 2 ]] || die "case menu: [r] did not re-run the checks"
+
+# The NAT host: the interface address and the internet-facing one differ. A later -e wins in
+# docker run, so TGWP_PUBLIC_IP is emptied here to let detection run.
+run_case nat-dns -e TGWP_PUBLIC_IP= -e STUB_IFACE_IP="$SERVER_IP" -e STUB_IPIFY_IP="$EGRESS_IP" \
+	-e ADD_HOST="$SERVER_IP node.test" -e TGWP_DRY_RUN=1
+expect nat-dns '^RESULT rc=0$' "✔ public_ip +$SERVER_IP \\(matches DNS\\)" \
+	"interface $SERVER_IP, seen from the internet $EGRESS_IP" \
+	"✔ dns +node\\.test → $SERVER_IP \\(this server\\)" 'dry run: stopping before installation' '^RESULT apt-get=not-called$'
+reject nat-dns '✘' "$EGRESS_IP \\("
+
+run_case nat-mismatch -e TGWP_PUBLIC_IP= -e STUB_IFACE_IP="$SERVER_IP" -e STUB_IPIFY_IP="$EGRESS_IP" \
+	-e ADD_HOST="198.51.100.99 node.test"
+expect nat-mismatch '^RESULT rc=1$' "✔ public_ip +$SERVER_IP \\(outbound interface\\)" \
+	"✘ dns +node\\.test resolves to 198\\.51\\.100\\.99, this server is $SERVER_IP \\(interface $SERVER_IP, seen from the internet $EGRESS_IP\\)" \
+	'✘ nothing was installed; fix the record and run the same command again' '^RESULT apt-get=not-called$'
 
 log "TEST-NODE-PREFLIGHT OK"

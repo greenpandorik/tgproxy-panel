@@ -129,26 +129,64 @@ printf '%sTGProxy node installer%s  %s  (engine: %s)\n' "$BOLD" "$RESET" "$NODE_
 # does not point at this host: Caddy then never gets a certificate, and before this block the
 # script found that out only after installing everything and burning the install token.
 IPV4_RE='^[0-9]{1,3}(\.[0-9]{1,3}){3}$'
-PUBLIC_IP='' PUBLIC_IP_SRC=''
+PUBLIC_IP='' PUBLIC_IP_SRC='' PUBLIC_IP_BOTH=''
 {{if .IsTelemt}}ALLOWED_UNITS='caddy.service telemt.service'
 {{else}}ALLOWED_UNITS='caddy.service tproxy-server.service mtproxy.service'
 {{end}}PF_SOFT=0 PF_FATAL=0 PF_DNS=0
 
+# is_public_ipv4 <a.b.c.d>: false for the ranges that can never be an internet-facing
+# address - RFC 1918, CGNAT (100.64/10), loopback, link-local, 0/8, multicast and above.
+is_public_ipv4() {
+  local a b
+  IFS=. read -r a b _ _ <<<"$1"
+  case "$a" in
+    0 | 10 | 127) return 1 ;;
+    100) if [[ "$b" -ge 64 && "$b" -le 127 ]]; then return 1; fi ;;
+    169) if [[ "$b" -eq 254 ]]; then return 1; fi ;;
+    172) if [[ "$b" -ge 16 && "$b" -le 31 ]]; then return 1; fi ;;
+    192) if [[ "$b" -eq 168 ]]; then return 1; fi ;;
+  esac
+  if [[ "$a" -ge 224 ]]; then return 1; fi
+  return 0
+}
+
+# detect_public_ip <resolved A records of the hostname, one per line>
+#
 # The node is the only party that can see its own public address reliably; the dns check
 # compares against it and it is reported at registration (the relay's WEB vhost needs a
 # concrete address). An explicit value (TGWP_PUBLIC_IP, or public_ip set on the node in the
-# panel) wins over detection, which can pick the wrong side of a NAT.
+# panel) wins. Otherwise two candidates are collected - the address on the outbound interface
+# and the address the internet sees this host as (api.ipify.org) - because on a NAT host they
+# differ, and the wrong one is the one a provider's egress uses for outgoing traffic only:
+# nothing listens on it, and an A record pointing at it gets "connection refused" on 80/443.
+# The candidate the hostname already resolves to wins when exactly one does; failing that the
+# interface address is preferred whenever it is a public one, else the internet-facing one.
+# When the two differ, PUBLIC_IP_BOTH names both so the operator sees the alternative.
 detect_public_ip() {
-  local ip=''
+  local resolved=$1 ip='' iface='' seen='' c matches=0 match=''
+  PUBLIC_IP='' PUBLIC_IP_SRC='' PUBLIC_IP_BOTH=''
   if [[ -n "${TGWP_PUBLIC_IP:-}" ]]; then
     ip="$TGWP_PUBLIC_IP" PUBLIC_IP_SRC='TGWP_PUBLIC_IP'
   elif [[ -n "$PANEL_PUBLIC_IP" ]]; then
     ip="$PANEL_PUBLIC_IP" PUBLIC_IP_SRC='set in the panel'
   else
-    ip="$(curl -4fsS --max-time 10 https://api.ipify.org 2>/dev/null || true)" PUBLIC_IP_SRC='api.ipify.org'
-    if [[ ! "$ip" =~ $IPV4_RE ]]; then
-      ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}' || true)"
-      PUBLIC_IP_SRC='outbound interface'
+    iface="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}' || true)"
+    if [[ ! "$iface" =~ $IPV4_RE ]]; then iface=''; fi
+    seen="$(curl -4fsS --max-time 10 https://api.ipify.org 2>/dev/null || true)"
+    if [[ ! "$seen" =~ $IPV4_RE ]]; then seen=''; fi
+    if [[ -n "$iface" && -n "$seen" && "$iface" != "$seen" ]]; then
+      PUBLIC_IP_BOTH="interface $iface, seen from the internet $seen"
+    fi
+    for c in "$iface" "$seen"; do
+      if [[ -z "$c" || "$c" == "$match" ]]; then continue; fi
+      if [[ -n "$resolved" ]] && grep -qxF "$c" <<<"$resolved"; then matches=$((matches + 1)) match="$c"; fi
+    done
+    if [[ "$matches" -eq 1 ]]; then
+      ip="$match" PUBLIC_IP_SRC='matches DNS'
+    elif [[ -n "$iface" ]] && { [[ -z "$seen" ]] || is_public_ipv4 "$iface"; }; then
+      ip="$iface" PUBLIC_IP_SRC='outbound interface'
+    elif [[ -n "$seen" ]]; then
+      ip="$seen" PUBLIC_IP_SRC='api.ipify.org'
     fi
   fi
   [[ "$ip" =~ $IPV4_RE ]] || return 1
@@ -228,20 +266,22 @@ preflight() {
     pf_fail panel "$PANEL_URL/healthz is unreachable from this host (${err%%$'\n'*}); needed to register and for the agent"
     PF_FATAL=1
   fi
-  if detect_public_ip; then
+  # One lookup serves both the address choice and the dns check below.
+  resolved="$(resolve_a "$NODE_HOSTNAME")"
+  if detect_public_ip "$resolved"; then
     pf_ok public_ip "$PUBLIC_IP ($PUBLIC_IP_SRC)"
+    if [[ -n "$PUBLIC_IP_BOTH" ]]; then info "$PUBLIC_IP_BOTH"; fi
   else
     pf_fail public_ip "could not detect this server's public IPv4; set public_ip on the node in the panel, or run with TGWP_PUBLIC_IP=<address>"
     PF_FATAL=1
   fi
-  resolved="$(resolve_a "$NODE_HOSTNAME")"
   if [[ -z "$resolved" ]]; then
-    pf_fail dns "no A record for $NODE_HOSTNAME"
+    pf_fail dns "no A record for $NODE_HOSTNAME${PUBLIC_IP:+; point it at $PUBLIC_IP}${PUBLIC_IP_BOTH:+ ($PUBLIC_IP_BOTH)}"
     PF_SOFT=1 PF_DNS=1
   elif [[ -n "$PUBLIC_IP" ]] && grep -qxF "$PUBLIC_IP" <<<"$resolved"; then
     pf_ok dns "$NODE_HOSTNAME $M_ARROW $PUBLIC_IP (this server)"
   else
-    pf_fail dns "$NODE_HOSTNAME resolves to ${resolved//$'\n'/, }, this server is ${PUBLIC_IP:-unknown}"
+    pf_fail dns "$NODE_HOSTNAME resolves to ${resolved//$'\n'/, }, this server is ${PUBLIC_IP:-unknown}${PUBLIC_IP_BOTH:+ ($PUBLIC_IP_BOTH)}"
     PF_SOFT=1 PF_DNS=1
   fi
 {{if .IsTelemt}}  if [[ "$TLS_DOMAIN" != "$NODE_HOSTNAME" ]]; then
@@ -384,7 +424,7 @@ caddy_ready() { curl -sS -o /dev/null --max-time 5 --resolve "$NODE_HOSTNAME:443
 wait_for "certificate for $NODE_HOSTNAME" 120 caddy_ready || {
   journalctl -u caddy -n 30 --no-pager >&2 || true
   die "Caddy did not serve https://$NODE_HOSTNAME/ with a valid certificate within 120s" \
-    "The A record for $NODE_HOSTNAME must point at this host ($PUBLIC_IP) and ports 80 and 443 must be reachable from the internet." \
+    "The A record for $NODE_HOSTNAME must point at this host ($PUBLIC_IP${PUBLIC_IP_BOTH:+; $PUBLIC_IP_BOTH}) and ports 80 and 443 must be reachable from the internet." \
     "Caddy's log: journalctl -u caddy -n 30"
 }
 
@@ -496,7 +536,7 @@ caddy_ready() { curl -sS -o /dev/null --max-time 5 --resolve "$NODE_HOSTNAME:443
 wait_for "certificate for $NODE_HOSTNAME" 120 caddy_ready || {
   journalctl -u caddy -n 30 --no-pager >&2 || true
   die "Caddy did not serve https://$NODE_HOSTNAME/ with a valid certificate within 120s" \
-    "The A record for $NODE_HOSTNAME must point at this host ($PUBLIC_IP) and ports 80 and 443 must be reachable from the internet." \
+    "The A record for $NODE_HOSTNAME must point at this host ($PUBLIC_IP${PUBLIC_IP_BOTH:+; $PUBLIC_IP_BOTH}) and ports 80 and 443 must be reachable from the internet." \
     "Caddy's log: journalctl -u caddy -n 30"
 }
 {{end}}

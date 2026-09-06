@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/mail"
 	"strconv"
@@ -161,6 +162,20 @@ func validateClassicPort(port int) string {
 	return ""
 }
 
+// validatePublicIP accepts an empty value (the install script fills it in) or one IPv4
+// address. It is what telemt's WEB vhost names in public_addr and what the readiness check
+// expects the hostname to resolve to, so anything else would fail the node later and less
+// clearly.
+func validatePublicIP(ip string) string {
+	if ip == "" {
+		return ""
+	}
+	if parsed := net.ParseIP(ip); parsed == nil || parsed.To4() == nil {
+		return "IPv4 address"
+	}
+	return ""
+}
+
 func (s *Server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 	var req createNodeReq
 	if err := decodeJSON(r, &req); err != nil {
@@ -169,6 +184,7 @@ func (s *Server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Hostname = strings.ToLower(strings.TrimSpace(req.Hostname))
 	req.TLSDomain = strings.ToLower(strings.TrimSpace(req.TLSDomain))
+	req.PublicIP = strings.TrimSpace(req.PublicIP)
 	if req.Engine == "" {
 		req.Engine = string(domain.EngineTelemt)
 	}
@@ -198,6 +214,9 @@ func (s *Server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 	}
 	if msg := validateClassicPort(req.ClassicPort); msg != "" {
 		fields["classic_port"] = msg
+	}
+	if msg := validatePublicIP(req.PublicIP); msg != "" {
+		fields["public_ip"] = msg
 	}
 	if len(fields) > 0 {
 		validation(w, fields)
@@ -281,8 +300,18 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 	if req.Name != nil {
 		n.Name = *req.Name
 	}
+	// public_ip is desired state too: telemt names it in the WEB vhost's public_addr and the
+	// readiness check compares the A record against it, so a corrected address (a NAT host
+	// whose installer detected the egress side) must reach the node like a listener change.
+	dirty := false
 	if req.PublicIP != nil {
-		n.PublicIp = *req.PublicIP
+		ip := strings.TrimSpace(*req.PublicIP)
+		if msg := validatePublicIP(ip); msg != "" {
+			validation(w, map[string]string{"public_ip": msg})
+			return
+		}
+		dirty = dirty || ip != n.PublicIp
+		n.PublicIp = ip
 	}
 	if req.ACMEEmail != nil {
 		// acme_email is interpolated into the root-run installer script, so it gets the same
@@ -304,7 +333,6 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 	// is a change to the desired state, so the node is marked dirty and the agent
 	// (which owns the restart the new listener needs) picks it up on the next apply.
 	listeners := db.UpdateNodeParams{ID: n.ID, Name: n.Name, PublicIp: n.PublicIp, MaxProfiles: n.MaxProfiles, AcmeEmail: n.AcmeEmail}
-	dirty := false
 	if req.TLSDomain != nil {
 		d := strings.ToLower(strings.TrimSpace(*req.TLSDomain))
 		if err := domain.ValidateHostname(d); err != nil {

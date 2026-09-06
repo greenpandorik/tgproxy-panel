@@ -7,11 +7,12 @@
 package agentv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -1042,8 +1043,13 @@ type ApplyRequest struct {
 	// process-deferred and therefore costs a telemt restart. An empty tls_domain and a zero
 	// classic_port both mean "the panel has no opinion", so an old panel talking to a new
 	// agent never touches the listeners.
-	TlsDomain     string `protobuf:"bytes,5,opt,name=tls_domain,json=tlsDomain,proto3" json:"tls_domain,omitempty"`
-	ClassicPort   uint32 `protobuf:"varint,6,opt,name=classic_port,json=classicPort,proto3" json:"classic_port,omitempty"`
+	TlsDomain   string `protobuf:"bytes,5,opt,name=tls_domain,json=tlsDomain,proto3" json:"tls_domain,omitempty"`
+	ClassicPort uint32 `protobuf:"varint,6,opt,name=classic_port,json=classicPort,proto3" json:"classic_port,omitempty"`
+	// Field 7 is the node's public IPv4 as the panel holds it: the address the hostname's A
+	// record points at. The telemt agent rewrites `web.vhosts[0].public_addr` ("<ip>:443") when
+	// it differs and restarts telemt like a listener move; the tproxy agent ignores it. Empty
+	// means "the panel has no opinion", so an old panel never touches it.
+	PublicIp      string `protobuf:"bytes,7,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1118,6 +1124,13 @@ func (x *ApplyRequest) GetClassicPort() uint32 {
 		return x.ClassicPort
 	}
 	return 0
+}
+
+func (x *ApplyRequest) GetPublicIp() string {
+	if x != nil {
+		return x.PublicIp
+	}
+	return ""
 }
 
 type GetSiteRequest struct {
@@ -1893,7 +1906,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\rrestart_relay\x18\b \x01(\v2\x1d.agent.v1.RestartRelayRequestH\x00R\frestartRelayB\x06\n" +
 	"\x04body\"\x0f\n" +
 	"\rHealthRequest\"\x14\n" +
-	"\x12GetProfilesRequest\"\xf9\x01\n" +
+	"\x12GetProfilesRequest\"\x96\x02\n" +
 	"\fApplyRequest\x12%\n" +
 	"\x0eapply_profiles\x18\x01 \x01(\bR\rapplyProfiles\x12-\n" +
 	"\bprofiles\x18\x02 \x03(\v2\x11.agent.v1.ProfileR\bprofiles\x12'\n" +
@@ -1901,7 +1914,8 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x04site\x18\x04 \x01(\v2\x14.agent.v1.SiteBundleR\x04site\x12\x1d\n" +
 	"\n" +
 	"tls_domain\x18\x05 \x01(\tR\ttlsDomain\x12!\n" +
-	"\fclassic_port\x18\x06 \x01(\rR\vclassicPort\"\x10\n" +
+	"\fclassic_port\x18\x06 \x01(\rR\vclassicPort\x12\x1b\n" +
+	"\tpublic_ip\x18\a \x01(\tR\bpublicIp\"\x10\n" +
 	"\x0eGetSiteRequest\"\x10\n" +
 	"\x0eMetricsRequest\"\x0e\n" +
 	"\fStatsRequest\"[\n" +
@@ -1958,35 +1972,38 @@ func file_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_agent_v1_agent_proto_rawDescData
 }
 
-var file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
-var file_agent_v1_agent_proto_goTypes = []any{
-	(*Envelope)(nil),            // 0: agent.v1.Envelope
-	(*Hello)(nil),               // 1: agent.v1.Hello
-	(*Heartbeat)(nil),           // 2: agent.v1.Heartbeat
-	(*HealthReport)(nil),        // 3: agent.v1.HealthReport
-	(*ProfileLimits)(nil),       // 4: agent.v1.ProfileLimits
-	(*Profile)(nil),             // 5: agent.v1.Profile
-	(*ProfilesFile)(nil),        // 6: agent.v1.ProfilesFile
-	(*SiteFile)(nil),            // 7: agent.v1.SiteFile
-	(*SiteBundle)(nil),          // 8: agent.v1.SiteBundle
-	(*Request)(nil),             // 9: agent.v1.Request
-	(*HealthRequest)(nil),       // 10: agent.v1.HealthRequest
-	(*GetProfilesRequest)(nil),  // 11: agent.v1.GetProfilesRequest
-	(*ApplyRequest)(nil),        // 12: agent.v1.ApplyRequest
-	(*GetSiteRequest)(nil),      // 13: agent.v1.GetSiteRequest
-	(*MetricsRequest)(nil),      // 14: agent.v1.MetricsRequest
-	(*StatsRequest)(nil),        // 15: agent.v1.StatsRequest
-	(*TailLogsRequest)(nil),     // 16: agent.v1.TailLogsRequest
-	(*RestartRelayRequest)(nil), // 17: agent.v1.RestartRelayRequest
-	(*Response)(nil),            // 18: agent.v1.Response
-	(*ApplyResult)(nil),         // 19: agent.v1.ApplyResult
-	(*MetricsText)(nil),         // 20: agent.v1.MetricsText
-	(*StatsMap)(nil),            // 21: agent.v1.StatsMap
-	(*Empty)(nil),               // 22: agent.v1.Empty
-	(*LogLine)(nil),             // 23: agent.v1.LogLine
-	(*LogChunk)(nil),            // 24: agent.v1.LogChunk
-	nil,                         // 25: agent.v1.StatsMap.ValuesEntry
-}
+var (
+	file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+	file_agent_v1_agent_proto_goTypes  = []any{
+		(*Envelope)(nil),            // 0: agent.v1.Envelope
+		(*Hello)(nil),               // 1: agent.v1.Hello
+		(*Heartbeat)(nil),           // 2: agent.v1.Heartbeat
+		(*HealthReport)(nil),        // 3: agent.v1.HealthReport
+		(*ProfileLimits)(nil),       // 4: agent.v1.ProfileLimits
+		(*Profile)(nil),             // 5: agent.v1.Profile
+		(*ProfilesFile)(nil),        // 6: agent.v1.ProfilesFile
+		(*SiteFile)(nil),            // 7: agent.v1.SiteFile
+		(*SiteBundle)(nil),          // 8: agent.v1.SiteBundle
+		(*Request)(nil),             // 9: agent.v1.Request
+		(*HealthRequest)(nil),       // 10: agent.v1.HealthRequest
+		(*GetProfilesRequest)(nil),  // 11: agent.v1.GetProfilesRequest
+		(*ApplyRequest)(nil),        // 12: agent.v1.ApplyRequest
+		(*GetSiteRequest)(nil),      // 13: agent.v1.GetSiteRequest
+		(*MetricsRequest)(nil),      // 14: agent.v1.MetricsRequest
+		(*StatsRequest)(nil),        // 15: agent.v1.StatsRequest
+		(*TailLogsRequest)(nil),     // 16: agent.v1.TailLogsRequest
+		(*RestartRelayRequest)(nil), // 17: agent.v1.RestartRelayRequest
+		(*Response)(nil),            // 18: agent.v1.Response
+		(*ApplyResult)(nil),         // 19: agent.v1.ApplyResult
+		(*MetricsText)(nil),         // 20: agent.v1.MetricsText
+		(*StatsMap)(nil),            // 21: agent.v1.StatsMap
+		(*Empty)(nil),               // 22: agent.v1.Empty
+		(*LogLine)(nil),             // 23: agent.v1.LogLine
+		(*LogChunk)(nil),            // 24: agent.v1.LogChunk
+		nil,                         // 25: agent.v1.StatsMap.ValuesEntry
+	}
+)
+
 var file_agent_v1_agent_proto_depIdxs = []int32{
 	1,  // 0: agent.v1.Envelope.hello:type_name -> agent.v1.Hello
 	2,  // 1: agent.v1.Envelope.heartbeat:type_name -> agent.v1.Heartbeat

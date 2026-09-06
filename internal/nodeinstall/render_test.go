@@ -261,6 +261,50 @@ func TestRenderPublicIP(t *testing.T) {
 	}
 }
 
+// TestRenderPublicIPDetection: without an explicit value the script collects two candidates
+// (the outbound interface, the address api.ipify.org reports) and chooses between them by the
+// hostname's A record, then by whether the interface address is a public one. Both engine
+// branches carry the same block. The behaviour itself is exercised by
+// deploy/test-node-preflight.sh (cases nat-dns and nat-mismatch) with stubbed ip/curl.
+func TestRenderPublicIPDetection(t *testing.T) {
+	for name, out := range bothBranches(t) {
+		for _, want := range []string{
+			"is_public_ipv4() {",
+			"0 | 10 | 127) return 1 ;;",
+			`100) if [[ "$b" -ge 64 && "$b" -le 127 ]]; then return 1; fi ;;`,
+			`172) if [[ "$b" -ge 16 && "$b" -le 31 ]]; then return 1; fi ;;`,
+			// Explicit values still win, in that order.
+			`if [[ -n "${TGWP_PUBLIC_IP:-}" ]]; then`,
+			`elif [[ -n "$PANEL_PUBLIC_IP" ]]; then`,
+			// Both candidates are collected, the interface first.
+			"ip -4 route get 1.1.1.1", "curl -4fsS --max-time 10 https://api.ipify.org",
+			`PUBLIC_IP_BOTH="interface $iface, seen from the internet $seen"`,
+			// DNS decides when exactly one candidate matches; else a public interface address.
+			`ip="$match" PUBLIC_IP_SRC='matches DNS'`,
+			`elif [[ -n "$iface" ]] && { [[ -z "$seen" ]] || is_public_ipv4 "$iface"; }; then`,
+			`ip="$iface" PUBLIC_IP_SRC='outbound interface'`,
+			`ip="$seen" PUBLIC_IP_SRC='api.ipify.org'`,
+			`[[ "$ip" =~ $IPV4_RE ]] || return 1`,
+			// One lookup feeds both the choice and the dns check; the alternative is shown.
+			`detect_public_ip "$resolved"`,
+			`if [[ -n "$PUBLIC_IP_BOTH" ]]; then info "$PUBLIC_IP_BOTH"; fi`,
+			`this server is ${PUBLIC_IP:-unknown}${PUBLIC_IP_BOTH:+ ($PUBLIC_IP_BOTH)}"`,
+			`must point at this host ($PUBLIC_IP${PUBLIC_IP_BOTH:+; $PUBLIC_IP_BOTH})`,
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s: script missing %q", name, want)
+			}
+		}
+		// The lookup precedes the choice, and the choice precedes the dns check.
+		lookup := strings.Index(out, `resolved="$(resolve_a "$NODE_HOSTNAME")"`)
+		choose := strings.Index(out, `if detect_public_ip "$resolved"; then`)
+		dns := strings.Index(out, `pf_ok dns "$NODE_HOSTNAME $M_ARROW $PUBLIC_IP (this server)"`)
+		if lookup < 0 || choose < 0 || dns < 0 || lookup >= choose || choose >= dns {
+			t.Errorf("%s: wrong order lookup=%d choose=%d dns=%d", name, lookup, choose, dns)
+		}
+	}
+}
+
 // writeScripts renders both branches into files for the external tools (bash, shellcheck).
 func writeScripts(t *testing.T) map[string]string {
 	t.Helper()
@@ -317,8 +361,8 @@ func TestRenderPreflight(t *testing.T) {
 			"pf_ok arch", "pf_fail arch", "pf_ok systemd", "pf_fail systemd",
 			"pf_ok panel", "pf_fail panel", `"$PANEL_URL/healthz"`,
 			"pf_ok public_ip", "pf_fail public_ip",
-			"pf_ok dns", `pf_fail dns "no A record for $NODE_HOSTNAME"`,
-			`pf_fail dns "$NODE_HOSTNAME resolves to ${resolved//$'\n'/, }, this server is ${PUBLIC_IP:-unknown}"`,
+			"pf_ok dns", `pf_fail dns "no A record for $NODE_HOSTNAME${PUBLIC_IP:+; point it at $PUBLIC_IP}${PUBLIC_IP_BOTH:+ ($PUBLIC_IP_BOTH)}"`,
+			`pf_fail dns "$NODE_HOSTNAME resolves to ${resolved//$'\n'/, }, this server is ${PUBLIC_IP:-unknown}${PUBLIC_IP_BOTH:+ ($PUBLIC_IP_BOTH)}"`,
 			"getent ahosts", "dig +short",
 			"pf_ok ports", "pf_fail ports", `ss -ltnpH "sport = :$p"`,
 			"  What now?  [r] re-run the checks   [c] continue anyway   [q] quit",

@@ -24,6 +24,7 @@ type mockNode struct {
 	// the telemt agent does.
 	tlsDomain   string
 	classicPort uint32
+	publicIP    string
 }
 
 // Mock is an in-memory Driver for tests and NODE_DRIVER=mock.
@@ -161,6 +162,10 @@ func (m *Mock) Apply(_ context.Context, id uuid.UUID, req ApplyRequest) (ApplyRe
 		if req.ClassicPort != 0 {
 			n.classicPort = req.ClassicPort
 		}
+		res.RestartedRelay = true
+	}
+	if req.PublicIP != "" && req.PublicIP != n.publicIP {
+		n.publicIP = req.PublicIP
 		res.RestartedRelay = true
 	}
 	return res, nil

@@ -73,8 +73,11 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 	// of tls_domain/classic_port actually reaches the node instead of only moving the panel's
 	// idea of it. A tproxy node sends neither: it has no such listener and its agent would
 	// ignore them anyway.
+	// The public IP rides along for the same reason: telemt's WEB vhost names it in
+	// public_addr, and the panel is where an operator corrects it after a NAT host detected
+	// the wrong side.
 	if node.Engine == db.NodeEngineTelemt {
-		req.TLSDomain, req.ClassicPort = node.TlsDomain, uint32(node.ClassicPort)
+		req.TLSDomain, req.ClassicPort, req.PublicIP = node.TlsDomain, uint32(node.ClassicPort), node.PublicIp
 	}
 	seen := map[string]bool{}
 	for _, p := range rows {

@@ -106,6 +106,11 @@ message ApplyRequest {
   // agent never touches the listeners.
   string tls_domain = 5;
   uint32 classic_port = 6;
+  // Field 7 is the node's public IPv4 as the panel holds it: the address the hostname's A
+  // record points at. The telemt agent rewrites `web.vhosts[0].public_addr` ("<ip>:443") when
+  // it differs and restarts telemt like a listener move; the tproxy agent ignores it. Empty
+  // means "the panel has no opinion", so an old panel never touches it.
+  string public_ip = 7;
 }
 message GetSiteRequest {}
 message MetricsRequest {}

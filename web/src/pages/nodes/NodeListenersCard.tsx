@@ -18,11 +18,14 @@ import type { Node } from '@/api/types';
 
 // Mirrors internal/domain/types.go hostRe.
 const HOSTNAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
+// Four dotted decimal octets, each 0..255 - what validatePublicIP on the server accepts.
+const IPV4_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 
 const schema = z
   .object({
     tls_domain: z.string().trim().toLowerCase(),
     classic_port: z.coerce.number().int(),
+    public_ip: z.string().trim(),
   })
   .superRefine((val, ctx) => {
     if (!HOSTNAME_RE.test(val.tls_domain) || !val.tls_domain.includes('.')) {
@@ -31,19 +34,41 @@ const schema = z
     if (!Number.isInteger(val.classic_port) || val.classic_port < 1024 || val.classic_port > 65535) {
       ctx.addIssue({ code: 'custom', path: ['classic_port'], message: 'range' });
     }
+    // Empty stays allowed (the installer fills it in); anything else must be one IPv4.
+    if (val.public_ip !== '' && !IPV4_RE.test(val.public_ip)) {
+      ctx.addIssue({ code: 'custom', path: ['public_ip'], message: 'ipv4' });
+    }
   });
 
 type FormValues = z.infer<typeof schema>;
 
 /**
- * The telemt node's Fake-TLS listener: the domain it masks behind and the port it
- * answers on.
+ * A save waiting for its confirmation: the values as the schema parsed them (trimmed,
+ * lowercased), and which confirmation they need - reissuing links, or "just" a restart.
+ */
+type Pending = { kind: 'fake_tls' | 'public_ip'; values: FormValues } | null;
+
+const valuesOf = (node: Node): FormValues => ({
+  tls_domain: node.tls_domain,
+  classic_port: node.classic_port,
+  public_ip: node.public_ip,
+});
+
+/**
+ * The telemt node's addresses: the public IP it is reachable at, and the Fake-TLS
+ * listener - the domain it masks behind and the port it answers on.
  *
- * Both are baked into every Fake-TLS link the panel has already handed out - the
- * secret encodes the domain - so changing one is not a settings tweak, it is
- * reissuing the links. The note says so before the button, and the save itself
- * goes through a confirmation: this is the one control on the tab that can break
- * links people are already using.
+ * The domain and port are baked into every Fake-TLS link the panel has already
+ * handed out - the secret encodes the domain - so changing one is not a settings
+ * tweak, it is reissuing the links. The note says so before the button, and the
+ * save itself goes through a confirmation: this is the one control on the tab that
+ * can break links people are already using.
+ *
+ * The public IP is the address the A record points at; telemt names it in its WEB
+ * vhost and the readiness check compares DNS against it. The installer detects it,
+ * and on a NAT host it can detect the wrong side - this is where the operator
+ * corrects it. Changing it restarts telemt on the next apply but leaves every link
+ * alone, so it gets a lighter confirmation of its own.
  *
  * Read-only for viewers: the values still matter to whoever is reading the tab,
  * the controls do not.
@@ -51,33 +76,41 @@ type FormValues = z.infer<typeof schema>;
 export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: boolean }) {
   const { t } = useTranslation();
   const patchNode = usePatchNode(node.id);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, setPending] = useState<Pending>(null);
 
   const {
     register,
     handleSubmit,
-    getValues,
     reset,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { tls_domain: node.tls_domain, classic_port: node.classic_port },
+    defaultValues: valuesOf(node),
   });
 
   useEffect(() => {
-    reset({ tls_domain: node.tls_domain, classic_port: node.classic_port });
-  }, [node.tls_domain, node.classic_port, reset]);
+    reset({ tls_domain: node.tls_domain, classic_port: node.classic_port, public_ip: node.public_ip });
+  }, [node.tls_domain, node.classic_port, node.public_ip, reset]);
 
   // The form validates on submit and the confirmation opens only if it passed, so
-  // the operator is never asked to confirm a change that cannot be saved.
-  const askToSave = () => setConfirmOpen(true);
+  // the operator is never asked to confirm a change that cannot be saved. Which
+  // confirmation depends on what changed: the Fake-TLS fields invalidate links,
+  // the public IP only costs a restart.
+  const askToSave = (values: FormValues) => {
+    const fakeTLS = values.tls_domain !== node.tls_domain || values.classic_port !== node.classic_port;
+    setPending({ kind: fakeTLS ? 'fake_tls' : 'public_ip', values });
+  };
 
   const onSubmit = async (values: FormValues) => {
     try {
-      // Both fields always travel together: the API takes each as an optional
-      // patch, and sending only the one that changed makes the two forms of this
-      // card behave differently for no reason the operator can see.
-      await patchNode.mutateAsync({ tls_domain: values.tls_domain, classic_port: values.classic_port });
+      // All fields always travel together: the API takes each as an optional patch,
+      // and sending only the one that changed makes the two forms of this card
+      // behave differently for no reason the operator can see.
+      await patchNode.mutateAsync({
+        tls_domain: values.tls_domain,
+        classic_port: values.classic_port,
+        public_ip: values.public_ip,
+      });
       reset(values);
       toast.add({ description: t('nodes.listeners_saved'), type: 'success' });
     } catch (err) {
@@ -90,7 +123,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
       <PanelHeader title={t('nodes.listeners_title')} actions={<HelpButton topic="nodes.listeners" />} />
       {canEdit ? (
         <form className="space-y-3 p-4" onSubmit={(e) => void handleSubmit(askToSave)(e)} noValidate>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto]">
             <div className="space-y-1.5">
               <Label htmlFor="node-tls-domain-edit">{t('nodes.field_tls_domain')}</Label>
               <Input id="node-tls-domain-edit" className="mono" {...register('tls_domain')} aria-invalid={!!errors.tls_domain} />
@@ -109,7 +142,21 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
               />
               {errors.classic_port && <p className="text-xs text-destructive">{t('nodes.validation_classic_port')}</p>}
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="node-public-ip-edit">{t('nodes.field_public_ip')}</Label>
+              <Input
+                id="node-public-ip-edit"
+                className="mono w-40"
+                inputMode="decimal"
+                placeholder="203.0.113.10"
+                {...register('public_ip')}
+                aria-invalid={!!errors.public_ip}
+              />
+              {errors.public_ip && <p className="text-xs text-destructive">{t('nodes.validation_ipv4')}</p>}
+            </div>
           </div>
+
+          <p className="text-xs text-mute">{t('nodes.field_public_ip_hint')}</p>
 
           <p className="flex items-start gap-2 text-xs text-warn">
             <span className="mt-1 size-[7px] shrink-0 rounded-full bg-warn" aria-hidden="true" />
@@ -123,7 +170,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
           </div>
         </form>
       ) : (
-        <dl className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-3">
           <div className="flex items-center justify-between gap-3 bg-card px-4 py-2.5">
             <dt className="truncate text-xs text-mute">{t('nodes.field_tls_domain')}</dt>
             <dd className="mono shrink-0 text-xs text-foreground">{node.tls_domain || '—'}</dd>
@@ -132,17 +179,25 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
             <dt className="truncate text-xs text-mute">{t('nodes.field_classic_port')}</dt>
             <dd className="mono shrink-0 text-xs text-foreground">{node.classic_port}</dd>
           </div>
+          <div className="flex items-center justify-between gap-3 bg-card px-4 py-2.5">
+            <dt className="truncate text-xs text-mute">{t('nodes.field_public_ip')}</dt>
+            <dd className="mono shrink-0 text-xs text-foreground">{node.public_ip || '—'}</dd>
+          </div>
         </dl>
       )}
 
       <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={t('nodes.listeners_confirm_title')}
-        description={t('nodes.listeners_confirm_description')}
-        destructive
+        open={pending !== null}
+        onOpenChange={(open) => {
+          if (!open) setPending(null);
+        }}
+        title={t(pending?.kind === 'public_ip' ? 'nodes.public_ip_confirm_title' : 'nodes.listeners_confirm_title')}
+        description={t(
+          pending?.kind === 'public_ip' ? 'nodes.public_ip_confirm_description' : 'nodes.listeners_confirm_description',
+        )}
+        destructive={pending?.kind !== 'public_ip'}
         confirmLabel={t('common.save')}
-        onConfirm={() => onSubmit(getValues())}
+        onConfirm={() => (pending ? onSubmit(pending.values) : undefined)}
       />
     </Panel>
   );

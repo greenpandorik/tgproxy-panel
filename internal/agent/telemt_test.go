@@ -1103,6 +1103,117 @@ func TestTelemtApplyMovesTheFakeTLSListener(t *testing.T) {
 	}
 }
 
+// The panel's public IP reaches the WEB vhost: a changed value rewrites public_addr (the whole
+// vhost array, arrays replace wholesale, with host/decoy/profiles intact) and restarts telemt.
+func TestTelemtApplyRewritesThePublicAddr(t *testing.T) {
+	ex := &fakeExec{}
+	h, _, ft := telemtHandler(t, ex)
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode),
+		TlsDomain: "n1.example.com", ClassicPort: 8443, PublicIp: "104.239.66.129",
+	})
+	if !res.Ok {
+		t.Fatalf("apply failed: %s", res.Log)
+	}
+	if !res.RestartedRelay {
+		t.Fatalf("a public_addr change must report a relay restart: %s", res.Log)
+	}
+	_, _, patches, _ := ft.snapshot()
+	if len(patches) != 1 {
+		t.Fatalf("exactly one config patch expected (web.vhosts), got %v", patches)
+	}
+	var p map[string]any
+	if err := json.Unmarshal([]byte(patches[0]), &p); err != nil {
+		t.Fatalf("patch is not json: %v", err)
+	}
+	web, _ := p["web"].(map[string]any)
+	vh, _ := web["vhosts"].([]any)
+	if len(vh) != 1 {
+		t.Fatalf("the vhost array must be sent whole: %s", patches[0])
+	}
+	got, _ := vh[0].(map[string]any)
+	if got["public_addr"] != "104.239.66.129:443" || got["host"] != "n1.example.com" || got["decoy"] == nil || got["profiles"] == nil {
+		t.Fatalf("vhost must keep everything but public_addr: %#v", got)
+	}
+	live, _ := ft.section("web")["vhosts"].([]any)
+	liveVhost, _ := live[0].(map[string]any)
+	if liveVhost["public_addr"] != "104.239.66.129:443" {
+		t.Fatalf("public_addr not applied: %#v", liveVhost)
+	}
+	if !ex.has("systemctl restart telemt") {
+		t.Fatalf("telemt must be restarted for a public_addr change: %v", ex.list())
+	}
+	if !strings.Contains(res.Log, "web.vhosts.public_addr 203.0.113.7:443 -> 104.239.66.129:443") {
+		t.Fatalf("log must name the change: %s", res.Log)
+	}
+
+	// Steady state: the same value again is a no-op.
+	ft.resetWrites()
+	ex2 := &fakeExec{}
+	h.exec = ex2
+	res = h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode),
+		TlsDomain: "n1.example.com", ClassicPort: 8443, PublicIp: "104.239.66.129",
+	})
+	if !res.Ok || res.RestartedRelay {
+		t.Fatalf("unchanged public ip must be a no-op: ok=%v restarted=%v log=%s", res.Ok, res.RestartedRelay, res.Log)
+	}
+	if _, _, patches, _ := ft.snapshot(); len(patches) != 0 {
+		t.Fatalf("no config patch expected, got %v", patches)
+	}
+	if ex2.has("systemctl restart telemt") {
+		t.Fatalf("no restart expected: %v", ex2.list())
+	}
+}
+
+// A malformed public IP from the panel is refused before anything is touched.
+func TestTelemtApplyRejectsBadPublicIP(t *testing.T) {
+	ex := &fakeExec{}
+	h, _, ft := telemtHandler(t, ex)
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode), PublicIp: "not-an-ip",
+	})
+	if res.Ok || !strings.Contains(res.Log, `invalid public ip "not-an-ip"`) {
+		t.Fatalf("bad public ip must fail the apply: ok=%v log=%s", res.Ok, res.Log)
+	}
+	if _, _, patches, _ := ft.snapshot(); len(patches) != 0 {
+		t.Fatalf("no config patch expected, got %v", patches)
+	}
+	if ex.has("systemctl restart telemt") {
+		t.Fatalf("no restart expected: %v", ex.list())
+	}
+}
+
+// When the restart after a public_addr change fails, the previous vhost list goes back and
+// telemt is restarted onto it, even though no listener moved.
+func TestTelemtApplyRestoresPublicAddrWhenTheRestartFails(t *testing.T) {
+	ex := &fakeExec{failNth: "restart telemt", failNthCount: 1, failMsg: "job failed"}
+	h, _, ft := telemtHandler(t, ex)
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode), PublicIp: "104.239.66.129",
+	})
+	if res.Ok {
+		t.Fatalf("a failed restart must fail the apply: %s", res.Log)
+	}
+	if !res.RolledBack {
+		t.Fatalf("the public_addr change must be rolled back: %s", res.Log)
+	}
+	live, _ := ft.section("web")["vhosts"].([]any)
+	liveVhost, _ := live[0].(map[string]any)
+	if liveVhost["public_addr"] != "203.0.113.7:443" {
+		t.Fatalf("public_addr not restored: %#v", liveVhost)
+	}
+	var restarts int
+	for _, c := range ex.list() {
+		if strings.Contains(c, "restart telemt") {
+			restarts++
+		}
+	}
+	if restarts != 2 {
+		t.Fatalf("expected the apply's restart and the rollback's, got %d: %v", restarts, ex.list())
+	}
+}
+
 // C2: an apply that carries the listener values telemt already has changes nothing and restarts
 // nothing - the panel sends them on every apply, so they must be a no-op in the steady state.
 func TestTelemtApplyLeavesMatchingListenersAlone(t *testing.T) {
@@ -1110,7 +1221,7 @@ func TestTelemtApplyLeavesMatchingListenersAlone(t *testing.T) {
 	h, _, ft := telemtHandler(t, ex)
 	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
 		ApplyProfiles: true, Profiles: profiles("node", secretNode),
-		TlsDomain: "n1.example.com", ClassicPort: 8443,
+		TlsDomain: "n1.example.com", ClassicPort: 8443, PublicIp: "203.0.113.7",
 	})
 	if !res.Ok || res.RestartedRelay {
 		t.Fatalf("unchanged listeners must be a no-op: ok=%v restarted=%v log=%s", res.Ok, res.RestartedRelay, res.Log)

@@ -185,9 +185,9 @@
     "overview_versions": "Versions",
     "overview_tproxy_version": "tproxy-server",
     "overview_telemt_version": "telemt",
-    "listeners_title": "Fake-TLS",
+    "listeners_title": "Addresses and Fake-TLS",
     "listeners_restart_note": "Saving records the change; the next apply pushes it to the node, where the agent rewrites telemt's config and restarts telemt — live connections drop. Every Fake-TLS link already handed out stops working and must be reissued. WEB links are unaffected.",
-    "listeners_saved": "Fake-TLS settings saved",
+    "listeners_saved": "Addresses and Fake-TLS settings saved",
     "listeners_confirm_title": "Change the Fake-TLS settings?",
     "listeners_confirm_description": "The next apply pushes this to the node: the agent rewrites telemt's config and restarts telemt, dropping live connections. Every Fake-TLS link already handed out stops working — the domain and port are baked into its secret — so reissue them. WEB links are unaffected.",
     "overview_agent_version": "Agent",
@@ -278,7 +278,11 @@
     "logs_stream_online": "streaming",
     "logs_stream_offline": "stopped",
     "logs_stream_pending": "waiting",
-    "sync_synced": "Synced"
+    "sync_synced": "Synced",
+    "field_public_ip_hint": "The address the A record points at; on a NAT host the interface and the internet-facing address can differ.",
+    "validation_ipv4": "IPv4 address, e.g. 203.0.113.10",
+    "public_ip_confirm_title": "Change the public IP?",
+    "public_ip_confirm_description": "The next apply pushes this to the node: the agent rewrites the WEB vhost's address in telemt's config and restarts telemt, dropping live connections. Links are unaffected — they carry the domain, not the address."
   },
   "keys": {
     "title": "Keys",
@@ -989,8 +993,8 @@
         }
       },
       "nodes.listeners": {
-        "title": "Fake-TLS",
-        "intro": "The classic MTProto port of a telemt node. Both values are baked into every Fake-TLS link already handed out (the domain sits inside the secret), so this is not a setting - it is reissuing links: after saving, the next apply rewrites the config, restarts telemt, drops connections, and every Fake-TLS link of this node stops working. WEB links are unaffected.",
+        "title": "Addresses and Fake-TLS",
+        "intro": "The telemt node's public address and the settings of its classic MTProto port. The Fake-TLS domain and port are baked into every Fake-TLS link already handed out (the domain sits inside the secret), so changing them is not a setting - it is reissuing links: after saving, the next apply rewrites the config, restarts telemt, drops connections, and every Fake-TLS link of this node stops working. WEB links are unaffected. Changing the public IP restarts telemt too, but leaves the links alone.",
         "fields": {
           "tls_domain": {
             "name": "Fake-TLS domain",
@@ -1002,6 +1006,12 @@
             "name": "Fake-TLS port",
             "what": "1024 to 65535, except 80 and 443 (taken by Caddy). Must be open in the firewall. Default 8443.",
             "example": "8443"
+          },
+          "public_ip": {
+            "name": "Public IP",
+            "what": "The IPv4 address the node is reachable at from the internet. telemt names it in the WEB vhost (public_addr) and \"Readiness check\" compares the host's A record against it. The install script detects it and reports it at registration; correct it here when it picked the wrong one.",
+            "example": "203.0.113.10",
+            "tip": "It must be the address the A record points at. On a NAT host the interface address and the one the internet sees can differ - the installer shows both; \"connection refused\" on 80/443 means the wrong one is recorded."
           }
         },
         "notes": {
