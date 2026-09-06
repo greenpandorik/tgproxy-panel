@@ -1,3 +1,15 @@
+# Release deployment: the same stack as docker-compose.yml, but the panel runs from the
+# published image instead of a build of this checkout. install.sh downloads this file
+# to <install dir>/docker-compose.yml; the services, volumes and healthchecks must stay
+# identical to docker-compose.yml (only the panel image line and the caddy profile differ).
+#
+# PANEL_VERSION picks the image tag (a release number like 1.0.0, or latest).
+# PANEL_IMAGE replaces the whole image reference (name:tag) - for mirrors and tests.
+# Both are read from .env in this directory.
+#
+# Caddy sits under the "caddy" profile so that local mode (no domain, no TLS) can leave
+# it out:  docker compose --profile caddy up -d   for a domain,
+#          docker compose -f docker-compose.yml -f docker-compose.local.yml up -d   locally.
 services:
   postgres:
     image: postgres:16-alpine
@@ -12,11 +24,7 @@ services:
       retries: 10
 
   panel:
-    # To run a published image instead of building from this checkout, replace
-    # the build block with:  image: ghcr.io/greenpandorik/tgproxy-panel:1.0.1
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.panel
+    image: ${PANEL_IMAGE:-ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}}
     env_file: .env
     environment:
       DATABASE_URL: postgres://tgwp:${POSTGRES_PASSWORD:-tgwp}@postgres:5432/tgwp?sslmode=disable
@@ -40,6 +48,7 @@ services:
 
   caddy:
     image: caddy:2-alpine
+    profiles: [caddy]
     ports: ["80:80", "443:443"]
     environment:
       PANEL_DOMAIN: ${PANEL_DOMAIN:-localhost}
@@ -47,38 +56,6 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data
-    depends_on:
-      panel:
-        condition: service_healthy
-
-  # Demo node running the real telemt binary (profile dev-telemt, driven by deploy/run-e2e-telemt.sh).
-  # telemt ships x86_64 Linux builds only, so the container is amd64 and is emulated on an
-  # arm64 host; the agent inside it is cross-compiled by the build stage.
-  fakenode-telemt:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.fakenode-telemt
-      args:
-        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.5}
-        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-6be65484bb1b319798919b746e72d611d32e92aa07347c390fffc5127ff6615f}
-    platform: linux/amd64
-    profiles: [dev-telemt]
-    environment:
-      PANEL_URL: http://panel:8080
-      INSTALL_TOKEN: ${FAKENODE_INSTALL_TOKEN:-}
-    depends_on:
-      panel:
-        condition: service_healthy
-
-  fakenode:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.fakenode
-    profiles: [dev]
-    environment:
-      PANEL_URL: http://panel:8080
-      NODE_HOSTNAME: ${FAKENODE_HOSTNAME:-fakenode.local}
-      INSTALL_TOKEN: ${FAKENODE_INSTALL_TOKEN:-}
     depends_on:
       panel:
         condition: service_healthy

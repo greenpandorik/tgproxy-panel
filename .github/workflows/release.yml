@@ -89,7 +89,7 @@ jobs:
           context: .
           file: deploy/Dockerfile.panel
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           build-args: VERSION=${{ github.ref_name }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

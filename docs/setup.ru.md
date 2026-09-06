@@ -11,6 +11,7 @@ English version: [setup.en.md](setup.en.md)
 | Компонент | Требование |
 |---|---|
 | Сервер панели | Linux с Docker и Docker Compose v2, 1 CPU / 1 GB достаточно; домен с A-записью на этот сервер; открытые порты 80 и 443 |
+| Для установщика `install.sh` | Чистый сервер Ubuntu 22.04+ или Debian 12+, root, порты 80 и 443 свободны. Docker скрипт ставит сам |
 | Каждая нода | Отдельный VPS: Ubuntu 22.04+ или Debian 12+, x86_64, публичный IPv4, свой домен (A-запись), root или sudo, открытые 80 и 443 |
 | Для разработки без Docker | Go 1.26+, Node 22+, PostgreSQL 16 |
 
@@ -19,6 +20,34 @@ English version: [setup.en.md](setup.en.md)
 ## 2. Вариант A: сервер с доменом (рекомендуется)
 
 Панель работает за Caddy, который сам получает сертификат Let's Encrypt.
+
+### Одной командой
+
+Нужен чистый сервер Ubuntu 22.04+ или Debian 12+ с root. A-запись домена уже должна указывать на него, порты 80 и 443 свободны. Скрипт ставит Docker, если его нет, скачивает compose-файлы последнего релиза в `/opt/tgproxy-panel`, генерирует `.env` с секретами, запускает стек, ждёт готовности и создаёт первого администратора (роль `owner`).
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash
+```
+
+Скрипт спросит домен, e-mail для Let's Encrypt, логин и пароль администратора (пустой пароль = сгенерировать). Без вопросов:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash -s -- \
+  --domain panel.example.com --email admin@example.com --admin-user root --admin-password 'надёжный-пароль' --yes
+```
+
+В конце скрипт печатает адрес панели и, если пароль не задан, сгенерированный пароль. Он показывается один раз. В `/opt/tgproxy-panel` лежат `docker-compose.yml`, `Caddyfile`, `.env` (права 0600) и копия скрипта. Сохраните `.env` вне сервера: `MASTER_KEY` шифрует все секреты в базе.
+
+```bash
+sudo /opt/tgproxy-panel/install.sh --update              # обновить до последнего релиза (или --version 1.2.0)
+sudo /opt/tgproxy-panel/install.sh --uninstall           # остановить; спросит, удалять ли тома с данными
+sudo /opt/tgproxy-panel/install.sh --uninstall --purge   # удалить контейнеры, тома и каталог
+cd /opt/tgproxy-panel && docker compose logs -f panel    # логи
+```
+
+Файрвол скрипт не трогает: порты 80 и 443 откройте сами. Все флаги перечислены в `install.sh --help`, у каждого есть переменная окружения `TGWP_<ИМЯ>`. Опубликованный образ собран для `linux/amd64` и `linux/arm64`.
+
+### Вручную через docker compose
 
 ```bash
 git clone <ваш-репозиторий> tgproxy-web && cd tgproxy-web/deploy
@@ -70,6 +99,8 @@ docker compose exec panel /app/panel admin create root 'надёжный-пар�
 ## 3. Вариант B: локально без домена
 
 Для проверки на своей машине панель открывается напрямую на `:8080`, без Caddy и TLS.
+
+Установщиком: `curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash -s -- --local --yes` (Linux, root). Вручную из checkout:
 
 ```bash
 cd deploy
@@ -277,7 +308,13 @@ docker compose run --rm panel keys rotate
 docker compose start panel
 ```
 
-Обновление панели:
+Обновление панели, поставленной установщиком:
+
+```bash
+sudo /opt/tgproxy-panel/install.sh --update      # последний релиз; --version 1.2.0 для конкретного
+```
+
+Обновление панели, собранной из checkout:
 
 ```bash
 git pull

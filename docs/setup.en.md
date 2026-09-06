@@ -11,6 +11,7 @@ A control panel for Telegram WEB Proxy: one Go binary with an embedded web UI, P
 | Component | Requirement |
 |---|---|
 | Panel server | Linux with Docker and Docker Compose v2; 1 CPU / 1 GB is enough; a domain with an A record pointing at it; ports 80 and 443 open |
+| For the `install.sh` installer | A fresh Ubuntu 22.04+ or Debian 12+ host, root, ports 80 and 443 free. The script installs Docker itself |
 | Each node | A separate VPS: Ubuntu 22.04+ or Debian 12+, x86_64, public IPv4, its own domain (A record), root or sudo, ports 80 and 443 open |
 | Development without Docker | Go 1.26+, Node 22+, PostgreSQL 16 |
 
@@ -19,6 +20,34 @@ Nodes and the panel must live on different hosts: the relay on a node owns ports
 ## 2. Option A: a server with a domain (recommended)
 
 The panel sits behind Caddy, which obtains a Let's Encrypt certificate on its own.
+
+### One command
+
+You need a fresh Ubuntu 22.04+ or Debian 12+ host with root. The domain's A record must already point at it, and ports 80 and 443 must be free. The script installs Docker when it is missing, downloads the compose files of the latest release into `/opt/tgproxy-panel`, generates `.env` with fresh secrets, starts the stack, waits for it to become healthy and creates the first administrator (role `owner`).
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash
+```
+
+It asks for the domain, the Let's Encrypt e-mail, and the admin username and password (an empty password means: generate one). Without questions:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash -s -- \
+  --domain panel.example.com --email admin@example.com --admin-user root --admin-password 'a-strong-password' --yes
+```
+
+At the end the script prints the panel URL and, if you did not pass a password, the generated one. It is shown once. `/opt/tgproxy-panel` holds `docker-compose.yml`, `Caddyfile`, `.env` (mode 0600) and a copy of the script. Keep `.env` somewhere off the server: `MASTER_KEY` encrypts every secret in the database.
+
+```bash
+sudo /opt/tgproxy-panel/install.sh --update              # move to the latest release (or --version 1.2.0)
+sudo /opt/tgproxy-panel/install.sh --uninstall           # stop; asks whether to remove the data volumes
+sudo /opt/tgproxy-panel/install.sh --uninstall --purge   # remove containers, volumes and the directory
+cd /opt/tgproxy-panel && docker compose logs -f panel    # logs
+```
+
+The script does not touch the firewall: open ports 80 and 443 yourself. `install.sh --help` lists every flag; each has a `TGWP_<NAME>` environment variable. The published image is built for `linux/amd64` and `linux/arm64`.
+
+### By hand with docker compose
 
 ```bash
 git clone <your-repository> tgproxy-web && cd tgproxy-web/deploy
@@ -69,6 +98,8 @@ Things to know:
 ## 3. Option B: locally without a domain
 
 For trying it on your own machine the panel is exposed directly on `:8080`, without Caddy or TLS.
+
+With the installer: `curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash -s -- --local --yes` (Linux, root). By hand from a checkout:
 
 ```bash
 cd deploy
@@ -276,7 +307,13 @@ docker compose run --rm panel keys rotate
 docker compose start panel
 ```
 
-Upgrading the panel:
+Upgrading a panel set up by the installer:
+
+```bash
+sudo /opt/tgproxy-panel/install.sh --update      # latest release; --version 1.2.0 for a specific one
+```
+
+Upgrading a panel built from a checkout:
 
 ```bash
 git pull

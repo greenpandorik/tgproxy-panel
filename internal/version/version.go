@@ -10,4 +10,4 @@
 package version
 
 // Version is the panel version, overridable at link time.
-var Version = "1.0.0"
+var Version = "1.0.1"

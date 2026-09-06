@@ -6,7 +6,7 @@ export PATH := $(GOBIN):$(PATH)
 VERSION ?=
 LDFLAGS := -s -w $(if $(VERSION),-X tgwebproxy/internal/version.Version=$(patsubst v%,%,$(VERSION)),)
 
-.PHONY: tools test lint fmt sqlc proto web run build agent-linux e2e e2e-telemt
+.PHONY: tools test lint fmt sqlc proto web run build agent-linux e2e e2e-telemt test-install
 
 tools:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -58,3 +58,9 @@ e2e:
 # control API. The first run downloads telemt inside the image build.
 e2e-telemt:
 	./deploy/run-e2e-telemt.sh
+
+# test-install runs install.sh end to end inside a docker:27-dind container, against the
+# panel image built from this checkout: fresh install in --local mode, health and login
+# checks, an --update pass, then --uninstall --purge. Also runs shellcheck on the script.
+test-install:
+	./deploy/test-install.sh

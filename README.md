@@ -30,6 +30,33 @@ Setup guides with screenshots: [English](docs/setup.en.md), [Русский](doc
 
 ## Quick start
 
+The installer sets up the panel host in one command. It needs a fresh Ubuntu 22.04+ / Debian 12+ host with root, ports 80 and 443 free, and a DNS A record for the panel's domain already pointing at it. The script installs Docker when it is missing, downloads the compose files of the latest release into `/opt/tgproxy-panel`, writes `.env` with freshly generated secrets, starts the stack, waits for it to become healthy and creates the first admin (role `owner`).
+
+```bash
+# interactive: asks for the domain, the ACME e-mail and the admin credentials
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash
+
+# non-interactive
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash -s -- \
+  --domain panel.example.com --email me@example.com --admin-user root --admin-password 'a-strong-password' --yes
+
+# no domain: no Caddy, no TLS, panel on http://<ip>:8080 (real nodes cannot join such a panel)
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash -s -- --local --yes
+```
+
+At the end it prints the URL and, when you did not pass one, the generated admin password (once). The install directory holds `docker-compose.yml`, `Caddyfile`, `.env` (mode 0600; keep a copy off the host, `MASTER_KEY` encrypts every secret in the database) and a copy of the script for later:
+
+```bash
+sudo /opt/tgproxy-panel/install.sh --update              # move to the latest release (or --version 1.2.0)
+sudo /opt/tgproxy-panel/install.sh --uninstall           # stop the stack; asks before removing the data volumes
+sudo /opt/tgproxy-panel/install.sh --uninstall --purge   # remove containers, volumes and the directory
+cd /opt/tgproxy-panel && docker compose logs -f panel    # logs
+```
+
+`install.sh --help` lists every option; each one can also be given as an environment variable `TGWP_<NAME>` (`TGWP_DOMAIN`, `TGWP_YES`, ...). `--dir` changes the install directory, `--image <ref>` replaces the `ghcr.io/greenpandorik/tgproxy-panel:<version>` reference (for mirrors, and for tests: `make test-install` runs the script against a locally built image). The script does not touch the firewall; open 80/443 (or 8080 in local mode) yourself. The published image is built for `linux/amd64` and `linux/arm64`.
+
+### Manual setup
+
 You need Docker with Compose v2 (`docker compose ...`) for the panel host, and one Linux x86_64 host per node.
 
 ```bash
@@ -51,11 +78,11 @@ docker compose -f docker-compose.yml -f docker-compose.override.example.yml up -
 
 `PANEL_DOMAIN` (defaults to `localhost`) controls what Caddy requests a certificate for; for a real deployment point a DNS record at the host and set `PANEL_DOMAIN=panel.example.com` and `PANEL_PUBLIC_URL=https://panel.example.com` in `.env`. On `localhost`, Caddy issues an internal (self-signed) certificate: either trust its local CA (`docker compose exec caddy caddy trust`, or copy `/data/caddy/pki/authorities/local/root.crt` out of the `caddydata` volume into your OS/browser trust store) or curl it with `--insecure` / `-k`.
 
-To run a published image instead of building from the checkout, replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.0.0` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
+To run a published image instead of building from the checkout, use `deploy/docker-compose.release.yml` (the file the installer deploys: `panel` comes from `ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}`, Caddy sits under the `caddy` profile, `deploy/docker-compose.local.yml` publishes :8080 for local mode), or replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.0.1` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
 
 ### First admin
 
-The image ships with no admin users. Create the first one directly in the running panel container:
+The installer creates the first admin for you. On a manual setup the image ships with no admin users; create the first one directly in the running panel container:
 
 ```bash
 docker compose exec panel /app/panel admin create <username> <password>
@@ -296,6 +323,8 @@ All variables live in `.env.example`; copy it to `.env` and fill in the blanks.
 | `APPLY_INTERVAL` | Seconds between sweeps that re-apply state to nodes marked dirty. |
 | `OFFLINE_AFTER` | Seconds without a heartbeat before a node is marked offline. |
 | `PANEL_DOMAIN`, `ACME_EMAIL` | Read by the compose Caddy service only: the domain to obtain a certificate for and the ACME account email. |
+| `POSTGRES_PASSWORD` | Read by the compose files only: the password of the bundled PostgreSQL (the installer generates one; `DATABASE_URL` for the panel is derived from it). |
+| `PANEL_VERSION`, `PANEL_IMAGE` | Read by `deploy/docker-compose.release.yml` only: the image tag to run (`1.0.0`, `latest`), or a full image reference that replaces `ghcr.io/greenpandorik/tgproxy-panel:<PANEL_VERSION>` (mirrors, tests). Written by `install.sh`. |
 | `TEST_DATABASE_URL` | Postgres connection string used by `go test` (see below). |
 
 The update check calls `GET https://api.github.com/repos/<GITHUB_REPO>/releases/latest` and `GET https://api.github.com/repos/<GITHUB_REPO>`, caches the answer server-side for an hour, and serves the last good answer (`stale: true`) when a fetch fails. The result is exposed at `GET /api/v1/status/update` for any authenticated role. A build whose version is not a release number (for example `dev`) is never marked outdated.
@@ -352,6 +381,10 @@ Both flags exist for that bench only. Real nodes run with the synlimit rules and
 
 **`make e2e-telemt` needs outbound reachability to Telegram's DCs.** telemt's `/v1/health/ready` reports `no_healthy_upstreams` until it has a healthy upstream, and the smoke test waits for the node to come online, so an environment that blocks that egress fails the target with a node that never leaves `pending`, not with a defect in the panel. `docker compose exec fakenode-telemt journalctl -u telemt` names the cause.
 
+## Installer test
+
+`make test-install` (`deploy/test-install.sh`) checks `install.sh` end to end: it runs `bash -n` and shellcheck, builds the panel image from the checkout, starts a privileged `docker:27-dind` container with the repository mounted, loads the image into it and runs the installer there in `--local --yes --from-checkout` mode. It then asserts the generated `.env` (every key, mode 0600), the running stack, `/healthz`, an admin login via `POST /api/v1/auth/login`, an `--update` pass, and that `--uninstall --purge` leaves no containers, volumes or install directory behind. Needs Docker on the host; shellcheck is installed with brew when missing.
+
 ## Security notes
 
 - Profile and access-key secrets (and the Telegram bot token) are encrypted at rest with `MASTER_KEY` (AES-GCM). Losing `MASTER_KEY` makes existing encrypted data unrecoverable; back it up somewhere separate from the database.
@@ -365,7 +398,7 @@ Both flags exist for that bench only. Real nodes run with the synlimit rules and
 
 ## Status
 
-Version 1.0.0. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
+Version 1.0.1. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
 
 ## License
 
