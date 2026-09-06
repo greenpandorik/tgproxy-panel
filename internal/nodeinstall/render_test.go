@@ -267,7 +267,7 @@ func TestRenderWritesSysctlTuning(t *testing.T) {
 			"cat > /etc/sysctl.d/90-tgwp.conf <<'EOF'",
 			"chmod 0644 /etc/sysctl.d/90-tgwp.conf",
 			"modprobe tcp_bbr 2>/dev/null || true",
-			`sysctl --system >/dev/null 2>&1 || echo "tgwp: some sysctl keys could not be applied (container or old kernel); continuing"`,
+			`sysctl --system >/dev/null || echo "tgwp: some sysctl keys could not be applied (see the lines above; container or old kernel); continuing"`,
 		}, wantKeys...) {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s: script missing %q", name, want)

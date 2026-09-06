@@ -42,7 +42,7 @@ jobs:
         run: go build ./...
       - name: Format
         run: |
-          go install mvdan.cc/gofumpt@latest
+          go install mvdan.cc/gofumpt@v0.11.0
           out="$($(go env GOPATH)/bin/gofumpt -l ./cmd ./internal ./deploy)"
           if [ -n "$out" ]; then echo "$out"; echo "gofumpt: files need formatting"; exit 1; fi
       - name: Test
@@ -52,7 +52,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          version: v2.13.2
 
   web:
     name: Web

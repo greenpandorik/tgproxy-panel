@@ -12,7 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -81,6 +83,8 @@ type Checker struct {
 	TTL   time.Duration
 	// BaseURL replaces https://api.github.com; no trailing slash.
 	BaseURL string
+	// Log receives one warning per failed fetch; nil logs nothing.
+	Log *slog.Logger
 	// Current is the version compared against the latest tag; empty means
 	// version.Version. Tests set it to exercise "dev" and equal-version paths.
 	Current string
@@ -150,6 +154,9 @@ func (c *Checker) Status(ctx context.Context) Status {
 		c.lastFailed = err != nil
 		if err == nil {
 			c.good = &got
+		} else if c.Log != nil {
+			// Errors never carry the token (verified by tests), so they are safe to log.
+			c.Log.Warn("update check failed", "repo", c.Repo, "err", err)
 		}
 		c.inflight = nil
 		close(done)
@@ -224,7 +231,7 @@ func (c *Checker) fetch(ctx context.Context) (fetched, error) {
 		return f, fmt.Errorf("releases/latest: HTTP %d", status)
 	default:
 		f.latest = strings.TrimPrefix(rel.TagName, "v")
-		f.latestURL = rel.HTMLURL
+		f.latestURL = releaseURL(rel.HTMLURL)
 		f.publishedAt = rel.PublishedAt
 	}
 	var repo repoDoc
@@ -249,7 +256,9 @@ func (c *Checker) get(ctx context.Context, url string, out any) (int, error) {
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("User-Agent", "tgproxy-panel/"+version.Version)
+	// A fixed User-Agent: the docs promise that nothing about the installation
+	// (the running version included) is sent to GitHub.
+	req.Header.Set("User-Agent", "tgproxy-panel")
 	if c.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
@@ -279,6 +288,17 @@ func (c *Checker) get(ctx context.Context, url string, out any) (int, error) {
 		return 0, fmt.Errorf("decode %s: %w", url, err)
 	}
 	return resp.StatusCode, nil
+}
+
+// releaseURL keeps html_url only when it is an https link on github.com. The
+// value ends up as an href in the SPA, so a broken or hostile upstream must not
+// be able to turn the version chip into a javascript: or off-site link.
+func releaseURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host != "github.com" {
+		return ""
+	}
+	return raw
 }
 
 // Newer reports whether latest is a strictly higher release than current.

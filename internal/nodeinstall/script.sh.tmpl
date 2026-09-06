@@ -41,7 +41,7 @@ net.ipv4.tcp_keepalive_probes = 3
 EOF
 chmod 0644 /etc/sysctl.d/90-tgwp.conf
 modprobe tcp_bbr 2>/dev/null || true
-sysctl --system >/dev/null 2>&1 || echo "tgwp: some sysctl keys could not be applied (container or old kernel); continuing"
+sysctl --system >/dev/null || echo "tgwp: some sysctl keys could not be applied (see the lines above; container or old kernel); continuing"
 {{end}}
 {{if .IsTelemt}}# Caddy terminates TLS on 443 and forwards to telemt's loopback WEB listener. It comes from
 # the Caddy project's own apt repository, signed with its release key, so apt verifies the

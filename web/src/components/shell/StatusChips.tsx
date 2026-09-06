@@ -108,7 +108,7 @@ function GitHubChip() {
         href={data.repo_url}
         target="_blank"
         rel="noreferrer"
-        aria-label={t('shell.github_tooltip')}
+        aria-label={stars ? `${t('shell.github_tooltip')}: ${stars}` : t('shell.github_tooltip')}
         className={CHIP}
       >
         <GitHubMark />
@@ -126,7 +126,13 @@ function NodesChip() {
   const tone = nodesTone(data.nodes_online, data.nodes_total);
   return (
     <WithTooltip label={t('shell.nodes_tooltip')}>
-      <Link data-testid="nodes-chip" data-tone={tone} to="/nodes" aria-label={t('shell.nodes_tooltip')} className={CHIP}>
+      <Link
+        data-testid="nodes-chip"
+        data-tone={tone}
+        to="/nodes"
+        aria-label={`${t('shell.nodes_tooltip')}: ${data.nodes_online}/${data.nodes_total}`}
+        className={CHIP}
+      >
         <span className={cn('size-1.5 rounded-full', TONE_DOT[tone])} aria-hidden="true" />
         {data.nodes_online}/{data.nodes_total}
       </Link>

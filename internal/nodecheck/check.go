@@ -308,6 +308,9 @@ func (c *Checker) checkPQKex(ctx context.Context, timeout time.Duration, hostnam
 	tlsConn := tls.Client(conn, cfg)
 	defer func() { _ = tlsConn.Close() }()
 	if err := tlsConn.HandshakeContext(ctx); err != nil {
+		if strings.Contains(err.Error(), "protocol version not supported") {
+			return Result{Name: name, Advisory: true, Detail: "server does not offer TLS 1.3 (no post-quantum key exchange)"}
+		}
 		return Result{Name: name, Advisory: true, Detail: err.Error()}
 	}
 	curve := tlsConn.ConnectionState().CurveID

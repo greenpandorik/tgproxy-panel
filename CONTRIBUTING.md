@@ -24,7 +24,7 @@ make e2e-telemt   # telemt engine, real telemt release binary (needs egress to T
 ## Conventions
 
 - Backend: `sqlc` for queries (`make sqlc` after editing `internal/store/queries`), `goose` migrations embedded under `internal/store/migrations`, `slog` for logs. Secrets are never logged.
-- Every HTTP route is covered by the RBAC walk test (`internal/api/rbac_walk_test.go`); a new route needs an entry there.
+- The RBAC walk test (`internal/api/rbac_walk_test.go`) checks every route structurally. A route that is deliberately public, or that a viewer may call, needs an entry in its `publicReads`, `publicMutations` or `allowedForViewer` lists.
 - Frontend strings live in `web/src/i18n/{ru,en}.json`; `npm run i18n:check` fails on missing keys in either language.
 - Node engines (`tproxy`, `telemt`) are switched inside the agent and the install script renderer; the panel API stays engine-agnostic except where the README says otherwise.
 - Commit messages describe the change in plain words. Pull requests should say what was tested and how.

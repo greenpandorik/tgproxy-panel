@@ -10,8 +10,8 @@ LDFLAGS := -s -w $(if $(VERSION),-X tgwebproxy/internal/version.Version=$(patsub
 
 tools:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-	go install mvdan.cc/gofumpt@latest
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	go install mvdan.cc/gofumpt@v0.11.0
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 

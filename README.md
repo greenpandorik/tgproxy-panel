@@ -36,8 +36,9 @@ You need Docker with Compose v2 (`docker compose ...`) for the panel host, and o
 cd deploy
 cp ../.env.example .env
 # fill in MASTER_KEY and SESSION_SECRET (32 random bytes, base64 each):
-sed -i '' "s|^MASTER_KEY=.*|MASTER_KEY=$(openssl rand -base64 32)|" .env
-sed -i '' "s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -base64 32)|" .env
+sed -i.bak "s|^MASTER_KEY=.*|MASTER_KEY=$(openssl rand -base64 32)|" .env
+sed -i.bak "s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -base64 32)|" .env
+sed -i.bak "s|^METRICS_TOKEN=.*|METRICS_TOKEN=$(openssl rand -hex 32)|" .env && rm .env.bak
 
 # behind Caddy, on a real domain, with TLS:
 docker compose up -d --build postgres panel caddy
@@ -46,7 +47,7 @@ docker compose up -d --build postgres panel caddy
 docker compose -f docker-compose.yml -f docker-compose.override.example.yml up -d --build postgres panel
 ```
 
-Also set `METRICS_TOKEN` in `.env` (`openssl rand -hex 32`): with the default `NODE_DRIVER=gateway` the panel refuses to start without it. `TELEMT_VERSION` and `TELEMT_SHA256_X86_64` come pre-filled in `.env.example`.
+`METRICS_TOKEN` is required too: with the default `NODE_DRIVER=gateway` the panel refuses to start without it (the commands above fill it in). `TELEMT_VERSION` and `TELEMT_SHA256_X86_64` come pre-filled in `.env.example`.
 
 `PANEL_DOMAIN` (defaults to `localhost`) controls what Caddy requests a certificate for; for a real deployment point a DNS record at the host and set `PANEL_DOMAIN=panel.example.com` and `PANEL_PUBLIC_URL=https://panel.example.com` in `.env`. On `localhost`, Caddy issues an internal (self-signed) certificate: either trust its local CA (`docker compose exec caddy caddy trust`, or copy `/data/caddy/pki/authorities/local/root.crt` out of the `caddydata` volume into your OS/browser trust store) or curl it with `--insecure` / `-k`.
 
@@ -177,7 +178,7 @@ Each `(node, alert kind)` pair is rate-limited to at most one message per 5 minu
 
 ## Node prerequisite checks
 
-The node Overview tab has a "Run check" button (writers only) that calls `POST /api/v1/nodes/{id}/check` and persists the result on the node (`last_check`, shown in `GET /api/v1/nodes/{id}`). It runs six probes, in order, each independently timed out:
+The node Overview tab has a "Run check" button (writers only) that calls `POST /api/v1/nodes/{id}/check` and persists the result on the node (`last_check`, shown in `GET /api/v1/nodes/{id}`). It runs six probes in order (seven on a telemt node, which adds `mask`), sharing one 15-second budget:
 
 | Check | Verifies |
 | --- | --- |
@@ -187,6 +188,7 @@ The node Overview tab has a "Run check" button (writers only) that calls `POST /
 | `tls_cert` | A valid TLS handshake completes for the hostname, the certificate chain and hostname verify, and it is not within 7 days of expiring. |
 | `pq_kex` | The TLS front negotiates the post-quantum hybrid key exchange `X25519MLKEM768`; the detail names the group that was negotiated. Advisory: its result is shown but never counted in the check's overall pass/fail. |
 | `http_root` | `GET https://<hostname>/` returns 200 with a non-empty body. Redirects are not followed (a checked node cannot use this to make the panel issue requests elsewhere). |
+| `mask` | telemt nodes only: a TLS handshake to `hostname:classic_port` with `tls_domain` as SNI and no MTProto secret is answered with a certificate valid for `tls_domain`, so the Fake-TLS listener looks like the site it masks. |
 
 ## Two-factor authentication
 
@@ -367,4 +369,4 @@ Version 1.0.0. Both engines pass the containerised end-to-end tests (`make e2e`,
 
 ## License
 
-AGPL-3.0, see [LICENSE](LICENSE). telemt, which the panel installs on telemt nodes, is distributed under its own license (TELEMT PL 3); the panel does not bundle it.
+Copyright (C) 2026 greenpandorik. AGPL-3.0, see [LICENSE](LICENSE). telemt, which the panel installs on telemt nodes, is distributed under its own license (TELEMT PL 3); the panel does not bundle it.

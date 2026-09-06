@@ -442,6 +442,7 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	// opened never talks to GitHub.
 	if cfg.UpdateCheck {
 		deps.Updates = updates.New(cfg.GitHubRepo, cfg.GitHubToken)
+		deps.Updates.Log = log
 	}
 	srv := api.New(deps)
 	alerts := worker.NewAlerts(srv.TelegramConfig, tg, log)

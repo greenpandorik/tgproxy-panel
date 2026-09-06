@@ -146,7 +146,7 @@ Run it on the VPS as root:
 curl -fsSL https://panel.example.com/api/v1/install/<token>.sh | sudo bash
 ```
 
-The script installs `tproxy-server` (pinned commit), the official MTProxy, Caddy and the agent, obtains a certificate and registers the node. Within a minute the node shows up online.
+Depending on the node's engine the script installs telemt (default) or `tproxy-server` (pinned commit) with the official MTProxy, plus Caddy and the agent; it obtains a certificate and registers the node. Within a minute the node shows up online.
 
 Alongside the dependencies the script (for either engine) writes `/etc/sysctl.d/90-tgwp.conf` — network tuning for a proxy node, adopted from MTPROTO_FIX_By_MEKO: BBR with the `fq` qdisc, larger accept/SYN queues (`somaxconn`, `tcp_max_syn_backlog`, `netdev_max_backlog` = 65535), TCP Fast Open and short keepalives (45/15 s × 3 probes) so dead clients drop off in about a minute. If the kernel rejects a key (container, old kernel) the script says so and carries on. The file is safe to delete — nothing but these values depends on it.
 

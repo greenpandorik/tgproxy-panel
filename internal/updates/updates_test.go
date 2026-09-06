@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"tgwebproxy/internal/version"
 )
 
 // github is a fake api.github.com serving the two endpoints the checker reads.
@@ -181,8 +183,8 @@ func TestStatusNewerTag(t *testing.T) {
 	if h.Get("Authorization") != "Bearer tok-secret" {
 		t.Errorf("Authorization = %q", h.Get("Authorization"))
 	}
-	if !strings.HasPrefix(h.Get("User-Agent"), "tgproxy-panel/") {
-		t.Errorf("User-Agent = %q", h.Get("User-Agent"))
+	if ua := h.Get("User-Agent"); ua != "tgproxy-panel" || strings.Contains(ua, version.Version) {
+		t.Errorf("User-Agent = %q, want a fixed string without the version", ua)
 	}
 }
 
@@ -396,5 +398,20 @@ func TestDisabledStatus(t *testing.T) {
 	}
 	if st.Latest != "" || st.Stars != -1 || st.UpdateAvailable || st.CheckedAt != "" || st.Stale {
 		t.Fatalf("disabled status carries data: %+v", st)
+	}
+}
+
+func TestReleaseURLKeepsOnlyGitHubHTTPS(t *testing.T) {
+	cases := map[string]string{
+		"https://github.com/o/r/releases/tag/v1.2.0": "https://github.com/o/r/releases/tag/v1.2.0",
+		"http://github.com/o/r":                      "",
+		"https://evil.example/x":                     "",
+		"javascript:alert(1)":                        "",
+		"":                                           "",
+	}
+	for in, want := range cases {
+		if got := releaseURL(in); got != want {
+			t.Errorf("releaseURL(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
