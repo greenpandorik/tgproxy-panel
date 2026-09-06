@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 
 import { TotpSection } from './TotpSection';
@@ -61,7 +62,7 @@ export function SecurityForm() {
   return (
     <div className="flex max-w-md flex-col gap-4">
       <Panel>
-        <PanelHeader title={t('settings.security_password_title')} />
+        <PanelHeader title={t('settings.security_password_title')} actions={<HelpButton topic="settings.security" />} />
         <PanelBody>
           <form className="max-w-sm space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
             <p className="text-sm text-mute">{t('settings.security_note')}</p>

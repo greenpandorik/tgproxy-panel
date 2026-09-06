@@ -119,3 +119,52 @@ func TestMonitoringOverviewBucketsInSQL(t *testing.T) {
 		}
 	}
 }
+
+// TestMonitoringLoadSeries: both monitoring reads carry the server load. The per-node series
+// returns it per snapshot; the overview averages it per bucket like the other gauges.
+func TestMonitoringLoadSeries(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	base := time.Now().Add(-4 * time.Minute).Truncate(time.Minute)
+	for i, cpu := range []float32{20, 40} {
+		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{
+			NodeID: n.ID, SessionsLive: 1, MtproxyRaw: []byte("{}"),
+			CpuPercent: cpu, MemUsedPercent: cpu + 10, DiskUsedPercent: 5,
+		})
+		_, _ = h.Store.Pool.Exec(t.Context(),
+			`UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`,
+			base.Add(time.Duration(i)*time.Minute), n.ID)
+	}
+	q := "from=" + base.Add(-time.Minute).Format(time.RFC3339) + "&to=" + time.Now().Format(time.RFC3339)
+
+	var series struct {
+		Points []struct {
+			CPU  float32 `json:"cpu_percent"`
+			Mem  float32 `json:"mem_used_percent"`
+			Disk float32 `json:"disk_used_percent"`
+		} `json:"points"`
+	}
+	c.JSON(c.Get("/api/v1/monitoring/nodes/"+n.ID.String()+"/series?"+q), &series)
+	if len(series.Points) != 2 || series.Points[0].CPU != 20 || series.Points[1].CPU != 40 ||
+		series.Points[1].Mem != 50 || series.Points[1].Disk != 5 {
+		t.Fatalf("series load %+v", series.Points)
+	}
+
+	// Both snapshots fall into one five-minute bucket; the bucket reports their average.
+	var overview struct {
+		Series map[string][]struct {
+			CPU  float32 `json:"cpu_percent"`
+			Mem  float32 `json:"mem_used_percent"`
+			Disk float32 `json:"disk_used_percent"`
+		} `json:"series"`
+	}
+	c.JSON(c.Get("/api/v1/monitoring/overview?"+q+"&step=300"), &overview)
+	pts := overview.Series[n.ID.String()]
+	if len(pts) != 1 || pts[0].CPU != 30 || pts[0].Mem != 40 || pts[0].Disk != 5 {
+		t.Fatalf("overview bucket load %+v (want cpu 30, mem 40, disk 5)", pts)
+	}
+	// Below the bucketing threshold the raw rows carry the load too.
+	c.JSON(c.Get("/api/v1/monitoring/overview?"+q+"&step=60"), &overview)
+	if pts = overview.Series[n.ID.String()]; len(pts) != 2 || pts[1].CPU != 40 {
+		t.Fatalf("overview raw load %+v", pts)
+	}
+}

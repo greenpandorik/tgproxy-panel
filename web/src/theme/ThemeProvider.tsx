@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { useBranding } from '@/api/branding';
+import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
 
 import type { Branding } from '@/api/types';
 
@@ -9,7 +10,7 @@ export type Theme = 'dark' | 'light';
 
 const THEME_STORAGE_KEY = 'theme';
 const BRAND_CSS_ID = 'brand-css';
-const DEFAULT_TITLE = 'WEB Proxy Panel';
+const DEFAULT_TITLE = DEFAULT_PANEL_NAME;
 
 /** Subset of Branding the settings form can preview live, before saving. */
 export type BrandingPreview = Partial<

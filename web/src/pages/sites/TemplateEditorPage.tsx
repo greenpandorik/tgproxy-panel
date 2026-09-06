@@ -5,13 +5,16 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useCreateSiteTemplate, useSiteTemplate, useUpdateSiteTemplate, useValidateSiteTemplate } from '@/api/sites';
 import { useAuth } from '@/auth/AuthProvider';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
 import { formatBytes } from '@/lib/format';
 
 import { AssignTemplateDialog } from './AssignTemplateDialog';
@@ -40,6 +43,15 @@ const PREVIEW_DEBOUNCE_MS = 300;
 // instead, with a message that names the actual limit.
 const MAX_ASSET_BYTES = 512 * 1024;
 const MAX_ASSETS_TOTAL_BYTES = 2 * 1024 * 1024;
+
+/** The editable state of the editor, kept as a draft per template id. */
+interface TemplateDraft {
+  name: string;
+  html: string;
+  assets: Record<string, string>;
+}
+
+const NEW_TEMPLATE: TemplateDraft = { name: '', html: DEFAULT_HTML, assets: {} };
 
 /** Wrapper that forces a full remount on id change (new -> created id, or switching between two existing templates), so local editor state never leaks between templates. */
 export function TemplateEditorPage() {
@@ -94,6 +106,27 @@ function TemplateEditorInner({ id }: { id?: string }) {
     setAssets(loaded.assets ?? {});
   }
 
+  // The draft waits for an existing template to load, so the empty editor is
+  // never mistaken for edits; a new template starts from the boilerplate.
+  const draft = useDraft<TemplateDraft>(
+    `site-template-${id ?? 'new'}`,
+    { name, html, assets },
+    {
+      initial: isNew ? NEW_TEMPLATE : { name: loaded?.name ?? '', html: loaded?.html ?? '', assets: loaded?.assets ?? {} },
+      open: isWriter && (isNew || !!loaded),
+    },
+  );
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    const saved = draft.draft.value;
+    setName(saved.name);
+    setHtml(saved.html);
+    setAssets(saved.assets ?? {});
+    setLastValidation(null);
+    draft.dismiss();
+  };
+
   useEffect(() => {
     const timer = window.setTimeout(() => setPreviewHtml(html), PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
@@ -121,10 +154,12 @@ function TemplateEditorInner({ id }: { id?: string }) {
     try {
       if (isNew) {
         const created = await createTemplate.mutateAsync({ name, html, assets });
+        draft.clear();
         toast.add({ description: t('sites.create_success'), type: 'success' });
         navigate(`/sites/${created.id}`, { replace: true });
       } else {
         await updateTemplate.mutateAsync({ name, html, assets });
+        draft.clear();
         toast.add({ description: t('sites.save_success'), type: 'success' });
       }
     } catch (err) {
@@ -193,9 +228,12 @@ function TemplateEditorInner({ id }: { id?: string }) {
         </Link>
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <h1 className="min-w-0 truncate text-xl font-semibold tracking-[-0.015em] text-foreground">
-            {isNew ? t('sites.editor_title_new') : t('sites.editor_title_edit', { name: loaded?.name ?? name })}
-          </h1>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h1 className="min-w-0 truncate text-xl font-semibold tracking-[-0.015em] text-foreground">
+              {isNew ? t('sites.editor_title_new') : t('sites.editor_title_edit', { name: loaded?.name ?? name })}
+            </h1>
+            <HelpButton topic="sites.editor" />
+          </div>
 
           {isWriter && (
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -215,6 +253,10 @@ function TemplateEditorInner({ id }: { id?: string }) {
           )}
         </div>
       </div>
+
+      {draft.draft && (
+        <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} className="max-w-2xl" />
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="tpl-name">{t('sites.field_name')}</Label>

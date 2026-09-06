@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 
 import { CopyButton } from '@/components/common/CopyButton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { HelpButton } from '@/help';
 import { formatDateTime } from '@/lib/format';
 
 interface InstallCommandDialogProps {
@@ -31,7 +32,10 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{t('nodes.install_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('nodes.install_title')}</DialogTitle>
+            <HelpButton topic="nodes.install" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('nodes.install_description')}</DialogDescription>
         </DialogHeader>
 

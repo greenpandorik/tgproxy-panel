@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bufio"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 
 	"tgwebproxy/internal/api/apitest"
 	"tgwebproxy/internal/nodedriver"
+	"tgwebproxy/internal/store/db"
 )
 
 type nodeResp struct {
@@ -164,5 +166,32 @@ func TestViewerCannotCreateNode(t *testing.T) {
 	c := h.Login("v", "pass-123456")
 	if resp := c.Post("/api/v1/nodes", map[string]string{"name": "x", "hostname": "x.test", "acme_email": "a@b.co"}); resp.StatusCode != 403 {
 		t.Fatalf("expected 403, got %d", resp.StatusCode)
+	}
+}
+
+// TestNodeListHealthMatchesHealthEndpoint: the list's `health` is the last heartbeat, and it
+// must come out in the same snake_case shape as GET /nodes/{id}/health - the SPA has one
+// NodeHealth type for both, and the row is stored with Go field names.
+func TestNodeListHealthMatchesHealthEndpoint(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	raw, _ := json.Marshal(nodedriver.HealthReport{RelayActive: true, CPUPercent: 42.5, MemUsedPercent: 61, DiskUsedPercent: 12})
+	if err := h.Store.Q.SetNodeHeartbeat(t.Context(), db.SetNodeHeartbeatParams{ID: n.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	var list struct {
+		Items []struct {
+			Health map[string]any `json:"health"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/nodes"), &list)
+	if len(list.Items) != 1 {
+		t.Fatalf("list %+v", list)
+	}
+	got := list.Items[0].Health
+	if got["cpu_percent"] != 42.5 || got["mem_used_percent"] != 61.0 || got["disk_used_percent"] != 12.0 || got["relay_active"] != true {
+		t.Fatalf("list health %+v", got)
+	}
+	if _, pascal := got["CPUPercent"]; pascal {
+		t.Fatalf("list health leaked the stored field names: %+v", got)
 	}
 }

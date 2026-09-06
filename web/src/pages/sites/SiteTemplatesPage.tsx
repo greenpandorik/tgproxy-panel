@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { api, ApiError } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/format';
 
@@ -61,12 +62,15 @@ export function SiteTemplatesPage() {
         title={t('sites.title')}
         description={templates.length > 0 ? t('sites.header_count', { count: templates.length }) : undefined}
         actions={
-          isWriter && (
-            <Button type="button" onClick={() => navigate('/sites/new')}>
-              <Plus />
-              {t('sites.create')}
-            </Button>
-          )
+          <>
+            <HelpButton topic="sites.templates" />
+            {isWriter && (
+              <Button type="button" onClick={() => navigate('/sites/new')}>
+                <Plus />
+                {t('sites.create')}
+              </Button>
+            )}
+          </>
         }
       />
 

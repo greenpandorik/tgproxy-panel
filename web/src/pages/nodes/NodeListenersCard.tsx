@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 
 import type { Node } from '@/api/types';
@@ -86,7 +87,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
 
   return (
     <Panel>
-      <PanelHeader title={t('nodes.listeners_title')} />
+      <PanelHeader title={t('nodes.listeners_title')} actions={<HelpButton topic="nodes.listeners" />} />
       {canEdit ? (
         <form className="space-y-3 p-4" onSubmit={(e) => void handleSubmit(askToSave)(e)} noValidate>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">

@@ -9,6 +9,8 @@ import { usePanelHealth } from '@/api/health';
 import { useNodes } from '@/api/nodes';
 import { usePublicStatus } from '@/api/status';
 import { useAuth } from '@/auth/AuthProvider';
+import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
+import { Logo } from '@/components/brand/Logo';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -134,13 +136,10 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
       {/* The drawer (no rail toggle) has the Sheet's own close button floating in
           this corner, so the version chip keeps clear of it. */}
       <div className={cn('flex items-center gap-2 px-2 pb-3.5', collapsed && 'justify-center px-0', !showToggle && !collapsed && 'pr-7')}>
-        <span
-          className="size-3 shrink-0 rotate-45 rounded-[2px] border-2 border-foreground"
-          aria-hidden="true"
-        />
+        <Logo size={16} />
         {!collapsed && (
           <>
-            <span className="truncate font-semibold">{branding?.panel_name || 'WEB Proxy Panel'}</span>
+            <span className="truncate font-semibold">{branding?.panel_name || DEFAULT_PANEL_NAME}</span>
             {status?.version && (
               <span className="mono ml-auto shrink-0 rounded-sm border border-hairline px-1.5 text-[10px] text-dim">
                 v{status.version}

@@ -12,6 +12,7 @@ import { Panel, PanelHeader } from '@/components/common/Panel';
 import { StatCard } from '@/components/common/StatCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HelpButton } from '@/help';
 import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
 import { formatCompactAge, formatCompactDuration, formatBytes, formatNumber, splitBytes } from '@/lib/format';
 
@@ -237,7 +238,7 @@ export function DashboardPage() {
   if (!loading && nodes.length === 0) {
     return (
       <>
-        <PageHeader title={t('dashboard.title')} />
+        <PageHeader title={t('dashboard.title')} actions={<HelpButton topic="dashboard" />} />
         <EmptyState
           title={t('dashboard.empty_no_nodes')}
           action={
@@ -252,7 +253,11 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={t('dashboard.title')} description={<UpdatedAgo at={summaryQuery.dataUpdatedAt} />} />
+      <PageHeader
+        title={t('dashboard.title')}
+        description={<UpdatedAgo at={summaryQuery.dataUpdatedAt} />}
+        actions={<HelpButton topic="dashboard" />}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

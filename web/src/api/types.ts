@@ -492,8 +492,15 @@ export interface DashboardSummary {
   recent_jobs: ApplyJob[];
 }
 
-export interface SeriesPoint {
+/** Server load at one sample, as percentages of the node's CPU, memory and site disk. */
+export interface LoadPoint {
   t: string;
+  cpu_percent: number;
+  mem_used_percent: number;
+  disk_used_percent: number;
+}
+
+export interface SeriesPoint extends LoadPoint {
   sessions_live: number;
   streams_live: number;
   bytes_up: number;
@@ -509,8 +516,7 @@ export interface MonitoringNode {
   status: NodeStatus;
 }
 
-export interface MonitoringPoint {
-  t: string;
+export interface MonitoringPoint extends LoadPoint {
   sessions_live: number;
   streams_live: number;
   bytes_up_rate: number;

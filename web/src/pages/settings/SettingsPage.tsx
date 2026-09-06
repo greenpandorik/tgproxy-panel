@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { HelpButton, type HelpTopic } from '@/help';
 
 import { AdminsForm } from './AdminsForm';
 import { BackupsForm } from './BackupsForm';
@@ -10,15 +12,25 @@ import { BrandingProfilesList } from './BrandingProfilesList';
 import { PanelForm } from './PanelForm';
 import { SecurityForm } from './SecurityForm';
 
+/** The help topic of each tab: the header's `?` follows the selected tab. */
+const TAB_HELP: Record<string, HelpTopic> = {
+  branding: 'settings.branding',
+  security: 'settings.security',
+  admins: 'settings.admins',
+  panel: 'settings.panel',
+  backups: 'settings.backups',
+};
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const { isOwner } = useAuth();
+  const [tab, setTab] = useState('branding');
 
   return (
     <>
-      <PageHeader title={t('settings.title')} />
+      <PageHeader title={t('settings.title')} actions={<HelpButton topic={TAB_HELP[tab] ?? 'settings.branding'} />} />
 
-      <Tabs defaultValue="branding">
+      <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
         {/* Five labels do not fit at 390px; the row scrolls rather than clipping the last tab out of reach. */}
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="branding">{t('settings.tab_branding')}</TabsTrigger>

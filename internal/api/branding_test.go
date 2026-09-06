@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
+	"tgwebproxy/internal/branding"
 )
 
 func TestPublicBrandingAndUpdate(t *testing.T) {
@@ -20,7 +22,9 @@ func TestPublicBrandingAndUpdate(t *testing.T) {
 		ThemeDefault string `json:"theme_default"`
 	}
 	h.Anonymous().JSON(h.Anonymous().Get("/api/v1/branding"), &pub)
-	if pub.PanelName != "WEB Proxy Panel" || pub.ThemeDefault != "dark" {
+	// The defaults come from migration 00008 and must agree with the Go constants
+	// (a fresh install, the login page and the subscription page all read them).
+	if pub.PanelName != branding.DefaultPanelName || pub.PrimaryColor != branding.DefaultPrimaryColor || pub.ThemeDefault != "dark" {
 		t.Fatalf("defaults %+v", pub)
 	}
 	var list struct {

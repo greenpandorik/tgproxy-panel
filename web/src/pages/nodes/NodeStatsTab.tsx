@@ -1,12 +1,78 @@
 import { RefreshCw } from 'lucide-react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useBranding } from '@/api/branding';
+import { MONITORING_RANGES, useNodeSeries } from '@/api/monitoring';
 import { useNodeStats } from '@/api/nodes';
-import { Panel, PanelHeader } from '@/components/common/Panel';
+import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
+import { seriesPalette } from '@/lib/chart';
 import { cn } from '@/lib/utils';
+
+import type { MonitoringRange } from '@/api/monitoring';
+
+// recharts stays out of the shell bundle - only the chart components import it.
+const LoadChart = lazy(() => import('@/pages/monitoring/LoadChart').then((m) => ({ default: m.LoadChart })));
+
+const DEFAULT_BRAND_PRIMARY = '#3b82f6';
+const DEFAULT_BRAND_ACCENT = '#22c55e';
+
+/**
+ * The node's server load over time - CPU, memory and disk - with the same
+ * range switch the monitoring page uses, so a reader moving between the two
+ * finds the same control in the same corner. The series is the stats
+ * worker's snapshot history, so it reads while the node is offline too: the
+ * question "what was it doing before it went away" is exactly the one an
+ * offline node raises.
+ */
+function NodeLoadPanel({ nodeId }: { nodeId: string }) {
+  const { t } = useTranslation();
+  const [range, setRange] = useState<MonitoringRange>('24h');
+  const seriesQuery = useNodeSeries(nodeId, range);
+  const { data: branding } = useBranding();
+
+  const colors = useMemo((): [string, string, string] => {
+    const [first, second, third] = seriesPalette(
+      branding?.primary_color || DEFAULT_BRAND_PRIMARY,
+      branding?.accent_color || DEFAULT_BRAND_ACCENT,
+      3,
+    );
+    return [first, second, third];
+  }, [branding?.primary_color, branding?.accent_color]);
+
+  const points = seriesQuery.data?.points ?? [];
+
+  return (
+    <Panel>
+      <PanelHeader
+        title={t('nodes.load_title')}
+        actions={
+          <SegmentedControl
+            label={t('monitoring.range_label')}
+            value={range}
+            onChange={setRange}
+            options={MONITORING_RANGES.map((r) => ({ value: r, label: t(`monitoring.range_${r}`) }))}
+          />
+        }
+      />
+      <PanelBody>
+        {seriesQuery.isLoading ? (
+          <Skeleton className="h-[152px] w-full" />
+        ) : points.length === 0 ? (
+          <p className="py-8 text-center text-sm text-mute">{t('nodes.load_empty')}</p>
+        ) : (
+          <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
+            <LoadChart points={points} colors={colors} />
+          </Suspense>
+        )}
+      </PanelBody>
+    </Panel>
+  );
+}
 
 /**
  * MTProxy's own counters, printed as it reports them: raw key on the left,
@@ -15,7 +81,7 @@ import { cn } from '@/lib/utils';
  * names that appear in MTProxy's stats output and in every issue report about
  * it, and renaming them here would only make the two harder to match up.
  */
-export function NodeStatsTab({ nodeId, online }: { nodeId: string; online: boolean }) {
+function NodeCountersPanel({ nodeId, online }: { nodeId: string; online: boolean }) {
   const { t } = useTranslation();
   const statsQuery = useNodeStats(nodeId, online);
 
@@ -66,5 +132,15 @@ export function NodeStatsTab({ nodeId, online }: { nodeId: string; online: boole
         </dl>
       )}
     </Panel>
+  );
+}
+
+/** The node's statistics tab: its load history first, then the relay's own counters. */
+export function NodeStatsTab({ nodeId, online }: { nodeId: string; online: boolean }) {
+  return (
+    <div className="space-y-4">
+      <NodeLoadPanel nodeId={nodeId} />
+      <NodeCountersPanel nodeId={nodeId} online={online} />
+    </div>
   );
 }

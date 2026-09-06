@@ -7,6 +7,7 @@ import { ClientSupportNotice } from '@/components/common/ClientSupportNotice';
 import { CopyButton } from '@/components/common/CopyButton';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { HelpButton } from '@/help';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -169,7 +170,10 @@ export function KeyLinkDialog({ open, onOpenChange, keyId }: KeyLinkDialogProps)
     <Dialog open={open && !!keyId} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{key ? t('keys.link_title', { label: key.label }) : t('keys.link_title_loading')}</DialogTitle>
+          <div className="flex items-center gap-1.5 pr-6">
+            <DialogTitle>{key ? t('keys.link_title', { label: key.label }) : t('keys.link_title_loading')}</DialogTitle>
+            <HelpButton topic="keys.link" className="-my-1.5" />
+          </div>
         </DialogHeader>
 
         {keyQuery.isLoading ? (

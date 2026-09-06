@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { formatBytes, formatDateTime } from '@/lib/format';
 
@@ -119,9 +120,12 @@ export function BackupsForm() {
           title={t('settings.backups_title')}
           meta={backups.length > 0 ? String(backups.length) : undefined}
           actions={
-            <Button type="button" size="sm" onClick={() => void onCreate()} disabled={createBackup.isPending}>
-              {createBackup.isPending ? t('settings.backups_creating') : t('settings.backups_create')}
-            </Button>
+            <>
+              <HelpButton topic="settings.backups" />
+              <Button type="button" size="sm" onClick={() => void onCreate()} disabled={createBackup.isPending}>
+                {createBackup.isPending ? t('settings.backups_creating') : t('settings.backups_create')}
+              </Button>
+            </>
           }
         />
 
@@ -217,7 +221,7 @@ export function BackupsForm() {
       </Panel>
 
       <Panel>
-        <PanelHeader title={t('settings.backups_schedule_title')} />
+        <PanelHeader title={t('settings.backups_schedule_title')} actions={<HelpButton topic="settings.backups" />} />
         <PanelBody>
           <form className="max-w-sm space-y-4" onSubmit={(e) => void handleSubmit(onSaveSchedule)(e)} noValidate>
             <p className="text-xs text-mute">{t('settings.backups_schedule_hint')}</p>

@@ -8,12 +8,14 @@ import { chartTextClass, formatTimeTick, gridProps, xAxisProps, yAxisProps } fro
 import { ChartLegend } from '@/components/common/ChartLegend';
 import { formatBytes, formatNumber } from '@/lib/format';
 
+import { LoadChart } from './LoadChart';
+
 import type { MonitoringPoint, NodeEngine } from '@/api/types';
 
 export interface NodeSeriesChartProps {
   points: MonitoringPoint[];
-  /** Two colours from the page's palette: first series, second series. */
-  colors: [string, string];
+  /** Three colours from the page's palette: first series, second series, and the load chart's third line. */
+  colors: [string, string, string];
   /** Which proxy produced these readings - it decides how many series they are. */
   engine?: NodeEngine;
 }
@@ -21,11 +23,11 @@ export interface NodeSeriesChartProps {
 const CHART_HEIGHT = 140;
 
 /**
- * One node's two readings, stacked and sharing an x-axis: how many sessions
- * and streams are open, and how fast bytes are moving. They are two charts
- * and not one because they are two units - a session count and a byte rate on
- * one pair of axes would only invite the reader to compare two numbers that
- * cannot be compared.
+ * One node's three readings, stacked and sharing an x-axis: how many sessions
+ * and streams are open, how fast bytes are moving, and how loaded the box
+ * underneath is. They are three charts and not one because they are three
+ * units - a session count, a byte rate and a percentage on one pair of axes
+ * would only invite the reader to compare numbers that cannot be compared.
  */
 export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSeriesChartProps) {
   const { t, i18n } = useTranslation();
@@ -139,6 +141,8 @@ export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSerie
         </div>
         <ChartLegend items={rateLegend} className="mt-1.5" />
       </div>
+
+      <LoadChart points={points} colors={colors} height={CHART_HEIGHT} />
     </div>
   );
 }

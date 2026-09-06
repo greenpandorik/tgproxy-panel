@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { HelpButton } from '@/help';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useDraft } from '@/lib/drafts';
+
+const EMPTY_DRAFT = { expires_at: '' };
 
 interface BulkExtendDialogProps {
   open: boolean;
@@ -19,6 +24,14 @@ export function BulkExtendDialog({ open, onOpenChange, count, onConfirm }: BulkE
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const draft = useDraft('keys-bulk-extend', { expires_at: value }, { initial: EMPTY_DRAFT, open });
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    setValue(draft.draft.value.expires_at);
+    setError(false);
+    draft.dismiss();
+  };
 
   const handleConfirm = async () => {
     if (!value) {
@@ -33,6 +46,7 @@ export function BulkExtendDialog({ open, onOpenChange, count, onConfirm }: BulkE
     setBusy(true);
     try {
       await onConfirm(d.toISOString());
+      draft.clear();
       setValue('');
       onOpenChange(false);
     } finally {
@@ -53,9 +67,14 @@ export function BulkExtendDialog({ open, onOpenChange, count, onConfirm }: BulkE
     >
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{t('keys.bulk_extend_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('keys.bulk_extend_title')}</DialogTitle>
+            <HelpButton topic="keys.extend" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('keys.bulk_extend_description', { count })}</DialogDescription>
         </DialogHeader>
+
+        {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         <div className="space-y-1.5">
           <Label htmlFor="bulk-extend-date">{t('keys.field_expires_at')}</Label>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
 
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { HelpProvider } from '@/help';
 
 import { CommandPalette } from './CommandPalette';
 import { Sidebar } from './Sidebar';
@@ -30,33 +31,35 @@ export function AppShell() {
   }, [collapsed]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <aside
-        className={
-          'hidden shrink-0 border-r border-hairline transition-[width] duration-150 lg:block ' +
-          (collapsed ? 'w-[60px]' : 'w-56')
-        }
-      >
-        <Sidebar collapsed={collapsed} showToggle onToggle={() => setCollapsed((c) => !c)} />
-      </aside>
+    <HelpProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <aside
+          className={
+            'hidden shrink-0 border-r border-hairline transition-[width] duration-150 lg:block ' +
+            (collapsed ? 'w-[60px]' : 'w-56')
+          }
+        >
+          <Sidebar collapsed={collapsed} showToggle onToggle={() => setCollapsed((c) => !c)} />
+        </aside>
 
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-64 p-0">
-          <SheetTitle className="sr-only">{t('shell.menu')}</SheetTitle>
-          <Sidebar onNavigate={() => setMobileOpen(false)} />
-        </SheetContent>
-      </Sheet>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="left" className="w-64 p-0">
+            <SheetTitle className="sr-only">{t('shell.menu')}</SheetTitle>
+            <Sidebar onNavigate={() => setMobileOpen(false)} />
+          </SheetContent>
+        </Sheet>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenMenu={() => setMobileOpen(true)} onOpenCommand={() => setCommandOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-5">
-          <div className="flex w-full flex-col gap-4">
-            <Outlet />
-          </div>
-        </main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar onOpenMenu={() => setMobileOpen(true)} onOpenCommand={() => setCommandOpen(true)} />
+          <main className="flex-1 overflow-y-auto p-4 sm:p-5">
+            <div className="flex w-full flex-col gap-4">
+              <Outlet />
+            </div>
+          </main>
+        </div>
+
+        <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
       </div>
-
-      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
-    </div>
+    </HelpProvider>
   );
 }

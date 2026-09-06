@@ -37,6 +37,12 @@ type Params struct {
 	WebUser, TLSDomain, TelemtVersion, TelemtSHA256 string
 	ClassicPort                                     int
 
+	// PublicIP is the address the operator set on the node, if any. The script prefers it
+	// over its own detection (ipify, then the outbound route), which picks the wrong side of
+	// a NAT; empty means detect. It is what makes "set public_ip in the panel and re-run"
+	// an instruction the script can actually follow.
+	PublicIP string
+
 	// NoSysctlTuning drops the /etc/sysctl.d/90-tgwp.conf step (BBR, fq, larger backlogs,
 	// shorter keepalives - adopted from MTPROTO_FIX_By_MEKO). The zero value keeps the tuning
 	// on, so every caller gets it without opting in; the field exists so it can be switched

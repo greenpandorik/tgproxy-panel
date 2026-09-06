@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { formatCompactAge } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -23,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { CreateNodeDialog } from './CreateNodeDialog';
 import { EngineTag } from './EngineTag';
 import { InstallCommandDialog } from './InstallCommandDialog';
-import { capacityText, DASH, engineVersion, nodeStatus, shortVersion } from './nodeDisplay';
+import { capacityText, DASH, engineVersion, LOAD_TONE_CLASS, loadTone, nodeLoad, nodeStatus, shortVersion } from './nodeDisplay';
 
 import type { ReactNode } from 'react';
 import type { CreateNodeResult, Node } from '@/api/types';
@@ -58,6 +59,33 @@ function CapacityBar({ count, max }: { count: number; max: number }) {
   );
 }
 
+/**
+ * Server load from the last heartbeat: the percentage, and a 3px rule under
+ * it filled to match, the same shape as CapacityBar so the two columns read
+ * as one family. The rule turns amber at 80% and red at 95% - the two points
+ * at which an operator would start looking, and then start acting. No figure
+ * (never reported, or offline) prints as a dash rather than a hollow rule.
+ */
+function LoadBar({ percent }: { percent: number | undefined }) {
+  if (percent === undefined) return <span className="mono text-xs text-dim">{DASH}</span>;
+  const tone = loadTone(percent);
+  const classes = LOAD_TONE_CLASS[tone];
+  return (
+    <div className="w-14" data-testid="load-bar" data-tone={tone}>
+      <span className={cn('mono block text-xs', classes.text)}>{Math.round(percent)}%</span>
+      <div className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-hairline">
+        <div className={cn('h-full', classes.bar)} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/** The same figure as text only, for the narrow layout where a rule per field would be noise. */
+function LoadText({ percent }: { percent: number | undefined }) {
+  if (percent === undefined) return <span className="mono text-dim">{DASH}</span>;
+  return <span className={cn('mono', LOAD_TONE_CLASS[loadTone(percent)].text)}>{Math.round(percent)}%</span>;
+}
+
 /** The fields the machine reports about one node, formatted and toned once for both layouts. */
 function useNodeRow(node: Node) {
   const { t, i18n } = useTranslation();
@@ -68,6 +96,7 @@ function useNodeRow(node: Node) {
     relay: shortVersion(version),
     relayTone: version ? 'text-mute' : 'text-dim',
     heartbeat: age ? t('common.ago', { value: age }) : t('nodes.last_seen_never'),
+    load: nodeLoad(node),
   };
 }
 
@@ -90,9 +119,7 @@ function EngineCell({ node }: { node: Node }) {
 function DirtyTag({ dirty }: { dirty: boolean }) {
   const { t } = useTranslation();
   if (!dirty) return <span className="text-dim">{DASH}</span>;
-  return (
-    <span className="mono rounded-sm border border-warn/35 px-1.5 py-0.5 text-xs text-warn">{t('nodes.dirty_tag')}</span>
-  );
+  return <span className="mono rounded-sm border border-warn/35 px-1.5 py-0.5 text-xs text-warn">{t('nodes.dirty_tag')}</span>;
 }
 
 /** Hostname with a copy affordance that stays out of the way until the row is pointed at. */
@@ -189,6 +216,12 @@ function NodeCard({ node, actions }: { node: Node; actions: ReactNode }) {
         <Field label={t('nodes.column_profiles')}>
           <CapacityBar count={node.profile_count} max={node.max_profiles} />
         </Field>
+        <Field label={t('nodes.load_cpu')}>
+          <LoadText percent={row.load?.cpu} />
+        </Field>
+        <Field label={t('nodes.load_ram')}>
+          <LoadText percent={row.load?.mem} />
+        </Field>
         <Field label={t('nodes.column_heartbeat')}>
           <span className={cn('mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</span>
         </Field>
@@ -220,6 +253,12 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
       <TableCell className="py-1.5">
         <CapacityBar count={node.profile_count} max={node.max_profiles} />
       </TableCell>
+      <TableCell className="py-1.5">
+        <LoadBar percent={row.load?.cpu} />
+      </TableCell>
+      <TableCell className="py-1.5">
+        <LoadBar percent={row.load?.mem} />
+      </TableCell>
       <TableCell className={cn('mono text-right text-xs', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
       <TableCell className="text-right text-xs">
         <DirtyTag dirty={node.dirty} />
@@ -233,8 +272,8 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
  * The fleet.
  *
  * Wide: one dense table where every machine value - host, relay build, profile
- * use, heartbeat - is mono, so a column can be scanned for the row that does
- * not match its neighbours. A node that has stopped reporting says so in red
+ * use, CPU and memory load, heartbeat - is mono, so a column can be scanned for
+ * the row that does not match its neighbours. A node that has stopped reporting says so in red
  * on its heartbeat, the field that actually went wrong, and nowhere else.
  *
  * Narrow: the same fields stacked per node, each carrying its own label,
@@ -277,17 +316,20 @@ export function NodesPage() {
         title={t('nodes.title')}
         description={nodes.length > 0 ? t('nodes.header_online', { online, total: nodes.length }) : undefined}
         actions={
-          isWriter && (
-            <Button type="button" onClick={() => setCreateOpen(true)}>
-              <Plus />
-              {t('nodes.add')}
-            </Button>
-          )
+          <>
+            <HelpButton topic="nodes.list" />
+            {isWriter && (
+              <Button type="button" onClick={() => setCreateOpen(true)}>
+                <Plus />
+                {t('nodes.add')}
+              </Button>
+            )}
+          </>
         }
       />
 
       {isLoading ? (
-        <DataTableSkeleton columns={isWriter ? 7 : 6} rows={4} />
+        <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
       ) : nodes.length === 0 ? (
         <EmptyState
           title={t('nodes.empty_title')}
@@ -311,6 +353,8 @@ export function NodesPage() {
                   <TableHead>{t('nodes.column_hostname')}</TableHead>
                   <TableHead>{t('nodes.column_relay')}</TableHead>
                   <TableHead>{t('nodes.column_profiles')}</TableHead>
+                  <TableHead>{t('nodes.load_cpu')}</TableHead>
+                  <TableHead>{t('nodes.load_ram')}</TableHead>
                   <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
                   <TableHead className="text-right">{t('nodes.column_changes')}</TableHead>
                   {isWriter && <TableHead className="w-0" />}

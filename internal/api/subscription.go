@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/crypto"
 	"tgwebproxy/internal/keys"
 	"tgwebproxy/internal/qrlink"
@@ -265,7 +266,7 @@ func (s *Server) subscriptionPage(r *http.Request, key db.AccessKey) (subscripti
 	}
 	b, err := s.store.Q.GetActiveBranding(r.Context())
 	page := subscription.Page{
-		PanelName: "TGWebProxy", PrimaryColor: "#3b82f6", AccentColor: "#22d3ee", Theme: "dark",
+		PanelName: branding.DefaultPanelName, PrimaryColor: branding.DefaultPrimaryColor, AccentColor: branding.DefaultAccentColor, Theme: "dark",
 		Locations: locations, ClientSupport: clientSupport,
 	}
 	if err == nil {

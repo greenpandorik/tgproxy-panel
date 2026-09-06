@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"tgwebproxy/internal/backup"
+	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/store/db"
 )
 
@@ -254,7 +255,7 @@ func (s *Server) handleTelegramTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	panelName := "panel"
+	panelName := branding.DefaultPanelName
 	if b, err := s.store.Q.GetActiveBranding(ctx); err == nil && b.PanelName != "" {
 		panelName = b.PanelName
 	}

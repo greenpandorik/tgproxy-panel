@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { formatBytes, formatDate, formatDateTime, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -370,12 +371,15 @@ export function KeysPage() {
         title={t('keys.title')}
         description={total > 0 ? t('keys.header_total', { count: total }) : undefined}
         actions={
-          isWriter && (
-            <Button type="button" onClick={() => setCreateOpen(true)}>
-              <Plus />
-              {t('keys.create')}
-            </Button>
-          )
+          <>
+            <HelpButton topic="keys.list" />
+            {isWriter && (
+              <Button type="button" onClick={() => setCreateOpen(true)}>
+                <Plus />
+                {t('keys.create')}
+              </Button>
+            )}
+          </>
         }
       />
 

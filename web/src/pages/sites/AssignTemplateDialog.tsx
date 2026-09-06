@@ -3,12 +3,17 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { nodeKeys, useNodes } from '@/api/nodes';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { HelpButton } from '@/help';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/toast';
 import { api, ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
+
+const EMPTY_DRAFT = { node_id: '' };
 
 interface AssignTemplateDialogProps {
   open: boolean;
@@ -23,6 +28,13 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
   const qc = useQueryClient();
   const nodesQuery = useNodes();
   const [nodeId, setNodeId] = useState('');
+  const draft = useDraft(`site-assign-${templateId}`, { node_id: nodeId }, { initial: EMPTY_DRAFT, open });
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    setNodeId(draft.draft.value.node_id);
+    draft.dismiss();
+  };
 
   const assign = useMutation({
     mutationFn: (id: string) => api.post(`/api/v1/nodes/${id}/site`, { template_id: templateId }),
@@ -40,6 +52,7 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
     try {
       await assign.mutateAsync(nodeId);
       toast.add({ description: t('sites.assign_success', { node: selectedNode.name }), type: 'success' });
+      draft.clear();
       setNodeId('');
       onOpenChange(false);
     } catch (err) {
@@ -48,12 +61,25 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // The pick is kept as a draft, not as live state, so a reopened dialog
+        // starts clean and offers it back.
+        if (!next) setNodeId('');
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('sites.assign_dialog_title', { name: templateName })}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('sites.assign_dialog_title', { name: templateName })}</DialogTitle>
+            <HelpButton topic="sites.assign" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('sites.assign_dialog_description')}</DialogDescription>
         </DialogHeader>
+
+        {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         {nodes.length === 0 ? (
           <p className="text-sm text-mute">{t('sites.assign_no_nodes')}</p>

@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/logo-dark.png">
+  <img src="docs/brand/logo-light.png" alt="TGProxy Panel" height="32">
+</picture>
+
 # TGProxy panel
 
 A control panel for Telegram proxy nodes. It creates and revokes keys, pushes configuration to nodes over gRPC, serves a decoy site on each node and watches node health. A node runs telemt (the default engine) or tproxy-server plus MTProxy; a small agent on the node takes instructions from the panel. One panel manages many nodes.
@@ -27,6 +32,8 @@ Setup guides with screenshots: [English](docs/setup.en.md), [Русский](doc
 - Access control: `owner`, `admin` and `viewer` roles, TOTP second factor with recovery codes.
 - Backups: on-demand and nightly `pg_dump`, restore from the CLI; master-key rotation that re-encrypts every secret.
 - Topbar chips: the panel version with an update highlight read from GitHub releases, the repository star count, and nodes online.
+- Forms keep a draft for 24 hours after an accidental close and offer to continue it; every page and dialog has a `?` that opens a help panel describing each field with examples (`?` key opens it too).
+- Node load: CPU and RAM in the nodes list and on the dashboard, with a CPU/RAM/disk history chart on the node page and in Monitoring.
 
 ## Quick start
 
@@ -53,7 +60,7 @@ sudo /opt/tgproxy-panel/install.sh --uninstall --purge   # remove containers, vo
 cd /opt/tgproxy-panel && docker compose logs -f panel    # logs
 ```
 
-`install.sh --help` lists every option; each one can also be given as an environment variable `TGWP_<NAME>` (`TGWP_DOMAIN`, `TGWP_YES`, ...). `--dir` changes the install directory, `--image <ref>` replaces the `ghcr.io/greenpandorik/tgproxy-panel:<version>` reference (for mirrors, and for tests: `make test-install` runs the script against a locally built image). The script does not touch the firewall; open 80/443 (or 8080 in local mode) yourself. The published image is built for `linux/amd64` and `linux/arm64`.
+Before changing anything the script runs a pre-flight: the domain must resolve to this host's public IP, ports 80 and 443 (8080 in local mode) must be free, and the install directory must be usable; a failed check offers re-run / continue / quit on a terminal and stops the script otherwise (`--skip-preflight` skips it). `install.sh --help` lists every option; each one can also be given as an environment variable `TGWP_<NAME>` (`TGWP_DOMAIN`, `TGWP_YES`, ...). `--dir` changes the install directory, `--image <ref>` replaces the `ghcr.io/greenpandorik/tgproxy-panel:<version>` reference (for mirrors, and for tests: `make test-install` runs the script against a locally built image). The script does not touch the firewall; open 80/443 (or 8080 in local mode) yourself. The published image is built for `linux/amd64` and `linux/arm64`.
 
 ### Manual setup
 
@@ -78,7 +85,7 @@ docker compose -f docker-compose.yml -f docker-compose.override.example.yml up -
 
 `PANEL_DOMAIN` (defaults to `localhost`) controls what Caddy requests a certificate for; for a real deployment point a DNS record at the host and set `PANEL_DOMAIN=panel.example.com` and `PANEL_PUBLIC_URL=https://panel.example.com` in `.env`. On `localhost`, Caddy issues an internal (self-signed) certificate: either trust its local CA (`docker compose exec caddy caddy trust`, or copy `/data/caddy/pki/authorities/local/root.crt` out of the `caddydata` volume into your OS/browser trust store) or curl it with `--insecure` / `-k`.
 
-To run a published image instead of building from the checkout, use `deploy/docker-compose.release.yml` (the file the installer deploys: `panel` comes from `ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}`, Caddy sits under the `caddy` profile, `deploy/docker-compose.local.yml` publishes :8080 for local mode), or replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.0.1` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
+To run a published image instead of building from the checkout, use `deploy/docker-compose.release.yml` (the file the installer deploys: `panel` comes from `ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}`, Caddy sits under the `caddy` profile, `deploy/docker-compose.local.yml` publishes :8080 for local mode), or replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.1.0` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
 
 ### First admin
 
@@ -98,7 +105,7 @@ In the panel UI (or via `POST /api/v1/nodes`), create a node with a hostname and
 curl -fsSL https://panel.example.com/api/v1/install/<token>.sh | sudo bash
 ```
 
-Paste that into a root shell on a fresh Ubuntu/Debian x86_64 host with a public IPv4 address. The node's A record must already resolve to the host: on a telemt node the installer starts Caddy first and waits for `https://<node domain>/` to answer with a valid certificate before it goes on. What it installs depends on the node's engine (see below). The install token expires after 24 hours; regenerate one from the node page if it lapses before you run it.
+Paste that into a root shell on a fresh Ubuntu/Debian x86_64 host with a public IPv4 address. The node's A record must already resolve to the host: before installing anything the script runs pre-flight checks (x86_64, systemd, the panel reachable, the public IP, the A record, ports 80/443 free) and, when DNS or a port is wrong, offers `[r] re-run the checks  [c] continue anyway  [q] quit` with nothing installed yet (`curl … | sudo TGWP_SKIP_PREFLIGHT=1 bash` goes ahead regardless). The node is registered with the panel only after Caddy holds a certificate and, on a telemt node, telemt reports ready, so an install that fails before the "Registration" step can simply be run again with the same command. What it installs depends on the node's engine (see below). The install token expires after 24 hours; regenerate one from the node page if it lapses before you run it.
 
 ## Node engines
 
@@ -398,7 +405,7 @@ Both flags exist for that bench only. Real nodes run with the synlimit rules and
 
 ## Status
 
-Version 1.0.1. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
+Version 1.1.0. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
 
 ## License
 

@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -73,7 +74,10 @@ function CreateProfileDialog({
     >
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{t('settings.branding_create_dialog_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('settings.branding_create_dialog_title')}</DialogTitle>
+            <HelpButton topic="settings.branding" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('settings.branding_create_dialog_description')}</DialogDescription>
         </DialogHeader>
 
@@ -247,7 +251,7 @@ export function BrandingProfilesList() {
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[264px_1fr]">
       <Panel>
-        <PanelHeader title={t('settings.branding_profiles_title')} meta={String(items.length)} />
+        <PanelHeader title={t('settings.branding_profiles_title')} meta={String(items.length)} actions={<HelpButton topic="settings.branding" />} />
         <ul className="divide-y divide-hairline" aria-label={t('settings.branding_profiles_title')}>
           {items.map((p) => (
             <ProfileRow

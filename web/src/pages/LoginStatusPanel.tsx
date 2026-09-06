@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useBranding } from '@/api/branding';
 import { usePublicStatus } from '@/api/status';
 import type { PublicStatus } from '@/api/status';
+import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
+import { Logo } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 
 /*
@@ -127,21 +129,21 @@ export function LoginStatusLine({ className }: { className?: string }) {
 }
 
 /**
- * The operator's mark: their uploaded logo, or the diamond and the panel name.
+ * The operator's mark: their uploaded logo, or the brand mark and the panel name.
  * Top-left of the panel on a wide screen; above the heading on a phone, where
  * there is no panel and the form would otherwise be unbranded.
  */
 export function LoginWordmark({ className }: { className?: string }) {
   const { data: branding } = useBranding();
-  const name = branding?.panel_name || 'WEB Proxy Panel';
+  const name = branding?.panel_name || DEFAULT_PANEL_NAME;
 
   return (
-    <div className={cn('flex items-center gap-2.5 font-semibold tracking-[-0.01em]', className)}>
+    <div className={cn('flex items-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em]', className)}>
       {branding?.logo_url ? (
         <img src={branding.logo_url} alt={name} className="max-h-7 max-w-[180px] object-contain" />
       ) : (
         <>
-          <span aria-hidden="true" className="size-3.5 shrink-0 rotate-45 rounded-[3px] border-2 border-foreground" />
+          <Logo size={24} />
           <span className="truncate">{name}</span>
         </>
       )}

@@ -5,15 +5,15 @@
 @custom-variant dark (&:is([data-theme="dark"] *));
 
 /*
- * TGWP Panel design tokens - visual language v2
+ * TGProxy Panel design tokens - visual language v2
  * (docs/superpowers/specs/2026-09-05-ui-redesign.md).
  *
  * The palette is deliberately almost colourless: three near-black surfaces,
  * two hairline strengths, three text weights. Colour is spent only on status
  * (ok/warn/err/info) and on the operator's own brand hue, which is injected
  * at runtime onto <html> by ThemeProvider from GET /api/v1/branding and marks
- * exactly four things: the active nav item, the focus ring, links and the
- * first chart series. The primary button is *not* branded - it is --fg on
+ * exactly five things: the active nav item, the focus ring, links, the first
+ * chart series and the core of the logo mark. The primary button is *not* branded - it is --fg on
  * --bg, so the single strongest contrast on the page always means "the main
  * action here", whatever hue the operator picked.
  *
@@ -41,9 +41,14 @@
   --status-err: #ef4444;
   --status-info: #3b82f6;
 
-  /* Brand, overridden at runtime from /api/v1/branding (DB defaults here). */
-  --brand-primary: #3b82f6;
-  --brand-accent: #22c55e;
+  /*
+   * Brand, overridden at runtime from /api/v1/branding. The fallbacks are the
+   * TGProxy Panel defaults (docs/design/brand.md): magenta 5.0:1 on --bg,
+   * teal 6.2:1 - both far in hue from every status colour above, so a brand
+   * mark is never mistaken for a state.
+   */
+  --brand-primary: #e23c92;
+  --brand-accent: #12a198;
 
   /* Panel-wide status aliases used by StatusBadge and the tables. */
   --status-online: var(--status-ok);
@@ -84,13 +89,15 @@
    * Chart series. Series 1 and 2 are the operator's brand pair (the spec
    * makes brand-primary the first series and brand-accent the second); 3-8
    * continue with the dataviz skill's dark-column categorical hues, in a
-   * fixed order that is never reassigned by rank.
+   * fixed order that is never reassigned by rank. Series 5 is a blue rather
+   * than the skill's pink: with a magenta default primary, pink would be the
+   * one hue a chart could not tell from series 1.
    */
   --series-1: var(--brand-primary);
   --series-2: var(--brand-accent);
   --series-3: #d95926;
   --series-4: #c98500;
-  --series-5: #d55181;
+  --series-5: #4f8ef7;
   --series-6: #9085e9;
   --series-7: #199e70;
   --series-8: #e66767;
@@ -124,7 +131,7 @@
 
   --series-3: #c04a1c;
   --series-4: #a86e00;
-  --series-5: #c0396c;
+  --series-5: #2f6fd6;
   --series-6: #6b5fd6;
   --series-7: #12855e;
   --series-8: #d23a3a;

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +63,7 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
         <PanelHeader
           title={t('nodes.site_current_template')}
           meta={site?.updated_at ? formatDateTime(site.updated_at, i18n.language) : undefined}
+          actions={<HelpButton topic="sites.assign" />}
         />
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">

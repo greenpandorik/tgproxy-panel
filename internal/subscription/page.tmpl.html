@@ -45,10 +45,9 @@
     margin-bottom: 6px;
   }
   .mark {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--primary);
+    width: 20px;
+    height: 20px;
+    color: var(--text);
     flex: none;
   }
   h1 {
@@ -206,7 +205,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <span class="mark"></span>
+    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.75L22.25 12 12 22.25 1.75 12Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><rect x="9" y="9" width="6" height="6" rx="1" fill="var(--primary)"/></svg>
     <h1>{{.PanelName}}</h1>
   </header>
   <p class="lede">Добавьте сервер в Telegram: отсканируйте QR-код или скопируйте ссылку и откройте её на устройстве с Telegram.</p>

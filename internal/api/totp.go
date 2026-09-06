@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/crypto"
 	"tgwebproxy/internal/qrlink"
 	"tgwebproxy/internal/store/db"
@@ -52,7 +53,7 @@ func (s *Server) totpIssuer(ctx context.Context) string {
 	if u, err := url.Parse(s.cfg.PublicURL); err == nil && u.Host != "" {
 		return u.Host
 	}
-	return "TGWebProxy"
+	return branding.DefaultPanelName
 }
 
 type totpSetupResp struct {

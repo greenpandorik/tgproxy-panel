@@ -2,6 +2,7 @@ package worker_test
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"sync"
@@ -320,5 +321,41 @@ func TestStatsPrunesOldKeyStats(t *testing.T) {
 	}
 	if rows, _ := f.st.Q.LatestKeyStatsSnapshots(ctx, k.ID); len(rows) != 0 {
 		t.Fatalf("retention did not prune: %+v", rows)
+	}
+}
+
+// TestStatsSnapshotCarriesNodeLoad: the snapshot copies the CPU / memory / disk percentages
+// out of the node's last heartbeat, so the load has a history and not just a current value.
+func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	mock.SetMetrics(f.node.ID, "tproxy_sessions_live 1\n")
+	_ = f.st.Q.SetNodeOnline(ctx, db.SetNodeOnlineParams{ID: f.node.ID})
+	raw, _ := json.Marshal(nodedriver.HealthReport{RelayActive: true, CPUPercent: 42.5, MemUsedPercent: 61, DiskUsedPercent: 12.25})
+	if err := f.st.Q.SetNodeHeartbeat(ctx, db.SetNodeHeartbeatParams{ID: f.node.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	s := worker.NewStats(f.st, mock, 90*time.Second, slog.New(slog.DiscardHandler))
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	if len(snaps) != 1 {
+		t.Fatalf("snapshots %+v", snaps)
+	}
+	if got := snaps[0]; got.CpuPercent != 42.5 || got.MemUsedPercent != 61 || got.DiskUsedPercent != 12.25 {
+		t.Fatalf("load not carried into the snapshot: cpu=%v mem=%v disk=%v", got.CpuPercent, got.MemUsedPercent, got.DiskUsedPercent)
+	}
+
+	// A node that has never reported health (empty last_health) still snapshots, with zero load.
+	_, _ = f.st.Pool.Exec(ctx, `UPDATE nodes SET last_health = '{}'::jsonb WHERE id = $1`, f.node.ID)
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	snaps, _ = f.st.Q.LatestSnapshots(ctx)
+	if len(snaps) != 1 || snaps[0].CpuPercent != 0 {
+		t.Fatalf("snapshot without health: %+v", snaps)
 	}
 }

@@ -296,9 +296,11 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 		if raw == nil {
 			raw = []byte("{}")
 		}
+		load := nodeLoad(n.LastHealth)
 		if err := s.st.Q.InsertSnapshot(ctx, db.InsertSnapshotParams{
 			NodeID: n.ID, SessionsLive: int32(m.SessionsLive), StreamsLive: int32(m.StreamsLive),
 			BytesUp: m.BytesUp, BytesDown: m.BytesDown, SessionsCreated: m.SessionsCreated, LimitHits: m.LimitHits,
+			CpuPercent: load.CpuPercent, MemUsedPercent: load.MemUsedPercent, DiskUsedPercent: load.DiskUsedPercent,
 			// relay_raw is deliberately left empty: nothing reads it, and storing the full
 			// Prometheus text every 60s for 30 days is ~200 MB per node of write-only data.
 			// The column is kept (reserved) — the parsed columns above carry everything the
@@ -320,6 +322,21 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	}
 	s.sweepKeyStats(ctx)
 	return s.st.Q.DeleteOldSnapshots(ctx, time.Now().Add(-retention))
+}
+
+// nodeLoad reads the server-load percentages out of a node's last heartbeat. The heartbeat
+// lands the whole health report in nodes.last_health, so at snapshot time the newest CPU /
+// memory / disk figures are already on the row the worker is iterating - no driver round
+// trip, and a node whose heartbeat has not carried a report yet (or an unreadable one) simply
+// records zero load rather than failing the snapshot.
+func nodeLoad(lastHealth []byte) db.InsertSnapshotParams {
+	var h nodedriver.HealthReport
+	if len(lastHealth) == 0 || json.Unmarshal(lastHealth, &h) != nil {
+		return db.InsertSnapshotParams{}
+	}
+	return db.InsertSnapshotParams{
+		CpuPercent: float32(h.CPUPercent), MemUsedPercent: float32(h.MemUsedPercent), DiskUsedPercent: float32(h.DiskUsedPercent),
+	}
 }
 
 // keyStatsSweepEvery is how often the key_stats_snapshots retention sweep runs, and

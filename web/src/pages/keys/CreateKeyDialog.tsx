@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { useBatchKeys, useCreateKey } from '@/api/keys';
 import { useNodes } from '@/api/nodes';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
 import { EMPTY_TELEMT_LIMITS_FORM, telemtLimitsFromForm, validateTelemtLimitsForm } from '@/lib/units';
 import { cn } from '@/lib/utils';
 
@@ -149,10 +152,23 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
     defaultValues,
   });
 
-  const mode = watch('mode');
-  const carrierMode = watch('carrier_mode');
-  const selectedNodeIds = watch('node_ids');
+  const values = watch();
+  const mode = values.mode;
+  const carrierMode = values.carrier_mode;
+  const selectedNodeIds = values.node_ids;
   const nodes = nodesQuery.data?.items ?? [];
+
+  // One draft for the whole dialog: the tab is a form value, so a batch left
+  // half-typed comes back as a batch.
+  const draft = useDraft<FormValues>('key-create', values, { initial: defaultValues, open });
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    const saved = draft.draft.value;
+    reset(saved, { keepDefaultValues: true });
+    setShowLimits(Object.values(saved.limits ?? {}).some((v) => Number(v) > 0));
+    draft.dismiss();
+  };
   // The limits are enforced by telemt on the node, so they mean nothing until at
   // least one of the key's nodes runs that engine.
   const hasTelemtNode = nodes.some((n) => n.engine === 'telemt' && selectedNodeIds.includes(n.id));
@@ -198,10 +214,12 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
     try {
       if (values.mode === 'batch') {
         const result = await batchKeys.mutateAsync(payload);
+        draft.clear();
         close();
         onBatchCreated(result.items);
       } else {
         const created = await createKey.mutateAsync(payload);
+        draft.clear();
         close();
         onCreated(created);
       }
@@ -233,9 +251,14 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
     >
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{t('keys.create_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('keys.create_title')}</DialogTitle>
+            <HelpButton topic={mode === 'batch' ? 'keys.batch' : 'keys.create'} className="-my-1.5" />
+          </div>
           <DialogDescription>{t('keys.create_description')}</DialogDescription>
         </DialogHeader>
+
+        {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         <Controller
           control={control}
@@ -341,7 +364,10 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
           </div>
 
           <section className="space-y-2 border-t border-hairline pt-3">
-            <h3 className="text-sm font-medium text-foreground">{t('keys.telemt_limits_title')}</h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-medium text-foreground">{t('keys.telemt_limits_title')}</h3>
+              <HelpButton topic="keys.limits" className="-my-1.5" />
+            </div>
             <Controller
               control={control}
               name="telemt_limits"

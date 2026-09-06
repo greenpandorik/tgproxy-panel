@@ -2,10 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
-import type { MonitoringOverview } from './types';
+import type { MonitoringOverview, SeriesPoint } from './types';
 
 /** Time-range choices for the monitoring overview switch. */
 export type MonitoringRange = '1h' | '6h' | '24h' | '7d';
+
+/** The ranges in the order the switch offers them - shared by every chart that has one. */
+export const MONITORING_RANGES: MonitoringRange[] = ['1h', '6h', '24h', '7d'];
 
 const RANGE_SECONDS: Record<MonitoringRange, number> = {
   '1h': 3600,
@@ -26,7 +29,26 @@ const RANGE_STEP_SECONDS: Record<MonitoringRange, number> = {
 
 export const monitoringKeys = {
   overview: (range: MonitoringRange) => ['monitoring', 'overview', range] as const,
+  nodeSeries: (nodeId: string, range: MonitoringRange) => ['monitoring', 'series', nodeId, range] as const,
 };
+
+/**
+ * One node's raw snapshot series over a range. The window is computed when the
+ * fetch runs, not when the hook renders, so the key stays stable and the
+ * 60s refetch is what moves the window forward.
+ */
+export const useNodeSeries = (nodeId: string, range: MonitoringRange) =>
+  useQuery({
+    queryKey: monitoringKeys.nodeSeries(nodeId, range),
+    queryFn: () => {
+      const to = new Date();
+      const from = new Date(to.getTime() - RANGE_SECONDS[range] * 1000);
+      const q = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+      return api.get<{ points: SeriesPoint[] }>(`/api/v1/monitoring/nodes/${nodeId}/series?${q.toString()}`);
+    },
+    enabled: !!nodeId,
+    refetchInterval: 60_000,
+  });
 
 export const useMonitoringOverview = (range: MonitoringRange) =>
   useQuery({

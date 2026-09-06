@@ -5,11 +5,14 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useCreateNode } from '@/api/nodes';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
 import { cn } from '@/lib/utils';
 
 import type { CreateNodeResult, NodeEngine } from '@/api/types';
@@ -140,12 +143,24 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
     defaultValues,
   });
 
-  const engine = watch('engine');
+  const values = watch();
+  const engine = values.engine;
   const hostnameField = register('hostname');
+
+  const draft = useDraft<FormValues>('node-create', values, { initial: defaultValues, open });
 
   const closeAndReset = () => {
     tlsDomainEdited.current = false;
     reset(defaultValues);
+  };
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    const saved = draft.draft.value;
+    reset(saved, { keepDefaultValues: true });
+    // A Fake-TLS domain that still mirrors the hostname keeps following it.
+    tlsDomainEdited.current = saved.tls_domain !== saved.hostname.trim().toLowerCase();
+    draft.dismiss();
   };
 
   const onSubmit = async (values: FormValues) => {
@@ -160,6 +175,7 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
         tls_domain: telemt ? values.tls_domain : undefined,
         classic_port: telemt ? values.classic_port : undefined,
       });
+      draft.clear();
       closeAndReset();
       onOpenChange(false);
       onCreated(result);
@@ -191,9 +207,14 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('nodes.create_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('nodes.create_title')}</DialogTitle>
+            <HelpButton topic="nodes.create" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('nodes.create_description')}</DialogDescription>
         </DialogHeader>
+
+        {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         <form
           id={FORM_ID}

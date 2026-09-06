@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { usePutSettings, useSettings, useTelegramTest } from '@/api/settings';
 import { useAuth } from '@/auth/AuthProvider';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,7 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
 import { cn } from '@/lib/utils';
 
 import type { Settings } from '@/api/types';
@@ -29,6 +32,30 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+const DEFAULT_VALUES: FormValues = {
+  apply_interval: 30,
+  offline_after: 90,
+  telegram_enabled: false,
+  chat_id: '',
+  bot_token: '',
+  clear_token: false,
+};
+
+/** What the form remembers between visits - never the bot token. */
+type PanelDraft = Omit<FormValues, 'bot_token'>;
+
+function draftOf(v: FormValues): PanelDraft {
+  return {
+    // The number inputs hold strings once typed into; compare them as numbers
+    // so "30" typed over 30 does not count as a change worth remembering.
+    apply_interval: Number(v.apply_interval),
+    offline_after: Number(v.offline_after),
+    telegram_enabled: v.telegram_enabled,
+    chat_id: v.chat_id,
+    clear_token: v.clear_token,
+  };
+}
 
 function valuesFromSettings(s: Settings): FormValues {
   return {
@@ -57,25 +84,33 @@ export function PanelForm() {
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      apply_interval: 30,
-      offline_after: 90,
-      telegram_enabled: false,
-      chat_id: '',
-      bot_token: '',
-      clear_token: false,
-    },
+    defaultValues: DEFAULT_VALUES,
   });
 
   useEffect(() => {
     if (settingsQuery.data) reset(valuesFromSettings(settingsQuery.data));
   }, [settingsQuery.data, reset]);
 
-  const telegramEnabled = watch('telegram_enabled');
-  const clearToken = watch('clear_token');
-  const botTokenValue = watch('bot_token');
-  const chatIdValue = watch('chat_id');
+  const values = watch();
+  const telegramEnabled = values.telegram_enabled;
+  const clearToken = values.clear_token;
+  const botTokenValue = values.bot_token;
+  const chatIdValue = values.chat_id;
   const tokenSet = settingsQuery.data?.telegram_alerts.bot_token_set ?? false;
+
+  // Only an owner can save, so only an owner gets a draft; it waits for the
+  // settings to arrive so the placeholder defaults are never stored.
+  const draft = useDraft<PanelDraft>('settings-panel', draftOf(values), {
+    initial: draftOf(settingsQuery.data ? valuesFromSettings(settingsQuery.data) : DEFAULT_VALUES),
+    open: isOwner && !!settingsQuery.data,
+  });
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    // The stored settings stay the baseline, so the form is dirty and Save enables.
+    reset({ ...draft.draft.value, bot_token: values.bot_token }, { keepDefaultValues: true });
+    draft.dismiss();
+  };
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -88,6 +123,7 @@ export function PanelForm() {
           bot_token: values.clear_token ? '' : values.bot_token.trim() ? values.bot_token.trim() : undefined,
         },
       });
+      draft.clear();
       toast.add({ description: t('settings.panel_save_success'), type: 'success' });
     } catch (err) {
       toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
@@ -129,8 +165,10 @@ export function PanelForm() {
     <form className="flex max-w-xl flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
       {!isOwner && <p className="text-sm text-mute">{t('settings.panel_owner_only_note')}</p>}
 
+      {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
+
       <Panel>
-        <PanelHeader title={t('settings.panel_section_intervals')} />
+        <PanelHeader title={t('settings.panel_section_intervals')} actions={<HelpButton topic="settings.panel" />} />
         <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="panel-apply-interval">{t('settings.panel_apply_interval')}</Label>
@@ -169,7 +207,7 @@ export function PanelForm() {
       </Panel>
 
       <Panel>
-        <PanelHeader title={t('settings.panel_telegram_alerts')} />
+        <PanelHeader title={t('settings.panel_telegram_alerts')} actions={<HelpButton topic="settings.telegram" />} />
         <PanelBody className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <Label htmlFor="panel-telegram-enabled">{t('settings.panel_telegram_enabled')}</Label>

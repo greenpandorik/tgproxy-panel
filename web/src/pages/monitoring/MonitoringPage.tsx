@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useBranding } from '@/api/branding';
-import { useMonitoringOverview } from '@/api/monitoring';
+import { MONITORING_RANGES, useMonitoringOverview } from '@/api/monitoring';
 import { useNodes } from '@/api/nodes';
 import { CopyButton } from '@/components/common/CopyButton';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -13,6 +13,7 @@ import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HelpButton } from '@/help';
 import { seriesPalette } from '@/lib/chart';
 
 import type { MonitoringRange } from '@/api/monitoring';
@@ -21,8 +22,6 @@ import type { MonitoringNode, MonitoringPoint, NodeEngine } from '@/api/types';
 
 // recharts stays out of the shell bundle - only NodeSeriesChart.tsx imports it.
 const NodeSeriesChart = lazy(() => import('./NodeSeriesChart').then((m) => ({ default: m.NodeSeriesChart })));
-
-const RANGES: MonitoringRange[] = ['1h', '6h', '24h', '7d'];
 
 const DEFAULT_BRAND_PRIMARY = '#3b82f6';
 const DEFAULT_BRAND_ACCENT = '#22c55e';
@@ -39,6 +38,7 @@ function ChartSkeleton() {
     <div className="space-y-4">
       <Skeleton className="h-[152px] w-full" />
       <Skeleton className="h-[152px] w-full" />
+      <Skeleton className="h-[152px] w-full" />
     </div>
   );
 }
@@ -51,7 +51,7 @@ function NodeCard({
 }: {
   node: MonitoringNode;
   points: MonitoringPoint[];
-  colors: [string, string];
+  colors: [string, string, string];
   engine: NodeEngine;
 }) {
   const { t } = useTranslation();
@@ -111,16 +111,17 @@ export function MonitoringPage() {
   const series = overviewQuery.data?.series ?? {};
   const loading = overviewQuery.isLoading;
 
-  // Every card uses the same two colours: within a card the legend says which
-  // line is which, and across cards a shared pair means the reader learns the
-  // shape once instead of re-reading a legend per node.
-  const colors = useMemo((): [string, string] => {
-    const [first, second] = seriesPalette(
+  // Every card uses the same three colours: within a card the legend says which
+  // line is which, and across cards a shared set means the reader learns the
+  // shape once instead of re-reading a legend per node. The third colour only
+  // ever appears on the load chart, whose three lines need one each.
+  const colors = useMemo((): [string, string, string] => {
+    const [first, second, third] = seriesPalette(
       branding?.primary_color || DEFAULT_BRAND_PRIMARY,
       branding?.accent_color || DEFAULT_BRAND_ACCENT,
-      2,
+      3,
     );
-    return [first, second];
+    return [first, second, third];
   }, [branding?.primary_color, branding?.accent_color]);
 
   return (
@@ -128,12 +129,15 @@ export function MonitoringPage() {
       <PageHeader
         title={t('monitoring.title')}
         actions={
-          <SegmentedControl
-            label={t('monitoring.range_label')}
-            value={range}
-            onChange={setRange}
-            options={RANGES.map((r) => ({ value: r, label: t(`monitoring.range_${r}`) }))}
-          />
+          <>
+            <HelpButton topic="monitoring" />
+            <SegmentedControl
+              label={t('monitoring.range_label')}
+              value={range}
+              onChange={setRange}
+              options={MONITORING_RANGES.map((r) => ({ value: r, label: t(`monitoring.range_${r}`) }))}
+            />
+          </>
         }
       />
 

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { useAdmins, useCreateAdmin, useDeleteAdmin } from '@/api/auth';
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,7 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
 import { formatDate } from '@/lib/format';
 
 import type { Admin, AdminRole } from '@/api/types';
@@ -35,6 +38,12 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+const EMPTY_VALUES: FormValues = { username: '', password: '', role: 'admin' };
+
+/** What the create dialog remembers between openings - never the password. */
+type AdminDraft = Pick<FormValues, 'username' | 'role'>;
+const EMPTY_DRAFT: AdminDraft = { username: '', role: 'admin' };
 
 /** Role as a mono tag: it is an enum the server owns, not a state that pulses. */
 function RoleTag({ role }: { role: AdminRole }) {
@@ -57,15 +66,25 @@ function CreateAdminDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { username: '', password: '', role: 'admin' },
+    defaultValues: EMPTY_VALUES,
   });
 
   const role = watch('role');
+  const username = watch('username');
+
+  const draft = useDraft<AdminDraft>('admin-create', { username, role }, { initial: EMPTY_DRAFT, open });
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    reset({ ...draft.draft.value, password: '' }, { keepDefaultValues: true });
+    draft.dismiss();
+  };
 
   const onSubmit = async (values: FormValues) => {
     try {
       await createAdmin.mutateAsync(values);
-      reset({ username: '', password: '', role: 'admin' });
+      draft.clear();
+      reset(EMPTY_VALUES);
       onOpenChange(false);
       toast.add({ description: t('settings.admins_create_success'), type: 'success' });
     } catch (err) {
@@ -89,14 +108,19 @@ function CreateAdminDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) reset({ username: '', password: '', role: 'admin' });
+        if (!next) reset(EMPTY_VALUES);
         onOpenChange(next);
       }}
     >
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{t('settings.admins_create_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('settings.admins_create_title')}</DialogTitle>
+            <HelpButton topic="settings.admins" className="-my-1.5" />
+          </div>
         </DialogHeader>
+
+        {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
           <div className="space-y-1.5">
@@ -186,10 +210,13 @@ export function AdminsForm() {
           title={t('settings.tab_admins')}
           meta={String(admins.length)}
           actions={
-            <Button type="button" variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus />
-              {t('settings.admins_add')}
-            </Button>
+            <>
+              <HelpButton topic="settings.admins" />
+              <Button type="button" variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus />
+                {t('settings.admins_add')}
+              </Button>
+            </>
           }
         />
 

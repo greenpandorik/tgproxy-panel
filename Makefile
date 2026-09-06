@@ -6,7 +6,7 @@ export PATH := $(GOBIN):$(PATH)
 VERSION ?=
 LDFLAGS := -s -w $(if $(VERSION),-X tgwebproxy/internal/version.Version=$(patsubst v%,%,$(VERSION)),)
 
-.PHONY: tools test lint fmt sqlc proto web run build agent-linux e2e e2e-telemt test-install
+.PHONY: tools test lint fmt sqlc proto web run build agent-linux e2e e2e-telemt test-install test-node-preflight
 
 tools:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -60,7 +60,15 @@ e2e-telemt:
 	./deploy/run-e2e-telemt.sh
 
 # test-install runs install.sh end to end inside a docker:27-dind container, against the
-# panel image built from this checkout: fresh install in --local mode, health and login
-# checks, an --update pass, then --uninstall --purge. Also runs shellcheck on the script.
+# panel image built from this checkout: a pre-flight that must refuse a domain that does
+# not resolve, fresh install in --local mode, health and login checks, an --update pass,
+# --uninstall --purge, then a --skip-preflight run in domain mode. Also runs shellcheck.
 test-install:
 	./deploy/test-install.sh
+
+# test-node-preflight runs the rendered node install script's pre-flight inside ubuntu:24.04
+# (no network, no tty, a stub panel on loopback): a hostname that does not resolve must stop
+# the script before apt-get with the "nothing was installed" message; TGWP_SKIP_PREFLIGHT=1
+# and TGWP_DRY_RUN=1 must get past it; a resolving hostname and the [r]/[c] menu must pass.
+test-node-preflight:
+	./deploy/test-node-preflight.sh

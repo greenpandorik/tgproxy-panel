@@ -61,7 +61,7 @@ func (s *Server) handleInstallScript(w http.ResponseWriter, r *http.Request) {
 		// the node's own profile becomes the first telemt user, so its name travels with the
 		// secret that is already being passed.
 		Engine: domain.Engine(n.Engine), WebUser: profiles[0].Name,
-		TLSDomain: n.TlsDomain, ClassicPort: int(n.ClassicPort),
+		TLSDomain: n.TlsDomain, ClassicPort: int(n.ClassicPort), PublicIP: n.PublicIp,
 		TelemtVersion: s.cfg.TelemtVersion, TelemtSHA256: s.cfg.TelemtSHA256,
 	})
 	if err != nil {

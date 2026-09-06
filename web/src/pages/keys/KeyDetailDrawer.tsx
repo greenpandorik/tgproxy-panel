@@ -9,6 +9,7 @@ import { useBindKey, useKey, usePatchKey, useRevokeKey, useRotateKey, useUnbindK
 import { useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,7 +20,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
 import { formatDateTime } from '@/lib/format';
 import { EMPTY_TELEMT_LIMITS_FORM, telemtLimitsFromForm, telemtLimitsToForm, validateTelemtLimitsForm } from '@/lib/units';
 import { capacityText } from '@/pages/nodes/nodeDisplay';
@@ -102,6 +105,18 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
+/** What the form holds until the key arrives. */
+const EMPTY_VALUES: FormValues = {
+  label: '',
+  owner_label: '',
+  note: '',
+  carrier_mode: 'https',
+  no_expiry: true,
+  expires_at: '',
+  limits: { ...ZERO_LIMITS },
+  telemt_limits: { ...EMPTY_TELEMT_LIMITS_FORM },
+};
+
 function valuesFromKey(key: AccessKey): FormValues {
   return {
     label: key.label,
@@ -116,10 +131,13 @@ function valuesFromKey(key: AccessKey): FormValues {
 }
 
 /** A titled block inside the drawer, separated from the one above it by a hairline. */
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <section className="space-y-2 border-t border-hairline pt-3">
-      <h3 className="text-sm font-medium text-foreground">{title}</h3>
+      <div className="flex items-center gap-1.5">
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+        {actions}
+      </div>
       {children}
     </section>
   );
@@ -164,29 +182,34 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      label: '',
-      owner_label: '',
-      note: '',
-      carrier_mode: 'https',
-      no_expiry: true,
-      expires_at: '',
-      limits: { ...ZERO_LIMITS },
-      telemt_limits: { ...EMPTY_TELEMT_LIMITS_FORM },
-    },
+    defaultValues: EMPTY_VALUES,
   });
 
   useEffect(() => {
     if (key) reset(valuesFromKey(key));
   }, [key, reset]);
 
-  const noExpiry = watch('no_expiry');
-  const carrierMode = watch('carrier_mode');
+  const values = watch();
+  const noExpiry = values.no_expiry;
+  const carrierMode = values.carrier_mode;
 
   const revoked = key?.status === 'revoked';
   // A viewer may open this drawer from the key list but cannot mutate anything: every
   // control below would return 403. Lock the form and hide the write-only affordances.
   const locked = revoked || !isWriter;
+
+  // One draft per key; nothing is offered or kept while the form is locked.
+  const draft = useDraft<FormValues>(`key-edit-${keyId ?? 'none'}`, values, {
+    initial: key ? valuesFromKey(key) : EMPTY_VALUES,
+    open: open && !!key && !locked,
+  });
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    // Keep the server values as the defaults, so the form counts as dirty and Save enables.
+    reset(draft.draft.value, { keepDefaultValues: true });
+    draft.dismiss();
+  };
   const boundNodeIds = new Set((key?.nodes ?? []).map((n) => n.node_id));
   const allNodes = nodesQuery.data?.items ?? [];
   const addableNodes = allNodes.filter((n) => !boundNodeIds.has(n.id));
@@ -220,6 +243,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
         clear_expiry: values.no_expiry,
         expires_at: values.no_expiry ? undefined : new Date(values.expires_at).toISOString(),
       });
+      draft.clear();
       toast.add({ description: t('keys.edit_success'), type: 'success' });
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fields).length > 0) {
@@ -283,7 +307,10 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle className="truncate pr-8">{key ? key.label : t('keys.edit_title')}</SheetTitle>
+          <div className="flex items-center gap-1.5 pr-8">
+            <SheetTitle className="truncate">{key ? key.label : t('keys.edit_title')}</SheetTitle>
+            <HelpButton topic="keys.detail" className="-my-1.5" />
+          </div>
           {key && (
             <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
               <StatusBadge status={key.status} />
@@ -307,6 +334,8 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                 {t('keys.edit_revoked_notice')}
               </p>
             )}
+
+            {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
             <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
               <div className="space-y-1.5">
@@ -380,7 +409,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                 <Textarea id="edit-note" rows={2} disabled={locked} {...register('note')} />
               </div>
 
-              <Section title={t('keys.telemt_limits_title')}>
+              <Section title={t('keys.telemt_limits_title')} actions={<HelpButton topic="keys.limits" className="-my-1.5" />}>
                 <Controller
                   control={control}
                   name="telemt_limits"
@@ -395,7 +424,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                 />
               </Section>
 
-              <Section title={t('keys.field_limits_toggle')}>
+              <Section title={t('keys.field_limits_toggle')} actions={<HelpButton topic="keys.limits" className="-my-1.5" />}>
                 <Controller
                   control={control}
                   name="limits"

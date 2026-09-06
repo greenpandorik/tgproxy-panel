@@ -551,6 +551,9 @@ type NodeStatsSnapshot struct {
 	LimitHits       int64     `json:"limit_hits"`
 	MtproxyRaw      []byte    `json:"mtproxy_raw"`
 	RelayRaw        string    `json:"relay_raw"`
+	CpuPercent      float32   `json:"cpu_percent"`
+	MemUsedPercent  float32   `json:"mem_used_percent"`
+	DiskUsedPercent float32   `json:"disk_used_percent"`
 }
 
 type Profile struct {

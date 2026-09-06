@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { formatCompactAge, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -104,6 +105,7 @@ export function NodeCheckCard({ node }: { node: Node }) {
                 {t('nodes.check_run')}
               </Button>
             )}
+            <HelpButton topic="nodes.check" />
           </>
         }
       />

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { HelpButton } from '@/help';
 
 import type { AccessKey } from '@/api/types';
 
@@ -44,7 +45,10 @@ export function BatchResultDialog({ open, onOpenChange, keys, onShowLink }: Batc
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('keys.batch_result_title', { count: keys.length })}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('keys.batch_result_title', { count: keys.length })}</DialogTitle>
+            <HelpButton topic="keys.batch" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('keys.batch_result_description')}</DialogDescription>
         </DialogHeader>
 

@@ -43,7 +43,7 @@ type nodeJSON struct {
 	LastSeenAt    *time.Time      `json:"last_seen_at"`
 	LastApplyAt   *time.Time      `json:"last_apply_at"`
 	CreatedAt     time.Time       `json:"created_at"`
-	Health        json.RawMessage `json:"health,omitempty"`
+	Health        map[string]any  `json:"health,omitempty"`
 	LastCheck     json.RawMessage `json:"last_check"`
 }
 
@@ -64,8 +64,15 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,
 		CreatedAt: n.CreatedAt,
 	}
+	// last_health is the HealthReport as the heartbeat marshalled it (Go field names). The
+	// SPA's NodeHealth type is the snake_case shape of the /health endpoint, so the row is
+	// re-emitted through the same projection; a row the report cannot be read from is
+	// omitted rather than passed through in a shape the client does not know.
 	if len(n.LastHealth) > 0 {
-		out.Health = n.LastHealth
+		var h nodedriver.HealthReport
+		if err := json.Unmarshal(n.LastHealth, &h); err == nil {
+			out.Health = healthJSON(h)
+		}
 	}
 	if len(n.LastCheck) > 0 {
 		out.LastCheck = redactLastCheck(n.LastCheck, isWriter(r))

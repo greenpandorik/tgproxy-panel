@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 
 import { InstallCommandDialog } from './InstallCommandDialog';
@@ -125,10 +126,13 @@ export function NodeDetailPage() {
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <h1 className="flex items-center gap-2.5 text-xl font-semibold tracking-[-0.015em] text-foreground">
-                <StatusBadge status={nodeStatus(node)} hideLabel />
-                <span className="truncate">{node.name}</span>
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="flex min-w-0 items-center gap-2.5 text-xl font-semibold tracking-[-0.015em] text-foreground">
+                  <StatusBadge status={nodeStatus(node)} hideLabel />
+                  <span className="truncate">{node.name}</span>
+                </h1>
+                <HelpButton topic="nodes.detail" />
+              </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
                 <span className="mono inline-flex items-center gap-0.5 text-xs text-mute">
                   {node.hostname}

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { useUpdateBranding, useUploadBrandingAsset } from '@/api/branding';
+import { DraftBanner } from '@/components/common/DraftBanner';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,10 +14,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { useDraft } from '@/lib/drafts';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import type { BrandingAssetKind, BrandingProfile } from '@/api/types';
+import { DEFAULT_ACCENT_COLOR, DEFAULT_PRIMARY_COLOR } from '@/components/brand/brand';
 
 const HEX_COLOR_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
@@ -84,7 +88,13 @@ function AssetUpload({
         <p className="truncate text-sm text-foreground">{label}</p>
         <p className="mono truncate text-xs text-dim">{hint}</p>
       </div>
-      <Button type="button" variant="outline" size="sm" disabled={uploading} render={<label className="shrink-0 cursor-pointer" />}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={uploading}
+        render={<label className="shrink-0 cursor-pointer" />}
+      >
         <Upload />
         {uploading ? '…' : t('settings.branding_upload_action')}
         <input
@@ -162,8 +172,8 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
     resolver: zodResolver(schema),
     defaultValues: {
       panel_name: '',
-      primary_color: '#3b82f6',
-      accent_color: '#22c55e',
+      primary_color: DEFAULT_PRIMARY_COLOR,
+      accent_color: DEFAULT_ACCENT_COLOR,
       theme_default: 'dark',
       login_text: '',
       support_link: '',
@@ -205,6 +215,17 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
   const watched = watch();
 
+  // One draft per profile. Armed only once the form has been filled in from
+  // `profile` (see useDraft), so the empty defaults above are never stored.
+  const draft = useDraft<FormValues>(`branding-${profile.id}`, watched, { initial: valuesFromProfile(profile) });
+
+  const resumeDraft = () => {
+    if (!draft.draft) return;
+    // The saved profile stays the baseline, so the form is dirty and Save enables.
+    reset(draft.draft.value, { keepDefaultValues: true });
+    draft.dismiss();
+  };
+
   // Live preview: mirror the form's colors/title/favicon/CSS/theme onto the
   // running page via ThemeProvider until this tab unmounts (navigating away
   // or saving both fall back to the real fetched branding).
@@ -230,6 +251,8 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
   useEffect(() => () => previewBranding(null), [previewBranding]);
 
   const handleReset = () => {
+    // An explicit reset is the operator discarding the edits, draft included.
+    draft.clear();
     reset(valuesFromProfile(profile));
     setCssRemoved(null);
   };
@@ -249,6 +272,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
   const onSubmit = async (values: FormValues) => {
     try {
       const result = await updateBranding.mutateAsync({ name: profile.name, ...values });
+      draft.clear();
       setCssRemoved(result.css_removed ?? []);
       // Reset explicitly to the saved (possibly CSS-sanitized) values now, rather than
       // relying on the profile-changed effect above: that effect deliberately skips the
@@ -264,6 +288,8 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
   return (
     <form className="flex max-w-2xl flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
+      {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
+
       <Panel>
         <PanelHeader title={profile.name} meta={t('settings.branding_preview_note')} />
         <PanelBody className="space-y-4">
@@ -300,7 +326,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
       </Panel>
 
       <Panel>
-        <PanelHeader title={t('settings.branding_section_appearance')} />
+        <PanelHeader title={t('settings.branding_section_appearance')} actions={<HelpButton topic="settings.branding" />} />
         <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="branding-primary">{t('settings.branding_primary_color')}</Label>

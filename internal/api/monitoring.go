@@ -102,6 +102,7 @@ func (s *Server) handleMonitoringSeries(w http.ResponseWriter, r *http.Request) 
 		points = append(points, map[string]any{
 			"t": snap.TakenAt, "sessions_live": snap.SessionsLive, "streams_live": snap.StreamsLive,
 			"bytes_up": snap.BytesUp, "bytes_down": snap.BytesDown,
+			"cpu_percent": snap.CpuPercent, "mem_used_percent": snap.MemUsedPercent, "disk_used_percent": snap.DiskUsedPercent,
 		})
 	}
 	writeJSON(w, 200, map[string]any{"points": points})
@@ -120,6 +121,10 @@ type monitoringPointJSON struct {
 	StreamsLive   int32     `json:"streams_live"`
 	BytesUpRate   float64   `json:"bytes_up_rate"`
 	BytesDownRate float64   `json:"bytes_down_rate"`
+	// Server load, averaged over the bucket like the gauges above.
+	CPUPercent      float32 `json:"cpu_percent"`
+	MemUsedPercent  float32 `json:"mem_used_percent"`
+	DiskUsedPercent float32 `json:"disk_used_percent"`
 }
 
 // overviewSample is one stats sample feeding the rate series, whether it came from a raw
@@ -132,6 +137,8 @@ type overviewSample struct {
 	StreamsLive  int32
 	BytesUp      int64
 	BytesDown    int64
+
+	CPUPercent, MemUsedPercent, DiskUsedPercent float32
 }
 
 // overviewSamples reads the snapshots backing the overview. Above bucketStepThreshold it
@@ -150,6 +157,7 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 			out = append(out, overviewSample{
 				NodeID: row.NodeID, T: row.TakenAt, SessionsLive: row.SessionsLive,
 				StreamsLive: row.StreamsLive, BytesUp: row.BytesUp, BytesDown: row.BytesDown,
+				CPUPercent: row.CpuPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
 			})
 		}
 		return out, nil
@@ -163,6 +171,7 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 		out = append(out, overviewSample{
 			NodeID: row.NodeID, T: row.TakenAt, SessionsLive: row.SessionsLive,
 			StreamsLive: row.StreamsLive, BytesUp: row.BytesUp, BytesDown: row.BytesDown,
+			CPUPercent: row.CpuPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
 		})
 	}
 	return out, nil
@@ -223,7 +232,10 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 		rows := byNode[nodeID]
 		points := make([]monitoringPointJSON, 0, len(rows))
 		for i, row := range rows {
-			p := monitoringPointJSON{T: row.T, SessionsLive: row.SessionsLive, StreamsLive: row.StreamsLive}
+			p := monitoringPointJSON{
+				T: row.T, SessionsLive: row.SessionsLive, StreamsLive: row.StreamsLive,
+				CPUPercent: row.CPUPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
+			}
 			if i > 0 {
 				prev := rows[i-1]
 				seconds := row.T.Sub(prev.T).Seconds()

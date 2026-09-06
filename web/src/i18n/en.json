@@ -245,6 +245,11 @@
     "site_no_preview": "The preview appears once a template is assigned",
     "stats_title": "MTProxy stats",
     "stats_empty": "No stats available",
+    "load_title": "Server load",
+    "load_cpu": "CPU",
+    "load_ram": "RAM",
+    "load_disk": "Disk",
+    "load_empty": "No load data yet",
     "check_title": "Prerequisite check",
     "check_run": "Run check",
     "check_empty": "Not run yet",
@@ -676,6 +681,11 @@
     "admins_add": "Add",
     "panel_section_intervals": "Intervals"
   },
+  "drafts": {
+    "banner": "Draft from <time>{{time}}</time>",
+    "resume": "Continue",
+    "discard": "Start over"
+  },
   "shell": {
     "toggle_sidebar": "Collapse/expand sidebar",
     "open_menu": "Open menu",
@@ -709,5 +719,921 @@
     "action_toggle_lang": "Switch language",
     "apply_all_nothing": "Every node is already up to date",
     "apply_all_queued": "Apply queued on {{queued}} of {{total}} nodes"
+  },
+  "help": {
+    "open": "Help",
+    "title": "Help",
+    "page_help": "Help for this page",
+    "section_fields": "Fields and controls",
+    "section_notes": "Keep in mind",
+    "example": "example",
+    "more": "Read more in the setup guide",
+    "shortcut_hint": "? opens the help for the current page",
+    "topics": {
+      "dashboard": {
+        "title": "Dashboard",
+        "intro": "A summary of the whole proxy network: how many nodes answer, how many keys work, how many people are connected right now and what went wrong. The numbers refresh on their own; the \"updated … ago\" stamp next to the title says how fresh they are.",
+        "fields": {
+          "nodes_online": {
+            "name": "Nodes online",
+            "what": "How many nodes sent a heartbeat recently (the threshold is \"Offline after\" in the panel settings, 90 seconds by default). A node silent for longer counts as offline and is named under the number.",
+            "tip": "An offline node hands out nothing: clients bound only to it will not connect."
+          },
+          "keys_active": {
+            "name": "Active keys",
+            "what": "Keys with status \"Active\" - the ones whose profile is already on the nodes. Next to it: how many keys are still waiting to be applied.",
+            "tip": "If the pending count never shrinks, an apply is failing on some node: open the node → Overview → Recent applies."
+          },
+          "sessions": {
+            "name": "Sessions",
+            "what": "How many client sessions are open on all nodes right now. One session is roughly one connected device. The delta is the change over the last hour."
+          },
+          "traffic": {
+            "name": "Traffic, 24 h",
+            "what": "Inbound plus outbound traffic of every node over the last 24 hours. Computed from stats snapshots, so it can lag a few minutes."
+          },
+          "chart": {
+            "name": "Sessions by node",
+            "what": "A 24-hour chart with one line per node; the busiest nodes get their own line, the rest fold into \"Other\". A node that went offline is drawn grey."
+          },
+          "alerts": {
+            "name": "Alerts",
+            "what": "Open problems: a node went offline, an apply failed, a panel error. \"Resolve\" closes the entry - it does not fix the cause, it only removes it from the list.",
+            "tip": "The same events arrive in Telegram once notifications are on: Settings → Panel."
+          },
+          "jobs": {
+            "name": "Recent applies",
+            "what": "The latest apply jobs on the nodes with their result and duration. An \"apply\" is the moment key and site changes are actually sent to a node."
+          }
+        },
+        "notes": {
+          "1": "A node that has not been installed yet shows as \"Pending\" and does not count as offline.",
+          "2": "Search and quick commands: ⌘K / Ctrl+K."
+        }
+      },
+      "nodes.list": {
+        "title": "Nodes",
+        "intro": "A node is your VPS with its own domain, running the proxy. The panel installs everything it needs with one command and then manages it through an agent: keys, cover site, restarts. One panel, any number of nodes in different countries; a key can be bound to several at once.",
+        "fields": {
+          "status": {
+            "name": "Status",
+            "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Settings → Panel). \"Degraded\" - the node answers but one of its services is down. \"Pending\" - the node was created, but the install command has not been run yet."
+          },
+          "engine": {
+            "name": "Engine",
+            "what": "telemt - a single process that gives keys two links (WEB and Fake-TLS), per-key limits and per-key stats. tproxy - the older tproxy-server + MTProxy pair, WEB links only. Chosen when the node is created and fixed afterwards."
+          },
+          "relay": {
+            "name": "Relay",
+            "what": "The proxy process version on the node: the telemt version or a short tproxy-server commit hash. Empty - the node has not reported yet."
+          },
+          "profiles": {
+            "name": "Profiles",
+            "what": "Used / maximum. A profile is one key on this node. A node has 128 slots by default; once they run out, new keys cannot be bound to it.",
+            "example": "37 / 128"
+          },
+          "load": {
+            "name": "CPU and RAM",
+            "what": "Processor and memory load from the last heartbeat. Yellow from 80 %, red from 95 %. Keep headroom: an overloaded node adds latency for every client."
+          },
+          "heartbeat": {
+            "name": "Last heartbeat",
+            "what": "When the agent last checked in. \"never connected\" - the install has not run, or the script did not reach registration."
+          },
+          "changes": {
+            "name": "Changes",
+            "what": "The \"pending\" tag means the panel holds changes (new or revoked keys, a different site) not yet sent to the node. They go out on the next apply, or right away with \"Apply\"."
+          },
+          "actions": {
+            "name": "Actions",
+            "what": "\"Apply\" - send the accumulated changes now. \"Install command\" - mint a new one-time token and show the command (the old command stops working). \"Delete\" - remove the node together with its profiles and bindings. Keys bound only to this node are left with no nodes."
+          }
+        },
+        "notes": {
+          "1": "Applies run on their own every \"Apply interval\" (45 seconds by default). On a tproxy node every apply restarts the relay and drops live sessions; on a telemt node key changes go through the API without a restart.",
+          "2": "Nodes and the panel must be separate servers: the proxy on a node takes ports 80 and 443.",
+          "3": "A node that stays \"offline\" usually cannot reach the panel's address (PANEL_PUBLIC_URL). On the VPS: journalctl -u tgwp-agent -n 100."
+        }
+      },
+      "nodes.create": {
+        "title": "New node",
+        "intro": "Here you describe the server that will become a node. The panel installs nothing yet: after creation it hands you one command to run on that server as root. Prepare the VPS first: clean Ubuntu 22.04+ or Debian 12+, a public IPv4, ports 80 and 443 free, and an A record for the domain that already points at this server.",
+        "fields": {
+          "name": {
+            "name": "Name",
+            "what": "What the node is called in the panel and its lists. Any text, seen only by you and the other admins. Required.",
+            "example": "Amsterdam-1",
+            "tip": "Name by location or provider: this is the name you pick nodes by when issuing a key."
+          },
+          "hostname": {
+            "name": "Host",
+            "what": "The node's domain. The certificate is issued for it and every client link points at it. Lowercase letters, digits, hyphens and dots only; at least one dot; no https:// and no path; each part between dots is 1-63 characters and neither starts nor ends with a hyphen; 253 characters in total. Must be unique across nodes.",
+            "example": "ams1.example.com",
+            "tip": "The A record for this domain must point at the server's IP BEFORE you run the install command: the script checks that first and cannot get a certificate without it."
+          },
+          "engine": {
+            "name": "Engine",
+            "what": "telemt (default) - one process: clients get both a WEB link (through the node's site on 443) and a regular Fake-TLS link on a separate port; per-key quotas, speed limits and traffic. tproxy - the classic tproxy-server + MTProxy pair: WEB links only, no per-key limits, every apply restarts the relay. The engine cannot be changed later - only by reinstalling the node.",
+            "tip": "Unless you have a reason to pick tproxy, keep telemt: it covers every official Telegram client and its WEB mode is the same."
+          },
+          "tls_domain": {
+            "name": "Fake-TLS domain",
+            "what": "telemt only. The domain the Fake-TLS port masquerades as: to the ISP the client looks like an ordinary HTTPS connection to that site, and anyone probing the port without a secret sees the real site. Same spelling rules as the host. Defaults to the node's own host, and that is the right choice: it already has a real cover site and a valid certificate.",
+            "example": "ams1.example.com",
+            "tip": "A foreign domain only works if it is a real site answering HTTPS on port 443 with a valid certificate, and the node can reach it. A domain with no site on 443 breaks the masking: telemt takes the TLS fingerprint with a real connection and will not activate its config without one."
+          },
+          "classic_port": {
+            "name": "Fake-TLS port",
+            "what": "telemt only. The port on which the node accepts classic MTProto (Fake-TLS) connections. 1024 to 65535; 80 and 443 belong to the node's web server. Default 8443.",
+            "example": "8443",
+            "tip": "The port must be open in the VPS firewall and at the provider. It is baked into every Fake-TLS link, so changing it later means reissuing links."
+          },
+          "acme_email": {
+            "name": "E-mail for Let's Encrypt",
+            "what": "Contact address for certificate issuance: Let's Encrypt writes to it when a certificate fails to renew. Must be a valid address; it goes into the install script and Caddy's config on the node.",
+            "example": "admin@example.com"
+          },
+          "public_ip": {
+            "name": "Public IP",
+            "what": "The server's IPv4 address. Optional: a telemt node detects it during install. If set, the install script and \"Readiness check\" compare the domain's A record against it.",
+            "example": "203.0.113.10",
+            "tip": "Set it when the server has several addresses or sits behind NAT with a forwarded public IP - auto-detection may pick the wrong one there."
+          }
+        },
+        "notes": {
+          "1": "The panel and the node are different servers. On the panel's server ports 80/443 are taken by the panel itself.",
+          "2": "Order: A record → create the node here → run the command on the VPS → a minute later the node is \"online\". If the record came later, just run the same command again.",
+          "3": "After install the node must be able to reach its own public address on port 443 (that is how Fake-TLS masking works). Check from the node itself: curl -sSI https://<node host>/ should return the site's response."
+        }
+      },
+      "nodes.install": {
+        "title": "Install command",
+        "intro": "The one line that turns a clean server into a node: installs the proxy, the Caddy web server and the agent, obtains a Let's Encrypt certificate and registers the node in the panel. Run it on the VPS as root; it usually takes a minute or two.",
+        "fields": {
+          "command": {
+            "name": "Command",
+            "what": "curl downloads a personal script by one-time token and pipes it into bash. Copy it whole and paste into the server's terminal (SSH as root, or via sudo).",
+            "example": "curl -fsSL https://panel.example.com/api/v1/install/<token>.sh | sudo bash"
+          },
+          "expires": {
+            "name": "Valid until",
+            "what": "The token lives 24 hours and is spent exactly once - at the registration step. If it has expired, open the node and press \"Show install command\": the panel mints a new one."
+          },
+          "preflight": {
+            "name": "Pre-flight checks",
+            "what": "The script first checks: x86_64, systemd, that the panel is reachable from this server, the public IP, that the domain's A record points here, and that ports 80, 443 and the Fake-TLS port are free. A failed DNS or ports check shows a menu: [r] re-run, [c] continue anyway, [q] quit.",
+            "tip": "The most common stop is an A record that has not propagated yet or points elsewhere. Fix the record in another window and press r."
+          },
+          "installs": {
+            "name": "What gets installed",
+            "what": "For telemt: the pinned telemt binary (sha256 verified), Caddy for TLS on 443, the tgwp-agent, the cover site, nftables rules, network sysctls (BBR, short keepalives). For tproxy: the pinned tproxy-server commit, the official MTProxy, Caddy and the agent. The script then waits up to two minutes for https://<host>/ to answer with a valid certificate and only then registers the node."
+          },
+          "regenerate": {
+            "name": "Running it again",
+            "what": "If the script failed before the \"Registration\" step (usually while waiting for the certificate), fix the cause and run the same command again: installed packages are reused and the token is still unspent. \"Show install command\" on the node page mints a new token, and the previous command stops working."
+          }
+        },
+        "notes": {
+          "1": "Server requirements: clean Ubuntu 22.04+ or Debian 12+, x86_64, root, public IPv4, ports 80 and 443 free. The script does not touch the firewall - open the ports yourself (for telemt, the Fake-TLS port too).",
+          "2": "Without a terminal (a cloud console that just runs the script) a failed check makes it exit. To continue anyway: curl … | sudo TGWP_SKIP_PREFLIGHT=1 bash.",
+          "3": "The error message ends with the last 30 lines of the Caddy or telemt journal - the answer is usually there."
+        }
+      },
+      "nodes.check": {
+        "title": "Readiness check",
+        "intro": "From its own side, the panel walks the same steps a Telegram client takes when connecting: resolve the domain, knock on the ports, verify the certificate and the site. Run it after install, after a DNS change, and whenever \"the node is online but clients cannot connect\".",
+        "fields": {
+          "dns_a": {
+            "name": "DNS record",
+            "what": "The node's domain resolves to an IP address. If the node has a public IP set, the record must point exactly there. Fails when the record is missing, not propagated yet, or points at another server."
+          },
+          "tcp_80": {
+            "name": "Port 80 (HTTP)",
+            "what": "The port is open from outside. Let's Encrypt needs it to issue and renew the certificate. A failure is usually the VPS or provider firewall."
+          },
+          "tcp_443": {
+            "name": "Port 443 (HTTPS)",
+            "what": "The port is open from outside - both the cover site and the clients' WEB connections go through it. If it is closed, the remaining probes are skipped."
+          },
+          "tls_cert": {
+            "name": "TLS certificate",
+            "what": "Port 443 presents a valid certificate for the node's domain. Fails when Caddy could not obtain one (most often DNS or port 80) or it has expired."
+          },
+          "pq_kex": {
+            "name": "Post-quantum key exchange",
+            "what": "Informational: whether Caddy on the node negotiates hybrid X25519MLKEM768 with modern clients. Does not affect the overall result."
+          },
+          "http_root": {
+            "name": "Site responds",
+            "what": "GET https://<host>/ returns the cover site's page. Without a working site the traffic to the node does not look like ordinary HTTPS - which is the whole point of the disguise."
+          },
+          "mask": {
+            "name": "Fake-TLS masking",
+            "what": "telemt only. The panel connects to the Fake-TLS port with the site name from \"Fake-TLS domain\" and no secret - as a prober would - and expects to see that domain's real certificate. A failure means the node cannot reach <Fake-TLS domain>:443 (port closed, a domain with no site, or the server not allowed to connect to its own public address).",
+            "tip": "From the node itself: curl -sSI https://<Fake-TLS domain>/ must return the site's response. If it does not, the problem is the VPS network, not the panel."
+          }
+        },
+        "notes": {
+          "1": "The check runs from the panel's server. If the panel has its own egress firewall, some probes will fail even though clients work fine.",
+          "2": "A red line with the detail \"expected 203.0.113.10\" means the A record does not point at the public IP set in the panel: fix either the record or the IP on the node."
+        }
+      },
+      "nodes.detail": {
+        "title": "Node page",
+        "intro": "Everything about one node: service health and resources, which keys are on it, live logs, the cover site and statistics. The header buttons are the only actions that change something on the server itself.",
+        "fields": {
+          "header": {
+            "name": "Header",
+            "what": "Status dot, name, host with a copy button and tags: telemt or relay version, the Fake-TLS endpoint (domain:port) on a telemt node, agent version."
+          },
+          "apply": {
+            "name": "Apply",
+            "what": "Send the accumulated changes to the node now instead of waiting for the next cycle. On a telemt node keys go through the API without a restart; on a tproxy node the relay restarts and live sessions drop (clients reconnect on their own)."
+          },
+          "restart": {
+            "name": "Restart relay / telemt",
+            "what": "Forces a restart of the proxy process. Every current connection drops. Rarely needed - when the process hangs while \"Readiness check\" says the network is fine."
+          },
+          "install": {
+            "name": "Show install command",
+            "what": "Mints a new one-time token (24 hours) and shows the command. Use it to reinstall, or if the first install never reached registration. The old command stops working immediately."
+          },
+          "delete": {
+            "name": "Delete node",
+            "what": "Removes the node from the panel with its profiles and bindings. The server itself is untouched - the proxy on it keeps running with its old configuration until you stop it. Keys bound only to this node are left with no nodes."
+          },
+          "tab_overview": {
+            "name": "Overview",
+            "what": "Service health (relay/telemt, MTProxy, Caddy), uptime, CPU/memory/disk, versions, \"Readiness check\", Fake-TLS settings (telemt) and recent applies with the agent log - look here first when keys sit in \"Pending\"."
+          },
+          "tab_profiles": {
+            "name": "Profiles",
+            "what": "Keys the panel has put, or is about to put, on this node, with mode, limits and expiry. \"Compare with node\" asks the live node for its list and shows the differences: what exists only in the panel's database and what only on the node."
+          },
+          "tab_logs": {
+            "name": "Logs",
+            "what": "Live journals of the node's services (telemt, or tproxy-server and mtproxy, and caddy). Only while the node is online."
+          },
+          "tab_site": {
+            "name": "Site",
+            "what": "Which cover-site template is assigned and whether it is deployed, a preview, and a switch to another template. A new template reaches the node on the next apply."
+          },
+          "tab_stats": {
+            "name": "Statistics",
+            "what": "Sessions, connections and traffic of the node over the chosen range, plus server load (CPU, RAM, disk)."
+          }
+        },
+        "notes": {
+          "1": "While the node is offline the \"Profiles\" and \"Logs\" tabs and live statistics are unavailable until the agent reconnects.",
+          "2": "\"Degraded\" (yellow) on a running node usually means one of the services died: check \"Service health\" and that service's logs."
+        }
+      },
+      "nodes.listeners": {
+        "title": "Fake-TLS",
+        "intro": "The classic MTProto port of a telemt node. Both values are baked into every Fake-TLS link already handed out (the domain sits inside the secret), so this is not a setting - it is reissuing links: after saving, the next apply rewrites the config, restarts telemt, drops connections, and every Fake-TLS link of this node stops working. WEB links are unaffected.",
+        "fields": {
+          "tls_domain": {
+            "name": "Fake-TLS domain",
+            "what": "The site the port masquerades as. The right choice is the node's own host: it has a real cover site and a certificate. A foreign domain is acceptable only if it is a real site answering HTTPS on 443 that the node can reach. Spelling rules as for the host: lowercase, with a dot, no scheme.",
+            "example": "ams1.example.com",
+            "tip": "After changing it, run \"Readiness check\": the \"Fake-TLS masking\" line tells you whether the new domain works."
+          },
+          "classic_port": {
+            "name": "Fake-TLS port",
+            "what": "1024 to 65535, except 80 and 443 (taken by Caddy). Must be open in the firewall. Default 8443.",
+            "example": "8443"
+          }
+        },
+        "notes": {
+          "1": "Change these only as a last resort, and plan to send new links to everyone holding a Fake-TLS link of this node. Subscription pages update on their own.",
+          "2": "Saving only records the intent: the next apply (automatic, or the \"Apply\" button) sends it to the node."
+        }
+      },
+      "keys.list": {
+        "title": "Keys",
+        "intro": "A key is proxy access for a person or a group. On every bound node it becomes a profile with a secret, and the client gets one link per node. Here keys are searched, filtered, shown as links, extended and revoked - one at a time or in bulk.",
+        "fields": {
+          "type": {
+            "name": "Type",
+            "what": "Shared - one link for a group of people, say a channel or a team. Personal - issued to one person with an owner label, revoked on its own without touching anyone else."
+          },
+          "status": {
+            "name": "Status",
+            "what": "\"Pending\" - the key exists but its profile has not been sent to the node yet (next apply, usually within a minute). \"Active\" - on the nodes, the link works. \"Revoked\" - removed from the nodes; keys whose expiry passed are marked the same way."
+          },
+          "nodes": {
+            "name": "Nodes",
+            "what": "Which nodes the key is bound to. The user gets one link per node and can switch between locations."
+          },
+          "traffic": {
+            "name": "Traffic (30 d)",
+            "what": "How much the key transferred in 30 days. Counted by telemt nodes only; a key bound solely to tproxy nodes shows a dash."
+          },
+          "expires": {
+            "name": "Expires",
+            "what": "End date. When it arrives the panel revokes the key itself and removes the profile from the nodes on the next apply. \"No expiry\" - permanent."
+          },
+          "filters": {
+            "name": "Search and filters",
+            "what": "Search by label and owner label; filters by type, status and node. A link of the form /keys?key=<id> opens one key - that is how the command palette gets there."
+          },
+          "row_actions": {
+            "name": "Row actions",
+            "what": "\"Show link\" - links and QR codes per node. \"Rotate secret\" - issue a new secret: the old link stops working, the new one must be sent out. \"Revoke\" - remove access. Click the label to open the whole key."
+          },
+          "bulk": {
+            "name": "Bulk actions",
+            "what": "Tick several keys: \"Extend\" gives them all one new date, \"Revoke\" and \"Delete\" apply to all at once (up to 500 keys per action). Delete is irreversible; revoke keeps the row in the list."
+          }
+        },
+        "notes": {
+          "1": "Every change reaches clients only after an apply on the node - on schedule (every 45 seconds by default) or via \"Apply\" on the node. On telemt without a restart, on tproxy with a relay restart.",
+          "2": "A node has a limited number of profiles (128 by default). When it is full, the panel refuses the binding and names the node.",
+          "3": "Viewers see the list but not the links or secrets."
+        }
+      },
+      "keys.create": {
+        "title": "New key",
+        "intro": "The tabs are three ways to hand out access: a shared key for a group, a personal key for one person, a batch of several keys at once. The key will work on every ticked node and becomes active after the next apply - usually within a minute. The panel shows the link right after creation.",
+        "fields": {
+          "label": {
+            "name": "Label",
+            "what": "The key's name in the panel: who or what it is for. Required, any text. Never reaches the client or the link.",
+            "example": "Support team",
+            "tip": "Labels are what you search by: write it so it still makes sense a year from now."
+          },
+          "owner_label": {
+            "name": "Owner label",
+            "what": "Personal keys only, required. Who exactly holds it: a name, Telegram handle or e-mail. It is how you find and revoke one person's access.",
+            "example": "Ivan Petrov · @ivan"
+          },
+          "nodes": {
+            "name": "Nodes",
+            "what": "Tick at least one. Each ticked node gets a profile and the client gets one link per node. Next to each node: how many free slots remain; a full node cannot be selected.",
+            "tip": "Nodes can be added or removed later in the key's drawer."
+          },
+          "carrier_mode": {
+            "name": "Carrier mode",
+            "what": "How the WEB client talks to the node over HTTPS. HTTPS - one POST request plus long poll, the most compatible, fine as the default. WebSocket - one persistent connection, lower latency where WebSocket is not blocked along the way. The \"lanes\" variants open a separate connection per data stream: more connections, helps where a single connection is throttled. Does not affect the Fake-TLS link.",
+            "example": "HTTPS",
+            "tip": "Start with HTTPS. Change it only if users complain about speed or drops - and then try WebSocket."
+          },
+          "expires_at": {
+            "name": "Expires",
+            "what": "Optional. Date and time in your time zone; must be in the future. When it arrives, the panel revokes the key itself and removes the profile from the nodes. Empty - a permanent key.",
+            "example": "2026-12-31 23:59",
+            "tip": "Extend in the key's drawer or in bulk from the list - before the date passes."
+          },
+          "limits": {
+            "name": "Limits",
+            "what": "Traffic quota, speed and address count are enforced by telemt itself, so they are available only when a telemt node is among the selected ones. \"Advanced limits\" are WEB-transport ceilings on sessions and streams. An empty field or 0 means no limit. The fields have their own help."
+          },
+          "note": {
+            "name": "Note",
+            "what": "Free text for you and your colleagues: who asked, paid until when. Never shown to clients, never on the subscription page."
+          }
+        },
+        "notes": {
+          "1": "A key created in \"Pending\" starts working after an apply on the node - automatically after the interval (45 seconds by default) or right away with \"Apply\" on the node.",
+          "2": "On a telemt node the key gets two links: WEB and Fake-TLS. On a tproxy node only WEB (Telegram Desktop stable, Android experimental, iOS planned).",
+          "3": "Closed the dialog half-way? The panel keeps a draft and offers to continue next time."
+        }
+      },
+      "keys.batch": {
+        "title": "Key batch",
+        "intro": "Creates several shared keys at once with identical settings (nodes, mode, expiry, limits) and labels of the form \"prefix-number\". Handy for handing out one key per person when the personal labels are not known yet. The panel checks that every node has room for the whole batch and creates either all keys or none.",
+        "fields": {
+          "prefix": {
+            "name": "Prefix",
+            "what": "Required. The start of every key's label; a hyphen and a running number are appended.",
+            "example": "vip → vip-1, vip-2, …"
+          },
+          "count": {
+            "name": "Count",
+            "what": "1 to 100 keys per batch. Each takes one profile on every selected node.",
+            "example": "25"
+          },
+          "result": {
+            "name": "Result",
+            "what": "After creation the panel lists the keys: each opens its link and QR, and \"Download all links\" gives a text file - one line per key and node - for sending out."
+          }
+        },
+        "notes": {
+          "1": "If some node has fewer free slots than keys in the batch, the panel refuses the whole batch and names the node and its free slots. Lower the count or drop the node.",
+          "2": "Batch keys are ordinary shared keys: they can be renamed, revoked or extended individually later."
+        }
+      },
+      "keys.limits": {
+        "title": "Key limits",
+        "intro": "Two sets of ceilings. The first five are enforced by telemt on the node - they work only on telemt nodes and change without a restart. The rest are WEB-transport ceilings on sessions and streams, enforced by the relay. An empty field or 0 always means no limit (for the WEB-transport ones: the node's default).",
+        "fields": {
+          "quota_gb": {
+            "name": "Traffic quota, GB",
+            "what": "Total traffic the key may transfer (up plus down). A gigabyte here is 1024³ bytes, as in the \"Traffic\" column. Once the quota is used up, telemt stops serving the key. Maximum 100 TB - a typo guard.",
+            "example": "50",
+            "tip": "Fractions are fine: 0.5 is 512 MB."
+          },
+          "rate_up_mbit": {
+            "name": "Upload speed, Mbit/s",
+            "what": "Speed ceiling from the client to Telegram's servers. A megabit here is 1,000,000 bits per second, as in ISP plans. 10 Mbit/s ≈ 1.25 MB/s.",
+            "example": "20"
+          },
+          "rate_down_mbit": {
+            "name": "Download speed, Mbit/s",
+            "what": "Speed ceiling from Telegram to the client - that is media and file downloads. 20-50 Mbit/s is usually enough for comfortable video.",
+            "example": "100"
+          },
+          "max_unique_ips": {
+            "name": "Max unique IPs",
+            "what": "From how many different IP addresses the key may be used at the same time. A simple way to keep a shared key from spreading across the internet. Up to 1,000,000.",
+            "example": "3",
+            "tip": "One person on a phone with mobile data changes IP often; give a personal key at least 3-5."
+          },
+          "max_tcp_conns": {
+            "name": "Max connections",
+            "what": "How many TCP connections the key may hold open at once. A Telegram client opens several per device. Up to 1,000,000.",
+            "example": "64"
+          },
+          "max_sessions": {
+            "name": "Max sessions",
+            "what": "How many WEB sessions (≈ devices) may be open on this key at the same time."
+          },
+          "max_streams": {
+            "name": "Max streams",
+            "what": "How many data streams (connections to Telegram's servers) the key may hold in total across all sessions."
+          },
+          "max_streams_per_session": {
+            "name": "Max streams per session",
+            "what": "The same, per session. Cannot exceed \"Max streams\"."
+          },
+          "max_pending_per_session": {
+            "name": "Max pending per session",
+            "what": "How many streams of one session may be in the connecting stage at once."
+          },
+          "max_backend_dials_in_flight": {
+            "name": "Max concurrent backend dials",
+            "what": "How many connections to Telegram's servers the relay may be opening for the key at the same time. Cannot exceed \"Max streams\"."
+          },
+          "new_sessions_per_minute": {
+            "name": "New sessions / min",
+            "what": "Rate limit: how many new sessions per minute the key may open. Protection against a leaked key that hundreds of clients try to use."
+          },
+          "new_sessions_burst": {
+            "name": "New sessions burst",
+            "what": "How many sessions may open in one burst above the per-minute rate - say, when the whole team connects at once in the morning."
+          },
+          "new_streams_per_minute": {
+            "name": "New streams / min",
+            "what": "As for sessions, but for data streams."
+          },
+          "new_streams_burst": {
+            "name": "New streams burst",
+            "what": "The allowed burst of new streams above the per-minute rate."
+          }
+        },
+        "notes": {
+          "1": "If the key is bound only to tproxy nodes, the telemt limits are shown greyed out: nothing enforces them. They start working as soon as you add a telemt node.",
+          "2": "The WEB-transport limits are fine tuning. Leave zeros until you have a specific problem: a node's own defaults handle ordinary load.",
+          "3": "Every limit change reaches the node on the next apply."
+        }
+      },
+      "keys.detail": {
+        "title": "Key drawer",
+        "intro": "Everything about one key, top to bottom: what it is, what can be changed, which nodes it is on, how it is handed out - and, at the very bottom behind a confirmation, what cannot be undone. Every save reaches the nodes on the next apply.",
+        "fields": {
+          "status": {
+            "name": "Header",
+            "what": "Label, status (pending / active / revoked), type and creation date. A revoked key opens read-only."
+          },
+          "edit": {
+            "name": "Settings",
+            "what": "Label, owner label, note, expiry, carrier mode and limits - the same fields as at creation. Changing the expiry of an active key is the usual way to extend access."
+          },
+          "nodes": {
+            "name": "Nodes",
+            "what": "Where the key is. \"Add node\" creates a profile on one more node (if it has room), \"Remove\" takes it off. The user gains or loses the link for that location; the subscription page updates itself."
+          },
+          "link": {
+            "name": "Link",
+            "what": "Opens the dialog with links and QR codes per node: WEB and, on telemt nodes, Fake-TLS."
+          },
+          "subscription": {
+            "name": "Subscription link",
+            "what": "A public page where the user sees all their locations and QR codes, and which updates itself when nodes or the secret change. The link and QR are shown once at creation - save them. \"Rotate link\" invalidates the old address; \"Revoke\" removes the page. The key's label and notes never appear there."
+          },
+          "rotate": {
+            "name": "Rotate secret",
+            "what": "Issues a new secret. Every old link of this key stops working after the apply; new ones must be sent out again. Use it when a link reached the wrong people."
+          },
+          "revoke": {
+            "name": "Revoke",
+            "what": "Removes the profile from every node on the next apply. The key stays in the list for the record. For a shared key this cuts off everyone using it."
+          },
+          "delete": {
+            "name": "Delete",
+            "what": "Removes the key and its whole history. Irreversible. If you only need to stop access, revoke instead."
+          }
+        },
+        "notes": {
+          "1": "Per-key traffic and connections are counted by telemt nodes only; on tproxy nodes the stats block is empty.",
+          "2": "While the status is \"Pending\" the link is already shown but starts working only after the apply on the node (usually within a minute)."
+        }
+      },
+      "keys.link": {
+        "title": "Client link",
+        "intro": "With the link the user enables the proxy in Telegram with one tap. The panel shows one block per node of the key; send the user the links of the locations they need, or one subscription link that gathers them all.",
+        "fields": {
+          "web": {
+            "name": "WEB",
+            "what": "A link of the form https://t.me/webproxy?server=<host>&secret=<secret>. The client goes through the node's site on port 443 - plain HTTPS to the network. Available on every node. Client support: Telegram Desktop stable, Android experimental, iOS not yet."
+          },
+          "fake_tls": {
+            "name": "Fake-TLS",
+            "what": "A link of the form https://t.me/proxy?server=<host>&port=<port>&secret=ee…. A classic MTProto proxy disguised as HTTPS; every official Telegram client on every platform understands it. telemt nodes only; the port is the node's \"Fake-TLS port\".",
+            "tip": "For iOS users and older clients hand out Fake-TLS."
+          },
+          "tme_vs_tg": {
+            "name": "t.me and tg://",
+            "what": "The same thing in two forms. https://t.me/… opens from any browser or messenger and forwards into Telegram. tg://… is a direct link into the app; useful where t.me is blocked, but not clickable in some chats."
+          },
+          "qr": {
+            "name": "QR code",
+            "what": "The same link as an image: show it on screen or put it in a guide. The Telegram client on a phone opens it via the camera scanner. \"Download QR\" saves a PNG."
+          },
+          "clients": {
+            "name": "On the user's side",
+            "what": "Open the link → Telegram asks \"Enable proxy?\" → Connect. Verify: Settings → Data and Storage → Proxy. If the proxy will not connect, check the node's \"Readiness check\" first."
+          }
+        },
+        "notes": {
+          "1": "While the key is \"Pending\" the link does not work yet - wait for the apply (usually within a minute).",
+          "2": "The link contains the secret: whoever sees it can use the key. Leaked? \"Rotate secret\" in the key's drawer.",
+          "3": "Viewers are not shown links."
+        }
+      },
+      "keys.extend": {
+        "title": "Extend expiry",
+        "intro": "Sets one new end date on every selected key. For when a group paid for another month.",
+        "fields": {
+          "expires_at": {
+            "name": "New end date",
+            "what": "Date and time in your time zone, must be in the future. Replaces the previous expiry of every selected key - including permanent ones.",
+            "example": "2027-01-31 23:59"
+          }
+        },
+        "notes": {
+          "1": "Extend before the date passes: once it does, the panel revokes the key and it has to be issued again.",
+          "2": "The new expiry reaches the nodes on the next apply."
+        }
+      },
+      "sites.templates": {
+        "title": "Site templates",
+        "intro": "Every node's domain must serve an ordinary, plausible website: to the ISP the proxy traffic then looks like visits to a site, and anyone opening the address sees a page rather than an error. A template is such a site: HTML plus files. The panel deploys a preset when a node is installed; here you pick another or write your own.",
+        "fields": {
+          "template": {
+            "name": "Template",
+            "what": "A card with the name, a \"Preset\" tag for built-in ones and the last change. Click the name to open the editor."
+          },
+          "preset": {
+            "name": "Preset",
+            "what": "Built-in templates. They cannot be deleted or renamed, but can be assigned to nodes and duplicated as your own."
+          },
+          "duplicate": {
+            "name": "Duplicate as own",
+            "what": "Makes a copy under your name - the usual way to start your own site from a working base."
+          },
+          "delete": {
+            "name": "Delete",
+            "what": "Own templates only. Nodes that already run it keep showing it until another one is assigned."
+          },
+          "assign": {
+            "name": "Assign to node",
+            "what": "In the editor - the \"Assign to node…\" button; on the node page - the \"Site\" tab. Every node gets a uniquified copy: block order, class and file names differ, so nodes do not share a signature."
+          }
+        },
+        "notes": {
+          "1": "A template is at most 2 MB including files: it travels to the node inside every apply.",
+          "2": "A good template is boring: a small business card site, a personal page, documentation. Do not copy well-known sites."
+        }
+      },
+      "sites.editor": {
+        "title": "Template editor",
+        "intro": "HTML and files on the left, preview and validation on the right. The cover site lives on the node and must be fully self-contained: the relay forbids anything that pulls external resources or sends data out - otherwise the site would give the node away.",
+        "fields": {
+          "name": {
+            "name": "Template name",
+            "what": "How the template appears in the list and in the node page's selector. A preset's name cannot be changed.",
+            "example": "Design studio"
+          },
+          "html": {
+            "name": "HTML",
+            "what": "One whole page. Write styles and scripts right in <style> and <script> - on save the panel moves them into separate files. Not allowed: references to external resources (foreign CSS, fonts, images, scripts), inline handlers such as onclick, forms. Add images and fonts under \"Files\" and reference them by relative path."
+          },
+          "assets": {
+            "name": "Files",
+            "what": "Images, fonts, extra CSS/JS. A file's path is how you reference it from the HTML. Total template size with the HTML: up to 2 MB.",
+            "example": "./img/logo.svg"
+          },
+          "validate": {
+            "name": "Validate",
+            "what": "Runs the same checks as saving and lists the violations with what exactly to remove. A save with errors is refused."
+          },
+          "preview": {
+            "name": "Preview",
+            "what": "The page in a sandboxed frame - what a visitor to the node's domain sees. Check for broken images: they are the first sign of external references."
+          },
+          "save": {
+            "name": "Save",
+            "what": "Stores the template in the panel. Nodes it is assigned to receive the new version on the next apply."
+          }
+        },
+        "notes": {
+          "1": "An unfinished template is kept as a draft and offered back next time you open it.",
+          "2": "Common offenders: Google Fonts, CDN scripts, analytics counters, <form>. Replace with local files or remove."
+        }
+      },
+      "sites.assign": {
+        "title": "Assign template to node",
+        "intro": "Pick a node and this template becomes its cover site. The panel marks the node as having pending changes; the site reaches the server on the next apply.",
+        "fields": {
+          "node": {
+            "name": "Node",
+            "what": "The node the template is assigned to. It gets its own uniquified copy: file and class names differ from other nodes with the same template."
+          }
+        },
+        "notes": {
+          "1": "On a tproxy node the apply restarts the relay and drops live sessions; on a telemt node a site change also goes through an apply.",
+          "2": "The current template and its deployment status are on the node page → \"Site\" tab."
+        }
+      },
+      "monitoring": {
+        "title": "Monitoring",
+        "intro": "Charts per node over the chosen range. Values come from stats snapshots the panel takes from the nodes regularly, so a line can trail \"now\" by a few minutes. For your own Prometheus/Grafana, the metrics address is at the bottom.",
+        "fields": {
+          "range": {
+            "name": "Range",
+            "what": "1 hour, 6 hours, 24 hours or 7 days. The longer the range, the coarser the averaging step."
+          },
+          "sessions": {
+            "name": "Live sessions",
+            "what": "How many client WEB sessions were open on the node at each moment. Roughly the number of connected devices."
+          },
+          "streams": {
+            "name": "Live streams",
+            "what": "Connections to Telegram's servers inside the sessions. Usually several times the sessions; a sharp rise at the same session count is a sign of one key being abused."
+          },
+          "traffic": {
+            "name": "Traffic",
+            "what": "The node's outbound and inbound traffic over the range. Useful to see when a node will hit its VPS plan's cap."
+          },
+          "connections": {
+            "name": "Connections (telemt)",
+            "what": "On telemt nodes, connections are shown instead of sessions and streams - what telemt itself counts."
+          },
+          "prometheus": {
+            "name": "Prometheus",
+            "what": "The panel's own metrics are served at /metrics with the header Authorization: Bearer <METRICS_TOKEN> (the token is in the panel's .env). Each node's metrics: /api/v1/nodes/{id}/metrics. A ready Grafana dashboard is in the repository under deploy/grafana/."
+          }
+        },
+        "notes": {
+          "1": "A node with no data for the range was either just installed or offline: snapshots are taken from online nodes only.",
+          "2": "Per-key statistics are in the key's drawer (telemt only)."
+        }
+      },
+      "audit": {
+        "title": "Audit log",
+        "intro": "Who did what and when in the panel: logins, key creation and revocation, node, settings and branding changes. The panel writes the entries itself; they cannot be edited or deleted from the UI. Use it to trace where a change came from and who issued a key.",
+        "fields": {
+          "action": {
+            "name": "Action",
+            "what": "Filter by action group: login, admins, nodes, keys, templates, branding, settings, alerts."
+          },
+          "user": {
+            "name": "User",
+            "what": "The admin's username. \"system\" - the panel itself acted: an automatic apply, an expiry revocation, an alert."
+          },
+          "dates": {
+            "name": "From / To",
+            "what": "Range bounds in your time zone. Empty - unbounded."
+          },
+          "target": {
+            "name": "Target",
+            "what": "What was touched: the id of a key, node, template or profile."
+          },
+          "ip": {
+            "name": "IP",
+            "what": "The address the request came from. Behind a reverse proxy the panel takes it from X-Forwarded-For."
+          },
+          "details": {
+            "name": "Details",
+            "what": "Extra fields of the entry: the key's label, what exactly changed, the result of a test message. Opened with \"Details\"."
+          }
+        },
+        "notes": {
+          "1": "Secrets and passwords never reach the log - only the fact of the action.",
+          "2": "Entries are part of the database backup like everything else."
+        }
+      },
+      "settings.panel": {
+        "title": "Intervals",
+        "intro": "Two numbers that decide how fast the panel reacts. Only the owner can change them; the values from .env (APPLY_INTERVAL, OFFLINE_AFTER) are the initial ones, overridden here without a restart.",
+        "fields": {
+          "apply_interval": {
+            "name": "Apply interval, s",
+            "what": "How often the worker checks the nodes for unsent changes and sends them. 10 to 3600 seconds, default 45. A key created in the panel starts working no later than this interval.",
+            "example": "45",
+            "tip": "On tproxy nodes every apply restarts the relay. If keys are issued often, a longer interval (120-300) means fewer restarts - the changes simply pile into one batch."
+          },
+          "offline_after": {
+            "name": "Offline after, s",
+            "what": "How many seconds without an agent heartbeat the panel waits before calling the node offline and raising an alert. 30 to 3600, default 90.",
+            "example": "90",
+            "tip": "Too small a threshold gives false alerts on any network hiccup; do not go below 60."
+          }
+        },
+        "notes": {
+          "1": "\"Apply\" on a node and \"Apply everywhere\" in the command palette do not wait for the interval."
+        }
+      },
+      "settings.telegram": {
+        "title": "Telegram notifications",
+        "intro": "The panel messages Telegram when a node goes offline or comes back and when an apply on a node fails. You need your own bot and a chat for it to write to.",
+        "fields": {
+          "enabled": {
+            "name": "Enable notifications",
+            "what": "The master switch. The token and chat id are kept when it is off."
+          },
+          "bot_token": {
+            "name": "Bot token",
+            "what": "Create a bot with @BotFather (the /newbot command) and copy the token from its reply. The panel stores the token encrypted and never shows it again - the field only replaces it. \"Token set\" means one exists.",
+            "example": "123456789:AAH4kZ…-xyz"
+          },
+          "chat_id": {
+            "name": "Chat ID",
+            "what": "Where to write. For direct messages - your numeric id (ask @userinfobot); send your bot /start first, or it cannot message you. For a group - its id, a negative number; supergroups start with -100. Add the bot to the group.",
+            "example": "-1001234567890"
+          },
+          "test": {
+            "name": "Send a test message",
+            "what": "Sends a probe with the token and chat id as typed, without saving them. If it arrives, save. The test result is written to the audit log."
+          }
+        },
+        "notes": {
+          "1": "\"chat not found\" - the bot cannot write to this chat: you never pressed /start in the DM, or the bot is not in the group.",
+          "2": "\"unauthorized\" - the token is wrong or was revoked in @BotFather."
+        }
+      },
+      "settings.security": {
+        "title": "Security",
+        "intro": "Your account's password and second factor. The panel is the one place from which access to every node can be issued, so right after install change the password and turn on two-factor authentication.",
+        "fields": {
+          "password": {
+            "name": "Change password",
+            "what": "Current password, new one (at least 10 characters) and its repeat. After the change every other session of this account is ended - other devices have to log in again."
+          },
+          "totp": {
+            "name": "Two-factor authentication",
+            "what": "One-time codes from an authenticator app (Google Authenticator, Aegis, 1Password and any other TOTP app). To enable: scan the QR code or type the key by hand, enter the code the app shows and your password. The section appears when the panel's .env has FEATURE_TOTP=true."
+          },
+          "recovery": {
+            "name": "Recovery codes",
+            "what": "Eight one-time codes the panel shows exactly once - right after enabling. Each stands in for an app code once. Save them in a password manager before closing the dialog."
+          },
+          "disable": {
+            "name": "Disable",
+            "what": "Requires the password and a current code. Afterwards the password alone logs you in and the recovery codes are deleted."
+          }
+        },
+        "notes": {
+          "1": "Lost both the app and the recovery codes: the owner resets 2FA on the panel's server with docker compose exec panel /app/panel admin totp-reset <username>.",
+          "2": "\"Invalid code\" with the right app is almost always a phone clock that drifted. Turn on automatic time."
+        }
+      },
+      "settings.admins": {
+        "title": "Admins",
+        "intro": "Accounts that can log in to the panel. Only the owner creates and deletes them. Give every person their own account - then the audit log says who did what.",
+        "fields": {
+          "username": {
+            "name": "Username",
+            "what": "At least 2 characters, unique. Cannot be changed later - only a new account can be created.",
+            "example": "maria"
+          },
+          "password": {
+            "name": "Password",
+            "what": "At least 10 characters. Tell it to the person and ask them to change it right away under Settings → Security."
+          },
+          "role": {
+            "name": "Role",
+            "what": "Owner - everything, including panel settings, admins and backups. Admin - nodes, keys, templates and branding, but not panel settings or accounts. Viewer - read only: no key links or secrets."
+          }
+        },
+        "notes": {
+          "1": "The last owner cannot be deleted, nor can you delete your own account.",
+          "2": "The first account is created by the installer or by panel admin create on the server - the same way you add an owner if all access is lost."
+        }
+      },
+      "settings.branding": {
+        "title": "Branding",
+        "intro": "How the panel looks to admins and to users on the subscription page: name, logo, colours, texts. Settings are grouped into profiles; the active profile applies to everyone at once, no rebuild. It is handy to keep a \"live\" and a \"draft\" profile and switch.",
+        "fields": {
+          "profiles": {
+            "name": "Profiles",
+            "what": "\"Create from active\" copies the current settings and files under a new name. \"Activate\" turns a profile on for everyone. Any profile but the active one can be deleted. Unsaved changes are lost when switching profiles - the panel asks first."
+          },
+          "panel_name": {
+            "name": "Panel name",
+            "what": "Shown in the browser tab, the sidebar, the login page and the Telegram test message.",
+            "example": "Proxy Ops"
+          },
+          "logo": {
+            "name": "Logo",
+            "what": "PNG, JPEG, ICO or SVG up to 512 KB. SVG is stripped of scripts. Shown in the sidebar and on the login page. Empty - the built-in mark."
+          },
+          "favicon": {
+            "name": "Favicon",
+            "what": "The browser-tab icon, same formats and limit. Best square, 32×32 or SVG."
+          },
+          "login_bg": {
+            "name": "Login background",
+            "what": "The image on the left half of the login page. Empty - the brand pattern."
+          },
+          "primary_color": {
+            "name": "Primary colour",
+            "what": "The colour of the active menu item, links, focus rings and the first chart series. #rgb or #rrggbb. The main button stays neutral on purpose.",
+            "example": "#e8590c"
+          },
+          "accent_color": {
+            "name": "Accent colour",
+            "what": "The second chart series and secondary accents. #rgb or #rrggbb. Pick one distinguishable from the primary and from the green/yellow/red status colours.",
+            "example": "#2f9e8f"
+          },
+          "theme_default": {
+            "name": "Default theme",
+            "what": "Dark or light - for people who have not switched the theme themselves. A user's own choice is stored in their browser and wins."
+          },
+          "login_text": {
+            "name": "Login page text",
+            "what": "A short message under the \"Sign in\" heading: who the panel is for, where to ask for access."
+          },
+          "support_link": {
+            "name": "Support link",
+            "what": "Empty, or an address starting with http:// or https://. Shown on the login page and the subscription page.",
+            "example": "https://t.me/your_support"
+          },
+          "footer_text": {
+            "name": "Footer text",
+            "what": "The line at the bottom of the login page and the subscription page: company name, year."
+          },
+          "custom_css": {
+            "name": "Custom CSS",
+            "what": "Your styles on top of the theme. The panel strips dangerous fragments (external imports, expressions, scripts) and reports what it removed. Fonts and images from foreign domains cannot be loaded from here."
+          }
+        },
+        "notes": {
+          "1": "The preview on the right updates live, but other users see changes only after \"Save\" - and only if the profile is active.",
+          "2": "Check contrast: brand-coloured text on the dark ground must stay readable (aim for at least 4.5:1)."
+        }
+      },
+      "settings.backups": {
+        "title": "Backups",
+        "intro": "A backup is a dump of the whole panel database: nodes, keys, secrets, settings, the audit log. Files live on the panel's server in the /data/backups/ volume. Owner only. Secrets in the dump stay encrypted with the MASTER_KEY from .env - without it a restored database is useless, so keep the key away from the server.",
+        "fields": {
+          "create": {
+            "name": "Create backup",
+            "what": "Dumps right now without stopping the panel. Takes seconds; a second run while one is in progress is refused."
+          },
+          "download": {
+            "name": "Download",
+            "what": "Downloads the .dump file to your computer. Take copies off the server regularly: a backup on the same disk does not survive losing the server."
+          },
+          "delete": {
+            "name": "Delete",
+            "what": "Removes the file from the panel's server. Copies you already downloaded stay with you."
+          },
+          "schedule_enabled": {
+            "name": "Back up nightly",
+            "what": "A daily scheduled backup. The oldest scheduled backups beyond the limit are deleted; manual ones are left alone."
+          },
+          "schedule_hour": {
+            "name": "Time",
+            "what": "The hour to run, in UTC, 0 to 23. Pick the quietest time.",
+            "example": "03:00 UTC"
+          },
+          "schedule_keep": {
+            "name": "Keep backups",
+            "what": "How many latest scheduled backups to keep, 1 to 60. 14 is two weeks of dailies.",
+            "example": "14"
+          },
+          "restore": {
+            "name": "Restore",
+            "what": "Not done from the UI: on the panel's server stop the panel and run docker compose run --rm panel db restore /data/backups/<file>.dump --yes, then start the panel. Requires the same MASTER_KEY the backup was made with."
+          }
+        },
+        "notes": {
+          "1": "Make a manual backup before upgrading the panel - the schedule never deletes it.",
+          "2": "Nodes need no backup: the panel rebuilds their state with an apply after the database is restored."
+        }
+      }
+    }
   }
 }

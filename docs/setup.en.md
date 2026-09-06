@@ -2,7 +2,7 @@
 
 Русская версия: [setup.ru.md](setup.ru.md)
 
-A control panel for Telegram WEB Proxy: one Go binary with an embedded web UI, PostgreSQL and Caddy for TLS. The panel runs on its own server and manages nodes that run the official `tproxy-server` + MTProxy. All screenshots below use demo data.
+TGProxy Panel: a control panel for Telegram proxies (MTProto, WEB and Fake-TLS) - one Go binary with an embedded web UI, PostgreSQL and Caddy for TLS. The panel runs on its own server and manages nodes that run the official `tproxy-server` + MTProxy. All screenshots below use demo data.
 
 ![Dashboard](screenshots/dashboard.png)
 
@@ -45,7 +45,7 @@ sudo /opt/tgproxy-panel/install.sh --uninstall --purge   # remove containers, vo
 cd /opt/tgproxy-panel && docker compose logs -f panel    # logs
 ```
 
-The script does not touch the firewall: open ports 80 and 443 yourself. `install.sh --help` lists every flag; each has a `TGWP_<NAME>` environment variable. The published image is built for `linux/amd64` and `linux/arm64`.
+Before changing anything the script checks that the domain resolves to this host's public IP, that ports 80 and 443 are free and that the install directory is usable; a failed check offers re-run / continue / quit on a terminal and stops the script otherwise (`--skip-preflight` skips the checks). The script does not touch the firewall: open ports 80 and 443 yourself. `install.sh --help` lists every flag; each has a `TGWP_<NAME>` environment variable. The published image is built for `linux/amd64` and `linux/arm64`.
 
 ### By hand with docker compose
 
@@ -161,7 +161,15 @@ docker compose exec panel /app/panel admin totp-reset <username>
 
 Prepare the VPS: an A record for the node's domain pointing at its IP, ports 80 and 443 open, nothing else listening on them.
 
-**The A record must already resolve to the node before you run the install command.** On a telemt node the installer starts Caddy first and waits up to 120 seconds for `https://<node domain>/` to answer with a valid certificate; without DNS, Caddy never gets one from Let's Encrypt, and the installer aborts with the last 30 lines of `journalctl -u caddy` instead of leaving you with a node whose every apply fails. (telemt learns the TLS fingerprint of its `tls_domain` from a real handshake on 443, and it refuses to activate a new configuration until it has one.)
+**The A record must already resolve to the node before you run the install command.** The script checks that before it installs anything. Its first step, "Pre-flight checks", prints one line per check: `arch` (x86_64), `systemd`, `panel` (the panel answers `/healthz` from this host), `public_ip` (this server's public IPv4: `TGWP_PUBLIC_IP` if set, else `public_ip` set on the node in the panel, else `api.ipify.org` or the outbound route), `dns` (the node's A record resolves to that address), on a telemt node `tls_domain` (resolves; a warning only) and `ports` (80, 443 and the Fake-TLS port are free; Caddy or telemt left by a previous run of this same script are fine). A failed `arch`, `systemd`, `panel` or `public_ip` check stops the script. A failed `dns` or `ports` check shows a menu read from the terminal:
+
+```
+  What now?  [r] re-run the checks   [c] continue anyway   [q] quit
+```
+
+Fix the record in another window and press `r`; `q` (or Ctrl-C) exits with nothing installed. Where there is no terminal to ask on (a cloud console that pipes the script), the script exits the same way; to go ahead regardless run `curl … | sudo TGWP_SKIP_PREFLIGHT=1 bash`. `TGWP_DRY_RUN=1` stops right after the checks.
+
+After the packages the installer starts Caddy and waits up to 120 seconds for `https://<node domain>/` to answer with a valid certificate (a telemt node then waits up to 60 seconds for telemt to report ready on its control API), and only then registers the node with the panel. Registration is the one step that consumes the single-use install token, so if the script fails anywhere before the "Registration" step — the certificate wait is the usual place — fix the cause and run the same command again; the packages already installed are reused. The failure message ends with the last 30 lines of `journalctl -u caddy` (or `-u telemt`) and says what to check. (telemt learns the TLS fingerprint of its `tls_domain` from a real handshake on 443, and it refuses to activate a new configuration until it has one, which is why Caddy must hold a certificate before telemt starts.)
 
 In the panel: Nodes → Add node. Enter a name, the node's domain and an e-mail for the Let's Encrypt certificate.
 
@@ -186,6 +194,10 @@ Alongside the dependencies the script (for either engine) writes `/etc/sysctl.d/
 The node page shows service health, resources, the readiness check (DNS, ports, certificate, site response; on a telemt node also the Fake-TLS mask), profiles, logs and relay statistics. The separate "Post-quantum key exchange" row is informational: it shows whether Caddy on the node negotiates the hybrid X25519MLKEM768 with modern clients and does not affect the overall check result.
 
 ![Node page](screenshots/node-detail.png)
+
+Server load is visible in three places: the CPU and RAM columns in the nodes list and on the dashboard (from the last heartbeat, a dash for an offline node), the node's Overview tab (current CPU, memory, disk, uptime) and its Stats tab with a CPU/RAM/disk chart over 1 hour, 6 hours, a day or a week. The same chart sits in the node card on the Monitoring page.
+
+![Node load](screenshots/node-stats.png)
 
 Profile and site changes are not pushed immediately: a worker applies them in batches every `APPLY_INTERVAL` seconds (45 by default) or when you press Apply. Every apply restarts the relay; clients re-establish their connections automatically.
 
@@ -275,6 +287,12 @@ The right side of the top bar carries three chips: the panel version, the projec
 ![Top bar chips](screenshots/topbar.png)
 
 ![Update highlight](screenshots/topbar-update.png)
+
+The `?` in the header of every page and dialog opens a help panel on the right: what each field means, an example value, what happens when it is left empty, and common mistakes. The `?` key opens the help for the current page. Forms remember what you typed: if a dialog closes by accident, the next time it opens the panel offers to continue the draft or start over. A draft lives for 24 hours in the browser; passwords and tokens are never stored in it.
+
+![Help panel](screenshots/help-panel.png)
+
+![Form draft](screenshots/draft-banner.png)
 
 ## 11. Branding
 

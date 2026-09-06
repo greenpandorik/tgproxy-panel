@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { HelpButton } from '@/help';
 import { formatDateTime } from '@/lib/format';
 
 const PER_PAGE = 50;
@@ -37,7 +38,9 @@ function metaCompact(meta: unknown, max = 3): string {
   if (typeof meta !== 'object' || Array.isArray(meta)) return JSON.stringify(meta);
   const entries = Object.entries(meta as Record<string, unknown>);
   if (entries.length === 0) return '—';
-  const parts = entries.slice(0, max).map(([k, v]) => `${k}=${typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}`);
+  const parts = entries
+    .slice(0, max)
+    .map(([k, v]) => `${k}=${typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}`);
   return entries.length > max ? `${parts.join(', ')}, …` : parts.join(', ');
 }
 
@@ -136,12 +139,18 @@ export function AuditPage() {
 
   return (
     <>
-      <PageHeader title={t('audit.title')} description={total > 0 ? t('audit.header_count', { count: total }) : undefined} />
+      <PageHeader
+        title={t('audit.title')}
+        description={total > 0 ? t('audit.header_count', { count: total }) : undefined}
+        actions={<HelpButton topic="audit" />}
+      />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <Select value={action} onValueChange={(v) => changeAction((v ?? 'all') as (typeof ACTION_PREFIXES)[number] | 'all')}>
           <SelectTrigger className="w-full sm:w-48" aria-label={t('audit.column_action')}>
-            <SelectValue>{(v: (typeof ACTION_PREFIXES)[number] | 'all') => t(ACTION_FILTER_LABEL[v] ?? ACTION_FILTER_LABEL.all)}</SelectValue>
+            <SelectValue>
+              {(v: (typeof ACTION_PREFIXES)[number] | 'all') => t(ACTION_FILTER_LABEL[v] ?? ACTION_FILTER_LABEL.all)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('audit.filter_action_all')}</SelectItem>
@@ -200,7 +209,9 @@ export function AuditPage() {
                 <TableBody>
                   {items.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="mono pl-4 text-xs text-mute">{formatDateTime(entry.created_at, i18n.language)}</TableCell>
+                      <TableCell className="mono pl-4 text-xs text-mute">
+                        {formatDateTime(entry.created_at, i18n.language)}
+                      </TableCell>
                       <TableCell className="text-foreground">{entry.username || t('audit.system_user')}</TableCell>
                       <TableCell>
                         <ActionTag action={entry.action} />
@@ -243,7 +254,13 @@ export function AuditPage() {
           <div className="flex items-center justify-between gap-2">
             <p className="mono text-xs text-dim">{t('audit.pagination_summary', { page, totalPages, total })}</p>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
                 <ChevronLeft />
                 {t('audit.pagination_prev')}
               </Button>

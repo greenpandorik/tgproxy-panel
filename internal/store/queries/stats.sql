@@ -1,12 +1,13 @@
 -- name: InsertSnapshot :exec
-INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw,
+  cpu_percent, mem_used_percent, disk_used_percent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
 
 -- name: ListSnapshots :many
 SELECT * FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at;
 
 -- name: ListSnapshotsAllNodes :many
-SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down
+SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent, mem_used_percent, disk_used_percent
 FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_id, taken_at;
 
 -- ListSnapshotsAllNodesBucketed collapses snapshots into fixed-width time buckets in the
@@ -20,7 +21,8 @@ FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_
 -- consecutive maxima give the correct average rate over the interval between the buckets'
 -- closing timestamps. The point's own timestamp is max(taken_at) rather than the bucket
 -- boundary for exactly that reason: a partial trailing bucket would otherwise be divided by
--- the full step width and under-report the current rate. node_stats_node_time_idx
+-- the full step width and under-report the current rate. The load percentages are gauges
+-- like the session counts and get the same average. node_stats_node_time_idx
 -- (node_id, taken_at DESC) covers the scan.
 -- name: ListSnapshotsAllNodesBucketed :many
 SELECT node_id,
@@ -28,7 +30,10 @@ SELECT node_id,
        round(avg(sessions_live))::int AS sessions_live,
        round(avg(streams_live))::int AS streams_live,
        max(bytes_up)::bigint AS bytes_up,
-       max(bytes_down)::bigint AS bytes_down
+       max(bytes_down)::bigint AS bytes_down,
+       avg(cpu_percent)::real AS cpu_percent,
+       avg(mem_used_percent)::real AS mem_used_percent,
+       avg(disk_used_percent)::real AS disk_used_percent
 FROM node_stats_snapshots
 WHERE taken_at >= sqlc.arg('from_at') AND taken_at <= sqlc.arg('to_at')
 GROUP BY node_id, floor(extract(epoch FROM taken_at) / sqlc.arg('step')::bigint)

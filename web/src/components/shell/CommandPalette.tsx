@@ -1,7 +1,7 @@
-import { KeyRound, Languages, Moon, Plus, Send, Server, Sun } from 'lucide-react';
+import { CircleHelp, KeyRound, Languages, Moon, Plus, Send, Server, Sun } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useKeys } from '@/api/keys';
 import { useApplyDirtyNodes, useNodes } from '@/api/nodes';
@@ -18,6 +18,7 @@ import {
   CommandShortcut,
 } from '@/components/ui/command';
 import { toast } from '@/components/ui/toast';
+import { topicForPath, useHelp } from '@/help';
 import { setLang } from '@/i18n';
 import { useTheme } from '@/theme/ThemeProvider';
 import { nodeStatus } from '@/pages/nodes/nodeDisplay';
@@ -43,6 +44,9 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const help = useHelp();
+  const pageTopic = topicForPath(pathname);
   const { theme, toggleTheme } = useTheme();
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -186,6 +190,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 {t('command.action_apply_all')}
                 {dirtyNodeIds.length > 0 && <CommandShortcut>{dirtyNodeIds.length}</CommandShortcut>}
               </CommandItem>
+              {help && pageTopic && (
+                <CommandItem value="action:help" onSelect={() => run(() => help.open(pageTopic))}>
+                  <CircleHelp strokeWidth={1.8} aria-hidden="true" />
+                  {t('help.page_help')}
+                  <CommandShortcut>?</CommandShortcut>
+                </CommandItem>
+              )}
               <CommandItem value="action:theme" onSelect={() => run(toggleTheme)}>
                 {theme === 'dark' ? <Sun strokeWidth={1.8} aria-hidden="true" /> : <Moon strokeWidth={1.8} aria-hidden="true" />}
                 {t('command.action_toggle_theme')}

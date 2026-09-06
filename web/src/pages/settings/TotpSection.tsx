@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/toast';
+import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -101,15 +102,18 @@ export function TotpSection() {
         <PanelHeader
           title={t('settings.totp_title')}
           actions={
-            enabled ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => setDisableOpen(true)}>
-                {t('settings.totp_disable')}
-              </Button>
-            ) : (
-              <Button type="button" size="sm" onClick={() => void startEnrolment()} disabled={setup.isPending}>
-                {t('settings.totp_enable')}
-              </Button>
-            )
+            <>
+              <HelpButton topic="settings.security" />
+              {enabled ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => setDisableOpen(true)}>
+                  {t('settings.totp_disable')}
+                </Button>
+              ) : (
+                <Button type="button" size="sm" onClick={() => void startEnrolment()} disabled={setup.isPending}>
+                  {t('settings.totp_enable')}
+                </Button>
+              )}
+            </>
           }
         />
         <PanelBody className="space-y-2">
@@ -188,7 +192,10 @@ function EnrolDialog({
     <Dialog open={!!enrolment} onOpenChange={(open) => !open && onCancel()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('settings.totp_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('settings.totp_title')}</DialogTitle>
+            <HelpButton topic="settings.security" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('settings.totp_scan_hint')}</DialogDescription>
         </DialogHeader>
 
@@ -311,7 +318,10 @@ function RecoveryCodesDialog({ codes, username, acknowledged, onAcknowledgedChan
     >
       <DialogContent className="sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>{t('settings.totp_recovery_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('settings.totp_recovery_title')}</DialogTitle>
+            <HelpButton topic="settings.security" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('settings.totp_recovery_description')}</DialogDescription>
         </DialogHeader>
 
@@ -400,7 +410,10 @@ function DisableDialog({ open, onOpenChange, onDisable, pending }: DisableDialog
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('settings.totp_disable_title')}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{t('settings.totp_disable_title')}</DialogTitle>
+            <HelpButton topic="settings.security" className="-my-1.5" />
+          </div>
           <DialogDescription>{t('settings.totp_disable_description')}</DialogDescription>
         </DialogHeader>
 
