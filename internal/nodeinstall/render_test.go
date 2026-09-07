@@ -136,10 +136,10 @@ func TestRenderTelemtBranch(t *testing.T) {
 		// Firewall.
 		"table inet tgwp_telemt", "tcp dport { 9090, 9091, 18080 } drop", "iif lo accept",
 		// Agent env and start order.
-		"TGWP_ENGINE=telemt", "systemctl enable --now telemt",
+		"TGWP_ENGINE=telemt", "systemctl restart telemt",
 		// Readiness, not liveness: the agent's first apply must not race telemt's startup.
 		"http://127.0.0.1:9091/v1/health/ready", `TELEMT_API_TOKEN="$(tr -d '\r\n' < /etc/telemt/api.token)"`,
-		"journalctl -u telemt -n 30", "systemctl enable --now tgwp-agent",
+		"journalctl -u telemt -n 30", "systemctl restart tgwp-agent",
 		"systemctl restart caddy",
 		// The final banner names both endpoints.
 		`"Fake-TLS: $NODE_HOSTNAME:$CLASSIC_PORT (SNI $TLS_DOMAIN)"`,
@@ -173,8 +173,8 @@ func TestRenderTelemtStartsCaddyBeforeTelemt(t *testing.T) {
 	}
 	caddy := strings.Index(out, "systemctl restart caddy")
 	wait := strings.Index(out, `--resolve "$NODE_HOSTNAME:443:127.0.0.1"`)
-	telemt := strings.Index(out, "systemctl enable --now telemt")
-	agent := strings.Index(out, "systemctl enable --now tgwp-agent")
+	telemt := strings.Index(out, "systemctl restart telemt")
+	agent := strings.Index(out, "systemctl restart tgwp-agent")
 	if caddy < 0 || wait < 0 || telemt < 0 || agent < 0 {
 		t.Fatalf("missing a step: caddy=%d wait=%d telemt=%d agent=%d", caddy, wait, telemt, agent)
 	}
@@ -406,7 +406,7 @@ func TestRenderRegistersAfterReadiness(t *testing.T) {
 		register := strings.Index(out, `step "Registration"`)
 		post := strings.Index(out, `"$REG_URL"`)
 		env := strings.Index(out, "cat > /etc/tgwp-agent/agent.env")
-		agent := strings.Index(out, "systemctl enable --now tgwp-agent")
+		agent := strings.Index(out, "systemctl restart tgwp-agent")
 		if caddyWait < 0 || register < 0 || post < 0 || env < 0 || agent < 0 {
 			t.Fatalf("%s: missing a step: caddyWait=%d register=%d post=%d env=%d agent=%d", name, caddyWait, register, post, env, agent)
 		}

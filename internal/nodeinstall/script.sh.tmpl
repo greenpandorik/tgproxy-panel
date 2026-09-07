@@ -500,7 +500,10 @@ ok "tgwp-agent $(/usr/local/bin/tgwp-agent version) downloaded and verified"
   --site-dir "$SITE_DIR"
 ok "/etc/telemt/telemt.toml, the control-API token and the decoy site written (init-node)"
 systemctl daemon-reload
-quiet systemctl enable --now telemt || die "telemt did not start" "telemt's log: journalctl -u telemt -n 30"
+# restart, not enable --now: on a re-install telemt is already running with the old
+# config (and the old API token), and enable --now would leave it that way.
+systemctl -q enable telemt
+quiet systemctl restart telemt || die "telemt did not start" "telemt's log: journalctl -u telemt -n 30"
 # The control API is the agent's only channel to the relay, so the agent is not started until
 # telemt reports itself ready on it - listening is not the same as able to serve. The token
 # file is written by init-node, 0600; tr strips the trailing newline so the header is the
@@ -588,7 +591,10 @@ RestartSec=3s
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-quiet systemctl enable --now tgwp-agent || die "tgwp-agent did not start" "the agent's log: journalctl -u tgwp-agent -n 30"
+# restart, not enable --now: a re-install issues a new node token, and an agent that is
+# already running would keep the old one and never come online.
+systemctl -q enable tgwp-agent
+quiet systemctl restart tgwp-agent || die "tgwp-agent did not start" "the agent's log: journalctl -u tgwp-agent -n 30"
 ok "tgwp-agent running (follow it with: journalctl -u tgwp-agent -f)"
 
 {{if .IsTelemt}}banner_ok "Node $NODE_HOSTNAME is registered with the panel." \
