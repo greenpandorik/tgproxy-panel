@@ -97,7 +97,7 @@ export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSerie
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <ChartLegend items={countLegend} className="mt-1.5" />
+        <ChartLegend items={countLegend} className="mt-2" />
       </div>
 
       <div>
@@ -139,7 +139,7 @@ export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSerie
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <ChartLegend items={rateLegend} className="mt-1.5" />
+        <ChartLegend items={rateLegend} className="mt-2" />
       </div>
 
       <LoadChart points={points} colors={colors} height={CHART_HEIGHT} />

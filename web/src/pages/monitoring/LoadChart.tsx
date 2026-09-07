@@ -70,7 +70,7 @@ export function LoadChart({ points, colors, height = DEFAULT_HEIGHT }: LoadChart
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <ChartLegend items={series} className="mt-1.5" />
+      <ChartLegend items={series} className="mt-2" />
     </div>
   );
 }

@@ -53,34 +53,34 @@ export function HelpSheet({ topic, open, onOpenChange }: HelpSheetProps) {
         initialFocus={bodyRef}
       >
         <SheetHeader className="pr-12">
-          <p className="mono text-[10.5px] tracking-[0.08em] text-dim uppercase">{t('help.title')}</p>
+          <p className="micro text-mute">{t('help.title')}</p>
           <SheetTitle>{t(`${base}.title`)}</SheetTitle>
-          <SheetDescription className="pt-1 leading-relaxed">{t(`${base}.intro`)}</SheetDescription>
+          <SheetDescription className="pt-1 text-body">{t(`${base}.intro`)}</SheetDescription>
         </SheetHeader>
 
         <div ref={bodyRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none">
           {def.fields.length > 0 && (
             <section className="border-b border-hairline px-4 py-3">
-              <h3 className="mono mb-2 text-[10.5px] tracking-[0.08em] text-dim uppercase">{t('help.section_fields')}</h3>
+              <h3 className="micro mb-2 text-mute">{t('help.section_fields')}</h3>
               <dl className="divide-y divide-hairline">
                 {def.fields.map((field) => {
                   const fb = `${base}.fields.${field}`;
                   const example = i18n.exists(`${fb}.example`) ? t(`${fb}.example`) : '';
                   const tip = i18n.exists(`${fb}.tip`) ? t(`${fb}.tip`) : '';
                   return (
-                    <div key={field} className="py-2.5 first:pt-0 last:pb-0" data-help-field={field}>
-                      <dt className="text-sm font-medium text-foreground">{t(`${fb}.name`)}</dt>
-                      <dd className="mt-0.5 space-y-1 text-sm leading-relaxed text-mute">
+                    <div key={field} className="py-3 first:pt-0 last:pb-0" data-help-field={field}>
+                      <dt className="text-body font-medium text-foreground">{t(`${fb}.name`)}</dt>
+                      <dd className="mt-1 space-y-1 text-body text-mute">
                         <p>{t(`${fb}.what`)}</p>
                         {example && (
                           <p className="flex items-baseline gap-2">
-                            <span className="mono shrink-0 text-xs text-dim">{t('help.example')}</span>
-                            <code className="mono text-xs break-all text-foreground">{example}</code>
+                            <span className="micro shrink-0 text-mute">{t('help.example')}</span>
+                            <code className="mono text-mono break-all text-foreground">{example}</code>
                           </p>
                         )}
                         {tip && (
-                          <p className="flex items-start gap-2 text-xs">
-                            <span className="mt-1.5 size-[7px] shrink-0 rounded-full bg-info" aria-hidden="true" />
+                          <p className="flex items-start gap-2 text-label">
+                            <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-info" aria-hidden="true" />
                             <span>{tip}</span>
                           </p>
                         )}
@@ -94,11 +94,11 @@ export function HelpSheet({ topic, open, onOpenChange }: HelpSheetProps) {
 
           {notes.length > 0 && (
             <section className="border-b border-hairline px-4 py-3">
-              <h3 className="mono mb-2 text-[10.5px] tracking-[0.08em] text-dim uppercase">{t('help.section_notes')}</h3>
+              <h3 className="micro mb-2 text-mute">{t('help.section_notes')}</h3>
               <ul className="space-y-1.5">
                 {notes.map((note, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-mute">
-                    <span className="mt-2 size-[7px] shrink-0 rounded-full bg-warn" aria-hidden="true" />
+                  <li key={i} className="flex items-start gap-2 text-body text-mute">
+                    <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
                     <span>{note}</span>
                   </li>
                 ))}
@@ -112,7 +112,7 @@ export function HelpSheet({ topic, open, onOpenChange }: HelpSheetProps) {
                 href={more}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-primary underline-offset-4 hover:underline"
+                className="inline-flex items-center gap-1.5 text-body text-brand-ink underline-offset-4 hover:underline"
               >
                 {t('help.more')}
                 <ExternalLink className="size-3.5" aria-hidden="true" />
@@ -121,7 +121,7 @@ export function HelpSheet({ topic, open, onOpenChange }: HelpSheetProps) {
           )}
         </div>
 
-        <p className="mono border-t border-hairline px-4 py-2 text-xs text-dim">{t('help.shortcut_hint')}</p>
+        <p className="mono border-t border-hairline px-4 py-3 text-mono text-dim">{t('help.shortcut_hint')}</p>
       </SheetContent>
     </Sheet>
   );

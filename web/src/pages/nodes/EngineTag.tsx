@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 import type { NodeEngine } from '@/api/types';
 
@@ -9,9 +9,10 @@ import type { NodeEngine } from '@/api/types';
  * machine, not a state, and colour in this panel is reserved for things that are
  * wrong. The name is the whole signal, so it stays mono and untranslated - it is
  * the same word that appears in the install script, the job log and the docs.
+ *
+ * It stays a component because the name is a domain fact worth having one
+ * place for, but the shape is the panel's one chip shape: it renders a Badge.
  */
 export function EngineTag({ engine, className }: { engine: NodeEngine; className?: string }) {
-  return (
-    <span className={cn('mono rounded-sm border border-hairline px-1.5 py-0.5 text-xs text-mute', className)}>{engine}</span>
-  );
+  return <Badge className={className}>{engine}</Badge>;
 }

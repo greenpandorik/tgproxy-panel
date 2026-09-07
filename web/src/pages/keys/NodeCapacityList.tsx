@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { PanelEmpty } from '@/components/common/EmptyState';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
@@ -36,13 +37,11 @@ export function NodeCapacityList({ nodes, selectedIds, onChange, className }: No
   };
 
   if (nodes.length === 0) {
-    return (
-      <p className="rounded-md border border-hairline px-3 py-4 text-center text-sm text-mute">{t('keys.no_nodes')}</p>
-    );
+    return <PanelEmpty className="rounded-control border border-hairline">{t('keys.no_nodes')}</PanelEmpty>;
   }
 
   return (
-    <div className={cn('max-h-52 divide-y divide-hairline overflow-y-auto rounded-md border border-hairline', className)}>
+    <div className={cn('max-h-52 divide-y divide-hairline overflow-y-auto rounded-control border border-hairline', className)}>
       {nodes.map((node) => {
         const checked = selectedIds.includes(node.id);
         const full = isNodeFull(node) && !checked;
@@ -50,18 +49,22 @@ export function NodeCapacityList({ nodes, selectedIds, onChange, className }: No
           <label
             key={node.id}
             className={cn(
-              'flex cursor-pointer items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-elevated',
-              full && 'cursor-not-allowed opacity-45 hover:bg-transparent',
+              // The whole row is the target, so the whole row presses: the same
+              // sub-pixel squeeze every button in the panel carries, which is
+              // what tells a pointer the click landed on a control with no
+              // background of its own.
+              'flex cursor-pointer items-center justify-between gap-4 px-3 py-2 transition-[background-color,scale] hover:bg-elevated active:scale-[0.985]',
+              full && 'cursor-not-allowed opacity-45 hover:bg-transparent active:scale-100',
             )}
           >
-            <span className="flex min-w-0 items-center gap-2.5">
+            <span className="flex min-w-0 items-center gap-3">
               <Checkbox checked={checked} disabled={full} onCheckedChange={(v) => toggle(node.id, !!v)} />
               <span className="min-w-0">
-                <span className="block truncate text-sm text-foreground">{node.name}</span>
-                <span className="mono block truncate text-xs text-dim">{node.hostname}</span>
+                <span className="block truncate text-body text-foreground">{node.name}</span>
+                <span className="mono block truncate text-mono text-dim">{node.hostname}</span>
               </span>
             </span>
-            <span className={cn('mono shrink-0 text-xs', full ? 'text-err' : 'text-mute')}>
+            <span className={cn('mono shrink-0 text-mono', full ? 'text-err' : 'text-mute')}>
               {capacityText(node.profile_count, node.max_profiles)}
             </span>
           </label>

@@ -33,7 +33,11 @@ function LanguageSwitch() {
   const current = (i18n.language?.startsWith('en') ? 'en' : 'ru') as Lang;
 
   return (
-    <div className="mono flex h-7 items-center rounded-md border border-hairline-strong p-0.5 text-xs" role="group" aria-label={t('common.language')}>
+    <div
+      className="mono flex h-7 items-stretch overflow-hidden rounded-control border border-hairline-strong text-micro"
+      role="group"
+      aria-label={t('common.language')}
+    >
       {(['ru', 'en'] as const).map((lang) => (
         <button
           key={lang}
@@ -41,8 +45,8 @@ function LanguageSwitch() {
           onClick={() => setLang(lang)}
           aria-pressed={current === lang}
           className={
-            'rounded-[3px] px-1.5 py-0.5 transition-colors ' +
-            (current === lang ? 'bg-elevated text-foreground' : 'text-dim hover:text-foreground')
+            'flex h-full items-center px-2 transition-[background-color,color,scale] duration-fast ease-out active:scale-[0.985] ' +
+            (current === lang ? 'bg-elevated text-foreground' : 'text-mute hover:text-foreground')
           }
         >
           {lang}
@@ -78,7 +82,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
         <Menu />
       </Button>
 
-      <p className="mono min-w-0 flex-1 truncate text-xs text-dim">
+      <p className="mono min-w-0 flex-1 truncate text-micro text-dim">
         {t('shell.breadcrumb_root')}
         {section && (
           <>
@@ -95,16 +99,23 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
       <button
         type="button"
         onClick={onOpenCommand}
-        className="hidden h-7 w-56 items-center gap-2 rounded-md border border-hairline-strong px-2.5 text-xs text-dim transition-colors hover:border-hairline-strong hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none md:flex xl:w-64"
+        className="hidden h-7 w-56 items-center gap-2 rounded-control border border-hairline-strong px-2.5 text-label text-mute transition-[background-color,color,scale] duration-fast ease-out hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985] md:flex xl:w-64"
       >
         <Search className="size-3.5 shrink-0" aria-hidden="true" />
         <span className="truncate">{t('shell.command_placeholder')}</span>
-        <kbd className="mono ml-auto rounded-sm border border-hairline-strong px-1 text-[10px] text-dim">
+        <Badge render={<kbd />} className="ml-auto">
           {isMac ? '⌘K' : 'Ctrl K'}
-        </kbd>
+        </Badge>
       </button>
 
-      <Button type="button" variant="ghost" size="icon-sm" className="md:hidden" onClick={onOpenCommand} aria-label={t('shell.command_placeholder')}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="md:hidden"
+        onClick={onOpenCommand}
+        aria-label={t('shell.command_placeholder')}
+      >
         <Search />
       </Button>
 
@@ -118,7 +129,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" className="gap-2 px-1.5" />}>
-          <span className="flex size-5 items-center justify-center rounded-sm border border-hairline-strong text-[10px] font-medium text-foreground">
+          <span className="flex size-5 items-center justify-center rounded-pill border border-hairline-strong text-micro font-medium text-foreground">
             {(user?.username ?? '?').charAt(0).toUpperCase()}
           </span>
           <span className="hidden max-w-28 truncate sm:inline">{user?.username}</span>

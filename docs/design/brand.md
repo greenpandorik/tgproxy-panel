@@ -48,13 +48,23 @@ Two hues carry the brand:
 | Primary (magenta) | `#e23c92` | 329° | **5.02 : 1** | 4.83 : 1 | 4.60 : 1 | 3.80 : 1 |
 | Accent (teal) | `#12a198` | 176° | **6.23 : 1** | 6.00 : 1 | 5.71 : 1 | 3.06 : 1 |
 
-Ratios are WCAG 2.x relative-luminance contrast. The primary is used as link
-text on the dark ground, so it has to clear 4.5 : 1 (AA text) there and does on
-all three dark surfaces; on the light theme it clears 3 : 1 (UI) and is a little
-under AA for body text - the same trade the previous blue made (3.8 : 1 on white),
-accepted because links in the panel are short and underlined on hover. The
-accent only ever colours chart strokes, where 3 : 1 is the floor, and clears it
-in both themes. `internal/branding/defaults_test.go` recomputes the dark-ground
+Ratios are WCAG 2.x relative-luminance contrast, and the four columns above are
+the dark theme plus one light surface. Read them as the ratios of the identity
+colours, not of the text that uses them.
+
+The primary clears 4.5 : 1 (AA text) on all three dark surfaces. On the light
+theme it does not (3.80 : 1 on `#fafafa`), so light-theme text does not use it:
+`--brand-ink` carries every place the brand colours a word (links, the outline
+destructive label, chip text). It is `--brand-primary` in the dark theme and a
+darkened mix of it in the light one, which resolves to `#ad2c6f` for the default
+hue and measures 5.98 / 6.24 / 5.53 on the three light surfaces. Because it is a
+mix rather than a constant, an operator who sets their own brand hue gets it
+darkened for light-theme text too. `--brand-primary` itself stays the identity
+colour and is used for graphics that only need the 3 : 1 floor: the active nav
+marker, the focus ring, the checkbox and switch fills, and chart series 1.
+
+The accent only ever colours chart strokes, where 3 : 1 is the floor, and clears
+it in both themes. `internal/branding/defaults_test.go` recomputes the dark-ground
 ratios and fails the build if a default drifts below the floor.
 
 Where they go:

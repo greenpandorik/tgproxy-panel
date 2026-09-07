@@ -45,17 +45,17 @@ export function BatchResultDialog({ open, onOpenChange, keys, onShowLink }: Batc
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <DialogTitle>{t('keys.batch_result_title', { count: keys.length })}</DialogTitle>
-            <HelpButton topic="keys.batch" className="-my-1.5" />
+            <HelpButton topic="keys.batch" className="-my-1" />
           </div>
           <DialogDescription>{t('keys.batch_result_description')}</DialogDescription>
         </DialogHeader>
 
-        <ul className="max-h-64 divide-y divide-hairline overflow-y-auto rounded-md border border-hairline">
+        <ul className="max-h-64 divide-y divide-hairline overflow-y-auto rounded-control border border-hairline">
           {keys.map((key) => (
-            <li key={key.id} className="flex items-center justify-between gap-2 py-1 pr-1 pl-3">
-              <span className="truncate text-sm text-foreground">{key.label}</span>
+            <li key={key.id} className="flex h-10 items-center justify-between gap-2 pr-1 pl-3">
+              <span className="truncate text-body text-foreground">{key.label}</span>
               <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => onShowLink(key.id)}>
                 <ExternalLink />
                 {t('keys.action_show_link')}

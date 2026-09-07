@@ -12,6 +12,9 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
+
+import { Arriving, FormFooter } from './formShell';
 
 import { TotpSection } from './TotpSection';
 
@@ -60,56 +63,85 @@ export function SecurityForm() {
   };
 
   return (
-    <div className="flex max-w-md flex-col gap-4">
-      <Panel>
-        <PanelHeader title={t('settings.security_password_title')} actions={<HelpButton topic="settings.security" />} />
-        <PanelBody>
-          <form className="max-w-sm space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
-            <p className="text-sm text-mute">{t('settings.security_note')}</p>
+    /*
+     * Every settings form is built the same way: a panel whose header says what
+     * the section is, a body that groups the fields, and a footer strip holding
+     * the one action that commits them. The seven forms behind these tabs used
+     * to each put their button somewhere different.
+     */
+    <div className="flex max-w-2xl flex-col gap-4">
+      <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
+        <Arriving>
+          <Panel>
+            <PanelHeader title={t('settings.security_password_title')} actions={<HelpButton topic="settings.security" />} />
+            <PanelBody className="max-w-sm space-y-4">
+              <p className="text-label text-mute">{t('settings.security_note')}</p>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="security-current">{t('settings.security_current_password')}</Label>
-              <Input
-                id="security-current"
-                type="password"
-                autoComplete="current-password"
-                {...register('current')}
-                aria-invalid={!!errors.current}
-              />
-              {errors.current && <p className="text-xs text-destructive">{t('common.required')}</p>}
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="security-current">{t('settings.security_current_password')}</Label>
+                <Input
+                  id="security-current"
+                  type="password"
+                  autoComplete="current-password"
+                  {...register('current')}
+                  aria-invalid={!!errors.current}
+                  aria-describedby={errors.current ? 'security-current-error' : undefined}
+                />
+                {errors.current && (
+                  <p id="security-current-error" className="text-label text-destructive">
+                    {t('common.required')}
+                  </p>
+                )}
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="security-new">{t('settings.security_new_password')}</Label>
-              <Input id="security-new" type="password" autoComplete="new-password" {...register('next')} aria-invalid={!!errors.next} />
-              {errors.next && <p className="text-xs text-destructive">{t('settings.security_error_min')}</p>}
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="security-new">{t('settings.security_new_password')}</Label>
+                <Input
+                  id="security-new"
+                  type="password"
+                  autoComplete="new-password"
+                  {...register('next')}
+                  aria-invalid={!!errors.next}
+                  aria-describedby="security-new-hint"
+                />
+                <p id="security-new-hint" className={cn('text-label', errors.next ? 'text-destructive' : 'text-mute')}>
+                  {t('settings.security_error_min')}
+                </p>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="security-confirm">{t('settings.security_confirm_password')}</Label>
-              <Input
-                id="security-confirm"
-                type="password"
-                autoComplete="new-password"
-                {...register('confirm')}
-                aria-invalid={!!errors.confirm}
-              />
-              {errors.confirm && <p className="text-xs text-destructive">{t('settings.security_error_mismatch')}</p>}
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="security-confirm">{t('settings.security_confirm_password')}</Label>
+                <Input
+                  id="security-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  {...register('confirm')}
+                  aria-invalid={!!errors.confirm}
+                  aria-describedby={errors.confirm ? 'security-confirm-error' : undefined}
+                />
+                {errors.confirm && (
+                  <p id="security-confirm-error" className="text-label text-destructive">
+                    {t('settings.security_error_mismatch')}
+                  </p>
+                )}
+              </div>
 
-            {errors.root && (
-              <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
-                <span className="mt-[6px] size-[7px] shrink-0 rounded-full bg-err" aria-hidden="true" />
-                <span className="min-w-0 flex-1">{errors.root.message}</span>
-              </p>
-            )}
+              {errors.root && (
+                <p role="alert" className="flex items-start gap-2 text-body text-destructive">
+                  <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-err" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">{errors.root.message}</span>
+                </p>
+              )}
+            </PanelBody>
+          </Panel>
+        </Arriving>
 
-            <Button type="submit" disabled={isSubmitting}>
-              {t('settings.security_submit')}
-            </Button>
-          </form>
-        </PanelBody>
-      </Panel>
+        <FormFooter>
+          <Button type="submit" disabled={isSubmitting}>
+            {t('settings.security_submit')}
+          </Button>
+        </FormFooter>
+      </form>
 
       {/* Second factor only when the panel was started with FEATURE_TOTP. */}
       {user?.features.totp && <TotpSection />}

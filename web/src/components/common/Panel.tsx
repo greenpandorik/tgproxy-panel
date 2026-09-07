@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -9,8 +9,12 @@ import { cn } from '@/lib/utils';
  * window of a chart, how many rows are in a table, how many alerts are open),
  * so the operator never has to guess the scope of what they are reading.
  */
-export function Panel({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn('overflow-hidden rounded-lg border border-hairline bg-card', className)}>{children}</section>;
+export function Panel({ className, style, children }: { className?: string; style?: CSSProperties; children: ReactNode }) {
+  return (
+    <section className={cn('overflow-hidden rounded-surface border border-hairline bg-card', className)} style={style}>
+      {children}
+    </section>
+  );
 }
 
 interface PanelHeaderProps {
@@ -29,14 +33,15 @@ export function PanelHeader({ title, meta, actions, className }: PanelHeaderProp
         // min-h + padding rather than a fixed height, so a header carrying
         // controls wraps onto a second line at 390px instead of truncating its
         // title to nothing and pushing the button past the edge. With nothing
-        // to wrap it still measures the standard 40px.
-        'flex min-h-10 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-4 py-1.5',
+        // to wrap it still measures the standard 44px, which is what the
+        // title role's 24px line plus 2x8px of padding needs.
+        'flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-4 py-2',
         className,
       )}
     >
-      <h2 className="truncate text-sm font-medium text-foreground">{title}</h2>
+      <h2 className="truncate text-title text-foreground">{title}</h2>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {meta !== undefined && meta !== null && meta !== '' && <span className="mono text-xs text-dim">{meta}</span>}
+        {meta !== undefined && meta !== null && meta !== '' && <span className="mono text-mono text-dim">{meta}</span>}
         {actions}
       </div>
     </div>

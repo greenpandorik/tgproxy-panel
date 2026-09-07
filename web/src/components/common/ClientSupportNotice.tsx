@@ -33,17 +33,17 @@ export function ClientSupportNotice({ clientSupport, className }: ClientSupportN
   const support = clientSupport ?? DEFAULT_SUPPORT;
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-hairline px-3 py-2', className)}>
-      <p className="text-xs text-mute">{t('keys.client_support_title')}</p>
+    <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface border border-hairline px-3 py-2', className)}>
+      <p className="text-label text-mute">{t('keys.client_support_title')}</p>
       <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
         {PLATFORMS.map((platform) => (
-          <li key={platform} className="mono flex items-center gap-1.5 text-xs">
+          <li key={platform} className="mono flex items-center gap-1.5 text-label">
             <span
-              className={cn('size-[7px] shrink-0 rounded-full', DOT_CLASS[support[platform]] ?? 'bg-pending')}
+              className={cn('size-[7px] shrink-0 rounded-pill', DOT_CLASS[support[platform]] ?? 'bg-pending')}
               aria-hidden="true"
             />
             <span className="text-foreground">{t(`keys.platform_${platform}`)}</span>
-            <span className="text-dim">{t(`keys.support_status_${support[platform]}`, support[platform])}</span>
+            <span className="text-mute">{t(`keys.support_status_${support[platform]}`, support[platform])}</span>
           </li>
         ))}
       </ul>

@@ -5,9 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { useBranding } from '@/api/branding';
 import { MONITORING_RANGES, useNodeSeries } from '@/api/monitoring';
 import { useNodeStats } from '@/api/nodes';
+import { PanelEmpty } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Button } from '@/components/ui/button';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { seriesPalette } from '@/lib/chart';
@@ -62,8 +65,15 @@ function NodeLoadPanel({ nodeId }: { nodeId: string }) {
       <PanelBody>
         {seriesQuery.isLoading ? (
           <Skeleton className="h-[152px] w-full" />
+        ) : seriesQuery.isError ? (
+          <ErrorState
+            inset
+            message={t('common.error_generic')}
+            retryLabel={t('common.refresh')}
+            onRetry={() => void seriesQuery.refetch()}
+          />
         ) : points.length === 0 ? (
-          <p className="py-8 text-center text-sm text-mute">{t('nodes.load_empty')}</p>
+          <PanelEmpty>{t('nodes.load_empty')}</PanelEmpty>
         ) : (
           <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
             <LoadChart points={points} colors={colors} />
@@ -108,21 +118,33 @@ function NodeCountersPanel({ nodeId, online }: { nodeId: string; online: boolean
       />
 
       {offline ? (
-        <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.offline_message')}</p>
+        <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
       ) : statsQuery.isLoading ? (
-        <div className="space-y-2 p-4">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
+        // The counters land as a two-column grid of key/value rows, so the
+        // wait draws that grid rather than three loose lines.
+        <div className="grid grid-cols-1 gap-px bg-hairline lg:grid-cols-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between gap-4 bg-card px-4 py-2">
+              <Skeleton className="h-3 w-40" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          ))}
         </div>
+      ) : statsQuery.isError ? (
+        <ErrorState
+          inset
+          message={t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void statsQuery.refetch()}
+        />
       ) : entries.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.stats_empty')}</p>
+        <PanelEmpty>{t('nodes.stats_empty')}</PanelEmpty>
       ) : (
         <dl className="grid grid-cols-1 gap-px bg-hairline lg:grid-cols-2">
           {entries.map(([key, value]) => (
             <div key={key} className="flex items-baseline justify-between gap-4 bg-card px-4 py-2">
-              <dt className="mono truncate text-xs text-dim">{key}</dt>
-              <dd className="mono shrink-0 text-xs text-foreground">{value}</dd>
+              <dt className="mono truncate text-mono text-mute">{key}</dt>
+              <dd className="mono shrink-0 text-mono text-foreground">{value}</dd>
             </div>
           ))}
           {/* An odd counter count would leave the grid's last slot empty, and the
@@ -138,7 +160,7 @@ function NodeCountersPanel({ nodeId, online }: { nodeId: string; online: boolean
 /** The node's statistics tab: its load history first, then the relay's own counters. */
 export function NodeStatsTab({ nodeId, online }: { nodeId: string; online: boolean }) {
   return (
-    <div className="space-y-4">
+    <div className={cn(ENTER_CLASS, 'space-y-4')}>
       <NodeLoadPanel nodeId={nodeId} />
       <NodeCountersPanel nodeId={nodeId} online={online} />
     </div>

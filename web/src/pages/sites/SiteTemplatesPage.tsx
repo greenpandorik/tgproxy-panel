@@ -7,28 +7,48 @@ import { useCreateSiteTemplate, useDeleteSiteTemplate, useSiteTemplates } from '
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { api, ApiError } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 import type { SiteTemplate } from '@/api/types';
+
+/** The grid the list lays its cards out on - shared by the cards, their skeletons and nothing else. */
+const CARD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
+
+/** The card in silhouette: the name line, then the badge and stamp that sit at its foot. */
+function TemplateCardSkeleton() {
+  return (
+    <li className="flex min-h-24 flex-col gap-2 rounded-surface border border-hairline bg-card p-4">
+      <Skeleton className="h-4 w-40" />
+      <div className="mt-auto flex items-center gap-2">
+        <Skeleton className="h-5 w-14" />
+        <Skeleton className="h-3 w-28" />
+      </div>
+    </li>
+  );
+}
 
 export function SiteTemplatesPage() {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
   const navigate = useNavigate();
-  const { data, isLoading } = useSiteTemplates();
+  const templatesQuery = useSiteTemplates();
   const createTemplate = useCreateSiteTemplate();
   const deleteTemplate = useDeleteSiteTemplate();
 
   const [deleteTarget, setDeleteTarget] = useState<SiteTemplate | null>(null);
 
-  const templates = data?.items ?? [];
+  const templates = templatesQuery.data?.items ?? [];
 
   const handleDuplicate = async (tpl: SiteTemplate) => {
     try {
@@ -74,12 +94,22 @@ export function SiteTemplatesPage() {
         }
       />
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {templatesQuery.isLoading ? (
+        <ul className={CARD_GRID}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[92px] w-full" />
+            <TemplateCardSkeleton key={i} />
           ))}
-        </div>
+        </ul>
+      ) : templatesQuery.isError ? (
+        /*
+         * The list failed rather than came back empty, so it says so where the
+         * cards would have been and offers the one useful move: ask again.
+         */
+        <ErrorState
+          message={templatesQuery.error instanceof ApiError ? templatesQuery.error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void templatesQuery.refetch()}
+        />
       ) : templates.length === 0 ? (
         <EmptyState
           title={t('sites.empty_title')}
@@ -94,8 +124,8 @@ export function SiteTemplatesPage() {
           }
         />
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {templates.map((tpl) => (
+        <ul className={CARD_GRID}>
+          {templates.map((tpl, i) => (
             /*
              * A template is a file, so its card is the panel the rest of the
              * app uses for a box of machine facts: hairline, no shadow, name in
@@ -104,15 +134,21 @@ export function SiteTemplatesPage() {
              */
             <li
               key={tpl.id}
-              className="flex min-h-[92px] flex-col gap-2 rounded-lg border border-hairline bg-card p-3.5 transition-colors hover:border-hairline-strong"
+              style={enterDelay(i)}
+              className={cn(
+                ENTER_CLASS,
+                'flex min-h-24 flex-col gap-2 rounded-surface border border-hairline bg-card p-4 transition-colors hover:border-hairline-strong',
+              )}
             >
               <div className="flex items-start justify-between gap-2">
-                <Link to={`/sites/${tpl.id}`} className="min-w-0 truncate text-sm font-medium text-foreground hover:underline">
+                <Link to={`/sites/${tpl.id}`} className="min-w-0 truncate text-body font-medium text-foreground hover:underline">
                   {tpl.name}
                 </Link>
                 {isWriter && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon-sm" className="-mt-0.5 -mr-1" />}>
+                    <DropdownMenuTrigger
+                      render={<Button type="button" variant="ghost" size="icon-sm" className="-mt-0.5 -mr-1" />}
+                    >
                       <MoreHorizontal />
                       <span className="sr-only">{t('common.actions')}</span>
                     </DropdownMenuTrigger>
@@ -134,12 +170,8 @@ export function SiteTemplatesPage() {
               </div>
 
               <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1">
-                {tpl.is_preset && (
-                  <span className="mono rounded-sm border border-hairline-strong px-1.5 py-0.5 text-xs text-mute">
-                    {t('sites.preset_badge')}
-                  </span>
-                )}
-                <span className="mono text-xs text-dim">
+                {tpl.is_preset && <Badge>{t('sites.preset_badge')}</Badge>}
+                <span className="mono text-mono text-dim">
                   {t('sites.card_updated', { time: formatRelativeTime(tpl.updated_at, i18n.language) })}
                 </span>
               </div>

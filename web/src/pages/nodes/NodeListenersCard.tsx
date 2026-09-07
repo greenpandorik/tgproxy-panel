@@ -122,14 +122,14 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
     <Panel>
       <PanelHeader title={t('nodes.listeners_title')} actions={<HelpButton topic="nodes.listeners" />} />
       {canEdit ? (
-        <form className="space-y-3 p-4" onSubmit={(e) => void handleSubmit(askToSave)(e)} noValidate>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto]">
-            <div className="space-y-1.5">
+        <form className="space-y-4 p-4" onSubmit={(e) => void handleSubmit(askToSave)(e)} noValidate>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_auto]">
+            <div className="space-y-2">
               <Label htmlFor="node-tls-domain-edit">{t('nodes.field_tls_domain')}</Label>
               <Input id="node-tls-domain-edit" className="mono" {...register('tls_domain')} aria-invalid={!!errors.tls_domain} />
-              {errors.tls_domain && <p className="text-xs text-destructive">{t('nodes.validation_hostname')}</p>}
+              {errors.tls_domain && <p className="text-label text-destructive">{t('nodes.validation_hostname')}</p>}
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="node-classic-port-edit">{t('nodes.field_classic_port')}</Label>
               <Input
                 id="node-classic-port-edit"
@@ -140,9 +140,9 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
                 {...register('classic_port')}
                 aria-invalid={!!errors.classic_port}
               />
-              {errors.classic_port && <p className="text-xs text-destructive">{t('nodes.validation_classic_port')}</p>}
+              {errors.classic_port && <p className="text-label text-destructive">{t('nodes.validation_classic_port')}</p>}
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="node-public-ip-edit">{t('nodes.field_public_ip')}</Label>
               <Input
                 id="node-public-ip-edit"
@@ -152,14 +152,14 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
                 {...register('public_ip')}
                 aria-invalid={!!errors.public_ip}
               />
-              {errors.public_ip && <p className="text-xs text-destructive">{t('nodes.validation_ipv4')}</p>}
+              {errors.public_ip && <p className="text-label text-destructive">{t('nodes.validation_ipv4')}</p>}
             </div>
           </div>
 
-          <p className="text-xs text-mute">{t('nodes.field_public_ip_hint')}</p>
+          <p className="text-label text-mute">{t('nodes.field_public_ip_hint')}</p>
 
-          <p className="flex items-start gap-2 text-xs text-warn">
-            <span className="mt-1 size-[7px] shrink-0 rounded-full bg-warn" aria-hidden="true" />
+          <p className="flex items-start gap-2 text-label text-warn">
+            <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
             {t('nodes.listeners_restart_note')}
           </p>
 
@@ -171,17 +171,17 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
         </form>
       ) : (
         <dl className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-3">
-          <div className="flex items-center justify-between gap-3 bg-card px-4 py-2.5">
-            <dt className="truncate text-xs text-mute">{t('nodes.field_tls_domain')}</dt>
-            <dd className="mono shrink-0 text-xs text-foreground">{node.tls_domain || '—'}</dd>
+          <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
+            <dt className="truncate text-label text-mute">{t('nodes.field_tls_domain')}</dt>
+            <dd className="mono shrink-0 text-mono text-foreground">{node.tls_domain || '—'}</dd>
           </div>
-          <div className="flex items-center justify-between gap-3 bg-card px-4 py-2.5">
-            <dt className="truncate text-xs text-mute">{t('nodes.field_classic_port')}</dt>
-            <dd className="mono shrink-0 text-xs text-foreground">{node.classic_port}</dd>
+          <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
+            <dt className="truncate text-label text-mute">{t('nodes.field_classic_port')}</dt>
+            <dd className="mono shrink-0 text-mono text-foreground">{node.classic_port}</dd>
           </div>
-          <div className="flex items-center justify-between gap-3 bg-card px-4 py-2.5">
-            <dt className="truncate text-xs text-mute">{t('nodes.field_public_ip')}</dt>
-            <dd className="mono shrink-0 text-xs text-foreground">{node.public_ip || '—'}</dd>
+          <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
+            <dt className="truncate text-label text-mute">{t('nodes.field_public_ip')}</dt>
+            <dd className="mono shrink-0 text-mono text-foreground">{node.public_ip || '—'}</dd>
           </div>
         </dl>
       )}

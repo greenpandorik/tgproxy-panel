@@ -1,12 +1,16 @@
+import { RefreshCw } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useBranding } from '@/api/branding';
 import { useKeyStats } from '@/api/keys';
+import { EmptyState } from '@/components/common/EmptyState';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { seriesPalette } from '@/lib/chart';
 import { formatBytes, formatNumber } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 import type { KeyStatsRange } from '@/api/keys';
 import type { KeyStatsNode } from '@/api/types';
@@ -43,11 +47,35 @@ function connectionsNow(node: KeyStatsNode): number {
 function Total({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div className="min-w-0">
-      <p className="mono text-lg text-foreground">
+      <p className="mono text-title text-foreground">
         {value}
-        {unit && <span className="ml-1 text-xs text-mute">{unit}</span>}
+        {unit && <span className="ml-1 text-label text-mute">{unit}</span>}
       </p>
-      <p className="mt-0.5 truncate text-xs text-mute">{label}</p>
+      <p className="mt-1 truncate text-label text-mute">{label}</p>
+    </div>
+  );
+}
+
+/**
+ * The silhouette of what is loading: the totals tile with its two figures, then
+ * one node's caption and plot. A generic bar would tell the operator something
+ * is coming; this tells them what, so nothing jumps when it lands.
+ */
+function StatsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 rounded-surface border border-hairline px-4 py-3">
+        {[0, 1].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-[110px] w-full" />
+      </div>
     </div>
   );
 }
@@ -90,9 +118,9 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
   const traffic = formatBytes(totals?.octets_delta ?? 0).split(' ');
 
   return (
-    <section className="space-y-3 border-t border-hairline pt-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-foreground">{t('keys.stats_title')}</h3>
+    <section className="space-y-4 border-t border-hairline pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="micro text-mute">{t('keys.stats_title')}</h3>
         {hasTelemtNode && (
           <SegmentedControl
             label={t('keys.stats_range_label')}
@@ -104,28 +132,45 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
       </div>
 
       {!hasTelemtNode ? (
-        <p className="text-xs text-mute">{t('keys.stats_unavailable')}</p>
+        <EmptyState className="py-8" title={t('keys.stats_unavailable')} />
       ) : statsQuery.isLoading ? (
-        <Skeleton className="h-32 w-full" />
+        <StatsSkeleton />
+      ) : statsQuery.isError ? (
+        <EmptyState
+          className="py-8"
+          title={t('common.error_generic')}
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={statsQuery.isFetching}
+              onClick={() => void statsQuery.refetch()}
+            >
+              <RefreshCw className={cn(statsQuery.isFetching && 'animate-spin')} />
+              {t('common.refresh')}
+            </Button>
+          }
+        />
       ) : nodes.length === 0 ? (
-        <p className="text-xs text-mute">{t('keys.stats_empty')}</p>
+        <EmptyState className="py-8" title={t('keys.stats_empty')} />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 rounded-md border border-hairline px-3 py-2.5">
+          <div className="grid grid-cols-2 gap-4 rounded-surface border border-hairline px-4 py-3">
             <Total label={t('keys.stats_connections_now')} value={formatNumber(totals?.connections_now ?? 0, i18n.language)} />
             <Total label={t(`keys.stats_traffic_range_${range}`)} value={traffic[0]} unit={traffic[1]} />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {nodes.map((node) => (
               <div key={node.node_id}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-xs text-foreground">{node.node_name}</span>
-                  <span className="mono shrink-0 text-xs text-dim">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="truncate text-label text-foreground">{node.node_name}</span>
+                  <span className="mono shrink-0 text-mono text-dim">
                     {t('keys.stats_node_connections', { count: connectionsNow(node) })}
                   </span>
                 </div>
-                <Suspense fallback={<Skeleton className="mt-1.5 h-[110px] w-full" />}>
+                <Suspense fallback={<Skeleton className="mt-2 h-[110px] w-full" />}>
                   <KeyTrafficChart points={trafficDeltas(node.points)} color={color} />
                 </Suspense>
               </div>

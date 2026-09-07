@@ -5,15 +5,19 @@ import { useTranslation } from 'react-i18next';
 import { useAudit } from '@/api/audit';
 import { DataTableSkeleton } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Panel } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { HelpButton } from '@/help';
+import { ApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 const PER_PAGE = 50;
 
@@ -56,7 +60,7 @@ function MetaCell({ meta }: { meta: unknown }) {
 
   return (
     <div className="flex max-w-72 items-center gap-1">
-      <span className="mono min-w-0 flex-1 truncate text-xs text-dim">{metaCompact(meta)}</span>
+      <span className="mono min-w-0 flex-1 truncate text-mono text-dim">{metaCompact(meta)}</span>
       {hasMeta && (
         <Popover>
           <PopoverTrigger render={<Button type="button" variant="ghost" size="icon-xs" className="-mr-1 shrink-0" />}>
@@ -64,7 +68,7 @@ function MetaCell({ meta }: { meta: unknown }) {
             <span className="sr-only">{t('audit.details')}</span>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-auto max-w-sm">
-            <pre className="mono max-h-72 overflow-auto text-xs break-words whitespace-pre-wrap text-foreground">
+            <pre className="mono max-h-72 overflow-auto text-mono break-words whitespace-pre-wrap text-foreground">
               {JSON.stringify(meta, null, 2)}
             </pre>
           </PopoverContent>
@@ -78,15 +82,20 @@ function TargetCell({ type, id }: { type: string; id: string }) {
   if (!type && !id) return <span className="text-dim">—</span>;
   return (
     <div className="min-w-0">
-      {type && <div className="text-xs text-mute">{type}</div>}
-      {id && <div className="mono truncate text-xs text-dim">{id}</div>}
+      {type && <div className="text-label text-mute">{type}</div>}
+      {id && <div className="mono truncate text-mono text-dim">{id}</div>}
     </div>
   );
 }
 
-/** The action name, as the server wrote it: a mono tag, never translated. */
-function ActionTag({ action }: { action: string }) {
-  return <span className="mono rounded-sm border border-hairline-strong px-1.5 py-0.5 text-xs text-mute">{action}</span>;
+/**
+ * The action name, as the server wrote it: never translated, and set in the
+ * body role rather than as a chip. It is the one thing an operator scans a
+ * page of audit rows for, so it carries the row's ink; the mono face stays
+ * because `site_template.update` is a machine's word, not prose.
+ */
+function ActionName({ action }: { action: string }) {
+  return <span className="mono text-body text-foreground">{action}</span>;
 }
 
 export function AuditPage() {
@@ -174,26 +183,34 @@ export function AuditPage() {
             value={from}
             onChange={(e) => changeFrom(e.target.value)}
             aria-label={t('audit.filter_from')}
-            className="mono min-w-0 sm:w-40"
+            className="mono min-w-0 text-mono sm:w-40"
           />
-          <span className="text-dim">{t('audit.filter_date_to')}</span>
+          <span className="text-label text-mute">{t('audit.filter_date_to')}</span>
           <Input
             type="date"
             value={to}
             onChange={(e) => changeTo(e.target.value)}
             aria-label={t('audit.filter_to')}
-            className="mono min-w-0 sm:w-40"
+            className="mono min-w-0 text-mono sm:w-40"
           />
         </div>
       </div>
 
       {isLoading ? (
         <DataTableSkeleton columns={6} rows={8} />
+      ) : auditQuery.isError ? (
+        /* A failed page of the log is not an empty one: say which it was, and
+           offer the ask-again the filters above cannot do on their own. */
+        <ErrorState
+          message={auditQuery.error instanceof ApiError ? auditQuery.error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void auditQuery.refetch()}
+        />
       ) : items.length === 0 ? (
         <EmptyState title={t('audit.empty_title')} description={t('audit.empty_description')} />
       ) : (
         <>
-          <Panel>
+          <Panel className={ENTER_CLASS}>
             <div className="hidden md:block">
               <Table>
                 <TableHeader>
@@ -209,17 +226,17 @@ export function AuditPage() {
                 <TableBody>
                   {items.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="mono pl-4 text-xs text-mute">
+                      <TableCell className="mono pl-4 text-mono text-dim">
                         {formatDateTime(entry.created_at, i18n.language)}
                       </TableCell>
-                      <TableCell className="text-foreground">{entry.username || t('audit.system_user')}</TableCell>
+                      <TableCell className="text-label text-foreground">{entry.username || t('audit.system_user')}</TableCell>
                       <TableCell>
-                        <ActionTag action={entry.action} />
+                        <ActionName action={entry.action} />
                       </TableCell>
                       <TableCell>
                         <TargetCell type={entry.target_type} id={entry.target_id} />
                       </TableCell>
-                      <TableCell className="mono text-xs text-dim">{entry.ip || '—'}</TableCell>
+                      <TableCell className="mono text-mono text-dim">{entry.ip || '—'}</TableCell>
                       <TableCell className="pr-4">
                         <MetaCell meta={entry.meta} />
                       </TableCell>
@@ -231,28 +248,22 @@ export function AuditPage() {
 
             <ul className="divide-y divide-hairline md:hidden">
               {items.map((entry) => (
-                <li key={entry.id} className="px-4 py-3">
+                <li key={entry.id} className="space-y-2 px-4 py-3">
                   <div className="flex items-start justify-between gap-2">
-                    <ActionTag action={entry.action} />
-                    <span className="mono shrink-0 text-xs text-dim">{formatDateTime(entry.created_at, i18n.language)}</span>
+                    <ActionName action={entry.action} />
+                    <span className="mono shrink-0 text-mono text-dim">{formatDateTime(entry.created_at, i18n.language)}</span>
                   </div>
-                  <p className="mt-2 text-sm text-foreground">{entry.username || t('audit.system_user')}</p>
-                  <div className="mt-1">
-                    <TargetCell type={entry.target_type} id={entry.target_id} />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="mono text-xs text-dim">{entry.ip || '—'}</span>
-                  </div>
-                  <div className="mt-1">
-                    <MetaCell meta={entry.meta} />
-                  </div>
+                  <p className="text-label text-foreground">{entry.username || t('audit.system_user')}</p>
+                  <TargetCell type={entry.target_type} id={entry.target_id} />
+                  <span className="mono block text-mono text-dim">{entry.ip || '—'}</span>
+                  <MetaCell meta={entry.meta} />
                 </li>
               ))}
             </ul>
           </Panel>
 
-          <div className="flex items-center justify-between gap-2">
-            <p className="mono text-xs text-dim">{t('audit.pagination_summary', { page, totalPages, total })}</p>
+          <div className={cn(ENTER_CLASS, 'flex items-center justify-between gap-2')} style={enterDelay(1)}>
+            <p className="mono text-mono text-dim">{t('audit.pagination_summary', { page, totalPages, total })}</p>
             <div className="flex items-center gap-2">
               <Button
                 type="button"

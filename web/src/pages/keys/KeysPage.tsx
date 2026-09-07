@@ -1,4 +1,15 @@
-import { ChevronLeft, ChevronRight, Edit as EditIcon, ExternalLink, MoreHorizontal, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit as EditIcon,
+  ExternalLink,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  RotateCw,
+  Trash2,
+  Undo2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -12,10 +23,12 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Panel } from '@/components/common/Panel';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
@@ -114,7 +127,7 @@ function RowActions({ keyRow, onShowLink, onEdit, onRotate, onRevoke, onDelete }
 
 /** The key's kind, in the vocabulary the API and the profile files use. */
 function TypeTag({ type }: { type: KeyType }) {
-  return <span className="mono rounded-sm border border-hairline-strong px-1.5 py-0.5 text-xs text-mute">{type}</span>;
+  return <Badge>{type}</Badge>;
 }
 
 function PendingStatus({ status }: { status: KeyStatus }) {
@@ -132,26 +145,22 @@ function PendingStatus({ status }: { status: KeyStatus }) {
 
 function ExpiresCell({ iso, locale }: { iso: string | null; locale: string }) {
   const { t } = useTranslation();
-  if (!iso) return <span className="mono text-xs text-dim">{t('keys.no_expiry')}</span>;
+  if (!iso) return <span className="text-label text-dim">{t('keys.no_expiry')}</span>;
   return (
-    <span className={cn('mono text-xs', expiresSoon(iso) ? 'text-err' : 'text-mute')} title={formatDateTime(iso, locale)}>
+    <span className={cn('text-label', expiresSoon(iso) ? 'text-err' : 'text-mute')} title={formatDateTime(iso, locale)}>
       {formatRelativeTime(iso, locale)}
     </span>
   );
 }
 
 function NodeChips({ nodes }: { nodes: AccessKey['nodes'] }) {
-  if (nodes.length === 0) return <span className="mono text-xs text-dim">—</span>;
+  if (nodes.length === 0) return <span className="mono text-mono text-dim">—</span>;
   return (
     <span className="flex flex-wrap gap-1">
       {nodes.map((n) => (
-        <span
-          key={n.node_id}
-          title={n.hostname}
-          className="mono rounded-sm border border-hairline px-1.5 py-0.5 text-xs text-mute"
-        >
+        <Badge key={n.node_id} title={n.hostname}>
           {shortHost(n.hostname)}
-        </span>
+        </Badge>
       ))}
     </span>
   );
@@ -166,16 +175,20 @@ function NodeChips({ nodes }: { nodes: AccessKey['nodes'] }) {
  * node and has moved nothing does get the zero.
  */
 function TrafficCell({ bytes, measured }: { bytes: number; measured: boolean }) {
-  if (bytes <= 0 && !measured) return <span className="mono text-xs text-dim">—</span>;
-  return <span className={cn('mono text-xs', bytes > 0 ? 'text-mute' : 'text-dim')}>{formatBytes(bytes)}</span>;
+  if (bytes <= 0 && !measured) return <span className="mono text-mono text-dim">—</span>;
+  return <span className={cn('mono text-mono', bytes > 0 ? 'text-mute' : 'text-dim')}>{formatBytes(bytes)}</span>;
 }
 
-/** Label above value, for the narrow layout where there is no column header to carry the name. */
+/**
+ * Label above value, for the narrow layout where there is no column header to
+ * carry the name. The label is the same micro role the table head uses, because
+ * it is the same thing: the column name, moved inside the row.
+ */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-[11px] text-dim">{label}</dt>
-      <dd className="mt-0.5 text-xs">{children}</dd>
+      <dt className="micro truncate text-mute">{label}</dt>
+      <dd className="mt-1 text-body">{children}</dd>
     </div>
   );
 }
@@ -432,8 +445,8 @@ export function KeysPage() {
       </div>
 
       {isWriter && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-hairline-strong bg-card px-3 py-2">
-          <span className="mono text-xs text-mute">{t('keys.bulk_selected', { count: selected.size })}</span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface border border-hairline-strong bg-card px-3 py-2">
+          <span className="mono text-mono text-mute">{t('keys.bulk_selected', { count: selected.size })}</span>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setBulkExtendOpen(true)}>
               {t('keys.action_extend')}
@@ -453,6 +466,19 @@ export function KeysPage() {
 
       {isLoading ? (
         <DataTableSkeleton columns={columnCount} rows={6} />
+      ) : keysQuery.isError ? (
+        /* Without this branch a failed query falls through to the empty state
+           and tells the operator they have no keys, which is a different and
+           much worse thing than "the list did not load". */
+        <EmptyState
+          title={t('common.error_generic')}
+          action={
+            <Button type="button" variant="outline" disabled={keysQuery.isFetching} onClick={() => void keysQuery.refetch()}>
+              <RefreshCw className={cn(keysQuery.isFetching && 'animate-spin')} />
+              {t('common.refresh')}
+            </Button>
+          }
+        />
       ) : items.length === 0 ? (
         <EmptyState
           title={t('keys.empty_title')}
@@ -468,7 +494,7 @@ export function KeysPage() {
         />
       ) : (
         <>
-          <Panel>
+          <Panel className={ENTER_CLASS}>
             <div className="hidden md:block">
               <Table>
                 <TableHeader>
@@ -505,8 +531,8 @@ export function KeysPage() {
                         </TableCell>
                       )}
                       <TableCell className="max-w-56">
-                        <span className="block truncate font-medium text-foreground">{key.label}</span>
-                        {key.owner_label && <span className="block truncate text-xs text-mute">{key.owner_label}</span>}
+                        <span className="block truncate text-body font-medium text-foreground">{key.label}</span>
+                        {key.owner_label && <span className="block truncate text-label text-mute">{key.owner_label}</span>}
                       </TableCell>
                       <TableCell>
                         <TypeTag type={key.type} />
@@ -523,7 +549,7 @@ export function KeysPage() {
                       <TableCell className="text-right">
                         <ExpiresCell iso={key.expires_at} locale={i18n.language} />
                       </TableCell>
-                      <TableCell className="mono text-right text-xs text-dim">
+                      <TableCell className="mono text-right text-mono text-dim">
                         {formatDate(key.created_at, i18n.language)}
                       </TableCell>
                       {isWriter && <TableCell className="w-0 text-right">{rowActions(key)}</TableCell>}
@@ -537,7 +563,7 @@ export function KeysPage() {
               {items.map((key) => (
                 <li key={key.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-start gap-2.5">
+                    <div className="flex min-w-0 items-start gap-3">
                       {isWriter && (
                         <Checkbox
                           className="mt-1"
@@ -547,14 +573,14 @@ export function KeysPage() {
                         />
                       )}
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{key.label}</p>
-                        {key.owner_label && <p className="truncate text-xs text-mute">{key.owner_label}</p>}
+                        <p className="truncate text-body font-medium text-foreground">{key.label}</p>
+                        {key.owner_label && <p className="truncate text-label text-mute">{key.owner_label}</p>}
                       </div>
                     </div>
                     {rowActions(key)}
                   </div>
 
-                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
                     <Field label={t('keys.column_type')}>
                       <TypeTag type={key.type} />
                     </Field>
@@ -571,7 +597,7 @@ export function KeysPage() {
                       <span className="mono text-dim">{formatDate(key.created_at, i18n.language)}</span>
                     </Field>
                     <div className="col-span-2 min-w-0">
-                      <dt className="truncate text-[11px] text-dim">{t('keys.column_nodes')}</dt>
+                      <dt className="micro truncate text-mute">{t('keys.column_nodes')}</dt>
                       <dd className="mt-1">
                         <NodeChips nodes={key.nodes} />
                       </dd>
@@ -582,8 +608,8 @@ export function KeysPage() {
             </ul>
           </Panel>
 
-          <div className="flex items-center justify-between gap-2">
-            <p className="mono text-xs text-dim">{t('keys.pagination_summary', { page, totalPages, total })}</p>
+          <div className={cn(ENTER_CLASS, 'flex items-center justify-between gap-2')} style={enterDelay(1)}>
+            <p className="mono text-mono text-dim">{t('keys.pagination_summary', { page, totalPages, total })}</p>
             <div className="flex items-center gap-2">
               <Button
                 type="button"

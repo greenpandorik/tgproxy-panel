@@ -16,6 +16,8 @@ import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
+import { Arriving, FormFooter } from './formShell';
+
 import type { TotpSetup } from '@/api/types';
 
 /**
@@ -26,7 +28,15 @@ import type { TotpSetup } from '@/api/types';
 const DISMISSALS = new Set<string>(['outside-press', 'escape-key', 'close-press', 'focus-out']);
 
 /** Shared shape for the two short code fields (enrolment confirm, disable). */
-const codeFieldClass = 'mono h-9 text-center text-base tracking-[0.35em] placeholder:tracking-[0.35em] placeholder:text-dim/60';
+/*
+ * The six-digit code fields. tracking-code is the one non-micro letter
+ * spacing in the panel and it is not a typographic choice: the eye has to
+ * count six characters here rather than read a word, so the digits are set as
+ * separate cells. The token is named in index.css so both OTP inputs share
+ * one number. The placeholder rides the same spacing, or the dots would sit
+ * where the digits will not.
+ */
+const codeFieldClass = 'mono h-9 text-center text-body tracking-code placeholder:tracking-code placeholder:text-mute';
 
 /**
  * Two-factor authentication for the signed-in admin. Rendered only when the panel
@@ -98,32 +108,34 @@ export function TotpSection() {
 
   return (
     <>
-      <Panel>
-        <PanelHeader
-          title={t('settings.totp_title')}
-          actions={
-            <>
-              <HelpButton topic="settings.security" />
-              {enabled ? (
-                <Button type="button" variant="outline" size="sm" onClick={() => setDisableOpen(true)}>
-                  {t('settings.totp_disable')}
-                </Button>
-              ) : (
-                <Button type="button" size="sm" onClick={() => void startEnrolment()} disabled={setup.isPending}>
-                  {t('settings.totp_enable')}
-                </Button>
-              )}
-            </>
-          }
-        />
-        <PanelBody className="space-y-2">
-          <p className="flex items-center gap-2 text-sm text-foreground">
-            <span className={cn('size-[7px] shrink-0 rounded-full', enabled ? 'bg-ok' : 'bg-pending')} aria-hidden="true" />
-            {t(enabled ? 'settings.totp_status_on' : 'settings.totp_status_off')}
-          </p>
-          <p className="max-w-prose text-sm text-mute">{t(enabled ? 'settings.totp_on_description' : 'settings.totp_off_description')}</p>
-        </PanelBody>
-      </Panel>
+      {/* Head, body, footer - the same three parts as every other settings form,
+          with turning the second factor on or off as this one's commit action. */}
+      <Arriving index={1}>
+        <Panel>
+          <PanelHeader title={t('settings.totp_title')} actions={<HelpButton topic="settings.security" />} />
+          <PanelBody className="space-y-2">
+            <p className="flex items-center gap-2 text-body text-foreground">
+              <span className={cn('size-[7px] shrink-0 rounded-pill', enabled ? 'bg-ok' : 'bg-pending')} aria-hidden="true" />
+              {t(enabled ? 'settings.totp_status_on' : 'settings.totp_status_off')}
+            </p>
+            <p className="max-w-prose text-label text-mute">
+              {t(enabled ? 'settings.totp_on_description' : 'settings.totp_off_description')}
+            </p>
+          </PanelBody>
+        </Panel>
+      </Arriving>
+
+      <FormFooter>
+        {enabled ? (
+          <Button type="button" variant="outline" onClick={() => setDisableOpen(true)}>
+            {t('settings.totp_disable')}
+          </Button>
+        ) : (
+          <Button type="button" onClick={() => void startEnrolment()} disabled={setup.isPending}>
+            {t('settings.totp_enable')}
+          </Button>
+        )}
+      </FormFooter>
 
       <EnrolDialog
         enrolment={enrolment}
@@ -207,20 +219,26 @@ function EnrolDialog({
                 alt={t('settings.totp_qr_alt')}
                 width={168}
                 height={168}
-                className="size-42 rounded-lg border border-hairline-strong bg-white p-2"
+                className="size-42 rounded-surface border border-hairline-strong bg-white p-2"
               />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="totp-secret">{t('settings.totp_secret')}</Label>
               <div className="flex items-center gap-1">
-                <Input id="totp-secret" readOnly value={enrolment.secret} className="mono text-xs" onFocus={(e) => e.target.select()} />
+                <Input
+                  id="totp-secret"
+                  readOnly
+                  value={enrolment.secret}
+                  className="mono text-mono"
+                  onFocus={(e) => e.target.select()}
+                />
                 <CopyButton value={enrolment.secret} label={t('settings.totp_copy_secret')} />
               </div>
-              <p className="text-xs text-mute">{t('settings.totp_secret_hint')}</p>
+              <p className="text-label text-mute">{t('settings.totp_secret_hint')}</p>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="totp-confirm-code">{t('settings.totp_code')}</Label>
               <Input
                 id="totp-confirm-code"
@@ -233,13 +251,13 @@ function EnrolDialog({
                 onChange={(e) => onCodeChange(e.target.value)}
                 aria-invalid={!!codeError}
               />
-              {codeError && <p className="text-xs text-destructive">{codeError}</p>}
+              {codeError && <p className="text-label text-destructive">{codeError}</p>}
             </div>
 
             {/* The password, not the code, is what a session thief does not have:
                 without it, temporary access to a signed-in tab would be enough to
                 enrol a stranger's authenticator and lock the owner out. */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="totp-confirm-password">{t('settings.totp_confirm_password')}</Label>
               <Input
                 id="totp-confirm-password"
@@ -250,13 +268,13 @@ function EnrolDialog({
                 aria-invalid={!!passwordError}
               />
               {passwordError ? (
-                <p className="text-xs text-destructive">{passwordError}</p>
+                <p className="text-label text-destructive">{passwordError}</p>
               ) : (
-                <p className="text-xs text-mute">{t('settings.totp_confirm_password_hint')}</p>
+                <p className="text-label text-mute">{t('settings.totp_confirm_password_hint')}</p>
               )}
             </div>
 
-            <p className="text-xs text-mute">{t('settings.totp_confirm_note')}</p>
+            <p className="text-label text-mute">{t('settings.totp_confirm_note')}</p>
           </div>
         )}
 
@@ -325,16 +343,18 @@ function RecoveryCodesDialog({ codes, username, acknowledged, onAcknowledgedChan
           <DialogDescription>{t('settings.totp_recovery_description')}</DialogDescription>
         </DialogHeader>
 
-        <p className="flex items-start gap-2 text-sm text-destructive">
-          <span className="mt-[6px] size-[7px] shrink-0 rounded-full bg-err" aria-hidden="true" />
+        <p className="flex items-start gap-2 text-body text-destructive">
+          <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-err" aria-hidden="true" />
           <span className="min-w-0 flex-1">{t('settings.totp_recovery_warning')}</span>
         </p>
 
-        <ul className="mono grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-md border border-hairline bg-background p-3 text-sm text-foreground">
-          {codes?.map((c) => <li key={c}>{c}</li>)}
+        <ul className="mono grid grid-cols-2 gap-x-6 gap-y-2 rounded-control border border-hairline bg-background p-4 text-body text-foreground">
+          {codes?.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
         </ul>
 
-        <label className="flex items-start gap-2 text-sm text-foreground">
+        <label className="flex items-start gap-2 text-body text-foreground">
           {/* No aria-label here: the wrapping <label> already names the control, and
               adding one would make a screen reader announce the sentence twice. */}
           <Checkbox className="mt-0.5" checked={acknowledged} onCheckedChange={onAcknowledgedChange} />
@@ -418,7 +438,7 @@ function DisableDialog({ open, onOpenChange, onDisable, pending }: DisableDialog
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="totp-disable-password">{t('settings.security_current_password')}</Label>
             <Input
               id="totp-disable-password"
@@ -428,9 +448,9 @@ function DisableDialog({ open, onOpenChange, onDisable, pending }: DisableDialog
               onChange={(e) => setPassword(e.target.value)}
               aria-invalid={!!errors.password}
             />
-            {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+            {errors.password && <p className="text-label text-destructive">{errors.password}</p>}
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="totp-disable-code">{t(useRecovery ? 'settings.totp_recovery_code' : 'settings.totp_code')}</Label>
             <Input
               id="totp-disable-code"
@@ -444,10 +464,10 @@ function DisableDialog({ open, onOpenChange, onDisable, pending }: DisableDialog
               onChange={(e) => setCode(e.target.value)}
               aria-invalid={!!errors.code}
             />
-            {errors.code && <p className="text-xs text-destructive">{errors.code}</p>}
+            {errors.code && <p className="text-label text-destructive">{errors.code}</p>}
             <button
               type="button"
-              className="text-xs text-mute underline underline-offset-2 hover:text-foreground"
+              className="text-label text-mute underline underline-offset-2 transition-colors hover:text-foreground"
               onClick={() => {
                 setUseRecovery((v) => !v);
                 setCode('');

@@ -12,6 +12,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import type { Lang } from '@/i18n';
 import { setLang } from '@/i18n';
 import { ApiError } from '@/lib/api';
@@ -50,25 +51,15 @@ const ERROR_KEY: Record<string, string> = {
 const WIDE = '(min-width: 900px)';
 
 /** Field label and control, at the login screen's own (larger) scale. */
-function Field({
-  id,
-  label,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  error?: boolean;
-  children: ReactNode;
-}) {
+function Field({ id, label, error, children }: { id: string; label: string; error?: boolean; children: ReactNode }) {
   const { t } = useTranslation();
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-[12.5px] font-normal text-mute">
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-label font-normal text-mute">
         {label}
       </Label>
       {children}
-      {error && <p className="text-xs text-destructive">{t('common.required')}</p>}
+      {error && <p className="text-label text-destructive">{t('common.required')}</p>}
     </div>
   );
 }
@@ -78,7 +69,7 @@ function EnterHint() {
   return (
     <kbd
       aria-hidden="true"
-      className="mono ml-1.5 rounded-sm border border-background/25 px-1.5 py-px text-[11px] text-background/55"
+      className="mono ml-1.5 rounded-control border border-background/25 px-1.5 py-px text-micro text-background/55"
     >
       ↵
     </kbd>
@@ -91,7 +82,7 @@ function LanguageSwitch() {
   const current = (i18n.language?.startsWith('en') ? 'en' : 'ru') as Lang;
 
   return (
-    <div className="mono flex items-center gap-1.5 text-xs" role="group" aria-label={t('common.language')}>
+    <div className="mono flex items-center gap-1.5 text-mono" role="group" aria-label={t('common.language')}>
       {(['ru', 'en'] as const).map((lang, i) => (
         <span key={lang} className="flex items-center gap-1.5">
           {i > 0 && <span aria-hidden="true">·</span>}
@@ -99,7 +90,10 @@ function LanguageSwitch() {
             type="button"
             onClick={() => setLang(lang)}
             aria-pressed={current === lang}
-            className={cn('rounded-sm transition-colors', current === lang ? 'text-foreground' : 'hover:text-mute')}
+            className={cn(
+              'rounded-control transition-[color,scale] duration-fast ease-out active:scale-[0.985]',
+              current === lang ? 'text-foreground' : 'hover:text-mute',
+            )}
           >
             {lang}
           </button>
@@ -182,7 +176,7 @@ export function LoginPage() {
   const errorBanner = formError && (
     <p
       role="alert"
-      className="rounded-md border border-destructive/35 bg-destructive/10 px-3 py-2 text-[12.5px] text-destructive"
+      className="rounded-control border border-destructive/35 bg-destructive/10 px-3 py-2 text-label text-destructive"
     >
       {formError}
     </p>
@@ -193,16 +187,14 @@ export function LoginPage() {
       {wide && <LoginStatusPanel />}
 
       <main className="flex flex-col justify-center bg-surface px-6 py-12 min-[900px]:px-16 min-[900px]:py-10">
-        <div className="mx-auto w-full max-w-[400px]">
+        <div className={cn(ENTER_CLASS, 'mx-auto w-full max-w-[400px]')}>
           {/* On a phone the panel is gone, so the operator's mark moves here. */}
           {!wide && <LoginWordmark className="mb-8" />}
-          <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.02em]">
-            {challenge ? t('auth.totp_title') : t('auth.login_title')}
-          </h1>
-          <p className="mt-1.5 text-mute">
+          <h1 className="text-display text-foreground">{challenge ? t('auth.totp_title') : t('auth.login_title')}</h1>
+          <p className="mt-2 text-body text-mute">
             {challenge ? t(useRecovery ? 'auth.totp_subtitle_recovery' : 'auth.totp_subtitle') : t('auth.login_subtitle')}
           </p>
-          {!challenge && branding?.login_text && <p className="mt-2 text-mute">{branding.login_text}</p>}
+          {!challenge && branding?.login_text && <p className="mt-2 text-body text-mute">{branding.login_text}</p>}
 
           {challenge ? (
             <form className="mt-8 space-y-5" onSubmit={(e) => void codeForm.handleSubmit(onSubmitCode)(e)} noValidate>
@@ -222,7 +214,7 @@ export function LoginPage() {
                   maxLength={useRecovery ? 11 : 6}
                   spellCheck={false}
                   placeholder={useRecovery ? 'xxxxx-xxxxx' : '000000'}
-                  className="mono h-10 px-3 text-center text-base tracking-[0.35em] placeholder:tracking-[0.35em] placeholder:text-dim/60"
+                  className="mono h-10 px-3 text-center text-title tracking-code placeholder:tracking-code placeholder:text-mute"
                   {...codeForm.register('code')}
                   aria-invalid={!!codeForm.formState.errors.code}
                 />
@@ -241,7 +233,7 @@ export function LoginPage() {
                 </Button>
               )}
 
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-label">
                 <button
                   type="button"
                   className="text-mute underline-offset-2 hover:text-foreground hover:underline"
@@ -295,7 +287,7 @@ export function LoginPage() {
             </form>
           )}
 
-          <div className="mt-10 flex items-center justify-between gap-4 text-xs text-dim">
+          <div className="mt-10 flex items-center justify-between gap-4 text-label text-mute">
             <LanguageSwitch />
             {branding?.support_link && (
               <a

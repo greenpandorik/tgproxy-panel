@@ -4,12 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { useAssignSite, useNodeSite } from '@/api/nodes';
 import { nodeSitePreviewUrl, useSiteTemplates } from '@/api/sites';
 import { useAuth } from '@/auth/AuthProvider';
+import { PanelEmpty } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
+import { ApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +53,7 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
   if (siteQuery.isLoading) {
     return (
       <Panel>
-        <div className="space-y-2 p-4">
+        <div className="space-y-4 p-4">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-64 w-full" />
         </div>
@@ -57,8 +61,26 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
     );
   }
 
+  /*
+   * "We could not ask" is a different fact from "no template assigned", and
+   * without this branch the failed request renders the second one - which
+   * would send a writer off to assign a template that is already there.
+   */
+  if (siteQuery.isError) {
+    return (
+      <Panel>
+        <ErrorState
+          inset
+          message={siteQuery.error instanceof ApiError ? siteQuery.error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void siteQuery.refetch()}
+        />
+      </Panel>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn(ENTER_CLASS, 'flex flex-col gap-4')}>
       <Panel>
         <PanelHeader
           title={t('nodes.site_current_template')}
@@ -67,21 +89,18 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
         />
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-          <span className="text-sm text-foreground">
+          <span className="text-body text-foreground">
             {site?.template_id ? (currentTemplate?.name ?? site.template_id) : t('nodes.site_none')}
           </span>
           {site?.template_id && (
             <>
-              <span className="mono inline-flex items-center gap-1.5 text-xs">
-                <span
-                  className={cn('size-[7px] shrink-0 rounded-full', deployed ? 'bg-ok' : 'bg-warn')}
-                  aria-hidden="true"
-                />
+              <span className="inline-flex items-center gap-1.5 text-micro">
+                <span className={cn('size-[7px] shrink-0 rounded-pill', deployed ? 'bg-ok' : 'bg-warn')} aria-hidden="true" />
                 <span className={deployed ? 'text-ok' : 'text-warn'}>
                   {deployed ? t('nodes.site_status_deployed') : t('nodes.site_status_pending')}
                 </span>
               </span>
-              {site.bundle_hash && <span className="mono text-xs text-dim">{site.bundle_hash.slice(0, 12)}</span>}
+              {site.bundle_hash && <span className="mono text-mono text-dim">{site.bundle_hash.slice(0, 12)}</span>}
             </>
           )}
 
@@ -111,9 +130,9 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
         </div>
 
         {site?.files && site.files.length > 0 && (
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t border-hairline px-4 py-2.5">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t border-hairline px-4 py-3">
             {site.files.map((f) => (
-              <li key={f} className="mono text-xs text-dim">
+              <li key={f} className="mono text-mono text-dim">
                 {f}
               </li>
             ))}
@@ -129,10 +148,10 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
             sandbox=""
             src={nodeSitePreviewUrl(nodeId)}
             title={t('nodes.site_preview')}
-            className="m-4 h-96 w-[calc(100%-2rem)] rounded-md border border-hairline bg-white"
+            className="m-4 h-96 w-[calc(100%-2rem)] rounded-surface border border-hairline bg-white"
           />
         ) : (
-          <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.site_no_preview')}</p>
+          <PanelEmpty>{t('nodes.site_no_preview')}</PanelEmpty>
         )}
       </Panel>
     </div>

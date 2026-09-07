@@ -5,6 +5,7 @@ import { useRunNodeCheck } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
@@ -33,11 +34,11 @@ function CheckRow({ result }: { result: NodeCheckResult }) {
   const hintKey = `nodes.check_${result.name}_hint`;
   const hint = i18n.exists(hintKey) ? t(hintKey) : null;
   return (
-    <li className="flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <li className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="flex min-w-0 items-start gap-2">
         <span
           className={cn(
-            'mt-[6px] size-[7px] shrink-0 rounded-full',
+            'mt-[7px] size-[7px] shrink-0 rounded-pill',
             tone === 'ok' && 'bg-ok',
             tone === 'info' && 'bg-info',
             tone === 'err' && 'bg-err',
@@ -45,14 +46,14 @@ function CheckRow({ result }: { result: NodeCheckResult }) {
           aria-hidden="true"
         />
         <span className="flex min-w-0 flex-col">
-          <span className="truncate text-sm text-foreground">{t(`nodes.check_${result.name}`, result.name)}</span>
-          {hint && <span className="text-xs text-mute">{hint}</span>}
+          <span className="truncate text-body text-foreground">{t(`nodes.check_${result.name}`, result.name)}</span>
+          {hint && <span className="text-label text-mute">{hint}</span>}
         </span>
       </span>
       {result.detail && (
         <span
           className={cn(
-            'mono min-w-0 text-xs break-words sm:text-right',
+            'mono min-w-0 text-mono break-words sm:text-right',
             tone === 'ok' && 'text-dim',
             tone === 'info' && 'text-info',
             tone === 'err' && 'text-err',
@@ -95,7 +96,7 @@ export function NodeCheckCard({ node }: { node: Node }) {
         actions={
           <>
             {allOk !== undefined && (
-              <span className={cn('mono text-xs', allOk ? 'text-ok' : 'text-err')}>
+              <span className={cn('text-micro', allOk ? 'text-ok' : 'text-err')}>
                 {t(allOk ? 'nodes.check_status_ok' : 'nodes.check_status_failed')}
               </span>
             )}
@@ -110,8 +111,41 @@ export function NodeCheckCard({ node }: { node: Node }) {
         }
       />
 
-      {!results ? (
-        <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.check_empty')}</p>
+      {!results && runCheck.isPending ? (
+        <ul className="divide-y divide-hairline">
+          {CHECK_NAMES.map((name) => (
+            <li key={name} className="flex items-center justify-between gap-4 px-4 py-3">
+              <span className="flex min-w-0 items-center gap-2">
+                <Skeleton className="size-[7px] shrink-0 rounded-pill" />
+                <Skeleton className="h-3 w-40" />
+              </span>
+              <Skeleton className="h-3 w-24 shrink-0" />
+            </li>
+          ))}
+        </ul>
+      ) : !results && runCheck.isError ? (
+        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+          <p className="flex items-start gap-2 text-body text-mute">
+            <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-err" aria-hidden="true" />
+            {runCheck.error instanceof ApiError ? runCheck.error.message : t('nodes.check_request_failed')}
+          </p>
+          {isWriter && (
+            <Button type="button" variant="outline" size="sm" onClick={() => void handleRun()}>
+              <RefreshCw />
+              {t('nodes.check_run')}
+            </Button>
+          )}
+        </div>
+      ) : !results ? (
+        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+          <p className="text-body text-mute">{t('nodes.check_empty')}</p>
+          {isWriter && (
+            <Button type="button" variant="outline" size="sm" onClick={() => void handleRun()}>
+              <RefreshCw />
+              {t('nodes.check_run')}
+            </Button>
+          )}
+        </div>
       ) : (
         <ul className="divide-y divide-hairline">
           {CHECK_NAMES.map((name) => {

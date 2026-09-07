@@ -35,8 +35,8 @@ export function AppShell() {
       <div className="flex h-screen overflow-hidden bg-background">
         <aside
           className={
-            'hidden shrink-0 border-r border-hairline transition-[width] duration-150 lg:block ' +
-            (collapsed ? 'w-[60px]' : 'w-56')
+            'hidden shrink-0 border-r border-hairline transition-[width] duration-base ease-out lg:block ' +
+            (collapsed ? 'w-15' : 'w-56')
           }
         >
           <Sidebar collapsed={collapsed} showToggle onToggle={() => setCollapsed((c) => !c)} />
@@ -51,8 +51,14 @@ export function AppShell() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar onOpenMenu={() => setMobileOpen(true)} onOpenCommand={() => setCommandOpen(true)} />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-5">
-            <div className="flex w-full flex-col gap-4">
+          {/*
+            The page's own rhythm, set once here: 16/24px of ground around the
+            content and 24px between the blocks a page stacks. Panels inside a
+            block still sit 16px apart, so a row of tiles reads as one thing and
+            the sections read as several.
+          */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="flex w-full flex-col gap-6">
               <Outlet />
             </div>
           </main>

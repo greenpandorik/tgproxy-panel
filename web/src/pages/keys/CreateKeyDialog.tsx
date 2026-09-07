@@ -35,6 +35,18 @@ const CARRIER_MODES: CarrierMode[] = ['https', 'https-lanes', 'websocket', 'webs
 // the form by id rather than by nesting.
 const FORM_ID = 'create-key-form';
 
+/*
+ * The form is a stack of decisions, not a stack of fields.
+ *
+ * This is the busiest form in the panel - three tabs, a node picker, a carrier
+ * select, an expiry and a collapsible limits block - and set as one uniform
+ * column it reads as sixteen things of equal weight. So each decision gets its
+ * own block: fields inside a block sit 12px apart, blocks are 16px apart and
+ * divided by the same hairline the tables use. The eye can then find "where
+ * does this key live" without reading the label above every input.
+ */
+const GROUP_CLASS = 'space-y-3 py-4 first:pt-0 last:pb-0';
+
 function carrierSlug(mode: CarrierMode): string {
   return mode.replace(/-/g, '_');
 }
@@ -251,9 +263,9 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
     >
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <DialogTitle>{t('keys.create_title')}</DialogTitle>
-            <HelpButton topic={mode === 'batch' ? 'keys.batch' : 'keys.create'} className="-my-1.5" />
+            <HelpButton topic={mode === 'batch' ? 'keys.batch' : 'keys.create'} className="-my-1" />
           </div>
           <DialogDescription>{t('keys.create_description')}</DialogDescription>
         </DialogHeader>
@@ -276,97 +288,108 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
 
         <form
           id={FORM_ID}
-          className="max-h-[60vh] space-y-4 overflow-y-auto pr-1"
+          className="max-h-[60vh] divide-y divide-hairline overflow-y-auto pr-1"
           onSubmit={(e) => void handleSubmit(onSubmit)(e)}
           noValidate
         >
-          {mode === 'batch' ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
-              <div className="space-y-1.5">
-                <Label htmlFor="key-prefix">{t('keys.field_prefix')}</Label>
-                <Input id="key-prefix" autoFocus placeholder="vip" {...register('prefix')} aria-invalid={!!errors.prefix} />
-                <p className="text-xs text-mute">{t('keys.field_prefix_hint')}</p>
-                {errors.prefix && <p className="text-xs text-destructive">{t('common.required')}</p>}
+          {/* What the key is called. */}
+          <section className={GROUP_CLASS}>
+            {mode === 'batch' ? (
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-2">
+                  <Label htmlFor="key-prefix">{t('keys.field_prefix')}</Label>
+                  <Input id="key-prefix" autoFocus placeholder="vip" {...register('prefix')} aria-invalid={!!errors.prefix} />
+                  <p className="text-label text-mute">{t('keys.field_prefix_hint')}</p>
+                  {errors.prefix && <p className="text-label text-destructive">{t('common.required')}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="key-count">{t('keys.field_count')}</Label>
+                  <Input
+                    id="key-count"
+                    type="number"
+                    min={1}
+                    max={100}
+                    className="mono w-24 text-mono"
+                    {...register('count')}
+                    aria-invalid={!!errors.count}
+                  />
+                  {errors.count && <p className="text-label text-destructive">{t('keys.validation_count')}</p>}
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="key-count">{t('keys.field_count')}</Label>
-                <Input
-                  id="key-count"
-                  type="number"
-                  min={1}
-                  max={100}
-                  className="mono w-24"
-                  {...register('count')}
-                  aria-invalid={!!errors.count}
-                />
-                {errors.count && <p className="text-xs text-destructive">{t('keys.validation_count')}</p>}
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="key-label">{t('keys.field_label')}</Label>
+                <Input id="key-label" autoFocus {...register('label')} aria-invalid={!!errors.label} />
+                {errors.label && <p className="text-label text-destructive">{t('common.required')}</p>}
               </div>
+            )}
+
+            {mode === 'personal' && (
+              <div className="space-y-2">
+                <Label htmlFor="key-owner">{t('keys.field_owner_label')}</Label>
+                <Input id="key-owner" {...register('owner_label')} aria-invalid={!!errors.owner_label} />
+                <p className="text-label text-mute">{t('keys.field_owner_label_hint')}</p>
+                {errors.owner_label && <p className="text-label text-destructive">{t('common.required')}</p>}
+              </div>
+            )}
+          </section>
+
+          {/* Where it lives, and how it travels. */}
+          <section className={GROUP_CLASS}>
+            <div className="space-y-2">
+              <Label>{t('keys.field_nodes')}</Label>
+              <Controller
+                control={control}
+                name="node_ids"
+                render={({ field }) => <NodeCapacityList nodes={nodes} selectedIds={field.value} onChange={field.onChange} />}
+              />
+              {errors.node_ids && <p className="text-label text-destructive">{t('keys.validation_node_ids')}</p>}
             </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Label htmlFor="key-label">{t('keys.field_label')}</Label>
-              <Input id="key-label" autoFocus {...register('label')} aria-invalid={!!errors.label} />
-              {errors.label && <p className="text-xs text-destructive">{t('common.required')}</p>}
+
+            <div className="space-y-2">
+              <Label htmlFor="key-carrier">{t('keys.field_carrier_mode')}</Label>
+              <Select value={carrierMode} onValueChange={(v) => setValue('carrier_mode', v as CarrierMode)}>
+                <SelectTrigger id="key-carrier" className="w-full">
+                  {/* Resolve the label explicitly - SelectValue only reflects a matched item's
+                      rendered label once the popup has mounted at least once, so it would
+                      otherwise show the raw value ("https-lanes"). */}
+                  <SelectValue>{(v: CarrierMode) => t(`keys.carrier_${carrierSlug(v ?? 'https')}`)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {CARRIER_MODES.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {t(`keys.carrier_${carrierSlug(m)}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-label text-mute">{t(`keys.carrier_${carrierSlug(carrierMode)}_desc`)}</p>
             </div>
-          )}
+          </section>
 
-          {mode === 'personal' && (
-            <div className="space-y-1.5">
-              <Label htmlFor="key-owner">{t('keys.field_owner_label')}</Label>
-              <Input id="key-owner" {...register('owner_label')} aria-invalid={!!errors.owner_label} />
-              <p className="text-xs text-mute">{t('keys.field_owner_label_hint')}</p>
-              {errors.owner_label && <p className="text-xs text-destructive">{t('common.required')}</p>}
+          {/* How long it lasts. */}
+          <section className={GROUP_CLASS}>
+            <div className="space-y-2">
+              <Label htmlFor="key-expires">
+                {t('keys.field_expires_at')} <span className="font-normal text-mute">({t('keys.field_optional')})</span>
+              </Label>
+              <Input
+                id="key-expires"
+                type="datetime-local"
+                className="mono w-fit text-mono"
+                {...register('expires_at')}
+                aria-invalid={!!errors.expires_at}
+              />
+              {errors.expires_at && <p className="text-label text-destructive">{t('keys.validation_expires_future')}</p>}
             </div>
-          )}
+          </section>
 
-          <div className="space-y-1.5">
-            <Label>{t('keys.field_nodes')}</Label>
-            <Controller
-              control={control}
-              name="node_ids"
-              render={({ field }) => <NodeCapacityList nodes={nodes} selectedIds={field.value} onChange={field.onChange} />}
-            />
-            {errors.node_ids && <p className="text-xs text-destructive">{t('keys.validation_node_ids')}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="key-carrier">{t('keys.field_carrier_mode')}</Label>
-            <Select value={carrierMode} onValueChange={(v) => setValue('carrier_mode', v as CarrierMode)}>
-              <SelectTrigger id="key-carrier" className="w-full">
-                {/* Resolve the label explicitly - SelectValue only reflects a matched item's
-                    rendered label once the popup has mounted at least once, so it would
-                    otherwise show the raw value ("https-lanes"). */}
-                <SelectValue>{(v: CarrierMode) => t(`keys.carrier_${carrierSlug(v ?? 'https')}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {CARRIER_MODES.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {t(`keys.carrier_${carrierSlug(m)}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-mute">{t(`keys.carrier_${carrierSlug(carrierMode)}_desc`)}</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="key-expires">
-              {t('keys.field_expires_at')} <span className="font-normal text-dim">({t('keys.field_optional')})</span>
-            </Label>
-            <Input
-              id="key-expires"
-              type="datetime-local"
-              className="mono w-fit"
-              {...register('expires_at')}
-              aria-invalid={!!errors.expires_at}
-            />
-            {errors.expires_at && <p className="text-xs text-destructive">{t('keys.validation_expires_future')}</p>}
-          </div>
-
-          <section className="space-y-2 border-t border-hairline pt-3">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-medium text-foreground">{t('keys.telemt_limits_title')}</h3>
-              <HelpButton topic="keys.limits" className="-my-1.5" />
+          {/* What it is allowed to do. Both blocks are limits, so they share one
+              group and the advanced set stays folded away inside it. */}
+          <section className={GROUP_CLASS}>
+            <div className="flex items-center gap-2">
+              <h3 className="micro text-mute">{t('keys.telemt_limits_title')}</h3>
+              <HelpButton topic="keys.limits" className="-my-1" />
             </div>
             <Controller
               control={control}
@@ -380,55 +403,58 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
                 />
               )}
             />
+
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowLimits((v) => !v)}
+                aria-expanded={showLimits}
+                className="-my-1 flex w-full items-center gap-2 py-1 text-label text-mute transition-[color,scale] outline-none hover:text-foreground focus-visible:text-foreground active:scale-[0.985]"
+              >
+                <ChevronRight className={cn('size-3.5 transition-transform', showLimits && 'rotate-90')} />
+                {t('keys.field_limits_toggle')}
+              </button>
+              {showLimits && (
+                <Controller
+                  control={control}
+                  name="limits"
+                  render={({ field }) => (
+                    <LimitsFields
+                      className="mt-4"
+                      value={field.value}
+                      onChange={field.onChange}
+                      errors={{
+                        max_sessions: limitsError('max_sessions'),
+                        max_streams: limitsError('max_streams'),
+                        max_backend_dials_in_flight: limitsError('max_backend_dials_in_flight'),
+                        new_sessions_per_minute: limitsError('new_sessions_per_minute'),
+                        new_sessions_burst: limitsError('new_sessions_burst'),
+                        new_streams_per_minute: limitsError('new_streams_per_minute'),
+                        new_streams_burst: limitsError('new_streams_burst'),
+                        max_streams_per_session: limitsError('max_streams_per_session'),
+                        max_pending_per_session: limitsError('max_pending_per_session'),
+                      }}
+                    />
+                  )}
+                />
+              )}
+            </div>
           </section>
 
-          <div className="border-t border-hairline pt-3">
-            <button
-              type="button"
-              onClick={() => setShowLimits((v) => !v)}
-              aria-expanded={showLimits}
-              className="-my-1 flex w-full items-center gap-1.5 py-1 text-sm text-mute transition-colors outline-none hover:text-foreground focus-visible:text-foreground"
-            >
-              <ChevronRight className={cn('size-3.5 transition-transform', showLimits && 'rotate-90')} />
-              {t('keys.field_limits_toggle')}
-            </button>
-            {showLimits && (
-              <Controller
-                control={control}
-                name="limits"
-                render={({ field }) => (
-                  <LimitsFields
-                    className="mt-3"
-                    value={field.value}
-                    onChange={field.onChange}
-                    errors={{
-                      max_sessions: limitsError('max_sessions'),
-                      max_streams: limitsError('max_streams'),
-                      max_backend_dials_in_flight: limitsError('max_backend_dials_in_flight'),
-                      new_sessions_per_minute: limitsError('new_sessions_per_minute'),
-                      new_sessions_burst: limitsError('new_sessions_burst'),
-                      new_streams_per_minute: limitsError('new_streams_per_minute'),
-                      new_streams_burst: limitsError('new_streams_burst'),
-                      max_streams_per_session: limitsError('max_streams_per_session'),
-                      max_pending_per_session: limitsError('max_pending_per_session'),
-                    }}
-                  />
-                )}
-              />
+          {/* Anything the operator wants to remember about it. */}
+          <section className={GROUP_CLASS}>
+            <div className="space-y-2">
+              <Label htmlFor="key-note">{t('keys.field_note')}</Label>
+              <Textarea id="key-note" rows={2} {...register('note')} />
+            </div>
+
+            {errors.root && (
+              <p role="alert" className="flex items-start gap-2 text-body text-destructive">
+                <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-destructive" aria-hidden="true" />
+                {errors.root.message}
+              </p>
             )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="key-note">{t('keys.field_note')}</Label>
-            <Textarea id="key-note" rows={2} {...register('note')} />
-          </div>
-
-          {errors.root && (
-            <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
-              <span className="mt-1.5 size-[7px] shrink-0 rounded-full bg-destructive" aria-hidden="true" />
-              {errors.root.message}
-            </p>
-          )}
+          </section>
         </form>
 
         <DialogFooter>

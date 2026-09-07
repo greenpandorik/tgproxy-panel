@@ -36,12 +36,12 @@ export function StatusBadge({ status, label, className, hideLabel }: StatusBadge
   const text = label ?? t(`common.${status}`);
 
   return (
-    <span className={cn('inline-flex items-center gap-2 text-sm whitespace-nowrap', className)}>
+    <span className={cn('inline-flex items-center gap-2 text-body whitespace-nowrap', className)}>
       <span className="relative inline-flex size-[7px] shrink-0">
         {PULSING[status] && (
-          <span className={cn('tgwp-pulse-ring absolute inset-0 rounded-full', DOT_CLASS[status])} aria-hidden="true" />
+          <span className={cn('tgwp-pulse-ring absolute inset-0 rounded-pill', DOT_CLASS[status])} aria-hidden="true" />
         )}
-        <span className={cn('relative inline-flex size-[7px] rounded-full', DOT_CLASS[status])} />
+        <span className={cn('relative inline-flex size-[7px] rounded-pill', DOT_CLASS[status])} />
       </span>
       <span className={cn('text-foreground', hideLabel && 'sr-only')}>{text}</span>
     </span>

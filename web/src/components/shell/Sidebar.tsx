@@ -7,7 +7,6 @@ import { useBranding } from '@/api/branding';
 import { useDashboardSummary } from '@/api/dashboard';
 import { usePanelHealth } from '@/api/health';
 import { useNodes } from '@/api/nodes';
-import { usePublicStatus } from '@/api/status';
 import { useAuth } from '@/auth/AuthProvider';
 import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
 import { Logo } from '@/components/brand/Logo';
@@ -70,18 +69,19 @@ function NavRow({
       onClick={onNavigate}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'relative flex h-8 items-center gap-2.5 rounded-md px-2 text-sm transition-colors',
+        'relative flex h-8 items-center gap-2.5 rounded-control px-2 text-body transition-[background-color,color,scale] duration-fast ease-out active:scale-[0.985]',
         collapsed && 'justify-center px-0',
         isActive
           ? // The one place the operator's brand hue marks navigation:
-            // a 2px tab on the left edge of the active row.
-            'bg-elevated text-foreground before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-primary before:content-[""]'
+            // a 2px tab on the left edge of the active row. It is a rule, not a
+            // control, so it takes the zero radius rules and hairlines take.
+            'bg-elevated text-foreground before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:bg-brand-primary before:content-[""]'
           : 'text-muted-foreground hover:bg-elevated/60 hover:text-foreground',
       )}
     >
       <item.icon className="size-[15px] shrink-0" strokeWidth={1.8} aria-hidden="true" />
       {!collapsed && <span className="truncate">{label}</span>}
-      {!collapsed && count && <span className="mono ml-auto text-xs text-dim">{count}</span>}
+      {!collapsed && count && <span className="mono ml-auto text-micro text-dim">{count}</span>}
     </Link>
   );
 
@@ -110,7 +110,6 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
   // no extra request - and, more to the point, counts the same field they
   // display (`status`) instead of the server's separate tally.
   const nodesQuery = useNodes();
-  const { data: status } = usePublicStatus();
   const clock = useClock();
 
   const summary = summaryQuery.data;
@@ -135,16 +134,24 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
     >
       {/* The drawer (no rail toggle) has the Sheet's own close button floating in
           this corner, so the version chip keeps clear of it. */}
-      <div className={cn('flex items-center gap-2 px-2 pb-3.5', collapsed && 'justify-center px-0', !showToggle && !collapsed && 'pr-7')}>
+      <div
+        className={cn(
+          'flex items-center gap-2 px-2 pb-4',
+          collapsed && 'justify-center px-0',
+          !showToggle && !collapsed && 'pr-7',
+        )}
+      >
         <Logo size={16} />
         {!collapsed && (
           <>
-            <span className="truncate font-semibold">{branding?.panel_name || DEFAULT_PANEL_NAME}</span>
-            {status?.version && (
-              <span className="mono ml-auto shrink-0 rounded-sm border border-hairline px-1.5 text-[10px] text-dim">
-                v{status.version}
-              </span>
-            )}
+            {/*
+              The name gets the whole header. The version used to sit here as a
+              badge, but the topbar chip carries the same number plus the update
+              state, and between the two the default name lost 7px and truncated
+              to "TGProxy P...". One fact, one place, and the product can say its
+              own name.
+            */}
+            <span className="truncate text-body font-semibold">{branding?.panel_name || DEFAULT_PANEL_NAME}</span>
           </>
         )}
       </div>
@@ -155,7 +162,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
             {collapsed ? (
               <div className="mx-2 my-2 h-px bg-hairline" aria-hidden="true" />
             ) : (
-              <p className="eyebrow px-2 pt-3.5 pb-1">{t(group.labelKey)}</p>
+              <p className="micro px-2 pt-4 pb-1 text-mute">{t(group.labelKey)}</p>
             )}
             <ul>
               {group.items.map((item) => (
@@ -172,24 +179,24 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
         ))}
       </div>
 
-      <div className="mt-3 flex items-end gap-1 border-t border-hairline pt-2.5">
-        <div className={cn('mono min-w-0 flex-1 text-xs text-dim', collapsed ? 'text-center' : 'px-2')}>
+      <div className="mt-4 flex items-end gap-1 border-t border-hairline pt-3">
+        <div className={cn('mono min-w-0 flex-1 text-micro text-dim', collapsed ? 'text-center' : 'px-2')}>
           {collapsed ? (
             <span
-              className={cn('inline-block size-1.5 rounded-full', apiOk && dbOk ? 'bg-ok' : 'bg-err')}
+              className={cn('inline-block size-1.5 rounded-pill', apiOk && dbOk ? 'bg-ok' : 'bg-err')}
               aria-label={apiOk && dbOk ? 'ok' : 'error'}
             />
           ) : (
             <>
               <p className="flex items-center gap-1.5 truncate">
-                <span className={cn('size-1.5 shrink-0 rounded-full', apiOk && dbOk ? 'bg-ok' : 'bg-err')} aria-hidden="true" />
+                <span className={cn('size-1.5 shrink-0 rounded-pill', apiOk && dbOk ? 'bg-ok' : 'bg-err')} aria-hidden="true" />
                 <span className="truncate text-muted-foreground">{user?.username ?? '\u2014'}</span>
                 <span aria-hidden="true">·</span>
                 <span className="truncate">{user ? t(ROLE_KEY[user.role] ?? 'common.role_viewer') : ''}</span>
               </p>
-              <p className="truncate pt-0.5">
-                {t('shell.health_api')} {apiOk ? t('shell.health_ok') : t('shell.health_down')} ·{' '}
-                {t('shell.health_db')} {dbOk ? t('shell.health_ok') : t('shell.health_down')} · {clock}
+              <p className="truncate pt-1">
+                {t('shell.health_api')} {apiOk ? t('shell.health_ok') : t('shell.health_down')} · {t('shell.health_db')}{' '}
+                {dbOk ? t('shell.health_ok') : t('shell.health_down')} · {clock}
               </p>
             </>
           )}
@@ -204,7 +211,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
                   type="button"
                   onClick={onToggle}
                   aria-label={t('shell.toggle_sidebar')}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-dim transition-colors hover:bg-elevated hover:text-foreground"
+                  className="flex size-6 shrink-0 items-center justify-center rounded-control text-dim transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
                 >
                   <PanelLeftClose className="size-3.5" aria-hidden="true" />
                 </button>
@@ -223,7 +230,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
                 type="button"
                 onClick={onToggle}
                 aria-label={t('shell.toggle_sidebar')}
-                className="mt-1.5 flex h-7 w-full items-center justify-center rounded-md text-dim transition-colors hover:bg-elevated hover:text-foreground"
+                className="mt-2 flex h-7 w-full items-center justify-center rounded-control text-dim transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
               >
                 <PanelLeftOpen className="size-3.5" aria-hidden="true" />
               </button>
@@ -233,9 +240,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
         </Tooltip>
       )}
 
-      {!collapsed && branding?.footer_text && (
-        <p className="truncate px-2 pt-2 text-xs text-mute">{branding.footer_text}</p>
-      )}
+      {!collapsed && branding?.footer_text && <p className="truncate px-2 pt-2 text-label text-mute">{branding.footer_text}</p>}
     </nav>
   );
 }

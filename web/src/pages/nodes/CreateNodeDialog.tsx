@@ -95,18 +95,18 @@ function EngineCards({ value, onChange }: { value: NodeEngine; onChange: (engine
             aria-checked={active}
             onClick={() => onChange(engine)}
             className={cn(
-              'rounded-md border px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+              'rounded-control border px-3 py-3 text-left transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
               active ? 'border-hairline-strong bg-elevated' : 'border-hairline hover:bg-elevated/60',
             )}
           >
-            <span className="mono flex items-center gap-2 text-xs text-foreground">
+            <span className="mono flex items-center gap-2 text-mono text-foreground">
               <span
-                className={cn('size-[7px] shrink-0 rounded-full', active ? 'bg-brand-primary' : 'bg-hairline-strong')}
+                className={cn('size-[7px] shrink-0 rounded-pill', active ? 'bg-brand-primary' : 'bg-hairline-strong')}
                 aria-hidden="true"
               />
               {engine}
             </span>
-            <span className="mt-1 block text-xs text-mute">{t(`nodes.engine_${engine}_desc`)}</span>
+            <span className="mt-1 block text-label text-mute">{t(`nodes.engine_${engine}_desc`)}</span>
           </button>
         );
       })}
@@ -222,13 +222,13 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
           onSubmit={(e) => void handleSubmit(onSubmit)(e)}
           noValidate
         >
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="node-name">{t('nodes.field_name')}</Label>
             <Input id="node-name" autoFocus {...register('name')} aria-invalid={!!errors.name} />
-            {errors.name && <p className="text-xs text-destructive">{t('common.required')}</p>}
+            {errors.name && <p className="text-label text-destructive">{t('common.required')}</p>}
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="node-hostname">{t('nodes.field_hostname')}</Label>
             <Input
               id="node-hostname"
@@ -241,19 +241,23 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
               }}
               aria-invalid={!!errors.hostname}
             />
-            <p className="text-xs text-mute">{t('nodes.field_hostname_hint')}</p>
-            {errors.hostname && <p className="text-xs text-destructive">{t('nodes.validation_hostname')}</p>}
+            <p className="text-label text-mute">{t('nodes.field_hostname_hint')}</p>
+            {errors.hostname && <p className="text-label text-destructive">{t('nodes.validation_hostname')}</p>}
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label>{t('nodes.field_engine')}</Label>
-            <Controller control={control} name="engine" render={({ field }) => <EngineCards value={field.value} onChange={field.onChange} />} />
-            <p className="text-xs text-mute">{t(`nodes.engine_${engine}_links`)}</p>
+            <Controller
+              control={control}
+              name="engine"
+              render={({ field }) => <EngineCards value={field.value} onChange={field.onChange} />}
+            />
+            <p className="text-label text-mute">{t(`nodes.engine_${engine}_links`)}</p>
           </div>
 
           {engine === 'telemt' && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="node-tls-domain">{t('nodes.field_tls_domain')}</Label>
                 <Input
                   id="node-tls-domain"
@@ -262,10 +266,10 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
                   {...register('tls_domain', { onChange: () => (tlsDomainEdited.current = true) })}
                   aria-invalid={!!errors.tls_domain}
                 />
-                <p className="text-xs text-mute">{t('nodes.field_tls_domain_hint')}</p>
-                {errors.tls_domain && <p className="text-xs text-destructive">{t('nodes.validation_hostname')}</p>}
+                <p className="text-label text-mute">{t('nodes.field_tls_domain_hint')}</p>
+                {errors.tls_domain && <p className="text-label text-destructive">{t('nodes.validation_hostname')}</p>}
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="node-classic-port">{t('nodes.field_classic_port')}</Label>
                 <Input
                   id="node-classic-port"
@@ -276,34 +280,36 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
                   {...register('classic_port')}
                   aria-invalid={!!errors.classic_port}
                 />
-                {errors.classic_port && <p className="text-xs text-destructive">{t('nodes.validation_classic_port')}</p>}
+                {errors.classic_port && <p className="text-label text-destructive">{t('nodes.validation_classic_port')}</p>}
               </div>
             </div>
           )}
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="node-acme-email">{t('nodes.field_acme_email')}</Label>
             <Input id="node-acme-email" type="email" {...register('acme_email')} aria-invalid={!!errors.acme_email} />
-            {errors.acme_email && <p className="text-xs text-destructive">{t('nodes.validation_email')}</p>}
+            {errors.acme_email && <p className="text-label text-destructive">{t('nodes.validation_email')}</p>}
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="node-public-ip">
               {t('nodes.field_public_ip')}{' '}
-              <span className="font-normal text-dim">
+              <span className="font-normal text-mute">
                 ({t(engine === 'telemt' ? 'nodes.field_public_ip_telemt' : 'nodes.field_public_ip_optional')})
               </span>
             </Label>
             <Input id="node-public-ip" className="mono" {...register('public_ip')} aria-invalid={!!errors.public_ip} />
+            {errors.public_ip && (
+              <p className="text-label text-destructive">{errors.public_ip.message || t('nodes.validation_ipv4')}</p>
+            )}
           </div>
 
           {errors.root && (
-            <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
-              <span className="mt-1.5 size-[7px] shrink-0 rounded-full bg-destructive" aria-hidden="true" />
+            <p role="alert" className="flex items-start gap-2 text-body text-destructive">
+              <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-destructive" aria-hidden="true" />
               {errors.root.message}
             </p>
           )}
-
         </form>
 
         <DialogFooter>

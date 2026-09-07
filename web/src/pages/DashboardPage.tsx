@@ -7,17 +7,21 @@ import { useDashboardSummary, useNodesSeries24h } from '@/api/dashboard';
 import { useNodes } from '@/api/nodes';
 import { ChartLegend } from '@/components/common/ChartLegend';
 import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { StatCard } from '@/components/common/StatCard';
 import { Button } from '@/components/ui/button';
+import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpButton } from '@/help';
+import { ApiError } from '@/lib/api';
 import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
 import { formatCompactAge, formatCompactDuration, formatBytes, formatNumber, splitBytes } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 import { AlertsSection } from './dashboard/AlertsSection';
-import { NodesTable } from './dashboard/NodesTable';
+import { NodesTable, NodesTableSkeleton } from './dashboard/NodesTable';
 import { RecentJobsSection } from './dashboard/RecentJobsSection';
 
 import type { DeltaTone } from '@/components/common/StatCard';
@@ -234,6 +238,34 @@ export function DashboardPage() {
   const recentJobs = (summary?.recent_jobs ?? []).slice(0, RECENT_JOBS_LIMIT);
   const trafficTotal = splitBytes(traffic.up + traffic.down);
   const loading = summaryQuery.isLoading || nodesQuery.isLoading;
+  const failed = summaryQuery.isError || nodesQuery.isError;
+
+  /*
+   * The error branch comes before the empty one on purpose. When /nodes fails
+   * the list falls back to [], and without this the operator whose API is down
+   * is told "no nodes yet, add one" about a fleet that is running.
+   */
+  if (!loading && failed) {
+    return (
+      <>
+        <PageHeader title={t('dashboard.title')} actions={<HelpButton topic="dashboard" />} />
+        <ErrorState
+          message={
+            summaryQuery.error instanceof ApiError
+              ? summaryQuery.error.message
+              : nodesQuery.error instanceof ApiError
+                ? nodesQuery.error.message
+                : t('common.error_generic')
+          }
+          retryLabel={t('common.refresh')}
+          onRetry={() => {
+            void summaryQuery.refetch();
+            void nodesQuery.refetch();
+          }}
+        />
+      </>
+    );
+  }
 
   if (!loading && nodes.length === 0) {
     return (
@@ -259,7 +291,9 @@ export function DashboardPage() {
         actions={<HelpButton topic="dashboard" />}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* The three blocks arrive in the order they are read: the numbers, the
+          shape of the last day, then the fleet itself. */}
+      <div className={cn(ENTER_CLASS, 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4')} style={enterDelay(0)}>
         <StatCard
           label={t('dashboard.nodes_online')}
           value={formatNumber(nodesOnline, i18n.language)}
@@ -289,7 +323,7 @@ export function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+      <div className={cn(ENTER_CLASS, 'grid grid-cols-1 gap-4 lg:grid-cols-12')} style={enterDelay(1)}>
         <Panel className="flex flex-col lg:col-span-8">
           <PanelHeader
             title={t('dashboard.sessions_chart_title')}
@@ -300,7 +334,7 @@ export function DashboardPage() {
               <Skeleton className="h-[220px] w-full" />
             ) : chart.data.length === 0 ? (
               <div className="flex h-[220px] items-center justify-center">
-                <p className="text-sm text-mute">{t('dashboard.sessions_chart_empty')}</p>
+                <p className="text-body text-mute">{t('dashboard.sessions_chart_empty')}</p>
               </div>
             ) : (
               <Suspense fallback={<Skeleton className="h-[220px] w-full" />}>
@@ -308,7 +342,7 @@ export function DashboardPage() {
               </Suspense>
             )}
           </div>
-          <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-2.5" />
+          <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-3" />
         </Panel>
 
         <Panel className="lg:col-span-4">
@@ -317,10 +351,14 @@ export function DashboardPage() {
         </Panel>
       </div>
 
-      <Panel>
-        <PanelHeader title={t('nodes.title')} meta={String(nodes.length)} />
-        <NodesTable nodes={nodes} sessionsByNode={sessionsByNode} />
-      </Panel>
+      {/* Wrapped rather than classed directly: Panel takes a className but no
+          style, and the entrance needs its index on the element. */}
+      <div className={ENTER_CLASS} style={enterDelay(2)}>
+        <Panel>
+          <PanelHeader title={t('nodes.title')} meta={loading ? undefined : String(nodes.length)} />
+          {loading ? <NodesTableSkeleton /> : <NodesTable nodes={nodes} sessionsByNode={sessionsByNode} />}
+        </Panel>
+      </div>
     </>
   );
 }

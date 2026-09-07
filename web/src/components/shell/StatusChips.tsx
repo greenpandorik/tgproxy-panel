@@ -17,7 +17,7 @@ import type { ReactElement, ReactNode } from 'react';
  */
 
 const CHIP =
-  'mono inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-hairline-strong px-2 text-xs text-dim transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none';
+  'mono inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border border-hairline-strong px-2 text-micro text-dim transition-[background-color,border-color,color,scale] duration-fast ease-out hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985]';
 
 type NodesTone = 'ok' | 'warn' | 'err' | 'dim';
 
@@ -86,9 +86,9 @@ function VersionChip() {
         target="_blank"
         rel="noreferrer"
         aria-label={hint}
-        className={cn(CHIP, 'border-brand-primary/50 text-brand-primary hover:border-brand-primary hover:text-brand-primary')}
+        className={cn(CHIP, 'border-brand-primary/50 text-brand-ink hover:border-brand-primary hover:text-brand-ink')}
       >
-        <span className="size-1.5 rounded-full bg-brand-primary" aria-hidden="true" />
+        <span className="size-1.5 rounded-pill bg-brand-primary" aria-hidden="true" />
         {label}
       </a>
     </WithTooltip>
@@ -133,7 +133,7 @@ function NodesChip() {
         aria-label={`${t('shell.nodes_tooltip')}: ${data.nodes_online}/${data.nodes_total}`}
         className={CHIP}
       >
-        <span className={cn('size-1.5 rounded-full', TONE_DOT[tone])} aria-hidden="true" />
+        <span className={cn('size-1.5 rounded-pill', TONE_DOT[tone])} aria-hidden="true" />
         {data.nodes_online}/{data.nodes_total}
       </Link>
     </WithTooltip>
@@ -153,9 +153,9 @@ export function StatusChips({ className }: { className?: string }) {
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-1.5 py-1 text-xs">
+    <div className="flex items-center justify-between gap-3 px-1.5 py-1 text-label">
       <span className="text-muted-foreground">{label}</span>
-      <span className="mono flex items-center gap-1.5 text-foreground">{children}</span>
+      <span className="mono flex items-center gap-1.5 text-mono text-foreground">{children}</span>
     </div>
   );
 }
@@ -185,9 +185,9 @@ export function StatusMenuRows() {
           href={update.latest_url}
           target="_blank"
           rel="noreferrer"
-          className="mono flex items-center gap-1.5 px-1.5 py-1 text-xs text-brand-primary"
+          className="mono flex items-center gap-1.5 px-1.5 py-1 text-mono text-brand-ink"
         >
-          <span className="size-1.5 rounded-full bg-brand-primary" aria-hidden="true" />
+          <span className="size-1.5 rounded-pill bg-brand-primary" aria-hidden="true" />
           {t('shell.update_available', { version: update.latest })}
         </a>
       )}
@@ -207,7 +207,7 @@ export function StatusMenuRows() {
       {status && (
         <Row label={t('shell.nodes_tooltip')}>
           <Link to="/nodes" data-tone={tone} className="inline-flex items-center gap-1.5">
-            <span className={cn('size-1.5 rounded-full', TONE_DOT[tone])} aria-hidden="true" />
+            <span className={cn('size-1.5 rounded-pill', TONE_DOT[tone])} aria-hidden="true" />
             {status.nodes_online}/{status.nodes_total}
           </Link>
         </Row>

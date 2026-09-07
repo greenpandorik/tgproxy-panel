@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAlerts, useResolveAlert } from '@/api/dashboard';
 import { useAuth } from '@/auth/AuthProvider';
+import { PanelEmpty } from '@/components/common/EmptyState';
 import { PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,12 +41,18 @@ export function AlertsSection() {
       />
 
       {alertsQuery.isLoading ? (
-        <div className="space-y-2 px-4 py-3">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-3 w-44" />
-        </div>
+        // Two rows in the shape of the list that is coming: a name line and
+        // the mono line under it, indented past where the status dot sits.
+        <ul className="divide-y divide-hairline" aria-hidden="true">
+          {[0, 1].map((i) => (
+            <li key={i} className="space-y-2 px-4 py-3">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="ml-[15px] h-3 w-44" />
+            </li>
+          ))}
+        </ul>
       ) : alerts.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-mute">{t('dashboard.alerts_empty')}</p>
+        <PanelEmpty>{t('dashboard.alerts_empty')}</PanelEmpty>
       ) : (
         <ul className="divide-y divide-hairline">
           {alerts.map((a) => {
@@ -53,11 +60,11 @@ export function AlertsSection() {
             return (
               <li key={a.id} className="flex items-start justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-sm text-foreground">
-                    <span className="size-[7px] shrink-0 rounded-full bg-offline" aria-hidden="true" />
+                  <p className="flex items-center gap-2 text-body text-foreground">
+                    <span className="size-[7px] shrink-0 rounded-pill bg-offline" aria-hidden="true" />
                     <span className="truncate">{a.node_name || t('dashboard.alert_panel_scope')}</span>
                   </p>
-                  <p className="mono mt-0.5 truncate pl-[15px] text-xs text-dim">
+                  <p className="mono mt-1 truncate pl-[15px] text-mono text-dim">
                     {a.kind}
                     {age && ` · ${t('common.ago', { value: age })}`}
                   </p>

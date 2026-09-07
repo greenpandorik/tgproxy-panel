@@ -13,7 +13,7 @@ services:
 
   panel:
     # To run a published image instead of building from this checkout, replace
-    # the build block with:  image: ghcr.io/greenpandorik/tgproxy-panel:1.2.0
+    # the build block with:  image: ghcr.io/greenpandorik/tgproxy-panel:1.3.0
     build:
       context: ..
       dockerfile: deploy/Dockerfile.panel

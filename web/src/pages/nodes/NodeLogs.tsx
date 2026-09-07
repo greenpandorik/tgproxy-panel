@@ -6,7 +6,9 @@ import { nodeLogsUrl, useNode } from '@/api/nodes';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
@@ -34,10 +36,10 @@ function ServiceChip({ label, selected, onToggle }: { label: string; selected: b
       aria-checked={selected}
       onClick={onToggle}
       className={cn(
-        'mono h-7 rounded-md border px-2 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+        'mono h-7 rounded-control border px-2 text-micro transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
         selected
           ? 'border-hairline-strong bg-elevated text-foreground'
-          : 'border-hairline bg-transparent text-dim hover:text-mute',
+          : 'border-hairline bg-transparent text-mute hover:text-foreground',
       )}
     >
       {label}
@@ -59,6 +61,7 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
   const [buffer, setBuffer] = useState<LogLine[]>([]);
   const [connected, setConnected] = useState(false);
   const [disconnected, setDisconnected] = useState(false);
+  const [reconnectNonce, setReconnectNonce] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -101,7 +104,7 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
       es.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- services array identity changes each toggle; join() below dedupes
-  }, [nodeId, services.join(','), lines, follow, refetchNode]);
+  }, [nodeId, services.join(','), lines, follow, refetchNode, reconnectNonce]);
 
   useEffect(() => {
     if (paused) return;
@@ -118,7 +121,7 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
   const streamState = disconnected ? 'offline' : connected ? 'online' : 'pending';
 
   return (
-    <Panel>
+    <Panel className={ENTER_CLASS}>
       <PanelHeader
         title={t('nodes.logs_title')}
         meta={visibleLines.length > 0 ? String(visibleLines.length) : undefined}
@@ -149,7 +152,7 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
         </div>
 
         <div className="flex items-center gap-2">
-          <Label className="text-xs text-mute" htmlFor="log-lines">
+          <Label className="text-mute" htmlFor="log-lines">
             {t('nodes.logs_lines')}
           </Label>
           <Select value={String(lines)} onValueChange={(v) => v && setLines(Number(v))}>
@@ -166,15 +169,15 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
           </Select>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-mute">
+        <label className="flex items-center gap-2 text-body text-mute">
           <Switch checked={follow} onCheckedChange={setFollow} />
           {t('nodes.logs_follow')}
         </label>
 
-        <span className="mono ml-auto inline-flex items-center gap-2 text-xs text-dim">
+        <span className="ml-auto inline-flex items-center gap-2 text-micro text-mute">
           <span
             className={cn(
-              'size-[7px] shrink-0 rounded-full',
+              'size-[7px] shrink-0 rounded-pill',
               streamState === 'online' ? 'bg-ok' : streamState === 'offline' ? 'bg-err' : 'bg-pending',
             )}
             aria-hidden="true"
@@ -183,22 +186,38 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
         </span>
       </div>
 
-      {services.length === 0 && <p className="px-4 pt-3 text-xs text-err">{t('nodes.logs_select_service')}</p>}
+      {services.length === 0 && <p className="px-4 pt-4 text-label text-err">{t('nodes.logs_select_service')}</p>}
 
       <div
         ref={scrollRef}
-        className="mono m-4 h-96 overflow-y-auto rounded-md border border-hairline bg-background p-3 text-xs leading-relaxed text-mute"
+        className="mono m-4 h-96 overflow-y-auto rounded-surface border border-hairline bg-background p-3 text-mono text-mute"
       >
         {visibleLines.length === 0 ? (
-          <p className="text-dim">
-            {disconnected
-              ? online
-                ? t('nodes.logs_disconnected')
-                : t('nodes.offline_message')
-              : connected
-                ? t('nodes.logs_empty')
-                : t('nodes.logs_connecting')}
-          </p>
+          disconnected ? (
+            <div className="flex flex-col items-start gap-3 font-sans text-body">
+              <p className="text-mute">{online ? t('nodes.logs_disconnected') : t('nodes.offline_message')}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDisconnected(false);
+                  setReconnectNonce((n) => n + 1);
+                }}
+              >
+                {t('common.refresh')}
+              </Button>
+            </div>
+          ) : connected ? (
+            <p className="font-sans text-body text-mute">{t('nodes.logs_empty')}</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="font-sans text-body text-mute">{t('nodes.logs_connecting')}</p>
+              {['w-3/5', 'w-2/5', 'w-4/5', 'w-1/2'].map((w) => (
+                <Skeleton key={w} className={cn('h-3', w)} />
+              ))}
+            </div>
+          )
         ) : (
           visibleLines.map((l, i) => (
             <div key={i} className="break-all whitespace-pre-wrap">

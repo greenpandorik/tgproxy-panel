@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { HelpButton } from '@/help';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
 import { api, ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
@@ -81,10 +82,20 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
 
         {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
-        {nodes.length === 0 ? (
-          <p className="text-sm text-mute">{t('sites.assign_no_nodes')}</p>
+        {nodesQuery.isLoading ? (
+          // The picker in silhouette: a label line over the select it will become.
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-8 w-full rounded-control" />
+          </div>
+        ) : nodesQuery.isError ? (
+          <p role="alert" className="text-body text-destructive">
+            {nodesQuery.error instanceof ApiError ? nodesQuery.error.message : t('common.error_generic')}
+          </p>
+        ) : nodes.length === 0 ? (
+          <p className="text-body text-mute">{t('sites.assign_no_nodes')}</p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="assign-node">{t('sites.assign_node_label')}</Label>
             <Select value={nodeId} onValueChange={(v) => setNodeId(v ?? '')}>
               <SelectTrigger id="assign-node" className="w-full">
@@ -99,7 +110,7 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
                   <SelectItem key={n.id} value={n.id}>
                     <span className="flex min-w-0 items-baseline gap-2">
                       <span className="truncate">{n.name}</span>
-                      <span className="mono truncate text-xs text-dim">{n.hostname}</span>
+                      <span className="mono truncate text-mono text-dim">{n.hostname}</span>
                     </span>
                   </SelectItem>
                 ))}

@@ -3,9 +3,12 @@ import { useTranslation } from 'react-i18next';
 
 import { useNodeProfiles } from '@/api/nodes';
 import { DataTableSkeleton } from '@/components/common/DataTable';
+import { PanelEmpty } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { ApiError } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/format';
 import { bpsToMbit } from '@/lib/units';
@@ -94,13 +97,13 @@ function ProfilesTable({
         {profiles.map((p, i) => (
           <TableRow key={isDbProfile(p) ? p.id : `${p.name}-${i}`}>
             <TableCell className="font-medium text-foreground">{p.name}</TableCell>
-            <TableCell className="max-w-40 truncate text-xs text-mute">{keyCell(p, t)}</TableCell>
-            <TableCell className="mono text-xs text-mute">{p.carrier_mode}</TableCell>
-            <TableCell className="mono max-w-72 text-xs whitespace-normal text-mute">
+            <TableCell className="max-w-40 truncate text-mute">{keyCell(p, t)}</TableCell>
+            <TableCell className="mono text-mono text-mute">{p.carrier_mode}</TableCell>
+            <TableCell className="mono max-w-72 text-mono whitespace-normal text-mute">
               {telemt ? telemtLimitsSummary(isDbProfile(p) ? p.telemt_limits : undefined, t) : limitsSummary(p.limits, t)}
             </TableCell>
             {showKeyMeta && (
-              <TableCell className="mono text-right text-xs text-dim">
+              <TableCell className="mono text-right text-mono text-dim">
                 {isDbProfile(p) && p.key_expires_at ? formatDate(p.key_expires_at, i18n.language) : DASH}
               </TableCell>
             )}
@@ -109,8 +112,8 @@ function ProfilesTable({
                 {isDbProfile(p) && (
                   <span
                     className={cn(
-                      'mono text-xs',
-                      DIVERGENT.has(p.sync_state) ? 'text-err' : p.sync_state === 'pending' ? 'text-warn' : 'text-dim',
+                      'text-label',
+                      DIVERGENT.has(p.sync_state) ? 'text-err' : p.sync_state === 'pending' ? 'text-warn' : 'text-mute',
                     )}
                   >
                     {t(`nodes.sync_${p.sync_state}`, p.sync_state)}
@@ -125,9 +128,15 @@ function ProfilesTable({
   );
 }
 
+/** The request failed: what happened, and the button that tries again. */
+function PanelError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return <ErrorState inset message={t('common.error_generic')} retryLabel={t('common.refresh')} onRetry={onRetry} />;
+}
+
 function Section({ title, meta, actions, children }: { title: string; meta?: string; actions?: ReactNode; children: ReactNode }) {
   return (
-    <Panel>
+    <Panel className={ENTER_CLASS}>
       <PanelHeader title={title} meta={meta} actions={actions} />
       {children}
     </Panel>
@@ -146,6 +155,14 @@ export function NodeProfilesTab({ nodeId, online, engine }: { nodeId: string; on
 
   if (dbQuery.isLoading) return <DataTableSkeleton columns={6} rows={3} />;
 
+  if (dbQuery.isError) {
+    return (
+      <Section title={t('nodes.profiles_title')}>
+        <PanelError onRetry={() => void dbQuery.refetch()} />
+      </Section>
+    );
+  }
+
   if (!comparing) {
     return (
       <Section
@@ -158,7 +175,7 @@ export function NodeProfilesTab({ nodeId, online, engine }: { nodeId: string; on
         }
       >
         {dbProfiles.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.profiles_empty')}</p>
+          <PanelEmpty>{t('nodes.profiles_empty')}</PanelEmpty>
         ) : (
           <ProfilesTable profiles={dbProfiles} showSync engine={engine} showKeyMeta />
         )}
@@ -182,12 +199,14 @@ export function NodeProfilesTab({ nodeId, online, engine }: { nodeId: string; on
     return (
       <Section title={t('nodes.profiles_compare_title')} actions={back}>
         {liveOffline ? (
-          <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.offline_message')}</p>
+          <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
         ) : liveQuery.isLoading ? (
           <DataTableSkeleton columns={4} rows={3} />
+        ) : liveQuery.isError ? (
+          <PanelError onRetry={() => void liveQuery.refetch()} />
         ) : (
-          <p className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-mute">
-            <span className="size-[7px] shrink-0 rounded-full bg-ok" aria-hidden="true" />
+          <p className="flex items-center justify-center gap-2 px-6 py-10 text-body text-mute">
+            <span className="size-[7px] shrink-0 rounded-pill bg-ok" aria-hidden="true" />
             {t('nodes.profiles_compare_in_sync')}
           </p>
         )}

@@ -6,6 +6,8 @@ import { usePublicStatus } from '@/api/status';
 import type { PublicStatus } from '@/api/status';
 import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
 import { Logo } from '@/components/brand/Logo';
+import { ENTER_CLASS } from '@/components/ui/motion';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 /*
@@ -25,8 +27,7 @@ import { cn } from '@/lib/utils';
 
 /** `--line` grid, 48px, faded out by a radial mask so it never reaches an edge. */
 const GRID_PATTERN: CSSProperties = {
-  backgroundImage:
-    'linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px)',
+  backgroundImage: 'linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px)',
   backgroundSize: '48px 48px',
   maskImage: 'radial-gradient(700px 500px at 45% 55%, #000 30%, transparent 100%)',
   WebkitMaskImage: 'radial-gradient(700px 500px at 45% 55%, #000 30%, transparent 100%)',
@@ -46,7 +47,7 @@ function nodesTone(status: PublicStatus): string {
 }
 
 function Dot({ className }: { className: string }) {
-  return <span aria-hidden="true" className={cn('size-[7px] shrink-0 rounded-full', className)} />;
+  return <span aria-hidden="true" className={cn('size-[7px] shrink-0 rounded-pill', className)} />;
 }
 
 function Row({ label, value, dot }: { label: string; value: string; dot?: string }) {
@@ -61,14 +62,14 @@ function Row({ label, value, dot }: { label: string; value: string; dot?: string
   );
 }
 
-/** Four bars at 8% white - the spec's skeleton - in the shape of the four rows. */
+/** Four bars in the shape of the four rows, using the panel's own skeleton. */
 function SkeletonRows() {
   return (
     <div aria-hidden="true" data-testid="login-status-skeleton">
       {[36, 28, 32, 20].map((w, i) => (
         <div key={w} className="flex items-center gap-4 border-b border-hairline px-4 py-3 last:border-b-0">
-          <span className="h-2.5 rounded-sm bg-foreground/8" style={{ width: `${w * 2.6}px` }} />
-          <span className="ml-auto h-2.5 rounded-sm bg-foreground/8" style={{ width: `${44 + i * 8}px` }} />
+          <Skeleton className="h-2.5" style={{ width: `${w * 2.6}px` }} />
+          <Skeleton className="ml-auto h-2.5" style={{ width: `${44 + i * 8}px` }} />
         </div>
       ))}
     </div>
@@ -80,21 +81,18 @@ function StatusCard() {
   const { data, isLoading, isError } = usePublicStatus();
 
   return (
-    <section className="mono relative w-full max-w-[560px] rounded-[10px] border border-hairline-strong bg-surface/85 text-[12.5px] backdrop-blur-md">
-      <h2 className="border-b border-hairline px-4 py-3 text-[11px] font-medium tracking-[0.08em] text-dim uppercase">
-        {t('login.status_title')}
-      </h2>
-      {isLoading && <SkeletonRows />}
-      {!isLoading && (isError || !data) && (
-        <p className="px-4 py-3 text-dim">{t('login.status_unavailable')}</p>
+    <section
+      className={cn(
+        ENTER_CLASS,
+        'mono relative w-full max-w-[560px] rounded-surface border border-hairline-strong bg-surface/85 text-mono backdrop-blur-md',
       )}
+    >
+      <h2 className="border-b border-hairline px-4 py-3 text-title text-foreground">{t('login.status_title')}</h2>
+      {isLoading && <SkeletonRows />}
+      {!isLoading && (isError || !data) && <p className="px-4 py-3 text-mute">{t('login.status_unavailable')}</p>}
       {!isLoading && !isError && data && (
         <dl>
-          <Row
-            label={t('login.status_nodes')}
-            value={`${data.nodes_online} / ${data.nodes_total}`}
-            dot={nodesTone(data)}
-          />
+          <Row label={t('login.status_nodes')} value={`${data.nodes_online} / ${data.nodes_total}`} dot={nodesTone(data)} />
           <Row label={t('login.status_relay')} value={data.relay_commit || '—'} />
           <Row label={t('login.status_panel')} value={data.version ? `v${data.version}` : '—'} />
           {/* The answer arriving at all is what "api ok" means here. */}
@@ -114,11 +112,11 @@ export function LoginStatusLine({ className }: { className?: string }) {
   const { data, isError } = usePublicStatus();
 
   if (isError || !data) {
-    return isError ? <p className={cn('mono text-xs text-dim', className)}>{t('login.status_unavailable')}</p> : null;
+    return isError ? <p className={cn('mono text-micro text-mute', className)}>{t('login.status_unavailable')}</p> : null;
   }
 
   return (
-    <p className={cn('mono flex flex-wrap gap-x-6 gap-y-1 text-xs text-dim', className)}>
+    <p className={cn('mono flex flex-wrap gap-x-6 gap-y-1 text-micro text-dim', className)}>
       <span>v{data.version}</span>
       <span>
         {t('login.status_api')} {t('login.status_ok')}
@@ -138,7 +136,7 @@ export function LoginWordmark({ className }: { className?: string }) {
   const name = branding?.panel_name || DEFAULT_PANEL_NAME;
 
   return (
-    <div className={cn('flex items-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em]', className)}>
+    <div className={cn('flex items-center gap-2.5 text-title', className)}>
       {branding?.logo_url ? (
         <img src={branding.logo_url} alt={name} className="max-h-7 max-w-[180px] object-contain" />
       ) : (

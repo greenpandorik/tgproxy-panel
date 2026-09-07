@@ -4,7 +4,14 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { useTranslation } from 'react-i18next';
 
 import { ChartTooltip } from '@/components/common/ChartTooltip';
-import { bytesAxisFormatter, chartTextClass, formatTimeTick, gridProps, xAxisProps, yAxisProps } from '@/components/common/chartTheme';
+import {
+  bytesAxisFormatter,
+  chartTextClass,
+  formatTimeTick,
+  gridProps,
+  xAxisProps,
+  yAxisProps,
+} from '@/components/common/chartTheme';
 import { formatBytes } from '@/lib/format';
 
 export interface TrafficPoint {

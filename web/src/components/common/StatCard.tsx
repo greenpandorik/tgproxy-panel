@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -11,9 +12,9 @@ const DELTA_CLASS: Record<DeltaTone, string> = {
 };
 
 interface StatCardProps {
-  /** What is being counted, in the operator's words. 12px, muted. */
+  /** What is being counted, in the operator's words. Label role, muted. */
   label: string;
-  /** The number itself. 26px, tabular. */
+  /** The number itself. Display role, tabular. */
   value: string | number;
   /** Trailing qualifier set small and dim next to the value - "/ 3", "GB". */
   unit?: string;
@@ -37,22 +38,18 @@ interface StatCardProps {
  */
 export function StatCard({ label, value, unit, context, delta, badge, loading }: StatCardProps) {
   return (
-    <div className="rounded-lg border border-hairline bg-card px-4 py-3.5">
+    <div className="rounded-surface border border-hairline bg-card px-4 py-3.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-xs text-muted-foreground">{label}</p>
-        {badge && !loading && (
-          <span className="mono shrink-0 rounded-sm border border-hairline-strong px-1.5 text-[10.5px] text-muted-foreground">
-            {badge}
-          </span>
-        )}
+        <p className="truncate text-label text-muted-foreground">{label}</p>
+        {badge && !loading && <Badge>{badge}</Badge>}
       </div>
 
       {loading ? (
         <Skeleton className="mt-2 h-6 w-20" />
       ) : (
-        <p className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] tabular text-foreground">
+        <p className="mt-1.5 text-display tabular text-foreground">
           {value}
-          {unit && <span className="pl-1 text-base font-normal text-dim">{unit}</span>}
+          {unit && <span className="pl-1 text-body font-normal text-dim">{unit}</span>}
         </p>
       )}
 
@@ -60,9 +57,9 @@ export function StatCard({ label, value, unit, context, delta, badge, loading }:
         <Skeleton className="mt-2 h-3 w-28" />
       ) : (
         (context || delta) && (
-          <p className="mono mt-0.5 flex items-baseline gap-1.5 text-[11.5px]">
+          <p className="mono mt-0.5 flex items-baseline gap-1.5 text-micro">
             {delta && <span className={cn('shrink-0', DELTA_CLASS[delta.tone])}>{delta.text}</span>}
-            {context && <span className="truncate text-dim">{context}</span>}
+            {context && <span className="truncate text-mute">{context}</span>}
           </p>
         )
       )}

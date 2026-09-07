@@ -67,16 +67,16 @@ export function BulkExtendDialog({ open, onOpenChange, count, onConfirm }: BulkE
     >
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <DialogTitle>{t('keys.bulk_extend_title')}</DialogTitle>
-            <HelpButton topic="keys.extend" className="-my-1.5" />
+            <HelpButton topic="keys.extend" className="-my-1" />
           </div>
           <DialogDescription>{t('keys.bulk_extend_description', { count })}</DialogDescription>
         </DialogHeader>
 
         {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <Label htmlFor="bulk-extend-date">{t('keys.field_expires_at')}</Label>
           <Input
             id="bulk-extend-date"
@@ -90,7 +90,7 @@ export function BulkExtendDialog({ open, onOpenChange, count, onConfirm }: BulkE
             }}
             aria-invalid={error}
           />
-          {error && <p className="text-xs text-destructive">{t('keys.validation_expires_future')}</p>}
+          {error && <p className="text-label text-destructive">{t('keys.validation_expires_future')}</p>}
         </div>
 
         <DialogFooter>

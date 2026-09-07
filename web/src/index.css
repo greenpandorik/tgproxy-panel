@@ -35,20 +35,56 @@
   --mute: #8b8d93;
   --dim: #55575f;
 
-  /* Status semantics. Fixed across themes and never used for decoration. */
+  /*
+   * Status semantics. Never used for decoration. The values below are the
+   * *dark* ones; the light theme redefines all four further down, because a
+   * hue that reads at 8:1 on #09090b reads at 2:1 on #fafafa. Measured on the
+   * three dark surfaces (--bg #09090b / --bg-2 #0f0f11 / --bg-3 #151517):
+   * ok 8.73 / 8.40 / 8.00, warn 9.26 / 8.92 / 8.49, err 5.29 / 5.09 / 4.85,
+   * info 5.41 / 5.21 / 4.96.
+   */
   --status-ok: #22c55e;
   --status-warn: #f59e0b;
   --status-err: #ef4444;
   --status-info: #3b82f6;
 
   /*
+   * The fill under the one solid destructive button (the confirm in a delete
+   * dialog). --status-err itself is a *text* red and white on it is only
+   * 3.76:1; this one is dark enough to carry the white label in either theme:
+   * #ffffff on #da1313 is 5.14:1. Same hue family, one step down in lightness.
+   *
+   * The hover is a second token rather than the panel's usual /85 opacity
+   * step, because opacity moves a fill *towards the ground*: on the near-black
+   * theme that darkens the red and the white label gets easier to read, but on
+   * the light theme it lightens it and the label drops to 4.42:1. Darkening
+   * outright is the only version that holds in both. White on #b81010 is
+   * 6.73:1.
+   */
+  --destructive-solid: #da1313;
+  --destructive-solid-hover: #b81010;
+
+  /*
    * Brand, overridden at runtime from /api/v1/branding. The fallbacks are the
-   * TGProxy Panel defaults (docs/design/brand.md): magenta 5.0:1 on --bg,
-   * teal 6.2:1 - both far in hue from every status colour above, so a brand
-   * mark is never mistaken for a state.
+   * TGProxy Panel defaults (docs/design/brand.md): magenta 5.02:1 and teal
+   * 6.23:1, both measured on the *dark* --bg - on the light ground the same
+   * two are 3.80:1 and 3.06:1, which is what --brand-ink below exists for.
+   * Both are far in hue from every status colour above, so a brand mark is
+   * never mistaken for a state.
    */
   --brand-primary: #e23c92;
   --brand-accent: #12a198;
+
+  /*
+   * The brand hue as *text*. --brand-primary is the identity: it fills the
+   * active nav marker, the focus ring, the checkbox and the first chart
+   * series, all of which are graphics and only owe 3:1. A link is prose and
+   * owes 4.5:1, and magenta at 5.02:1 on the near-black ground is only
+   * 3.80:1 on the light one. So the light theme darkens the same hue for the
+   * text uses only, through color-mix, which means an operator-supplied brand
+   * colour is darkened with it instead of being ignored.
+   */
+  --brand-ink: var(--brand-primary);
 
   /* Panel-wide status aliases used by StatusBadge and the tables. */
   --status-online: var(--status-ok);
@@ -84,6 +120,54 @@
 
   /* The one shadow in the system: popovers lifting off the page. */
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  /*
+   * Type scale - phase 8 refit (docs/design/type-and-shape.md,
+   * docs/superpowers/specs/2026-09-07-ui-refit.md).
+   *
+   * Six roles, no sizes outside them. Before the refit the panel was set
+   * almost entirely at 12-13px and hierarchy was carried by colour alone,
+   * which is why nothing on a page read as a heading. Each role below owns
+   * exactly one job: display is the page and the KPI number, title is what a
+   * panel or a dialog calls itself, body is everything a person reads, label
+   * is what a field is called, micro is chrome (table heads, chips), and mono
+   * is anything a machine produced.
+   */
+  --t-display: 26px;
+  --t-display-lh: 30px;
+  --t-title: 17px;
+  --t-title-lh: 24px;
+  --t-body: 14px;
+  --t-body-lh: 21px;
+  --t-label: 12.5px;
+  --t-label-lh: 16px;
+  --t-micro: 11px;
+  --t-micro-lh: 14px;
+  --t-mono: 12.5px;
+  --t-mono-lh: 18px;
+
+  /*
+   * Shape lock. One radius per role and nothing else in the whole panel:
+   * --r-control on anything you click or type into, --r-surface on anything
+   * that contains those, --r-pill only on status dots, avatars and counters.
+   * Table rows and dividers stay square (0) - a rounded row would fight the
+   * hairline grid the tables are built on.
+   */
+  --r-control: 8px;
+  --r-surface: 12px;
+  --r-pill: 9999px;
+
+  /*
+   * Motion. CSS only, no animation library. --ease-out is deliberately the
+   * same name Tailwind gives its own easing token, so the `ease-out` utility
+   * and every hand-written transition below share one curve: fast out of the
+   * gate, long settle. --dur-fast is for a state the pointer is holding
+   * (hover, press), --dur-base for something arriving or leaving.
+   * Both collapse to 0ms under prefers-reduced-motion at the end of this file.
+   */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
 
   /*
    * Chart series. Series 1 and 2 are the operator's brand pair (the spec
@@ -126,6 +210,39 @@
   --mute: #6b6d75;
   --dim: #9a9ca3;
 
+  /*
+   * Status, re-picked for light. The dark hues are tuned to glow off a
+   * near-black ground and simply vanish here: on the three light surfaces
+   * (--bg #fafafa / --bg-2 #ffffff / --bg-3 #f1f1f3) the dark ok is
+   * 2.18 / 2.28 / 2.02, warn 2.06 / 2.15 / 1.90, err 3.61 / 3.76 / 3.34 and
+   * info 3.52 / 3.68 / 3.26 - every inline form error, every warning line and
+   * every status dot below AA. These four are the same four hues taken down
+   * to the same lightness, so ok is still green and warn still amber, and all
+   * twelve combinations clear 4.5:1 (measured, in the same bg / bg-2 / bg-3
+   * order):
+   *   ok   #167e3c  4.93 / 5.14 / 4.56
+   *   warn #986206  4.93 / 5.14 / 4.56
+   *   err  #da1313  4.93 / 5.14 / 4.56
+   *   info #0b63f2  4.93 / 5.15 / 4.56
+   * The 7px status dots are non-text graphics owing 3:1 and clear that with
+   * room to spare at the same values.
+   */
+  --status-ok: #167e3c;
+  --status-warn: #986206;
+  --status-err: #da1313;
+  --status-info: #0b63f2;
+
+  /*
+   * The brand hue as text, one step down in oklab lightness so a link, a link
+   * button and a brand chip all clear 4.5:1 on a light surface. The default
+   * magenta resolves to #ad2c6f (5.98 / 6.24 / 5.53) and the default teal to
+   * #0b7b74 (4.91 / 5.12 / 4.54). Because it is a mix rather than a constant,
+   * an operator who sets their own --brand-primary at runtime gets a darkened
+   * text colour too, instead of a hard-coded magenta ignoring their brand.
+   * --brand-primary itself is untouched: the identity stays the identity.
+   */
+  --brand-ink: color-mix(in oklab, var(--brand-primary) 82%, black);
+
   --destructive-foreground: #ffffff;
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.14);
 
@@ -142,22 +259,45 @@
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   /*
-   * Type scale. Base is 13px/1.45 (--text-sm, what nearly every component
-   * asks for), with 12px labels below it and an 18px page title above.
-   * Root rem stays 16px so Tailwind's spacing scale is unaffected.
+   * The named type roles (see --t-* above), and the only type scale in the
+   * panel. Tailwind's own t-shirt sizes (text-xs .. text-2xl) were retuned
+   * here while the pages were migrating; the migration is finished and every
+   * one of them is gone from src/**, so the retuning went with them. Asking
+   * for text-sm now gets Tailwind's stock 14px, which is why nothing does.
+   *
+   * text-micro carries size and leading but *not* the uppercase and tracking
+   * of the micro role, because a chip can be micro-sized and still be a
+   * hostname. The full role - uppercase, +0.04em - is the `.micro` utility
+   * at the bottom of this file.
    */
-  --text-xs: 0.6875rem; /* 11px - table headers, kbd, tags */
-  --text-xs--line-height: 1.4;
-  --text-sm: 0.8125rem; /* 13px - body, controls, table cells */
-  --text-sm--line-height: 1.45;
-  --text-base: 0.875rem; /* 14px - dialog titles */
-  --text-base--line-height: 1.4;
-  --text-lg: 1rem; /* 16px */
-  --text-lg--line-height: 1.35;
-  --text-xl: 1.125rem; /* 18px - page title */
-  --text-xl--line-height: 1.3;
-  --text-2xl: 1.625rem; /* 26px - stat value */
-  --text-2xl--line-height: 1.1;
+  --text-display: var(--t-display);
+  --text-display--line-height: var(--t-display-lh);
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 600;
+  --text-title: var(--t-title);
+  --text-title--line-height: var(--t-title-lh);
+  --text-title--letter-spacing: -0.01em;
+  --text-title--font-weight: 600;
+  --text-body: var(--t-body);
+  --text-body--line-height: var(--t-body-lh);
+  --text-label: var(--t-label);
+  --text-label--line-height: var(--t-label-lh);
+  --text-micro: var(--t-micro);
+  --text-micro--line-height: var(--t-micro-lh);
+  --text-mono: var(--t-mono);
+  --text-mono--line-height: var(--t-mono-lh);
+
+  /*
+   * Tracking. --tracking-micro is the type system's own value and belongs to
+   * the micro role; uppercase-with-tracking exists nowhere else.
+   * --tracking-code is not a type-scale value at all - it is the gap between
+   * the digit cells of a one-time-code field, where the eye has to count six
+   * characters in a group rather than read a word. It is named here so the
+   * two OTP inputs share one number instead of spelling out an arbitrary em
+   * each, and so a reviewer can tell it apart from a typographic decision.
+   */
+  --tracking-micro: 0.04em;
+  --tracking-code: 0.35em;
 
   /* Radii: 4 tags, 6 controls, 8 panels. Nothing rounder. */
   --radius-sm: 4px;
@@ -165,6 +305,25 @@
   --radius-lg: 8px;
   --radius-xl: 8px;
   --radius-2xl: 10px;
+
+  /*
+   * Shape lock utilities: rounded-control, rounded-surface, rounded-pill.
+   * These supersede the t-shirt radii above everywhere in src/components/ui.
+   */
+  --radius-control: var(--r-control);
+  --radius-surface: var(--r-surface);
+  --radius-pill: var(--r-pill);
+
+  /*
+   * Motion defaults. Tailwind has no theme namespace for durations, so
+   * instead of a `duration-fast` utility the panel retunes what every
+   * `transition-*` utility already falls back to: --dur-fast on the panel's
+   * curve. A plain `transition-colors` is therefore already correct, and the
+   * reduced-motion block at the end of this file zeroes it. The rare slower
+   * transition asks for the other token by name: duration-base.
+   */
+  --default-transition-duration: var(--dur-fast);
+  --default-transition-timing-function: var(--ease-out);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -184,6 +343,8 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-solid: var(--destructive-solid);
+  --color-destructive-solid-hover: var(--destructive-solid-hover);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -202,9 +363,12 @@
   /*
    * Surface/line/text utilities: bg-surface, border-hairline, text-mute, ...
    * text-mute and text-dim are the two secondary text roles and are not
-   * interchangeable: --mute is secondary *prose* (a description, an empty
-   * state, a label), --dim is machine output and chrome (mono context lines,
-   * breadcrumbs, table headers, placeholders). Prose never uses --dim.
+   * interchangeable. --mute is everything a person reads that is not primary:
+   * a description, an empty state, a field label, a table head, helper text,
+   * a placeholder, an error. --dim is 2.66:1 dark and 2.74:1 light and is
+   * therefore not a text tone at all - it is chrome: a separator glyph, a
+   * dash standing in for a missing value, a mono context stamp beside a value
+   * you already read. If it carries a word the reader needs, it is --mute.
    */
   --color-surface: var(--bg-2);
   --color-elevated: var(--bg-3);
@@ -213,9 +377,15 @@
   --color-mute: var(--mute);
   --color-dim: var(--dim);
 
-  /* Brand utilities: bg-brand-primary, text-brand-accent, ... */
+  /*
+   * Brand utilities: bg-brand-primary, text-brand-accent, ...
+   * text-brand-ink is the one to reach for when the brand hue is carrying
+   * words (a link, a link button, a brand chip); bg-/border-brand-primary
+   * stay on the identity value. See --brand-ink at the top of this file.
+   */
   --color-brand-primary: var(--brand-primary);
   --color-brand-accent: var(--brand-accent);
+  --color-brand-ink: var(--brand-ink);
 
   /* Fixed status semantics, independent of brand/theme. */
   --color-ok: var(--status-ok);
@@ -242,7 +412,7 @@
     color-scheme: light;
   }
   body {
-    @apply bg-background text-foreground text-sm;
+    @apply bg-background text-foreground text-body;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -272,13 +442,63 @@
   .font-tabular {
     font-variant-numeric: tabular-nums;
   }
-  /* Group label in the sidebar; the only uppercase in the system besides <th>. */
-  .eyebrow {
-    font-size: 10.5px;
+  /*
+   * .micro is the whole micro role in one class: 11/14, +0.04em, uppercase.
+   * It marks chrome rather than content - a table head, a group label, a
+   * status caption. Uppercase with tracking exists *only* here; any other
+   * uppercase run in the panel is a bug.
+   */
+  .micro {
+    font-size: var(--t-micro);
+    line-height: var(--t-micro-lh);
     font-weight: 500;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--tracking-micro);
     text-transform: uppercase;
-    color: var(--dim);
+  }
+  /*
+   * Durations as utilities. Tailwind v4 has no theme namespace for them, so
+   * these are spelled out once here rather than as duration-base
+   * at every call site. Both read the tokens, so the reduced-motion block at
+   * the end of this file still zeroes them. A bare `transition-*` is already
+   * --dur-fast, so .duration-fast is only for the handful of places that want
+   * to say so out loud next to a hand-written property list. --tw-duration is
+   * set as well as the two longhands because tw-animate-css builds animate-in
+   * and animate-out as an `animation` shorthand that reads that variable; a
+   * bare animation-duration next to the shorthand is a coin toss on source
+   * order, and this is not.
+   */
+  .duration-fast {
+    --tw-duration: var(--dur-fast);
+    transition-duration: var(--dur-fast);
+    animation-duration: var(--dur-fast);
+  }
+  .duration-base {
+    --tw-duration: var(--dur-base);
+    transition-duration: var(--dur-base);
+    animation-duration: var(--dur-base);
+  }
+  /*
+   * Entrance: fade plus a 2px rise, nothing else. Put it on a panel, a stat
+   * tile or a table row that has just arrived, and set --enter-index on each
+   * sibling to stagger them. The delay is clamped at index 5, so a list of
+   * forty rows still finishes inside 200ms and the sixth row onwards arrives
+   * with the fifth - the pattern is a hint that content landed, not a show.
+   * See components/ui/motion.ts for the helper that fills in the index.
+   */
+  .tgwp-enter {
+    animation: tgwp-enter var(--dur-base) var(--ease-out) both;
+    animation-delay: calc(min(var(--enter-index, 0), 5) * 40ms);
+  }
+}
+
+@keyframes tgwp-enter {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -298,10 +518,47 @@
   animation: tgwp-pulse 1.8s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
 }
 
+/*
+ * Reduced motion. Three layers, deliberately belt and braces.
+ *
+ * 1. The duration tokens go to zero, so every transition built on
+ *    --dur-fast / --dur-base becomes an instant state change without any
+ *    component knowing about it - including every plain `transition-*`
+ *    utility, which falls back to --dur-fast through
+ *    --default-transition-duration above.
+ * 2. The blanket rule below catches everything the tokens cannot reach: a
+ *    keyframe animation with its own duration (the overlay fade/zoom/slide
+ *    that tw-animate-css writes for dialogs, sheets, popovers, selects,
+ *    menus and tooltips), a skeleton's animate-pulse, and every animate-spin
+ *    on a loading icon. 1ms rather than 0s because a 0s animation never fires
+ *    animationend, and iteration-count 1 is what actually stops an infinite
+ *    loop. This is the layer that keeps the guarantee true for code written
+ *    after this file, which is why it is a wildcard and not a list.
+ * 3. The two motifs that would still read as motion at 1ms - the live pulse
+ *    ring, which is a growing circle, and the entrance, which starts at
+ *    opacity 0 - are switched off outright rather than accelerated.
+ */
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
   .tgwp-pulse-ring {
-    animation: none;
+    animation: none !important;
     display: none;
+  }
+  .tgwp-enter {
+    animation: none !important;
   }
 }
 

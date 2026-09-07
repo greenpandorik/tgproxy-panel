@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+import { Badge } from '@/components/ui/badge';
+import { PanelEmpty } from '@/components/common/EmptyState';
 import { PanelHeader } from '@/components/common/Panel';
 import { formatCompactAge, formatCompactDuration } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -37,22 +39,20 @@ export function RecentJobsSection({ jobs }: { jobs: ApplyJob[] }) {
       />
 
       {jobs.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-mute">{t('dashboard.jobs_empty')}</p>
+        <PanelEmpty>{t('dashboard.jobs_empty')}</PanelEmpty>
       ) : (
         <ul className="divide-y divide-hairline">
           {jobs.map((job) => {
             const timing = jobTiming(job, i18n.language);
             return (
-              <li key={job.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <li key={job.id} className="flex items-center justify-between gap-3 px-4 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <Link to={`/nodes/${job.node_id}`} className="truncate text-sm text-foreground hover:underline">
+                  <Link to={`/nodes/${job.node_id}`} className="truncate text-body text-foreground hover:underline">
                     {job.node_name || job.node_id}
                   </Link>
-                  <span className="mono shrink-0 rounded-sm border border-hairline-strong px-1.5 text-[11px] text-mute">
-                    {job.kind}
-                  </span>
+                  <Badge>{job.kind}</Badge>
                 </div>
-                <span className={cn('mono shrink-0 text-xs', FAILED_STATUSES.has(job.status) ? 'text-err' : 'text-dim')}>
+                <span className={cn('mono shrink-0 text-mono', FAILED_STATUSES.has(job.status) ? 'text-err' : 'text-dim')}>
                   {timing && `${timing} · `}
                   {job.status}
                 </span>

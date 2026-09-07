@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 import { useNodeHealth, useNodeJobs } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
+import { PanelEmpty } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiError } from '@/lib/api';
@@ -34,9 +37,9 @@ function isCommitHash(v: string): boolean {
  */
 function Cell({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-center justify-between gap-3 bg-card px-4 py-2.5', className)}>
-      <span className="truncate text-xs text-mute">{label}</span>
-      <span className="mono shrink-0 text-xs">{children}</span>
+    <div className={cn('flex items-center justify-between gap-3 bg-card px-4 py-3', className)}>
+      <span className="truncate text-label text-mute">{label}</span>
+      <span className="mono shrink-0 text-mono">{children}</span>
     </div>
   );
 }
@@ -46,7 +49,7 @@ function ServiceState({ active }: { active: boolean }) {
   const { t } = useTranslation();
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={cn('size-[7px] shrink-0 rounded-full', active ? 'bg-ok' : 'bg-err')} aria-hidden="true" />
+      <span className={cn('size-[7px] shrink-0 rounded-pill', active ? 'bg-ok' : 'bg-err')} aria-hidden="true" />
       <span className={active ? 'text-mute' : 'text-err'}>{t(active ? 'nodes.state_up' : 'nodes.state_down')}</span>
     </span>
   );
@@ -59,14 +62,54 @@ function UsageBar({ label, percent }: { label: string; percent: number }) {
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-xs text-mute">{label}</span>
-        <span className="mono shrink-0 text-xs text-foreground">{pct.toFixed(0)}%</span>
+        <span className="truncate text-label text-mute">{label}</span>
+        <span className="mono shrink-0 text-mono text-foreground">{pct.toFixed(0)}%</span>
       </div>
-      <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-hairline">
+      <div className="mt-2 h-[3px] w-full overflow-hidden rounded-pill bg-hairline">
         <div className={cn('h-full', tone)} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
+}
+
+/**
+ * The health readout before it arrives: the same cell grid and the same three
+ * rules under it, drawn empty. The panel does not change height when the
+ * figures land.
+ */
+function HealthSkeleton({ telemt }: { telemt: boolean }) {
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: telemt ? 5 : 6 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between gap-3 bg-card px-4 py-3">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-14" />
+          </div>
+        ))}
+        {/* Same filler as the readout: the 1px gaps are painted by the
+            container, so an empty slot would read as a lit rectangle. */}
+        {telemt && <div className="hidden bg-card sm:block" aria-hidden="true" />}
+      </div>
+      <div className="grid grid-cols-1 gap-4 border-t border-hairline p-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i}>
+            <div className="flex items-baseline justify-between gap-2">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+            <Skeleton className="mt-2 h-[3px] w-full rounded-pill" />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** What went wrong, and the one button that tries again. */
+function PanelError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return <ErrorState inset message={t('common.error_generic')} retryLabel={t('common.refresh')} onRetry={onRetry} />;
 }
 
 function JobRow({ job }: { job: ApplyJob }) {
@@ -80,9 +123,9 @@ function JobRow({ job }: { job: ApplyJob }) {
         <TableCell className="w-0 pr-0 text-dim">
           {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
         </TableCell>
-        <TableCell className="mono text-xs text-mute">{t(`nodes.job_kind_${job.kind}`, job.kind)}</TableCell>
-        <TableCell className="mono text-xs text-dim">{formatDateTime(job.created_at, i18n.language)}</TableCell>
-        <TableCell className="mono text-right text-xs text-dim">
+        <TableCell className="mono text-mono text-mute">{t(`nodes.job_kind_${job.kind}`, job.kind)}</TableCell>
+        <TableCell className="mono text-mono text-dim">{formatDateTime(job.created_at, i18n.language)}</TableCell>
+        <TableCell className="mono text-right text-mono text-dim">
           {job.started_at && job.finished_at
             ? formatCompactDuration(
                 (new Date(job.finished_at).getTime() - new Date(job.started_at).getTime()) / 1000,
@@ -90,12 +133,12 @@ function JobRow({ job }: { job: ApplyJob }) {
               )
             : DASH}
         </TableCell>
-        <TableCell className={cn('mono text-right text-xs', failed ? 'text-err' : 'text-mute')}>{job.status}</TableCell>
+        <TableCell className={cn('mono text-right text-mono', failed ? 'text-err' : 'text-mute')}>{job.status}</TableCell>
       </TableRow>
       {expanded && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={5} className="h-auto py-2.5 pl-9 whitespace-normal">
-            <div className="mono flex flex-wrap gap-x-4 gap-y-1 text-xs text-dim">
+          <TableCell colSpan={5} className="h-auto py-3 pl-9 whitespace-normal">
+            <div className="mono flex flex-wrap gap-x-4 gap-y-1 text-mono text-dim">
               <span>
                 {t('nodes.job_started')}: {job.started_at ? formatDateTime(job.started_at, i18n.language) : DASH}
               </span>
@@ -103,8 +146,8 @@ function JobRow({ job }: { job: ApplyJob }) {
                 {t('nodes.job_finished')}: {job.finished_at ? formatDateTime(job.finished_at, i18n.language) : DASH}
               </span>
             </div>
-            {job.error && <p className="mono mt-1.5 text-xs text-err">{job.error}</p>}
-            <pre className="mono mt-2 max-h-64 overflow-auto rounded-md border border-hairline bg-background p-2.5 text-xs leading-relaxed whitespace-pre-wrap text-mute">
+            {job.error && <p className="mono mt-2 text-mono text-err">{job.error}</p>}
+            <pre className="mono mt-2 max-h-64 overflow-auto rounded-surface border border-hairline bg-background p-3 text-mono whitespace-pre-wrap text-mute">
               {job.log?.trim() ? job.log : t('nodes.job_log_empty')}
             </pre>
           </TableCell>
@@ -133,16 +176,15 @@ export function NodeOverviewTab({ node }: { node: Node }) {
   const jobs = jobsQuery.data?.items ?? [];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn(ENTER_CLASS, 'flex flex-col gap-4')}>
       <Panel>
         <PanelHeader title={t('nodes.overview_health')} />
         {offline ? (
-          <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.offline_message')}</p>
+          <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
+        ) : healthQuery.isError ? (
+          <PanelError onRetry={() => void healthQuery.refetch()} />
         ) : !health ? (
-          <div className="space-y-2 p-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
+          <HealthSkeleton telemt={telemt} />
         ) : (
           <>
             <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2 lg:grid-cols-3">
@@ -198,7 +240,7 @@ export function NodeOverviewTab({ node }: { node: Node }) {
                     href={`${TPROXY_REPO}/commit/${node.tproxy_version}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-primary underline-offset-3 hover:underline"
+                    className="inline-flex items-center gap-1 text-brand-ink underline-offset-3 hover:underline"
                   >
                     {node.tproxy_version.slice(0, 12)}
                     <ExternalLink className="size-3" aria-hidden="true" />
@@ -228,8 +270,21 @@ export function NodeOverviewTab({ node }: { node: Node }) {
 
       <Panel>
         <PanelHeader title={t('nodes.overview_jobs_title')} meta={jobs.length > 0 ? String(jobs.length) : undefined} />
-        {jobs.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-mute">{t('nodes.overview_jobs_empty')}</p>
+        {jobsQuery.isLoading ? (
+          <div className="divide-y divide-hairline">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex h-11 items-center gap-4 px-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-36" />
+                <Skeleton className="ml-auto h-3 w-12" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            ))}
+          </div>
+        ) : jobsQuery.isError ? (
+          <PanelError onRetry={() => void jobsQuery.refetch()} />
+        ) : jobs.length === 0 ? (
+          <PanelEmpty>{t('nodes.overview_jobs_empty')}</PanelEmpty>
         ) : (
           <Table>
             <TableHeader>

@@ -9,7 +9,9 @@ import { useActivateBranding, useBrandingProfiles, useCreateBrandingProfile, use
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -22,6 +24,7 @@ import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { BrandingForm } from './BrandingForm';
+import { Arriving, FormFooter } from './formShell';
 
 import type { BrandingProfile } from '@/api/types';
 
@@ -82,14 +85,27 @@ function CreateProfileDialog({
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="branding-profile-name">{t('settings.branding_create_field_name')}</Label>
-            <Input id="branding-profile-name" autoFocus {...register('name')} aria-invalid={!!errors.name} />
-            {errors.name && <p className="text-xs text-destructive">{t('common.required')}</p>}
+            <Input
+              id="branding-profile-name"
+              autoFocus
+              {...register('name')}
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? 'branding-profile-name-error' : undefined}
+            />
+            {errors.name && (
+              <p id="branding-profile-name-error" className="text-label text-destructive">
+                {t('common.required')}
+              </p>
+            )}
           </div>
 
           {errors.root && (
-            <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p
+              role="alert"
+              className="rounded-control border border-destructive/30 bg-destructive/10 px-3 py-2 text-body text-destructive"
+            >
               {errors.root.message}
             </p>
           )}
@@ -133,23 +149,19 @@ function ProfileRow({
   return (
     <li
       className={cn(
-        'group/profile relative flex items-center gap-2 px-3.5 py-2.5 transition-colors',
+        'group/profile relative flex items-center gap-2 px-4 py-3 transition-[background-color,scale] active:scale-[0.985]',
         selected
-          ? 'bg-elevated before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-primary before:content-[""]'
+          ? 'bg-elevated before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-pill before:bg-brand-primary before:content-[""]'
           : 'hover:bg-elevated/50',
       )}
     >
       <button type="button" className="min-w-0 flex-1 text-left" aria-pressed={selected} onClick={onSelect}>
         <span className="flex items-center gap-2">
-          {profile.is_active && <span className="size-[7px] shrink-0 rounded-full bg-ok" aria-hidden="true" />}
-          <span className="truncate text-sm font-medium text-foreground">{profile.name}</span>
-          {profile.is_active && (
-            <span className="mono shrink-0 rounded-sm border border-hairline-strong px-1.5 py-0.5 text-xs text-mute">
-              {t('settings.branding_active_badge')}
-            </span>
-          )}
+          {profile.is_active && <span className="size-[7px] shrink-0 rounded-pill bg-ok" aria-hidden="true" />}
+          <span className="truncate text-body font-medium text-foreground">{profile.name}</span>
+          {profile.is_active && <Badge className="shrink-0">{t('settings.branding_active_badge')}</Badge>}
         </span>
-        <span className="mono mt-0.5 block truncate text-xs text-dim">
+        <span className="mono mt-0.5 block truncate text-mono text-dim">
           {t('settings.branding_updated', { time: formatRelativeTime(profile.updated_at, i18n.language) })}
         </span>
       </button>
@@ -228,13 +240,14 @@ export function BrandingProfilesList() {
   };
 
   if (profilesQuery.isLoading) {
+    // The rail on the left and the stack of form panels on the right, in silhouette.
     return (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[264px_1fr]">
-        <Skeleton className="h-64 w-full" />
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-32 w-full" />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[264px_1fr]">
+        <Skeleton className="h-64 w-full rounded-surface" />
+        <div className="space-y-4">
+          <Skeleton className="h-48 w-full rounded-surface" />
+          <Skeleton className="h-40 w-full rounded-surface" />
+          <Skeleton className="h-14 w-full rounded-surface" />
         </div>
       </div>
     );
@@ -242,39 +255,49 @@ export function BrandingProfilesList() {
 
   if (profilesQuery.isError || !selected) {
     return (
-      <p className="rounded-lg border border-hairline px-3 py-6 text-center text-sm text-mute">
-        {profilesQuery.error instanceof ApiError ? profilesQuery.error.message : t('common.error_generic')}
-      </p>
+      <ErrorState
+        message={profilesQuery.error instanceof ApiError ? profilesQuery.error.message : t('common.error_generic')}
+        retryLabel={t('common.refresh')}
+        onRetry={() => void profilesQuery.refetch()}
+      />
     );
   }
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[264px_1fr]">
-      <Panel>
-        <PanelHeader title={t('settings.branding_profiles_title')} meta={String(items.length)} actions={<HelpButton topic="settings.branding" />} />
-        <ul className="divide-y divide-hairline" aria-label={t('settings.branding_profiles_title')}>
-          {items.map((p) => (
-            <ProfileRow
-              key={p.id}
-              profile={p}
-              selected={p.id === selected.id}
-              onSelect={() => trySelect(p.id)}
-              onActivate={() => setActivateTarget(p)}
-              onDelete={() => setDeleteTarget(p)}
+      {/* Head, body, footer, like every other form behind these tabs: the rail's
+          own action sits in the footer rather than in a 264px header that cannot
+          hold both a title and this label. */}
+      <div className="flex flex-col gap-4">
+        <Arriving>
+          <Panel>
+            <PanelHeader
+              title={t('settings.branding_profiles_title')}
+              meta={String(items.length)}
+              actions={<HelpButton topic="settings.branding" />}
             />
-          ))}
-        </ul>
-        {/* The action sits under the list because that is where the list ends -
-            a 264px header cannot hold both a title and this label. */}
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="flex h-9 w-full items-center gap-1.5 border-t border-hairline px-3.5 text-sm text-mute transition-colors hover:bg-elevated hover:text-foreground"
-        >
-          <Plus className="size-3.5" aria-hidden="true" />
-          {t('settings.branding_create_from_active')}
-        </button>
-      </Panel>
+            <ul className="divide-y divide-hairline" aria-label={t('settings.branding_profiles_title')}>
+              {items.map((p) => (
+                <ProfileRow
+                  key={p.id}
+                  profile={p}
+                  selected={p.id === selected.id}
+                  onSelect={() => trySelect(p.id)}
+                  onActivate={() => setActivateTarget(p)}
+                  onDelete={() => setDeleteTarget(p)}
+                />
+              ))}
+            </ul>
+          </Panel>
+        </Arriving>
+
+        <FormFooter>
+          <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
+            <Plus />
+            {t('settings.branding_create_from_active')}
+          </Button>
+        </FormFooter>
+      </div>
 
       <div className="min-w-0">
         <BrandingForm key={selected.id} profile={selected} onDirtyChange={setDirty} />

@@ -19,6 +19,8 @@ import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
 import { useTheme } from '@/theme/ThemeProvider';
 
+import { Arriving, FormFooter } from './formShell';
+
 import type { BrandingAssetKind, BrandingProfile } from '@/api/types';
 import { DEFAULT_ACCENT_COLOR, DEFAULT_PRIMARY_COLOR } from '@/components/brand/brand';
 
@@ -76,17 +78,17 @@ function AssetUpload({
   const previewUrl = localPreview || currentUrl;
 
   return (
-    <div className="flex items-center gap-3 rounded-md border border-hairline bg-background px-2.5 py-2">
-      <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-hairline bg-white">
+    <div className="flex items-center gap-3 rounded-control border border-hairline bg-background p-3">
+      <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-control border border-hairline bg-white">
         {previewUrl ? (
           <img src={previewUrl} alt={label} className="max-h-full max-w-full object-contain" />
         ) : (
-          <span className="mono text-xs text-dim">—</span>
+          <span className="mono text-mono text-dim">—</span>
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-foreground">{label}</p>
-        <p className="mono truncate text-xs text-dim">{hint}</p>
+        <p className="truncate text-body text-foreground">{label}</p>
+        <p className="truncate text-label text-mute">{hint}</p>
       </div>
       <Button
         type="button"
@@ -135,10 +137,10 @@ function ColorField({
         type="color"
         value={HEX_COLOR_RE.test(value) ? value : '#000000'}
         onChange={(e) => onChange(e.target.value)}
-        className="size-8 shrink-0 cursor-pointer rounded-md border border-hairline-strong bg-background p-1 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-[3px] [&::-webkit-color-swatch]:border-0"
+        className="size-8 shrink-0 cursor-pointer rounded-control border border-hairline-strong bg-background p-1 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-control [&::-webkit-color-swatch]:border-0"
         aria-label={label}
       />
-      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} className="mono" aria-invalid={invalid} />
+      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} className="mono text-mono" aria-invalid={invalid} />
     </div>
   );
 }
@@ -290,166 +292,191 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
     <form className="flex max-w-2xl flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
       {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
-      <Panel>
-        <PanelHeader title={profile.name} meta={t('settings.branding_preview_note')} />
-        <PanelBody className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="branding-panel-name">{t('settings.branding_panel_name')}</Label>
-            <Input id="branding-panel-name" className="max-w-xs" {...register('panel_name')} aria-invalid={!!errors.panel_name} />
-            {errors.panel_name && <p className="text-xs text-destructive">{t('common.required')}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <AssetUpload
-              label={t('settings.branding_logo')}
-              hint={t('settings.branding_upload_hint')}
-              currentUrl={profile.logo_url}
-              uploading={uploadingKind === 'logo'}
-              onUpload={(f) => void handleUpload('logo', f)}
-            />
-            <AssetUpload
-              label={t('settings.branding_favicon')}
-              hint={t('settings.branding_upload_hint')}
-              currentUrl={profile.favicon_url}
-              uploading={uploadingKind === 'favicon'}
-              onUpload={(f) => void handleUpload('favicon', f)}
-            />
-            <AssetUpload
-              label={t('settings.branding_login_bg')}
-              hint={t('settings.branding_upload_hint')}
-              currentUrl={profile.login_bg_url}
-              uploading={uploadingKind === 'login_bg'}
-              onUpload={(f) => void handleUpload('login_bg', f)}
-            />
-          </div>
-        </PanelBody>
-      </Panel>
-
-      <Panel>
-        <PanelHeader title={t('settings.branding_section_appearance')} actions={<HelpButton topic="settings.branding" />} />
-        <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="branding-primary">{t('settings.branding_primary_color')}</Label>
-            <Controller
-              control={control}
-              name="primary_color"
-              render={({ field }) => (
-                <ColorField
-                  id="branding-primary"
-                  label={t('settings.branding_primary_color')}
-                  value={field.value}
-                  onChange={field.onChange}
-                  invalid={!!errors.primary_color}
-                />
+      <Arriving>
+        <Panel>
+          <PanelHeader title={profile.name} meta={t('settings.branding_preview_note')} />
+          <PanelBody className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="branding-panel-name">{t('settings.branding_panel_name')}</Label>
+              <Input
+                id="branding-panel-name"
+                className="max-w-xs"
+                {...register('panel_name')}
+                aria-invalid={!!errors.panel_name}
+                aria-describedby={errors.panel_name ? 'branding-panel-name-error' : undefined}
+              />
+              {errors.panel_name && (
+                <p id="branding-panel-name-error" className="text-label text-destructive">
+                  {t('common.required')}
+                </p>
               )}
-            />
-            {errors.primary_color && <p className="text-xs text-destructive">{t('settings.branding_color_invalid')}</p>}
-          </div>
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="branding-accent">{t('settings.branding_accent_color')}</Label>
-            <Controller
-              control={control}
-              name="accent_color"
-              render={({ field }) => (
-                <ColorField
-                  id="branding-accent"
-                  label={t('settings.branding_accent_color')}
-                  value={field.value}
-                  onChange={field.onChange}
-                  invalid={!!errors.accent_color}
-                />
-              )}
-            />
-            {errors.accent_color && <p className="text-xs text-destructive">{t('settings.branding_color_invalid')}</p>}
-          </div>
+            <div className="space-y-2">
+              <AssetUpload
+                label={t('settings.branding_logo')}
+                hint={t('settings.branding_upload_hint')}
+                currentUrl={profile.logo_url}
+                uploading={uploadingKind === 'logo'}
+                onUpload={(f) => void handleUpload('logo', f)}
+              />
+              <AssetUpload
+                label={t('settings.branding_favicon')}
+                hint={t('settings.branding_upload_hint')}
+                currentUrl={profile.favicon_url}
+                uploading={uploadingKind === 'favicon'}
+                onUpload={(f) => void handleUpload('favicon', f)}
+              />
+              <AssetUpload
+                label={t('settings.branding_login_bg')}
+                hint={t('settings.branding_upload_hint')}
+                currentUrl={profile.login_bg_url}
+                uploading={uploadingKind === 'login_bg'}
+                onUpload={(f) => void handleUpload('login_bg', f)}
+              />
+            </div>
+          </PanelBody>
+        </Panel>
+      </Arriving>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="branding-theme">{t('settings.branding_theme_default')}</Label>
-            <Controller
-              control={control}
-              name="theme_default"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={(v) => field.onChange(v ?? 'dark')}>
-                  <SelectTrigger id="branding-theme" className="w-full">
-                    {/* SelectValue only resolves a matched item's label once the popup has
+      <Arriving index={1}>
+        <Panel>
+          <PanelHeader title={t('settings.branding_section_appearance')} actions={<HelpButton topic="settings.branding" />} />
+          <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="branding-primary">{t('settings.branding_primary_color')}</Label>
+              <Controller
+                control={control}
+                name="primary_color"
+                render={({ field }) => (
+                  <ColorField
+                    id="branding-primary"
+                    label={t('settings.branding_primary_color')}
+                    value={field.value}
+                    onChange={field.onChange}
+                    invalid={!!errors.primary_color}
+                  />
+                )}
+              />
+              {errors.primary_color && <p className="text-label text-destructive">{t('settings.branding_color_invalid')}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="branding-accent">{t('settings.branding_accent_color')}</Label>
+              <Controller
+                control={control}
+                name="accent_color"
+                render={({ field }) => (
+                  <ColorField
+                    id="branding-accent"
+                    label={t('settings.branding_accent_color')}
+                    value={field.value}
+                    onChange={field.onChange}
+                    invalid={!!errors.accent_color}
+                  />
+                )}
+              />
+              {errors.accent_color && <p className="text-label text-destructive">{t('settings.branding_color_invalid')}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="branding-theme">{t('settings.branding_theme_default')}</Label>
+              <Controller
+                control={control}
+                name="theme_default"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v ?? 'dark')}>
+                    <SelectTrigger id="branding-theme" className="w-full">
+                      {/* SelectValue only resolves a matched item's label once the popup has
                         mounted at least once; render the label explicitly so it's correct
                         from first paint (see base-ui select/value/SelectValue.js). */}
-                    <SelectValue>{(v: string) => (v === 'light' ? t('common.theme_light') : t('common.theme_dark'))}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dark">{t('common.theme_dark')}</SelectItem>
-                    <SelectItem value="light">{t('common.theme_light')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-        </PanelBody>
-      </Panel>
-
-      <Panel>
-        <PanelHeader title={t('settings.branding_section_text')} />
-        <PanelBody className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="branding-login-text">{t('settings.branding_login_text')}</Label>
-            <Textarea id="branding-login-text" rows={2} {...register('login_text')} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="branding-support-link">{t('settings.branding_support_link')}</Label>
-            <Input
-              id="branding-support-link"
-              className="mono"
-              placeholder="https://"
-              {...register('support_link')}
-              aria-invalid={!!errors.support_link}
-            />
-            {errors.support_link && <p className="text-xs text-destructive">{t('settings.branding_support_link_invalid')}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="branding-footer-text">{t('settings.branding_footer_text')}</Label>
-            <Input id="branding-footer-text" {...register('footer_text')} />
-          </div>
-        </PanelBody>
-      </Panel>
-
-      <Panel>
-        <PanelHeader title={t('settings.branding_custom_css')} />
-        <PanelBody className="space-y-3">
-          <Textarea
-            id="branding-custom-css"
-            aria-label={t('settings.branding_custom_css')}
-            rows={8}
-            className="mono text-xs"
-            {...register('custom_css')}
-          />
-
-          {cssRemoved && cssRemoved.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-mute">{t('settings.branding_css_removed_title')}</p>
-              <ul className="space-y-1">
-                {cssRemoved.map((r, i) => (
-                  <li key={i} className="flex items-start gap-2 rounded-md border border-hairline px-2.5 py-1.5">
-                    <span className="mt-[6px] size-[7px] shrink-0 rounded-full bg-warn" aria-hidden="true" />
-                    <span className="mono min-w-0 flex-1 text-xs break-words text-mute">{r}</span>
-                  </li>
-                ))}
-              </ul>
+                      <SelectValue>
+                        {(v: string) => (v === 'light' ? t('common.theme_light') : t('common.theme_dark'))}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dark">{t('common.theme_dark')}</SelectItem>
+                      <SelectItem value="light">{t('common.theme_light')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
-          )}
-        </PanelBody>
-      </Panel>
+          </PanelBody>
+        </Panel>
+      </Arriving>
 
-      <div className="flex items-center gap-2">
-        <Button type="submit" disabled={isSubmitting || !isDirty}>
-          {t('common.save')}
-        </Button>
+      <Arriving index={2}>
+        <Panel>
+          <PanelHeader title={t('settings.branding_section_text')} />
+          <PanelBody className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="branding-login-text">{t('settings.branding_login_text')}</Label>
+              <Textarea id="branding-login-text" rows={2} {...register('login_text')} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="branding-support-link">{t('settings.branding_support_link')}</Label>
+              <Input
+                id="branding-support-link"
+                className="mono text-mono"
+                placeholder="https://"
+                {...register('support_link')}
+                aria-invalid={!!errors.support_link}
+                aria-describedby={errors.support_link ? 'branding-support-link-error' : undefined}
+              />
+              {errors.support_link && (
+                <p id="branding-support-link-error" className="text-label text-destructive">
+                  {t('settings.branding_support_link_invalid')}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="branding-footer-text">{t('settings.branding_footer_text')}</Label>
+              <Input id="branding-footer-text" {...register('footer_text')} />
+            </div>
+          </PanelBody>
+        </Panel>
+      </Arriving>
+
+      <Arriving index={3}>
+        <Panel>
+          <PanelHeader title={t('settings.branding_custom_css')} />
+          <PanelBody className="space-y-4">
+            <Textarea
+              id="branding-custom-css"
+              aria-label={t('settings.branding_custom_css')}
+              rows={8}
+              className="mono text-mono"
+              {...register('custom_css')}
+            />
+
+            {cssRemoved && cssRemoved.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-label text-mute">{t('settings.branding_css_removed_title')}</p>
+                <ul className="space-y-1">
+                  {cssRemoved.map((r, i) => (
+                    <li key={i} className="flex items-start gap-2 rounded-control border border-hairline px-3 py-2">
+                      <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
+                      <span className="mono min-w-0 flex-1 text-mono break-words text-mute">{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </PanelBody>
+        </Panel>
+      </Arriving>
+
+      <FormFooter>
         <Button type="button" variant="outline" onClick={handleReset} disabled={!isDirty}>
           {t('common.reset')}
         </Button>
-      </div>
+        <Button type="submit" disabled={isSubmitting || !isDirty}>
+          {t('common.save')}
+        </Button>
+      </FormFooter>
     </form>
   );
 }

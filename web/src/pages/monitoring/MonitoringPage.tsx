@@ -6,16 +6,20 @@ import { useBranding } from '@/api/branding';
 import { MONITORING_RANGES, useMonitoringOverview } from '@/api/monitoring';
 import { useNodes } from '@/api/nodes';
 import { CopyButton } from '@/components/common/CopyButton';
-import { EmptyState } from '@/components/common/EmptyState';
+import { EmptyState, PanelEmpty } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpButton } from '@/help';
+import { ApiError } from '@/lib/api';
 import { seriesPalette } from '@/lib/chart';
 
+import type { ReactNode } from 'react';
 import type { MonitoringRange } from '@/api/monitoring';
 import type { Status } from '@/components/common/StatusBadge';
 import type { MonitoringNode, MonitoringPoint, NodeEngine } from '@/api/types';
@@ -33,12 +37,28 @@ const METRICS_SNIPPET = `scrape_configs:
     authorization: { credentials_file: /etc/prometheus/tgwp-token }
     static_configs: [{ targets: ['<panel host>'] }]`;
 
+/**
+ * Cards arrive staggered. `Panel` takes only a className, so the per-element
+ * delay rides a wrapper rather than the section itself.
+ */
+function Arriving({ index, children }: { index: number; children: ReactNode }) {
+  return (
+    <div className={ENTER_CLASS} style={enterDelay(index)}>
+      {children}
+    </div>
+  );
+}
+
+/** The three stacked charts in silhouette: a plot area and the legend line under it, three times. */
 function ChartSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-[152px] w-full" />
-      <Skeleton className="h-[152px] w-full" />
-      <Skeleton className="h-[152px] w-full" />
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="space-y-1.5">
+          <Skeleton className="h-35 w-full" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+      ))}
     </div>
   );
 }
@@ -58,20 +78,22 @@ function NodeCard({
 
   return (
     <Panel>
-      <div className="flex h-10 items-center justify-between gap-3 border-b border-hairline px-4">
+      {/* Same head as every PanelHeader in the panel, with the node's state dot
+          and hostname taking the place of the mono note. */}
+      <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <StatusBadge status={node.status as Status} hideLabel />
-          <h2 className="truncate text-sm font-medium text-foreground">{node.node_name}</h2>
-          <span className="mono truncate text-xs text-dim">{node.hostname}</span>
+          <h2 className="truncate text-title text-foreground">{node.node_name}</h2>
+          <span className="mono truncate text-mono text-dim">{node.hostname}</span>
         </div>
-        <Link to={`/nodes/${node.node_id}`} className="shrink-0 text-xs text-primary hover:underline">
+        <Link to={`/nodes/${node.node_id}`} className="shrink-0 text-label text-brand-ink hover:underline">
           {t('monitoring.open_node')}
         </Link>
       </div>
 
       <PanelBody>
         {points.length === 0 ? (
-          <p className="py-8 text-center text-sm text-mute">{t('monitoring.node_empty')}</p>
+          <PanelEmpty>{t('monitoring.node_empty')}</PanelEmpty>
         ) : (
           <Suspense fallback={<ChartSkeleton />}>
             <NodeSeriesChart points={points} colors={colors} engine={engine} />
@@ -85,7 +107,7 @@ function NodeCard({
 function NodeCardSkeleton() {
   return (
     <Panel>
-      <div className="flex h-10 items-center gap-3 border-b border-hairline px-4">
+      <div className="flex min-h-11 items-center gap-3 border-b border-hairline px-4 py-2">
         <Skeleton className="h-4 w-28" />
         <Skeleton className="h-3 w-40" />
       </div>
@@ -146,6 +168,14 @@ export function MonitoringPage() {
           <NodeCardSkeleton />
           <NodeCardSkeleton />
         </div>
+      ) : overviewQuery.isError ? (
+        /* The readings failed to arrive, which is not the same as a network with
+           no nodes in it - so it says so, and offers the one useful move. */
+        <ErrorState
+          message={overviewQuery.error instanceof ApiError ? overviewQuery.error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void overviewQuery.refetch()}
+        />
       ) : nodes.length === 0 ? (
         <EmptyState
           title={t('monitoring.empty_no_nodes')}
@@ -157,31 +187,34 @@ export function MonitoringPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {nodes.map((node) => (
-            <NodeCard
-              key={node.node_id}
-              node={node}
-              points={series[node.node_id] ?? []}
-              colors={colors}
-              engine={engineById.get(node.node_id) ?? 'tproxy'}
-            />
+          {nodes.map((node, i) => (
+            <Arriving key={node.node_id} index={i}>
+              <NodeCard
+                node={node}
+                points={series[node.node_id] ?? []}
+                colors={colors}
+                engine={engineById.get(node.node_id) ?? 'tproxy'}
+              />
+            </Arriving>
           ))}
         </div>
       )}
 
-      <Panel>
-        <PanelHeader title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
-        <PanelBody className="space-y-3 p-4">
-          <p className="max-w-[72ch] text-sm text-mute">{t('monitoring.prometheus_description')}</p>
-          <pre className="mono overflow-x-auto rounded-md border border-hairline bg-background px-3 py-2.5 text-xs leading-relaxed text-foreground">
-            {METRICS_SNIPPET}
-          </pre>
-          <p className="max-w-[72ch] text-xs text-mute">{t('monitoring.prometheus_node_note')}</p>
-          <p className="text-xs text-dim">
-            {t('monitoring.docs_link_prefix')} <span className="mono">docs/monitoring.md</span>
-          </p>
-        </PanelBody>
-      </Panel>
+      <Arriving index={nodes.length}>
+        <Panel>
+          <PanelHeader title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
+          <PanelBody className="space-y-4">
+            <p className="max-w-[72ch] text-body text-mute">{t('monitoring.prometheus_description')}</p>
+            <pre className="mono overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2.5 text-mono text-foreground">
+              {METRICS_SNIPPET}
+            </pre>
+            <p className="max-w-[72ch] text-label text-mute">{t('monitoring.prometheus_node_note')}</p>
+            <p className="text-label text-mute">
+              {t('monitoring.docs_link_prefix')} <span className="mono text-mono">docs/monitoring.md</span>
+            </p>
+          </PanelBody>
+        </Panel>
+      </Arriving>
     </>
   );
 }

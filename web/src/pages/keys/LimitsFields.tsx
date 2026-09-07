@@ -55,10 +55,10 @@ export function LimitsFields({ value, onChange, errors, className }: LimitsField
   };
 
   return (
-    <div className={cn('grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2', className)}>
+    <div className={cn('grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2', className)}>
       {LIMIT_FIELD_NAMES.map((name) => (
-        <div key={name} className="space-y-1">
-          <Label htmlFor={`limit-${name}`} className="text-xs font-normal text-mute">
+        <div key={name} className="space-y-2">
+          <Label htmlFor={`limit-${name}`} className="font-normal text-mute">
             {t(`keys.limit_${name}`)}
           </Label>
           <Input
@@ -68,12 +68,12 @@ export function LimitsFields({ value, onChange, errors, className }: LimitsField
             step={1}
             inputMode="numeric"
             placeholder="0"
-            className="mono h-7 text-xs"
+            className="mono text-mono"
             value={value[name] ?? 0}
             onChange={(e) => setField(name, e.target.value)}
             aria-invalid={!!errors?.[name]}
           />
-          {errors?.[name] && <p className="text-xs text-destructive">{errors[name]}</p>}
+          {errors?.[name] && <p className="text-label text-destructive">{errors[name]}</p>}
         </div>
       ))}
     </div>

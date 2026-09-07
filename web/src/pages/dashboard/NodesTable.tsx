@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCompactAge, formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -54,8 +55,8 @@ function useNodeRow(node: Node, sessions: number | undefined): NodeRow {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-[11px] text-dim">{label}</dt>
-      <dd className="mono mt-0.5 truncate text-xs">{children}</dd>
+      <dt className="micro truncate text-mute">{label}</dt>
+      <dd className="mono mt-1 truncate text-mono">{children}</dd>
     </div>
   );
 }
@@ -68,11 +69,11 @@ function NodeCard({ node, sessions }: { node: Node; sessions: number | undefined
     <li className="px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <p className="flex items-center gap-2 text-body font-medium text-foreground">
             <StatusBadge status={node.status as Status} hideLabel />
             <span className="truncate">{node.name}</span>
           </p>
-          <p className="mono mt-0.5 truncate pl-[15px] text-xs text-mute">{node.hostname}</p>
+          <p className="mono mt-1 truncate pl-[15px] text-mono text-mute">{node.hostname}</p>
         </div>
         <Button variant="outline" size="sm" className="shrink-0" render={<Link to={`/nodes/${node.id}`} />}>
           {t('nodes.action_open')}
@@ -112,18 +113,95 @@ function NodeTableRow({ node, sessions }: { node: Node; sessions: number | undef
           <span className="truncate">{node.name}</span>
         </span>
       </TableCell>
-      <TableCell className="mono text-xs text-mute">{node.hostname}</TableCell>
-      <TableCell className={cn('mono text-xs', row.relayTone)}>{row.relay}</TableCell>
-      <TableCell className="mono text-xs text-mute">{row.profiles}</TableCell>
-      <TableCell className={cn('mono text-right text-xs', row.cpuTone)}>{row.cpu}</TableCell>
-      <TableCell className={cn('mono text-right text-xs', row.sessionsTone)}>{row.sessions}</TableCell>
-      <TableCell className={cn('mono text-right text-xs', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
+      <TableCell className="mono text-mono text-mute">{node.hostname}</TableCell>
+      <TableCell className={cn('mono text-mono', row.relayTone)}>{row.relay}</TableCell>
+      <TableCell className="mono text-mono text-mute">{row.profiles}</TableCell>
+      <TableCell className={cn('mono text-right text-mono', row.cpuTone)}>{row.cpu}</TableCell>
+      <TableCell className={cn('mono text-right text-mono', row.sessionsTone)}>{row.sessions}</TableCell>
+      <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
       <TableCell className="text-right">
         <Button variant="outline" size="sm" render={<Link to={`/nodes/${node.id}`} />}>
           {t('nodes.action_open')}
         </Button>
       </TableCell>
     </TableRow>
+  );
+}
+
+/** The eight column heads, shared by the table and by its skeleton. */
+function NodeHeads() {
+  const { t } = useTranslation();
+  return (
+    <TableHeader>
+      <TableRow>
+        <TableHead>{t('dashboard.col_node')}</TableHead>
+        <TableHead>{t('nodes.column_hostname')}</TableHead>
+        <TableHead>{t('dashboard.col_relay')}</TableHead>
+        <TableHead>{t('nodes.column_profiles')}</TableHead>
+        <TableHead className="text-right">{t('nodes.load_cpu')}</TableHead>
+        <TableHead className="text-right">{t('dashboard.col_sessions')}</TableHead>
+        <TableHead className="text-right">{t('dashboard.col_heartbeat')}</TableHead>
+        <TableHead className="w-0" />
+      </TableRow>
+    </TableHeader>
+  );
+}
+
+/** Widths of the seven value columns, so the skeleton has the table's texture. */
+const SKELETON_WIDTHS = ['w-28', 'w-40', 'w-14', 'w-12', 'w-10', 'w-10', 'w-20'];
+
+/**
+ * The fleet while it is still loading: the real heads over rows of the real
+ * height, with a bar where each value will land. It is the shape of the answer
+ * rather than a spinner, so the panel does not resize the moment data arrives.
+ */
+export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
+  const placeholders = Array.from({ length: rows }, (_, i) => i);
+
+  return (
+    <>
+      <div className="hidden md:block">
+        <Table>
+          <NodeHeads />
+          <TableBody>
+            {placeholders.map((i) => (
+              <TableRow key={i}>
+                {SKELETON_WIDTHS.map((w, col) => (
+                  <TableCell key={col} className={col >= 4 ? 'text-right' : undefined}>
+                    <Skeleton className={cn('h-3', w, col >= 4 && 'ml-auto')} />
+                  </TableCell>
+                ))}
+                <TableCell>
+                  <Skeleton className="h-7 w-16" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <ul className="divide-y divide-hairline md:hidden">
+        {placeholders.map((i) => (
+          <li key={i} className="px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+              <Skeleton className="h-7 w-16 shrink-0" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
+              {SKELETON_WIDTHS.slice(0, 5).map((_, col) => (
+                <div key={col} className="space-y-1">
+                  <Skeleton className="h-2.5 w-12" />
+                  <Skeleton className="h-3 w-10" />
+                </div>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -143,24 +221,11 @@ function NodeTableRow({ node, sessions }: { node: Node; sessions: number | undef
  * heartbeat, the field that actually went wrong; the rest of it stays quiet.
  */
 export function NodesTable({ nodes, sessionsByNode }: NodesTableProps) {
-  const { t } = useTranslation();
-
   return (
     <>
       <div className="hidden md:block">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('dashboard.col_node')}</TableHead>
-              <TableHead>{t('nodes.column_hostname')}</TableHead>
-              <TableHead>{t('dashboard.col_relay')}</TableHead>
-              <TableHead>{t('nodes.column_profiles')}</TableHead>
-              <TableHead className="text-right">{t('nodes.load_cpu')}</TableHead>
-              <TableHead className="text-right">{t('dashboard.col_sessions')}</TableHead>
-              <TableHead className="text-right">{t('dashboard.col_heartbeat')}</TableHead>
-              <TableHead className="w-0" />
-            </TableRow>
-          </TableHeader>
+          <NodeHeads />
           <TableBody>
             {nodes.map((node) => (
               <NodeTableRow key={node.id} node={node} sessions={sessionsByNode[node.id]} />

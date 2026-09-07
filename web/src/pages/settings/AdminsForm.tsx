@@ -8,20 +8,25 @@ import { z } from 'zod';
 import { useAdmins, useCreateAdmin, useDeleteAdmin } from '@/api/auth';
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DataTableSkeleton } from '@/components/common/DataTable';
 import { DraftBanner } from '@/components/common/DraftBanner';
+import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
+import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
+
+import { Arriving, FormFooter } from './formShell';
 
 import type { Admin, AdminRole } from '@/api/types';
 
@@ -48,7 +53,7 @@ const EMPTY_DRAFT: AdminDraft = { username: '', role: 'admin' };
 /** Role as a mono tag: it is an enum the server owns, not a state that pulses. */
 function RoleTag({ role }: { role: AdminRole }) {
   const { t } = useTranslation();
-  return <span className="mono rounded-sm border border-hairline-strong px-1.5 py-0.5 text-xs text-mute">{t(ROLE_BADGE_KEY[role])}</span>;
+  return <Badge>{t(ROLE_BADGE_KEY[role])}</Badge>;
 }
 
 /** Creating an admin sets a password, so it happens in a dialog rather than in a form left standing open under the table. */
@@ -123,13 +128,23 @@ function CreateAdminDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="admin-username">{t('settings.admins_field_username')}</Label>
-            <Input id="admin-username" autoComplete="off" {...register('username')} aria-invalid={!!errors.username} />
-            {errors.username && <p className="text-xs text-destructive">{t('settings.admins_username_error')}</p>}
+            <Input
+              id="admin-username"
+              autoComplete="off"
+              {...register('username')}
+              aria-invalid={!!errors.username}
+              aria-describedby={errors.username ? 'admin-username-error' : undefined}
+            />
+            {errors.username && (
+              <p id="admin-username-error" className="text-label text-destructive">
+                {t('settings.admins_username_error')}
+              </p>
+            )}
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="admin-password">{t('settings.admins_field_password')}</Label>
             <Input
               id="admin-password"
@@ -137,11 +152,14 @@ function CreateAdminDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               autoComplete="new-password"
               {...register('password')}
               aria-invalid={!!errors.password}
+              aria-describedby="admin-password-hint"
             />
-            <p className={errors.password ? 'text-xs text-destructive' : 'text-xs text-mute'}>{t('settings.admins_password_hint')}</p>
+            <p id="admin-password-hint" className={cn('text-label', errors.password ? 'text-destructive' : 'text-mute')}>
+              {t('settings.admins_password_hint')}
+            </p>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="admin-role">{t('settings.admins_field_role')}</Label>
             <Select value={role} onValueChange={(v) => setValue('role', (v as AdminRole) ?? 'admin')}>
               <SelectTrigger id="admin-role" className="w-full">
@@ -158,8 +176,8 @@ function CreateAdminDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </div>
 
           {errors.root && (
-            <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
-              <span className="mt-[6px] size-[7px] shrink-0 rounded-full bg-err" aria-hidden="true" />
+            <p role="alert" className="flex items-start gap-2 text-body text-destructive">
+              <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-err" aria-hidden="true" />
               <span className="min-w-0 flex-1">{errors.root.message}</span>
             </p>
           )}
@@ -200,84 +218,110 @@ export function AdminsForm() {
   };
 
   if (adminsQuery.isLoading) {
-    return <Skeleton className="h-40 w-full max-w-2xl" />;
+    // The table that is coming, in silhouette, rather than a grey slab.
+    return (
+      <div className="max-w-2xl">
+        <DataTableSkeleton columns={4} rows={3} />
+      </div>
+    );
+  }
+
+  if (adminsQuery.isError) {
+    return (
+      <div className="max-w-2xl">
+        <ErrorState
+          message={adminsQuery.error instanceof ApiError ? adminsQuery.error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void adminsQuery.refetch()}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-2xl">
-      <Panel>
-        <PanelHeader
-          title={t('settings.tab_admins')}
-          meta={String(admins.length)}
-          actions={
-            <>
-              <HelpButton topic="settings.admins" />
-              <Button type="button" variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus />
-                {t('settings.admins_add')}
-              </Button>
-            </>
-          }
-        />
+    <div className="flex max-w-2xl flex-col gap-4">
+      <Arriving>
+        <Panel>
+          <PanelHeader
+            title={t('settings.tab_admins')}
+            meta={String(admins.length)}
+            actions={<HelpButton topic="settings.admins" />}
+          />
 
-        <div className="hidden md:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-4">{t('settings.admins_column_username')}</TableHead>
-                <TableHead>{t('settings.admins_column_role')}</TableHead>
-                <TableHead>{t('settings.admins_column_created')}</TableHead>
-                <TableHead className="w-0 pr-4" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {admins.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell className="pl-4 font-medium text-foreground">{a.username}</TableCell>
-                  <TableCell>
-                    <RoleTag role={a.role} />
-                  </TableCell>
-                  <TableCell className="mono text-xs text-dim">
-                    {a.created_at ? formatDate(a.created_at, i18n.language) : '—'}
-                  </TableCell>
-                  <TableCell className="pr-4 text-right">
-                    {a.id !== user?.id && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setDeleteTarget(a)}
-                        aria-label={t('common.delete')}
-                      >
-                        <Trash2 />
-                      </Button>
-                    )}
-                  </TableCell>
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-4">{t('settings.admins_column_username')}</TableHead>
+                  <TableHead>{t('settings.admins_column_role')}</TableHead>
+                  <TableHead>{t('settings.admins_column_created')}</TableHead>
+                  <TableHead className="w-0 pr-4" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {admins.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="pl-4 font-medium text-foreground">{a.username}</TableCell>
+                    <TableCell>
+                      <RoleTag role={a.role} />
+                    </TableCell>
+                    <TableCell className="mono text-mono text-dim">
+                      {a.created_at ? formatDate(a.created_at, i18n.language) : '—'}
+                    </TableCell>
+                    <TableCell className="pr-4 text-right">
+                      {a.id !== user?.id && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setDeleteTarget(a)}
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
-        <ul className="divide-y divide-hairline md:hidden">
-          {admins.map((a) => (
-            <li key={a.id} className="flex items-center justify-between gap-2 px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">{a.username}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <RoleTag role={a.role} />
-                  <span className="mono text-xs text-dim">{a.created_at ? formatDate(a.created_at, i18n.language) : '—'}</span>
+          <ul className="divide-y divide-hairline md:hidden">
+            {admins.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-body font-medium text-foreground">{a.username}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <RoleTag role={a.role} />
+                    <span className="mono text-mono text-dim">
+                      {a.created_at ? formatDate(a.created_at, i18n.language) : '—'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              {a.id !== user?.id && (
-                <Button type="button" variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(a)} aria-label={t('common.delete')}>
-                  <Trash2 />
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </Panel>
+                {a.id !== user?.id && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setDeleteTarget(a)}
+                    aria-label={t('common.delete')}
+                  >
+                    <Trash2 />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </Arriving>
+
+      <FormFooter>
+        <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
+          <Plus />
+          {t('settings.admins_add')}
+        </Button>
+      </FormFooter>
 
       <CreateAdminDialog open={createOpen} onOpenChange={setCreateOpen} />
 

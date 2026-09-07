@@ -28,12 +28,12 @@ export function DraftBanner({ savedAt, onResume, onDiscard, className }: DraftBa
       role="status"
       data-slot="draft-banner"
       className={cn(
-        'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-hairline bg-background px-3 py-2',
+        'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-surface border border-hairline bg-background px-3 py-2',
         className,
       )}
     >
-      <p className="flex min-w-0 items-center gap-2 text-xs text-mute">
-        <span className="size-[7px] shrink-0 rounded-full bg-pending" aria-hidden="true" />
+      <p className="flex min-w-0 items-center gap-2 text-label text-mute">
+        <span className="size-[7px] shrink-0 rounded-pill bg-pending" aria-hidden="true" />
         <span>
           <Trans
             i18nKey="drafts.banner"

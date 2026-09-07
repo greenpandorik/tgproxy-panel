@@ -35,7 +35,9 @@ const TPROXY_GROUP: NodeLinkGroup = {
   node_name: 'Helsinki',
   hostname: 'hel1.proxy-demo.net',
   engine: 'tproxy',
-  links: [{ kind: 'web', tme: 'https://t.me/webproxy?server=hel1.proxy-demo.net&secret=bb', tg: 'tg://webproxy?server=hel1&secret=bb' }],
+  links: [
+    { kind: 'web', tme: 'https://t.me/webproxy?server=hel1.proxy-demo.net&secret=bb', tg: 'tg://webproxy?server=hel1&secret=bb' },
+  ],
 };
 
 const KEY = {

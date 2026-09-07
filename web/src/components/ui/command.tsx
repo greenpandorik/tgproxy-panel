@@ -10,8 +10,11 @@ import { cn } from '@/lib/utils';
 /*
  * Command palette surface. It borrows nothing from the page: one popover
  * panel, a search row separated by a hairline, and groups labelled with the
- * same 10.5px uppercase eyebrow the sidebar uses, so "sections" in the
+ * same micro role the sidebar group headings use, so "sections" in the
  * palette and "sections" in the rail are visibly the same idea.
+ *
+ * The group heading is the micro role spelled out through cmdk's child
+ * selector (a class cannot reach the heading element cmdk renders itself).
  */
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
@@ -58,7 +61,7 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          'h-full w-full bg-transparent text-sm text-foreground outline-hidden placeholder:text-dim disabled:cursor-not-allowed disabled:opacity-50',
+          'h-full w-full bg-transparent text-body text-foreground outline-hidden placeholder:text-mute disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
         {...props}
@@ -79,7 +82,7 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
 
 function CommandEmpty({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
   return (
-    <CommandPrimitive.Empty data-slot="command-empty" className={cn('px-3.5 py-8 text-center text-sm text-muted-foreground', className)} {...props} />
+    <CommandPrimitive.Empty data-slot="command-empty" className={cn('px-3.5 py-8 text-center text-body text-muted-foreground', className)} {...props} />
   );
 }
 
@@ -88,7 +91,7 @@ function CommandGroup({ className, ...props }: React.ComponentProps<typeof Comma
     <CommandPrimitive.Group
       data-slot="command-group"
       className={cn(
-        'overflow-hidden p-1.5 text-foreground not-first:border-t not-first:border-hairline **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:pt-1.5 **:[[cmdk-group-heading]]:pb-1 **:[[cmdk-group-heading]]:text-[10.5px] **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:tracking-[0.08em] **:[[cmdk-group-heading]]:text-dim **:[[cmdk-group-heading]]:uppercase',
+        'overflow-hidden p-1.5 text-foreground not-first:border-t not-first:border-hairline **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:pt-1.5 **:[[cmdk-group-heading]]:pb-1 **:[[cmdk-group-heading]]:text-micro **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:tracking-micro **:[[cmdk-group-heading]]:text-mute **:[[cmdk-group-heading]]:uppercase',
         className,
       )}
       {...props}
@@ -105,7 +108,7 @@ function CommandItem({ className, children, ...props }: React.ComponentProps<typ
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "group/command-item relative flex h-8 cursor-default items-center gap-2.5 rounded-md px-2 text-sm text-muted-foreground outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-elevated data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "group/command-item relative flex h-8 cursor-default items-center gap-2.5 rounded-control px-2 text-body text-muted-foreground outline-hidden select-none transition-[background-color,color,scale] active:scale-[0.985] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-elevated data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -116,7 +119,7 @@ function CommandItem({ className, children, ...props }: React.ComponentProps<typ
 }
 
 function CommandShortcut({ className, ...props }: React.ComponentProps<'span'>) {
-  return <span data-slot="command-shortcut" className={cn('mono ml-auto text-xs text-dim', className)} {...props} />;
+  return <span data-slot="command-shortcut" className={cn('mono ml-auto text-micro text-dim', className)} {...props} />;
 }
 
 export { Command, CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandShortcut, CommandSeparator };

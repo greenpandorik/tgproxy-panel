@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
 import { PageHeader } from '@/components/common/PageHeader';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,10 +28,10 @@ import { DASH, fakeTlsEndpoint, nodeStatus, shortVersion, telemtVersion } from '
 /** One machine fact about the node, as a hairline tag beside the hostname. */
 function MetaTag({ label, value }: { label: string; value: string }) {
   return (
-    <span className="mono inline-flex items-center gap-1.5 rounded-sm border border-hairline px-1.5 py-0.5 text-xs">
-      <span className="text-dim">{label}</span>
-      <span className="text-mute">{value}</span>
-    </span>
+    <Badge>
+      <span className="text-mute">{label}</span>
+      <span className="text-foreground">{value}</span>
+    </Badge>
   );
 }
 
@@ -54,8 +55,12 @@ export function NodeDetailPage() {
 
   if (nodeQuery.isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-64" />
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <Skeleton className="h-8 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
@@ -65,7 +70,7 @@ export function NodeDetailPage() {
     return (
       <>
         <PageHeader title={t('nodes.title')} />
-        <p className="rounded-lg border border-hairline px-3 py-6 text-center text-sm text-mute">
+        <p className="rounded-surface border border-hairline px-6 py-10 text-center text-body text-mute">
           {nodeQuery.error instanceof ApiError ? nodeQuery.error.message : t('common.error_generic')}
         </p>
       </>
@@ -117,9 +122,9 @@ export function NodeDetailPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
-          <Link to="/nodes" className="mono inline-flex w-fit items-center gap-1 text-xs text-dim hover:text-foreground">
+          <Link to="/nodes" className="inline-flex w-fit items-center gap-1 text-label text-mute hover:text-foreground">
             <ArrowLeft className="size-3" />
             {t('nodes.title')}
           </Link>
@@ -127,14 +132,14 @@ export function NodeDetailPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className="flex min-w-0 items-center gap-2.5 text-xl font-semibold tracking-[-0.015em] text-foreground">
+                <h1 className="flex min-w-0 items-center gap-2.5 text-display text-foreground">
                   <StatusBadge status={nodeStatus(node)} hideLabel />
                   <span className="truncate">{node.name}</span>
                 </h1>
                 <HelpButton topic="nodes.detail" />
               </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                <span className="mono inline-flex items-center gap-0.5 text-xs text-mute">
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <span className="mono inline-flex items-center gap-0.5 text-mono text-mute">
                   {node.hostname}
                   <CopyButton value={node.hostname} className="size-5 [&_svg]:size-3" />
                 </span>

@@ -40,29 +40,31 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
         </DialogHeader>
 
         <div>
-          <div className="flex items-start gap-2 rounded-md border border-hairline-strong bg-background p-3">
-            <pre className="mono min-w-0 flex-1 overflow-x-auto text-xs leading-relaxed break-all whitespace-pre-wrap text-foreground">
+          <div className="flex items-start gap-2 rounded-surface border border-hairline-strong bg-background p-3">
+            <pre className="mono min-w-0 flex-1 overflow-x-auto text-mono break-all whitespace-pre-wrap text-foreground">
               {command}
             </pre>
             <CopyButton value={command} className="-mt-1 -mr-1 shrink-0" />
           </div>
-          <p className="mono mt-2 text-xs text-dim">
+          <p className="mono mt-2 text-mono text-mute">
             {t('nodes.install_expires', { time: formatDateTime(expiresAt, i18n.language) })}
           </p>
         </div>
 
-        <ol className="space-y-1.5 border-t border-hairline pt-3">
+        <ol className="space-y-2 border-t border-hairline pt-4">
           {STEPS.map((step, i) => (
-            <li key={step} className="flex gap-2.5 text-sm text-mute">
-              <span className="mono shrink-0 text-xs leading-[1.45] text-dim">{i + 1}</span>
+            <li key={step} className="flex gap-2.5 text-body text-mute">
+              {/* The counter takes the body size, not the mono one, so its
+                  baseline sits on the step's first line. */}
+              <span className="mono shrink-0 text-mute">{i + 1}</span>
               {t(step)}
             </li>
           ))}
         </ol>
 
         {regenerated && (
-          <p role="alert" className="mono flex items-start gap-2 text-xs text-warn">
-            <span className="mt-1 size-[7px] shrink-0 rounded-full bg-warn" aria-hidden="true" />
+          <p role="alert" className="flex items-start gap-2 text-label text-warn">
+            <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
             {t('nodes.install_regenerate_note')}
           </p>
         )}

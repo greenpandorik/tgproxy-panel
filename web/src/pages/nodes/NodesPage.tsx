@@ -12,8 +12,10 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Panel } from '@/components/common/Panel';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
@@ -47,11 +49,11 @@ function CapacityBar({ count, max }: { count: number; max: number }) {
 
   return (
     <div className="w-16">
-      <span className={cn('mono block text-xs', tight ? 'text-err' : 'text-mute')}>{capacityText(count, max)}</span>
+      <span className={cn('mono block text-mono', tight ? 'text-err' : 'text-mute')}>{capacityText(count, max)}</span>
       {/* No cap configured means there is no proportion to draw; the rule is
           omitted rather than shown permanently empty. */}
       {capped && (
-        <div className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-hairline">
+        <div className="mt-1 h-[3px] w-full overflow-hidden rounded-pill bg-hairline">
           <div className={cn('h-full', tight ? 'bg-err' : 'bg-brand-primary')} style={{ width: `${pct}%` }} />
         </div>
       )}
@@ -67,13 +69,13 @@ function CapacityBar({ count, max }: { count: number; max: number }) {
  * (never reported, or offline) prints as a dash rather than a hollow rule.
  */
 function LoadBar({ percent }: { percent: number | undefined }) {
-  if (percent === undefined) return <span className="mono text-xs text-dim">{DASH}</span>;
+  if (percent === undefined) return <span className="mono text-mono text-dim">{DASH}</span>;
   const tone = loadTone(percent);
   const classes = LOAD_TONE_CLASS[tone];
   return (
     <div className="w-14" data-testid="load-bar" data-tone={tone}>
-      <span className={cn('mono block text-xs', classes.text)}>{Math.round(percent)}%</span>
-      <div className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-hairline">
+      <span className={cn('mono block text-mono', classes.text)}>{Math.round(percent)}%</span>
+      <div className="mt-1 h-[3px] w-full overflow-hidden rounded-pill bg-hairline">
         <div className={cn('h-full', classes.bar)} style={{ width: `${percent}%` }} />
       </div>
     </div>
@@ -110,7 +112,7 @@ function EngineCell({ node }: { node: Node }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <EngineTag engine={node.engine} />
-      <span className={cn('mono text-xs', row.relayTone)}>{row.relay}</span>
+      <span className={cn('mono text-mono', row.relayTone)}>{row.relay}</span>
     </span>
   );
 }
@@ -119,14 +121,14 @@ function EngineCell({ node }: { node: Node }) {
 function DirtyTag({ dirty }: { dirty: boolean }) {
   const { t } = useTranslation();
   if (!dirty) return <span className="text-dim">{DASH}</span>;
-  return <span className="mono rounded-sm border border-warn/35 px-1.5 py-0.5 text-xs text-warn">{t('nodes.dirty_tag')}</span>;
+  return <Badge variant="warn">{t('nodes.dirty_tag')}</Badge>;
 }
 
 /** Hostname with a copy affordance that stays out of the way until the row is pointed at. */
 function HostCell({ hostname }: { hostname: string }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="mono text-xs text-mute">{hostname}</span>
+      <span className="mono text-mono text-mute">{hostname}</span>
       <CopyButton
         value={hostname}
         className="size-6 opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 [&_svg]:size-3"
@@ -185,9 +187,9 @@ function RowActions({ node, onShowInstall, onDelete }: RowActionsProps) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-[11px] text-dim">{label}</dt>
+      <dt className="micro truncate text-mute">{label}</dt>
       {/* No `truncate` here: it would clip the border of a tag sitting in the slot. */}
-      <dd className="mt-0.5 min-w-0 text-xs">{children}</dd>
+      <dd className="mt-1 min-w-0 text-mono">{children}</dd>
     </div>
   );
 }
@@ -200,11 +202,14 @@ function NodeCard({ node, actions }: { node: Node; actions: ReactNode }) {
     <li className="px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link to={`/nodes/${node.id}`} className="flex items-center gap-2 text-sm font-medium text-foreground hover:underline">
+          <Link
+            to={`/nodes/${node.id}`}
+            className="flex items-center gap-2 text-body font-medium text-foreground hover:underline"
+          >
             <StatusBadge status={nodeStatus(node)} hideLabel />
             <span className="truncate">{node.name}</span>
           </Link>
-          <p className="mono mt-0.5 truncate pl-[15px] text-xs text-mute">{node.hostname}</p>
+          <p className="mono mt-1 truncate pl-[15px] text-mono text-mute">{node.hostname}</p>
         </div>
         {actions}
       </div>
@@ -250,17 +255,17 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
       <TableCell>
         <EngineCell node={node} />
       </TableCell>
-      <TableCell className="py-1.5">
+      <TableCell>
         <CapacityBar count={node.profile_count} max={node.max_profiles} />
       </TableCell>
-      <TableCell className="py-1.5">
+      <TableCell>
         <LoadBar percent={row.load?.cpu} />
       </TableCell>
-      <TableCell className="py-1.5">
+      <TableCell>
         <LoadBar percent={row.load?.mem} />
       </TableCell>
-      <TableCell className={cn('mono text-right text-xs', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
-      <TableCell className="text-right text-xs">
+      <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
+      <TableCell className="text-right">
         <DirtyTag dirty={node.dirty} />
       </TableCell>
       {actions && <TableCell className="w-0 text-right">{actions}</TableCell>}
@@ -312,69 +317,71 @@ export function NodesPage() {
 
   return (
     <>
-      <PageHeader
-        title={t('nodes.title')}
-        description={nodes.length > 0 ? t('nodes.header_online', { online, total: nodes.length }) : undefined}
-        actions={
-          <>
-            <HelpButton topic="nodes.list" />
-            {isWriter && (
-              <Button type="button" onClick={() => setCreateOpen(true)}>
-                <Plus />
-                {t('nodes.add')}
-              </Button>
-            )}
-          </>
-        }
-      />
-
-      {isLoading ? (
-        <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
-      ) : nodes.length === 0 ? (
-        <EmptyState
-          title={t('nodes.empty_title')}
-          description={t('nodes.empty_description')}
-          action={
-            isWriter && (
-              <Button type="button" onClick={() => setCreateOpen(true)}>
-                <Plus />
-                {t('nodes.add')}
-              </Button>
-            )
+      <div className="space-y-6">
+        <PageHeader
+          title={t('nodes.title')}
+          description={nodes.length > 0 ? t('nodes.header_online', { online, total: nodes.length }) : undefined}
+          actions={
+            <>
+              <HelpButton topic="nodes.list" />
+              {isWriter && (
+                <Button type="button" onClick={() => setCreateOpen(true)}>
+                  <Plus />
+                  {t('nodes.add')}
+                </Button>
+              )}
+            </>
           }
         />
-      ) : (
-        <Panel>
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('nodes.column_name')}</TableHead>
-                  <TableHead>{t('nodes.column_hostname')}</TableHead>
-                  <TableHead>{t('nodes.column_relay')}</TableHead>
-                  <TableHead>{t('nodes.column_profiles')}</TableHead>
-                  <TableHead>{t('nodes.load_cpu')}</TableHead>
-                  <TableHead>{t('nodes.load_ram')}</TableHead>
-                  <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
-                  <TableHead className="text-right">{t('nodes.column_changes')}</TableHead>
-                  {isWriter && <TableHead className="w-0" />}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {nodes.map((node) => (
-                  <NodeTableRow key={node.id} node={node} actions={rowActions(node)} />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
 
-          <ul className="divide-y divide-hairline md:hidden">
-            {nodes.map((node) => (
-              <NodeCard key={node.id} node={node} actions={rowActions(node)} />
-            ))}
-          </ul>
-        </Panel>
-      )}
+        {isLoading ? (
+          <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
+        ) : nodes.length === 0 ? (
+          <EmptyState
+            title={t('nodes.empty_title')}
+            description={t('nodes.empty_description')}
+            action={
+              isWriter && (
+                <Button type="button" onClick={() => setCreateOpen(true)}>
+                  <Plus />
+                  {t('nodes.add')}
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <Panel className={ENTER_CLASS}>
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('nodes.column_name')}</TableHead>
+                    <TableHead>{t('nodes.column_hostname')}</TableHead>
+                    <TableHead>{t('nodes.column_relay')}</TableHead>
+                    <TableHead>{t('nodes.column_profiles')}</TableHead>
+                    <TableHead>{t('nodes.load_cpu')}</TableHead>
+                    <TableHead>{t('nodes.load_ram')}</TableHead>
+                    <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
+                    <TableHead className="text-right">{t('nodes.column_changes')}</TableHead>
+                    {isWriter && <TableHead className="w-0" />}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {nodes.map((node) => (
+                    <NodeTableRow key={node.id} node={node} actions={rowActions(node)} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <ul className="divide-y divide-hairline md:hidden">
+              {nodes.map((node) => (
+                <NodeCard key={node.id} node={node} actions={rowActions(node)} />
+              ))}
+            </ul>
+          </Panel>
+        )}
+      </div>
 
       <CreateNodeDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={handleCreated} />
 

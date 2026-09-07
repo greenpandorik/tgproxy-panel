@@ -11,11 +11,13 @@ import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DraftBanner } from '@/components/common/DraftBanner';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ENTER_CLASS, enter, enterDelay } from '@/components/ui/motion';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +26,7 @@ import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
 import { formatDateTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { EMPTY_TELEMT_LIMITS_FORM, telemtLimitsFromForm, telemtLimitsToForm, validateTelemtLimitsForm } from '@/lib/units';
 import { capacityText } from '@/pages/nodes/nodeDisplay';
 
@@ -33,7 +36,7 @@ import { isNodeFull } from './NodeCapacityList';
 import { SubscriptionLinkSection } from './SubscriptionLinkSection';
 import { TelemtLimitsFields } from './TelemtLimitsFields';
 
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { LimitFieldName } from './LimitsFields';
 import type { AccessKey, CarrierMode } from '@/api/types';
 import type { TelemtLimitsForm } from '@/lib/units';
@@ -130,12 +133,32 @@ function valuesFromKey(key: AccessKey): FormValues {
   };
 }
 
-/** A titled block inside the drawer, separated from the one above it by a hairline. */
-function Section({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+/**
+ * A titled block inside the drawer, separated from the one above it by a
+ * hairline.
+ *
+ * Its title is the micro role rather than a bolder body line: the sheet's own
+ * title is the only heading here that names a thing, and everything under it is
+ * a group of controls. Chrome-sized uppercase says "this is a group" without
+ * competing with the field labels inside it.
+ */
+function Section({
+  title,
+  actions,
+  className,
+  style,
+  children,
+}: {
+  title: string;
+  actions?: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
   return (
-    <section className="space-y-2 border-t border-hairline pt-3">
-      <div className="flex items-center gap-1.5">
-        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+    <section className={cn('space-y-3 border-t border-hairline pt-4', className)} style={style}>
+      <div className="flex items-center gap-2">
+        <h3 className="micro text-mute">{title}</h3>
         {actions}
       </div>
       {children}
@@ -307,51 +330,65 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <div className="flex items-center gap-1.5 pr-8">
+          <div className="flex items-center gap-2 pr-8">
             <SheetTitle className="truncate">{key ? key.label : t('keys.edit_title')}</SheetTitle>
-            <HelpButton topic="keys.detail" className="-my-1.5" />
+            <HelpButton topic="keys.detail" className="-my-1" />
           </div>
           {key && (
-            <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
+            <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
               <StatusBadge status={key.status} />
-              <span className="mono rounded-sm border border-hairline-strong px-1.5 py-0.5 text-xs text-mute">{key.type}</span>
-              <span className="mono text-xs text-dim">{formatDateTime(key.created_at, i18n.language)}</span>
+              <Badge>{key.type}</Badge>
+              <span className="mono text-mono text-dim">{formatDateTime(key.created_at, i18n.language)}</span>
             </SheetDescription>
           )}
         </SheetHeader>
 
         {keyQuery.isLoading || !key ? (
-          <div className="space-y-3 p-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-24 w-full" />
+          // The silhouette of the form underneath: four label-over-field pairs
+          // and the note box, so the drawer does not reflow when the key lands.
+          <div className="space-y-4 px-4 pb-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ))}
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-16 w-full" />
+            </div>
           </div>
         ) : (
           <div className="space-y-4 px-4 pb-4">
             {revoked && (
-              <p role="alert" className="flex items-start gap-2 text-xs text-destructive">
-                <span className="mt-1 size-[7px] shrink-0 rounded-full bg-destructive" aria-hidden="true" />
+              <p role="alert" className="flex items-start gap-2 text-label text-destructive">
+                <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-destructive" aria-hidden="true" />
                 {t('keys.edit_revoked_notice')}
               </p>
             )}
 
             {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
-            <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
-              <div className="space-y-1.5">
+            <form
+              className={cn(ENTER_CLASS, 'space-y-4')}
+              style={enterDelay(0)}
+              onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+              noValidate
+            >
+              <div className="space-y-2">
                 <Label htmlFor="edit-label">{t('keys.field_label')}</Label>
                 <Input id="edit-label" disabled={locked} {...register('label')} aria-invalid={!!errors.label} />
-                {errors.label && <p className="text-xs text-destructive">{t('common.required')}</p>}
+                {errors.label && <p className="text-label text-destructive">{t('common.required')}</p>}
               </div>
 
               {key.type === 'PERSONAL' && (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="edit-owner">{t('keys.field_owner_label')}</Label>
                   <Input id="edit-owner" disabled={locked} {...register('owner_label')} aria-invalid={!!errors.owner_label} />
                 </div>
               )}
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="edit-carrier">{t('keys.field_carrier_mode')}</Label>
                 <Select
                   value={carrierMode}
@@ -372,13 +409,13 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-mute">{t(`keys.carrier_${carrierSlug(carrierMode)}_desc`)}</p>
+                <p className="text-label text-mute">{t(`keys.carrier_${carrierSlug(carrierMode)}_desc`)}</p>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="edit-expires">{t('keys.field_expires_at')}</Label>
-                  <label className="flex items-center gap-1.5 text-xs text-mute">
+                  <label className="flex items-center gap-2 text-label text-mute">
                     <Controller
                       control={control}
                       name="no_expiry"
@@ -398,18 +435,18 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                   aria-invalid={!!errors.expires_at}
                 />
                 {errors.expires_at && (
-                  <p className="text-xs text-destructive">
+                  <p className="text-label text-destructive">
                     {t(errors.expires_at.message === 'required' ? 'common.required' : 'keys.validation_expires_future')}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="edit-note">{t('keys.field_note')}</Label>
                 <Textarea id="edit-note" rows={2} disabled={locked} {...register('note')} />
               </div>
 
-              <Section title={t('keys.telemt_limits_title')} actions={<HelpButton topic="keys.limits" className="-my-1.5" />}>
+              <Section title={t('keys.telemt_limits_title')} actions={<HelpButton topic="keys.limits" className="-my-1" />}>
                 <Controller
                   control={control}
                   name="telemt_limits"
@@ -424,7 +461,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                 />
               </Section>
 
-              <Section title={t('keys.field_limits_toggle')} actions={<HelpButton topic="keys.limits" className="-my-1.5" />}>
+              <Section title={t('keys.field_limits_toggle')} actions={<HelpButton topic="keys.limits" className="-my-1" />}>
                 <Controller
                   control={control}
                   name="limits"
@@ -449,8 +486,8 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
               </Section>
 
               {errors.root && (
-                <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
-                  <span className="mt-1.5 size-[7px] shrink-0 rounded-full bg-destructive" aria-hidden="true" />
+                <p role="alert" className="flex items-start gap-2 text-body text-destructive">
+                  <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-destructive" aria-hidden="true" />
                   {errors.root.message}
                 </p>
               )}
@@ -464,13 +501,13 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
               )}
             </form>
 
-            <Section title={t('keys.field_nodes')}>
-              <ul className="divide-y divide-hairline rounded-md border border-hairline empty:hidden">
+            <Section title={t('keys.field_nodes')} {...enter(1)}>
+              <ul className="divide-y divide-hairline rounded-control border border-hairline empty:hidden">
                 {key.nodes.map((n) => (
-                  <li key={n.node_id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <li key={n.node_id} className="flex items-center justify-between gap-3 px-3 py-2">
                     <span className="min-w-0">
-                      <span className="block truncate text-sm text-foreground">{n.node_name}</span>
-                      <span className="mono block truncate text-xs text-dim">{n.hostname}</span>
+                      <span className="block truncate text-body text-foreground">{n.node_name}</span>
+                      <span className="mono block truncate text-mono text-dim">{n.hostname}</span>
                     </span>
                     {isWriter && (
                       <Button
@@ -529,18 +566,22 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
               )}
             </Section>
 
-            <KeyStatsSection keyId={key.id} hasTelemtNode={hasTelemtNode} />
+            <div {...enter(2)}>
+              <KeyStatsSection keyId={key.id} hasTelemtNode={hasTelemtNode} />
+            </div>
 
-            <SubscriptionLinkSection
-              key={key.id}
-              keyId={key.id}
-              subscriptionActive={key.subscription_active}
-              isWriter={isWriter}
-              locked={locked}
-            />
+            <div {...enter(3)}>
+              <SubscriptionLinkSection
+                key={key.id}
+                keyId={key.id}
+                subscriptionActive={key.subscription_active}
+                isWriter={isWriter}
+                locked={locked}
+              />
+            </div>
 
             {isWriter && !revoked && (
-              <Section title={t('keys.danger_zone')}>
+              <Section title={t('keys.danger_zone')} {...enter(4)}>
                 <div className="flex flex-wrap gap-2">
                   {key.type === 'SHARED' && (
                     <Button type="button" variant="destructive" size="sm" onClick={() => setRotateOpen(true)}>

@@ -12,13 +12,13 @@ interface LineNumberedTextareaProps {
 }
 
 /*
- * 12.5px mono on 20px rows. The size is a hair below the panel's body text on
- * purpose: source is the one thing here the operator reads a page of at a
- * time, so it gets its own measure rather than the 13px used for prose.
- * The gutter and the textarea must share these exact values or the numbers
- * drift away from their lines.
+ * The mono role's size on 20px rows. Source is the one thing here the operator
+ * reads a page of at a time, so it is set in the machine face like every other
+ * machine value, on a row taller than the role's own leading to keep a page of
+ * code from packing solid. The gutter and the textarea must share these exact
+ * values or the numbers drift away from their lines.
  */
-const ROW_STYLE = { fontSize: '12.5px', lineHeight: '20px' };
+const ROW_STYLE = { fontSize: 'var(--t-mono)', lineHeight: '20px' };
 
 /**
  * Plain `<textarea>` with a CSS-counter line-number gutter kept in sync by
@@ -35,16 +35,16 @@ export function LineNumberedTextarea({ value, onChange, placeholder, className, 
     // default `align-items: stretch`, and without an explicit height here they stretch
     // to fit the *content* (every line-number row), growing the whole page instead of
     // scrolling internally - each side's own `overflow-auto`/`overflow-hidden` only
-    // clips once the box's height is actually bounded.
+    // clips once the box's height is actually bounded. The caller supplies it.
     //
-    // The editor sits on --bg inside its --bg-2 panel: the same recess every
-    // other input in the panel uses, so a page of source reads as a hole in the
-    // surface rather than a second raised card.
-    <div className={cn('mono flex h-[28rem] overflow-hidden bg-background', className)}>
+    // The editor is a control in the shape lock, so it takes the control radius and
+    // the same recessed treatment as every input: --bg inside its --bg-2 panel, a
+    // hairline outline, and a page of source reading as a hole in the surface.
+    <div className={cn('mono flex overflow-hidden rounded-control border border-hairline-strong bg-background', className)}>
       <div
         ref={gutterRef}
         aria-hidden="true"
-        className="tgwp-editor-gutter shrink-0 overflow-hidden border-r border-hairline py-2.5 pr-2.5 pl-3.5 text-right text-dim select-none"
+        className="tgwp-editor-gutter shrink-0 overflow-hidden border-r border-hairline py-2 pr-2 pl-3 text-right text-dim select-none"
         style={ROW_STYLE}
       >
         {Array.from({ length: lineCount }, (_, i) => (
@@ -60,7 +60,7 @@ export function LineNumberedTextarea({ value, onChange, placeholder, className, 
         placeholder={placeholder}
         spellCheck={false}
         style={ROW_STYLE}
-        className="flex-1 resize-none overflow-auto bg-transparent py-2.5 pr-3.5 pl-3 whitespace-pre text-foreground outline-none placeholder:text-dim"
+        className="flex-1 resize-none overflow-auto bg-transparent px-3 py-2 whitespace-pre text-foreground outline-none placeholder:text-mute"
         {...aria}
       />
     </div>

@@ -13,7 +13,7 @@ interface DataTableSkeletonProps {
 
 export function DataTableSkeleton({ columns = 4, rows = 5 }: DataTableSkeletonProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-hairline bg-card">
+    <div className="overflow-x-auto rounded-surface border border-hairline bg-card">
       <Table>
         <TableBody>
           {Array.from({ length: rows }).map((_, r) => (

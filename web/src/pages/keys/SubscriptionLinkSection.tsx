@@ -6,8 +6,10 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { toast } from '@/components/ui/toast';
 import { ApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 interface SubscriptionLinkSectionProps {
   keyId: string;
@@ -61,48 +63,52 @@ export function SubscriptionLinkSection({ keyId, subscriptionActive, isWriter, l
   };
 
   return (
-    <section className="space-y-2 border-t border-hairline pt-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-foreground">{t('keys.subscription_title')}</h3>
+    <section className="space-y-3 border-t border-hairline pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="micro text-mute">{t('keys.subscription_title')}</h3>
         {subscriptionActive && (
-          <span className="mono inline-flex items-center gap-1.5 text-xs text-ok">
-            <span className="size-[7px] shrink-0 rounded-full bg-ok" aria-hidden="true" />
+          <span className="inline-flex items-center gap-2 text-micro text-ok">
+            <span className="size-[7px] shrink-0 rounded-pill bg-ok" aria-hidden="true" />
             {t('keys.subscription_status_active')}
           </span>
         )}
       </div>
-      <p className="text-xs text-mute">{t('keys.subscription_description')}</p>
+      <p className="text-label text-mute">{t('keys.subscription_description')}</p>
 
       {created && (
-        <div className="rounded-md border border-hairline-strong p-3">
-          <p className="mono flex items-start gap-2 text-xs text-warn">
-            <span className="mt-1 size-[7px] shrink-0 rounded-full bg-warn" aria-hidden="true" />
+        <div className={cn(ENTER_CLASS, 'rounded-surface border border-hairline-strong p-4')}>
+          <p className="flex items-start gap-2 text-label text-warn">
+            <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
             {t('keys.subscription_shown_once')}
           </p>
-          <div className="mt-2.5 flex gap-3">
+          <div className="mt-4 flex gap-4">
             <img
               src={created.qrDataUri}
               alt={t('keys.subscription_qr_alt')}
               width={112}
               height={112}
-              className="size-28 shrink-0 rounded-lg bg-white p-3"
+              className="size-28 shrink-0 rounded-surface bg-white p-3"
             />
-            <div className="flex min-w-0 flex-1 items-start gap-1.5">
+            <div className="flex min-w-0 flex-1 items-start gap-2">
               <Input
                 readOnly
                 value={created.url}
-                className="mono h-7 text-xs"
+                className="mono text-mono"
                 onFocus={(e) => e.target.select()}
                 aria-label={t('keys.subscription_title')}
               />
-              <CopyButton value={created.url} label={t('keys.subscription_copy')} className="shrink-0" />
+              <CopyButton
+                value={created.url}
+                label={t('keys.subscription_copy')}
+                className="size-8 shrink-0 border-hairline-strong bg-surface text-foreground hover:bg-elevated"
+              />
             </div>
           </div>
         </div>
       )}
 
       {isWriter && !locked && (
-        <div className="flex flex-wrap gap-2 pt-0.5">
+        <div className="flex flex-wrap gap-2">
           {!subscriptionActive ? (
             <Button
               type="button"
@@ -115,7 +121,13 @@ export function SubscriptionLinkSection({ keyId, subscriptionActive, isWriter, l
             </Button>
           ) : (
             <>
-              <Button type="button" variant="outline" size="sm" disabled={createSub.isPending} onClick={() => setRotateOpen(true)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={createSub.isPending}
+                onClick={() => setRotateOpen(true)}
+              >
                 {t('keys.subscription_rotate')}
               </Button>
               <Button

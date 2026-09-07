@@ -22,7 +22,10 @@ export const gridProps = {
   vertical: false,
 } as const;
 
-const tick = { fontSize: 10 } as const;
+// Axis values are machine output, so they take the mono role's size from the
+// type scale rather than a number of their own. Recharts renders SVG text and
+// cannot take a Tailwind class here, so the token is read directly.
+const tick = { fontSize: 'var(--t-mono)' } as const;
 
 export const xAxisProps = {
   dataKey: 't',
