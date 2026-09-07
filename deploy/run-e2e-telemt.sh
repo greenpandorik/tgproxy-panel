@@ -38,13 +38,16 @@ if ! grep -q '^METRICS_TOKEN=.\+' .env; then
 fi
 # The telemt pins: TELEMT_VERSION and the gnu checksum are what the panel bakes into the
 # install script (and it refuses to render one without them); the musl checksum is what the
-# fakenode-telemt image verifies. A .env left over from before the telemt engine has none of
-# them, so they are taken from .env.example as a set.
+# fakenode-telemt image verifies. They are pins, not local choices, so they are taken from
+# .env.example on every run rather than only when missing: a .env left over from before a
+# pin bump would otherwise make this smoke test quietly exercise the previous release.
 for var in TELEMT_VERSION TELEMT_SHA256_X86_64 TELEMT_SHA256_MUSL_X86_64; do
-	if ! grep -q "^$var=.\+" .env; then
-		log "adding $var from .env.example"
+	want="$(grep -E "^$var=" ../.env.example || true)"
+	[[ -n "$want" ]] || continue
+	if ! grep -qxF "$want" .env; then
+		log "syncing $var from .env.example (${want#*=})"
 		sed -i.bak "/^$var=/d" .env && rm -f .env.bak
-		grep -E "^$var=" ../.env.example >>.env
+		printf '%s\n' "$want" >>.env
 	fi
 done
 

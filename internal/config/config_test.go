@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-// testTelemtSHA is the pinned sha256 of the telemt 3.5.5 x86_64 release tarball, the same
+// testTelemtSHA is the pinned sha256 of the telemt 3.5.6 x86_64 release tarball, the same
 // value .env.example ships.
-const testTelemtSHA = "2d5fb35b526f548bb6ffe7689cdf4f51f4108b97014be1b3b4186a58ab28d605"
+const testTelemtSHA = "8c3a22801dd20854e1d6c20f32539adf8ffb0cb5483fc1113bbeb5d92ebdb61b"
 
 func env(m map[string]string) func(string) string {
 	return func(k string) string { return m[k] }
