@@ -308,6 +308,10 @@ The `?` in the header of every page and dialog opens a help panel on the right: 
 
 ![Form draft](screenshots/draft-banner.png)
 
+On the node page, Overview tab, the "Telegram data centres" panel shows how this node sees Telegram's network: per data centre, the latency telemt measures itself with its health checks (a moving average, not a one-off probe at start), the IPv4/IPv6 preference, the health of the direct route and a connection counter. Latency is green under 150 ms, amber under 400, red above. The Statistics tab plots the same latencies over time, the nodes list has a "Telegram" column with the overall latency, and the dashboard tile "Telegram latency" averages it over the online nodes. Nodes on the older tproxy engine have no such data.
+
+![Telegram data centres](screenshots/node-dcs.png)
+
 ## 11. Branding
 
 Settings → Branding: name, logo, favicon, colours, default theme, login and footer texts, custom CSS. Changes apply immediately without a rebuild. Several profiles can be kept and switched.

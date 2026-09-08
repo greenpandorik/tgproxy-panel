@@ -195,3 +195,101 @@ func TestNodeListHealthMatchesHealthEndpoint(t *testing.T) {
 		t.Fatalf("list health leaked the stored field names: %+v", got)
 	}
 }
+
+// TestNodeListHealthCarriesDcConnectivity: the DC fields the heartbeat stores come out of the
+// list's `health` in the spec's snake_case names, with an unmeasured DC kept known=false.
+func TestNodeListHealthCarriesDcConnectivity(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	raw, _ := json.Marshal(nodedriver.HealthReport{
+		RelayActive: true, DcDataAvailable: true, UpstreamHealthy: true, UpstreamFails: 2, EffectiveLatencyMs: 41.25,
+		ConnectSuccessTotal: 58, ConnectFailTotal: 1, UpstreamLastCheckAgeSecs: 29,
+		DCs: []nodedriver.DcLatency{
+			{DC: 1, LatencyMs: 197.9, Known: true, IPPreference: "prefer_v4"},
+			{DC: 4, Known: false, IPPreference: "prefer_v6"},
+		},
+	})
+	if err := h.Store.Q.SetNodeHeartbeat(t.Context(), db.SetNodeHeartbeatParams{ID: n.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	var list struct {
+		Items []struct {
+			Health map[string]any `json:"health"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/nodes"), &list)
+	if len(list.Items) != 1 {
+		t.Fatalf("list %+v", list)
+	}
+	got := list.Items[0].Health
+	if got["dc_data_available"] != true || got["upstream_healthy"] != true || got["upstream_fails"] != 2.0 ||
+		got["effective_latency_ms"] != 41.25 || got["connect_success_total"] != 58.0 || got["connect_fail_total"] != 1.0 ||
+		got["upstream_last_check_age_secs"] != 29.0 {
+		t.Fatalf("list health %+v", got)
+	}
+	dcs, _ := got["dcs"].([]any)
+	if len(dcs) != 2 {
+		t.Fatalf("dcs %+v", got["dcs"])
+	}
+	d1, _ := dcs[0].(map[string]any)
+	if d1["dc"] != 1.0 || d1["latency_ms"] != 197.9 || d1["known"] != true || d1["ip_preference"] != "prefer_v4" {
+		t.Fatalf("dc 1 %+v", d1)
+	}
+	d4, _ := dcs[1].(map[string]any)
+	if d4["dc"] != 4.0 || d4["known"] != false || d4["latency_ms"] != 0.0 || d4["ip_preference"] != "prefer_v6" {
+		t.Fatalf("dc 4 %+v", d4)
+	}
+	if _, pascal := got["DCs"]; pascal {
+		t.Fatalf("list health leaked the stored field names: %+v", got)
+	}
+	// The single-node view goes through the same projection.
+	var one struct {
+		Health map[string]any `json:"health"`
+	}
+	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &one)
+	if one.Health["dc_data_available"] != true || one.Health["effective_latency_ms"] != 41.25 {
+		t.Fatalf("node health %+v", one.Health)
+	}
+}
+
+// A tproxy node's heartbeat never carries DC data; the list must say so explicitly (false, with
+// an empty dcs list) rather than omit the fields, so the SPA has one shape for both engines.
+func TestNodeListHealthTproxyHasNoDcData(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	var created struct {
+		Node nodeResp `json:"node"`
+	}
+	resp := c.Post("/api/v1/nodes", map[string]string{"name": "t1.test", "hostname": "t1.test", "acme_email": "a@b.co", "engine": "tproxy"})
+	if resp.StatusCode != 201 {
+		t.Fatalf("create tproxy node %d", resp.StatusCode)
+	}
+	c.JSON(resp, &created)
+	n := created.Node
+	raw, _ := json.Marshal(nodedriver.HealthReport{RelayActive: true, CPUPercent: 1})
+	if err := h.Store.Q.SetNodeHeartbeat(t.Context(), db.SetNodeHeartbeatParams{ID: n.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	var list struct {
+		Items []struct {
+			Engine string         `json:"engine"`
+			Health map[string]any `json:"health"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/nodes"), &list)
+	if len(list.Items) != 1 || list.Items[0].Engine != "tproxy" {
+		t.Fatalf("list %+v", list)
+	}
+	got := list.Items[0].Health
+	v, present := got["dc_data_available"]
+	if !present || v != false {
+		t.Fatalf("tproxy health must carry dc_data_available=false: %+v", got)
+	}
+	dcs, ok := got["dcs"].([]any)
+	if !ok || len(dcs) != 0 {
+		t.Fatalf("tproxy health dcs must be an empty list: %+v", got["dcs"])
+	}
+	if got["effective_latency_ms"] != 0.0 {
+		t.Fatalf("tproxy health %+v", got)
+	}
+}

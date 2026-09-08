@@ -554,6 +554,7 @@ type NodeStatsSnapshot struct {
 	CpuPercent      float32   `json:"cpu_percent"`
 	MemUsedPercent  float32   `json:"mem_used_percent"`
 	DiskUsedPercent float32   `json:"disk_used_percent"`
+	DcLatency       []byte    `json:"dc_latency"`
 }
 
 type Profile struct {

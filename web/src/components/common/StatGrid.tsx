@@ -11,10 +11,10 @@ export type StatGridTile = StatTileProps & { id: string };
 /**
  * The dashboard's row of facts.
  *
- * Four columns, not five. Eleven tiles land 4 + 4 + 3 either way - measured,
- * the grid is the same height and the chart below it starts at the same y -
- * but five columns leave the last row four fifths empty, which reads as a
- * layout that ran out of content rather than as a set of eleven facts.
+ * Four columns, not five. Twelve tiles land 4 + 4 + 4, a grid with no tail;
+ * five columns would give 5 + 5 + 2 - the same three rows, so the chart below
+ * starts at the same y, but a last row three fifths empty, which reads as a
+ * layout that ran out of content rather than as a set of twelve facts.
  * Below `lg` it drops to three and below `sm` to two, because a display-role
  * number and a label do not survive a third of a phone.
  *

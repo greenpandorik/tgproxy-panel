@@ -1,4 +1,4 @@
-import { Gauge, RefreshCw, Sigma } from 'lucide-react';
+import { Gauge, Globe, RefreshCw, Sigma } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -16,10 +16,14 @@ import { ApiError } from '@/lib/api';
 import { seriesPalette } from '@/lib/chart';
 import { cn } from '@/lib/utils';
 
+import { dcLatencyRows } from './dcDisplay';
+
 import type { MonitoringRange } from '@/api/monitoring';
+import type { NodeEngine } from '@/api/types';
 
 // recharts stays out of the shell bundle - only the chart components import it.
 const LoadChart = lazy(() => import('@/pages/monitoring/LoadChart').then((m) => ({ default: m.LoadChart })));
+const DcLatencyChart = lazy(() => import('./DcLatencyChart').then((m) => ({ default: m.DcLatencyChart })));
 
 const DEFAULT_BRAND_PRIMARY = '#3b82f6';
 const DEFAULT_BRAND_ACCENT = '#22c55e';
@@ -78,6 +82,62 @@ function NodeLoadPanel({ nodeId }: { nodeId: string }) {
         ) : (
           <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
             <LoadChart points={points} colors={colors} />
+          </Suspense>
+        )}
+      </PanelBody>
+    </Panel>
+  );
+}
+
+/**
+ * The node's latency to each Telegram datacenter over time, from the same
+ * snapshot series as the load chart and with the same range switch in the
+ * same corner. The two panels ask for the same query key, so react-query
+ * fetches the window once for both. tproxy reports no DC figures, so on a
+ * tproxy node the panel says so and asks for nothing.
+ */
+function NodeDcLatencyPanel({ nodeId, engine }: { nodeId: string; engine: NodeEngine }) {
+  const { t } = useTranslation();
+  const [range, setRange] = useState<MonitoringRange>('24h');
+  const telemt = engine === 'telemt';
+  // An empty id disables the query, which is exactly what a tproxy node wants.
+  const seriesQuery = useNodeSeries(telemt ? nodeId : '', range);
+
+  const chart = useMemo(() => dcLatencyRows(seriesQuery.data?.points ?? []), [seriesQuery.data]);
+
+  return (
+    <Panel>
+      <PanelHeader
+        icon={Globe}
+        title={t('nodes.dc_latency_title')}
+        actions={
+          telemt && (
+            <SegmentedControl
+              label={t('monitoring.range_label')}
+              value={range}
+              onChange={setRange}
+              options={MONITORING_RANGES.map((r) => ({ value: r, label: t(`monitoring.range_${r}`) }))}
+            />
+          )
+        }
+      />
+      <PanelBody>
+        {!telemt ? (
+          <PanelEmpty>{t('nodes.dcs_unavailable_engine')}</PanelEmpty>
+        ) : seriesQuery.isLoading ? (
+          <Skeleton className="h-[152px] w-full" />
+        ) : seriesQuery.isError ? (
+          <ErrorState
+            inset
+            message={t('common.error_generic')}
+            retryLabel={t('common.refresh')}
+            onRetry={() => void seriesQuery.refetch()}
+          />
+        ) : chart.rows.length === 0 ? (
+          <PanelEmpty>{t('nodes.dc_latency_empty')}</PanelEmpty>
+        ) : (
+          <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
+            <DcLatencyChart dcs={chart.dcs} rows={chart.rows} />
           </Suspense>
         )}
       </PanelBody>
@@ -159,11 +219,12 @@ function NodeCountersPanel({ nodeId, online }: { nodeId: string; online: boolean
   );
 }
 
-/** The node's statistics tab: its load history first, then the relay's own counters. */
-export function NodeStatsTab({ nodeId, online }: { nodeId: string; online: boolean }) {
+/** The node's statistics tab: its load history, its latency to Telegram, then the relay's own counters. */
+export function NodeStatsTab({ nodeId, online, engine }: { nodeId: string; online: boolean; engine: NodeEngine }) {
   return (
     <div className={cn(ENTER_CLASS, 'space-y-4')}>
       <NodeLoadPanel nodeId={nodeId} />
+      <NodeDcLatencyPanel nodeId={nodeId} engine={engine} />
       <NodeCountersPanel nodeId={nodeId} online={online} />
     </div>
   );

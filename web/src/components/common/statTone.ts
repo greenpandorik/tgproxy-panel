@@ -17,6 +17,8 @@
  * The whole rule lives here, in one pure function, rather than as a tone
  * prop guessed at each of the eleven call sites.
  */
+import { dcTone } from '@/pages/nodes/dcDisplay';
+
 export type StatTone = 'neutral' | 'ok' | 'warn' | 'err' | 'info';
 
 /**
@@ -43,7 +45,9 @@ export type TileFact =
   /** Keys waiting for the next push. Not a fault, but not nothing either. */
   | { kind: 'keys_pending'; count: number }
   /** Average CPU across the online nodes, or null when nothing is reporting. */
-  | { kind: 'avg_load'; percent: number | null };
+  | { kind: 'avg_load'; percent: number | null }
+  /** Mean latency to Telegram across the nodes that report one, or null when none does. */
+  | { kind: 'dc_latency'; ms: number | null };
 
 export function statTone(fact: TileFact): StatTone {
   switch (fact.kind) {
@@ -65,6 +69,10 @@ export function statTone(fact: TileFact): StatTone {
       if (fact.percent >= LOAD_ERR_PERCENT) return 'err';
       if (fact.percent >= LOAD_WARN_PERCENT) return 'warn';
       return 'ok';
+    case 'dc_latency':
+      // The same function the DC panel and the nodes list read, so the tile
+      // that averages their figures cannot call slow what they call quiet.
+      return dcTone(fact.ms);
     case 'stateless':
     default:
       return 'neutral';

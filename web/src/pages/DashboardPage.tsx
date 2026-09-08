@@ -5,6 +5,7 @@ import {
   Bell,
   Clock,
   Gauge,
+  Globe,
   KeyRound,
   Plus,
   Radio,
@@ -36,6 +37,7 @@ import { ApiError } from '@/lib/api';
 import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
 import { formatCompactAge, formatCompactDuration, formatNumber, splitBytes } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { meanDcLatency } from '@/pages/nodes/dcDisplay';
 import { DASH, nodeLoad } from '@/pages/nodes/nodeDisplay';
 
 import { AlertsSection } from './dashboard/AlertsSection';
@@ -288,6 +290,14 @@ export function DashboardPage() {
     return cpus.reduce((sum, v) => sum + v, 0) / cpus.length;
   }, [nodes]);
 
+  /**
+   * The fleet's latency to Telegram: the mean over the nodes that report one.
+   * Same exclusions as the load average - an offline node's last figure and
+   * a tproxy node's absence of one would both drag the mean somewhere no
+   * node actually is. Null when no node reports.
+   */
+  const dcLatency = useMemo(() => meanDcLatency(nodes), [nodes]);
+
   const recentJobs = (summary?.recent_jobs ?? []).slice(0, RECENT_JOBS_LIMIT);
   // Memoised rather than derived inline: the tile list below depends on it,
   // and a fresh [] on every render would rebuild eleven tiles for nothing.
@@ -298,12 +308,12 @@ export function DashboardPage() {
   const failed = summaryQuery.isError || nodesQuery.isError;
 
   /*
-   * The eleven facts, in the order the mockup reads them: the fleet, then
+   * The twelve facts, in the order the mockup reads them: the fleet, then
    * what is on it, then what is moving through it, then what wants
-   * attention. Each tile's tone is decided by `statTone` from the fact
-   * itself, never set here - a tile is neutral until its number means
-   * something is wrong, which is what makes the one coloured tile on a
-   * healthy page worth looking at.
+   * attention, and last how far Telegram is. Each tile's tone is decided by
+   * `statTone` from the fact itself, never set here - a tile is neutral
+   * until its number means something is wrong, which is what makes the one
+   * coloured tile on a healthy page worth looking at.
    */
   const tiles = useMemo((): StatGridTile[] => {
     const num = (v: number) => formatNumber(v, i18n.language);
@@ -427,9 +437,21 @@ export function DashboardPage() {
         to: '/monitoring',
         loading,
       },
+      {
+        id: 'dc-latency',
+        icon: Globe,
+        tone: statTone({ kind: 'dc_latency', ms: dcLatency }),
+        label: t('dashboard.tile_dc_latency'),
+        value: dcLatency === null ? DASH : num(Math.round(dcLatency)),
+        unit: dcLatency === null ? undefined : t('common.ms'),
+        context: t('dashboard.tile_dc_latency_context'),
+        to: '/nodes',
+        loading,
+      },
     ];
   }, [
     avgLoad,
+    dcLatency,
     i18n.language,
     keysActive,
     keysPending,
@@ -507,7 +529,7 @@ export function DashboardPage() {
       {/* The three blocks arrive in the order they are read: the numbers, the
           shape of the last day, then the fleet itself. The grid carries no
           entrance of its own - each tile brings its own staggered one, and
-          the loading state is the same eleven tiles with skeletons in them,
+          the loading state is the same twelve tiles with skeletons in them,
           so the row does not change shape when the data lands. */}
       <StatGrid tiles={tiles} />
 

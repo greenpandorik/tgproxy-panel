@@ -202,7 +202,7 @@ export function NodeDetailPage() {
             <NodeSiteTab nodeId={node.id} />
           </TabsContent>
           <TabsContent value="stats">
-            <NodeStatsTab nodeId={node.id} online={node.online} />
+            <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />
           </TabsContent>
         </Tabs>
       </div>

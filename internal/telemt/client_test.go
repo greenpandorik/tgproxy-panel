@@ -337,3 +337,69 @@ func TestAPIErrorNeverEchoesTheToken(t *testing.T) {
 		t.Fatalf("error leaks the token: %v", err)
 	}
 }
+
+// upstreamsBody is the shape a production telemt 3.5.7 node answers on GET /v1/stats/upstreams,
+// trimmed to the fields the panel reads plus a few it must ignore. DC 4 has no EMA yet (null).
+const upstreamsBody = `{
+  "enabled": true,
+  "zero": {"connect_success_total": 58, "connect_fail_total": 0, "unrelated": 1},
+  "upstreams": [{
+    "route_kind": "direct", "healthy": true, "fails": 0, "last_check_age_secs": 29,
+    "effective_latency_ms": 41.25, "weight": 1,
+    "dc": [
+      {"dc": 1, "latency_ema_ms": 197.9, "ip_preference": "prefer_v4"},
+      {"dc": 2, "latency_ema_ms": 36.5, "ip_preference": "prefer_v4"},
+      {"dc": 4, "latency_ema_ms": null, "ip_preference": "prefer_v6"}
+    ]
+  }]
+}`
+
+func TestUpstreamsStatsDecodesDcsAndKeepsNullLatencyUnknown(t *testing.T) {
+	c, calls := newServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/stats/upstreams" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		ok(w, upstreamsBody)
+	})
+	st, err := c.UpstreamsStats(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if (*calls)[0].method != http.MethodGet || (*calls)[0].auth != "tok-123" {
+		t.Fatalf("call: %+v", (*calls)[0])
+	}
+	if !st.Enabled || st.Zero.ConnectSuccessTotal != 58 || st.Zero.ConnectFailTotal != 0 {
+		t.Fatalf("top level: %+v", st)
+	}
+	if len(st.Upstreams) != 1 {
+		t.Fatalf("upstreams: %+v", st.Upstreams)
+	}
+	u := st.Upstreams[0]
+	if u.RouteKind != "direct" || !u.Healthy || u.Fails != 0 || u.LastCheckAgeSecs != 29 || u.EffectiveLatencyMs != 41.25 {
+		t.Fatalf("upstream: %+v", u)
+	}
+	if len(u.DC) != 3 || u.DC[0].DC != 1 || u.DC[0].IPPreference != "prefer_v4" {
+		t.Fatalf("dc list: %+v", u.DC)
+	}
+	if u.DC[0].LatencyEmaMs == nil || *u.DC[0].LatencyEmaMs != 197.9 || u.DC[1].LatencyEmaMs == nil || *u.DC[1].LatencyEmaMs != 36.5 {
+		t.Fatalf("known latencies: %+v %+v", u.DC[0], u.DC[1])
+	}
+	// A null EMA is "not measured yet" and must stay distinguishable from a measured 0 ms.
+	if u.DC[2].LatencyEmaMs != nil {
+		t.Fatalf("null latency_ema_ms must decode as nil, got %v", *u.DC[2].LatencyEmaMs)
+	}
+	if u.DC[2].DC != 4 || u.DC[2].IPPreference != "prefer_v6" {
+		t.Fatalf("dc 4: %+v", u.DC[2])
+	}
+}
+
+func TestUpstreamsStatsDisabled(t *testing.T) {
+	c, _ := newServer(t, func(w http.ResponseWriter, r *http.Request) {
+		ok(w, `{"enabled":false,"upstreams":[]}`)
+	})
+	st, err := c.UpstreamsStats(context.Background())
+	if err != nil || st.Enabled || len(st.Upstreams) != 0 {
+		t.Fatalf("disabled: %+v %v", st, err)
+	}
+}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -103,9 +104,20 @@ func (s *Server) handleMonitoringSeries(w http.ResponseWriter, r *http.Request) 
 			"t": snap.TakenAt, "sessions_live": snap.SessionsLive, "streams_live": snap.StreamsLive,
 			"bytes_up": snap.BytesUp, "bytes_down": snap.BytesDown,
 			"cpu_percent": snap.CpuPercent, "mem_used_percent": snap.MemUsedPercent, "disk_used_percent": snap.DiskUsedPercent,
+			"dc_latency": dcLatencyRaw(snap.DcLatency),
 		})
 	}
 	writeJSON(w, 200, map[string]any{"points": points})
+}
+
+// dcLatencyRaw passes a snapshot's dc_latency object through as stored. The column is NOT NULL
+// DEFAULT '{}', so an empty value can only come from a row read before the column existed in
+// the caller's view; it is emitted as an empty object so the client never sees null.
+func dcLatencyRaw(b []byte) json.RawMessage {
+	if len(b) == 0 {
+		return json.RawMessage("{}")
+	}
+	return json.RawMessage(b)
 }
 
 type monitoringNodeJSON struct {
@@ -125,6 +137,8 @@ type monitoringPointJSON struct {
 	CPUPercent      float32 `json:"cpu_percent"`
 	MemUsedPercent  float32 `json:"mem_used_percent"`
 	DiskUsedPercent float32 `json:"disk_used_percent"`
+	// DcLatency is {"<dc>": <ms>}, per DC the mean over the bucket's rows that measured it.
+	DcLatency json.RawMessage `json:"dc_latency"`
 }
 
 // overviewSample is one stats sample feeding the rate series, whether it came from a raw
@@ -139,6 +153,7 @@ type overviewSample struct {
 	BytesDown    int64
 
 	CPUPercent, MemUsedPercent, DiskUsedPercent float32
+	DcLatency                                   []byte
 }
 
 // overviewSamples reads the snapshots backing the overview. Above bucketStepThreshold it
@@ -158,6 +173,7 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 				NodeID: row.NodeID, T: row.TakenAt, SessionsLive: row.SessionsLive,
 				StreamsLive: row.StreamsLive, BytesUp: row.BytesUp, BytesDown: row.BytesDown,
 				CPUPercent: row.CpuPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
+				DcLatency: row.DcLatency,
 			})
 		}
 		return out, nil
@@ -172,6 +188,7 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 			NodeID: row.NodeID, T: row.TakenAt, SessionsLive: row.SessionsLive,
 			StreamsLive: row.StreamsLive, BytesUp: row.BytesUp, BytesDown: row.BytesDown,
 			CPUPercent: row.CpuPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
+			DcLatency: row.DcLatency,
 		})
 	}
 	return out, nil
@@ -235,6 +252,7 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 			p := monitoringPointJSON{
 				T: row.T, SessionsLive: row.SessionsLive, StreamsLive: row.StreamsLive,
 				CPUPercent: row.CPUPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
+				DcLatency: dcLatencyRaw(row.DcLatency),
 			}
 			if i > 0 {
 				prev := rows[i-1]

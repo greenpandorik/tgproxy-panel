@@ -40,12 +40,12 @@ export interface HelpTopicDef {
 
 export const HELP_TOPICS = {
   dashboard: {
-    fields: ['nodes_online', 'keys_active', 'sessions', 'traffic', 'chart', 'alerts', 'jobs'],
+    fields: ['nodes_online', 'keys_active', 'sessions', 'traffic', 'chart', 'alerts', 'jobs', 'dc_latency'],
     docs: 'monitoring',
   },
 
   'nodes.list': {
-    fields: ['status', 'engine', 'relay', 'profiles', 'load', 'heartbeat', 'changes', 'actions'],
+    fields: ['status', 'engine', 'relay', 'profiles', 'load', 'telegram', 'heartbeat', 'changes', 'actions'],
     docs: 'install',
   },
   'nodes.create': {
@@ -78,6 +78,10 @@ export const HELP_TOPICS = {
   'nodes.listeners': {
     fields: ['tls_domain', 'classic_port', 'public_ip'],
     docs: 'engine',
+  },
+  'nodes.dcs': {
+    fields: ['route', 'connections', 'latency', 'ip_preference'],
+    docs: 'monitoring',
   },
 
   'keys.list': {

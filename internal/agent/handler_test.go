@@ -14,6 +14,10 @@ func TestHealthReport(t *testing.T) {
 	if !rep.RelayActive || rep.MtproxyActive || !rep.CaddyActive || !rep.Healthz || !rep.Readyz || rep.ProfileCount != 1 || rep.TproxyVersion != "abc" {
 		t.Fatalf("bad report %+v", rep)
 	}
+	// tproxy has no view of Telegram's datacenters: the DC fields stay zero and are marked so.
+	if rep.DcDataAvailable || len(rep.Dcs) != 0 || rep.UpstreamHealthy || rep.EffectiveLatencyMs != 0 || rep.ConnectSuccessTotal != 0 {
+		t.Fatalf("tproxy report must carry no DC data: %+v", rep)
+	}
 }
 
 func TestHandleGetProfilesAndMetricsAndStats(t *testing.T) {

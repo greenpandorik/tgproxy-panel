@@ -424,11 +424,20 @@ func (s *Server) handleNodeHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func healthJSON(h nodedriver.HealthReport) map[string]any {
+	// dcs is always a list, never null: the SPA iterates it for every engine.
+	dcs := make([]map[string]any, 0, len(h.DCs))
+	for _, d := range h.DCs {
+		dcs = append(dcs, map[string]any{"dc": d.DC, "latency_ms": d.LatencyMs, "known": d.Known, "ip_preference": d.IPPreference})
+	}
 	return map[string]any{
 		"relay_active": h.RelayActive, "mtproxy_active": h.MTProxyActive, "caddy_active": h.CaddyActive,
 		"healthz": h.Healthz, "readyz": h.Readyz, "tproxy_version": h.TProxyVersion, "agent_version": h.AgentVersion,
 		"uptime_seconds": h.UptimeSeconds, "cpu_percent": h.CPUPercent, "mem_used_percent": h.MemUsedPercent,
 		"disk_used_percent": h.DiskUsedPercent, "profile_count": h.ProfileCount,
+		"dcs": dcs, "upstream_healthy": h.UpstreamHealthy, "upstream_fails": h.UpstreamFails,
+		"effective_latency_ms": h.EffectiveLatencyMs, "connect_success_total": h.ConnectSuccessTotal,
+		"connect_fail_total": h.ConnectFailTotal, "upstream_last_check_age_secs": h.UpstreamLastCheckAgeSecs,
+		"dc_data_available": h.DcDataAvailable,
 	}
 }
 

@@ -37,8 +37,11 @@ type fakeTelemt struct {
 	reloadStates []string
 	ready        bool
 	failOn       string // "METHOD path" prefix that must answer 500
-	authSeen     map[string]bool
-	srv          *httptest.Server
+	// upstreams is what GET /v1/stats/upstreams answers; nil serves defaultUpstreams, the
+	// shape a production telemt 3.5.7 node returns (DC 4 has no EMA yet: null).
+	upstreams map[string]any
+	authSeen  map[string]bool
+	srv       *httptest.Server
 }
 
 func newFakeTelemt(t *testing.T, decoyDir string) *fakeTelemt {
@@ -230,6 +233,12 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 			"totals": map[string]any{"current_connections": 7, "active_users": 1},
 			"top":    map[string]any{"limit": 10, "by_connections": []any{map[string]any{"username": "k1", "current_connections": 5, "total_octets": 4096}}},
 		}})
+	case route == "GET /v1/stats/upstreams":
+		if f.upstreams != nil {
+			f.ok(w, f.upstreams)
+			return
+		}
+		f.ok(w, defaultUpstreams())
 	case r.URL.Path == "/metrics":
 		_, _ = w.Write([]byte("telemt_connections_total 5\n"))
 	default:
@@ -687,6 +696,95 @@ func TestTelemtHealthWhenTheAPIIsUnreachable(t *testing.T) {
 	}
 	if rep.AgentVersion != Version {
 		t.Fatalf("agent version: %q", rep.AgentVersion)
+	}
+}
+
+// defaultUpstreams is GET /v1/stats/upstreams as a production telemt 3.5.7 node answers it,
+// including fields the panel ignores. DC 4 carries a null EMA: telemt has not measured it yet.
+func defaultUpstreams() map[string]any {
+	return map[string]any{
+		"enabled": true,
+		"zero":    map[string]any{"connect_success_total": 58, "connect_fail_total": 1, "unrelated": 7},
+		"upstreams": []any{map[string]any{
+			"route_kind": "direct", "healthy": true, "fails": 2, "last_check_age_secs": 29,
+			"effective_latency_ms": 41.25, "weight": 1,
+			"dc": []any{
+				map[string]any{"dc": 1, "latency_ema_ms": 197.9, "ip_preference": "prefer_v4"},
+				map[string]any{"dc": 2, "latency_ema_ms": 36.5, "ip_preference": "prefer_v4"},
+				map[string]any{"dc": 4, "latency_ema_ms": nil, "ip_preference": "prefer_v6"},
+			},
+		}},
+	}
+}
+
+func (f *fakeTelemt) setUpstreams(data map[string]any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.upstreams = data
+}
+
+func TestTelemtHealthCarriesDcConnectivity(t *testing.T) {
+	ex := &fakeExec{active: map[string]bool{"telemt": true, "caddy": true}}
+	h, _, _ := telemtHandler(t, ex)
+	rep := h.Health(context.Background())
+	if !rep.DcDataAvailable {
+		t.Fatalf("dc data must be available when telemt serves /v1/stats/upstreams: %+v", rep)
+	}
+	if !rep.UpstreamHealthy || rep.UpstreamFails != 2 || rep.EffectiveLatencyMs != 41.25 || rep.UpstreamLastCheckAgeSecs != 29 {
+		t.Fatalf("upstream fields: %+v", rep)
+	}
+	if rep.ConnectSuccessTotal != 58 || rep.ConnectFailTotal != 1 {
+		t.Fatalf("connect counters: %+v", rep)
+	}
+	if len(rep.Dcs) != 3 {
+		t.Fatalf("dcs: %+v", rep.Dcs)
+	}
+	if d := rep.Dcs[0]; d.Dc != 1 || d.LatencyMs != 197.9 || !d.Known || d.IpPreference != "prefer_v4" {
+		t.Fatalf("dc 1: %+v", d)
+	}
+	if d := rep.Dcs[1]; d.Dc != 2 || d.LatencyMs != 36.5 || !d.Known {
+		t.Fatalf("dc 2: %+v", d)
+	}
+	// null latency_ema_ms is "not measured yet": known=false and never a made-up 0 ms reading.
+	if d := rep.Dcs[2]; d.Dc != 4 || d.Known || d.LatencyMs != 0 || d.IpPreference != "prefer_v6" {
+		t.Fatalf("dc 4 with a null EMA: %+v", d)
+	}
+	// The rest of the report is untouched by the extra call.
+	if !rep.Healthz || !rep.Readyz || rep.TproxyVersion != "telemt 3.5.5" || rep.ProfileCount != 1 {
+		t.Fatalf("base report: %+v", rep)
+	}
+}
+
+func TestTelemtHealthWhenUpstreamStatsFail(t *testing.T) {
+	ex := &fakeExec{active: map[string]bool{"telemt": true, "caddy": true}}
+	h, _, ft := telemtHandler(t, ex)
+	ft.mu.Lock()
+	ft.failOn = "GET /v1/stats/upstreams"
+	ft.mu.Unlock()
+	rep := h.Health(context.Background())
+	if rep.DcDataAvailable || len(rep.Dcs) != 0 || rep.UpstreamHealthy || rep.EffectiveLatencyMs != 0 {
+		t.Fatalf("a failed stats call must leave the DC fields empty and unavailable: %+v", rep)
+	}
+	// The heartbeat itself is intact: the stats call is best-effort.
+	if !rep.RelayActive || !rep.Healthz || !rep.Readyz || rep.TproxyVersion != "telemt 3.5.5" || rep.ProfileCount != 1 {
+		t.Fatalf("base report must survive a stats failure: %+v", rep)
+	}
+}
+
+func TestTelemtHealthWhenUpstreamStatsDisabled(t *testing.T) {
+	ex := &fakeExec{active: map[string]bool{"telemt": true, "caddy": true}}
+	h, _, ft := telemtHandler(t, ex)
+	// telemt still fills the counters when tracking is off; none of it may be reported.
+	ft.setUpstreams(map[string]any{
+		"enabled": false, "zero": map[string]any{"connect_success_total": 5, "connect_fail_total": 0},
+		"upstreams": []any{map[string]any{"route_kind": "direct", "healthy": true, "dc": []any{map[string]any{"dc": 1, "latency_ema_ms": 10.0}}}},
+	})
+	rep := h.Health(context.Background())
+	if rep.DcDataAvailable || len(rep.Dcs) != 0 || rep.ConnectSuccessTotal != 0 || rep.UpstreamHealthy {
+		t.Fatalf("enabled=false must report no DC data at all: %+v", rep)
+	}
+	if !rep.Healthz || rep.ProfileCount != 1 {
+		t.Fatalf("base report: %+v", rep)
 	}
 }
 

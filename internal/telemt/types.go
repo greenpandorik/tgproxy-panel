@@ -196,3 +196,35 @@ type ConnectionsSummary struct {
 	Reason  string                     `json:"reason,omitempty"`
 	Data    *ConnectionsSummaryPayload `json:"data"`
 }
+
+// UpstreamDc is one Telegram datacenter in an upstream's health view. LatencyEmaMs is nil
+// while telemt has not measured that DC yet (the API sends null), which a caller must keep
+// apart from a measured 0 ms.
+type UpstreamDc struct {
+	DC           int      `json:"dc"`
+	LatencyEmaMs *float64 `json:"latency_ema_ms"`
+	IPPreference string   `json:"ip_preference"`
+}
+
+// Upstream is one route to Telegram as telemt's upstream health check sees it. The panel only
+// ever configures a direct route, so it reads the first entry.
+type Upstream struct {
+	RouteKind          string       `json:"route_kind"`
+	Healthy            bool         `json:"healthy"`
+	Fails              int          `json:"fails"`
+	LastCheckAgeSecs   int64        `json:"last_check_age_secs"`
+	EffectiveLatencyMs float64      `json:"effective_latency_ms"`
+	DC                 []UpstreamDc `json:"dc"`
+}
+
+// UpstreamsStats is GET /v1/stats/upstreams, trimmed to what the panel shows. Enabled is false
+// when telemt is not tracking upstream health at all; Zero carries the process-wide connect
+// counters towards Telegram.
+type UpstreamsStats struct {
+	Enabled bool `json:"enabled"`
+	Zero    struct {
+		ConnectSuccessTotal int64 `json:"connect_success_total"`
+		ConnectFailTotal    int64 `json:"connect_fail_total"`
+	} `json:"zero"`
+	Upstreams []Upstream `json:"upstreams"`
+}

@@ -1,13 +1,15 @@
+-- InsertSnapshot's dc_latency is coalesced so a caller with no DC data (a tproxy node, or a
+-- Go nil) lands the column's '{}' rather than a NULL the NOT NULL constraint would reject.
 -- name: InsertSnapshot :exec
 INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw,
-  cpu_percent, mem_used_percent, disk_used_percent)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+  cpu_percent, mem_used_percent, disk_used_percent, dc_latency)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce(sqlc.narg('dc_latency')::jsonb, '{}'::jsonb));
 
 -- name: ListSnapshots :many
 SELECT * FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at;
 
 -- name: ListSnapshotsAllNodes :many
-SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent, mem_used_percent, disk_used_percent
+SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent, mem_used_percent, disk_used_percent, dc_latency
 FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_id, taken_at;
 
 -- ListSnapshotsAllNodesBucketed collapses snapshots into fixed-width time buckets in the
@@ -24,20 +26,53 @@ FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_
 -- the full step width and under-report the current rate. The load percentages are gauges
 -- like the session counts and get the same average. node_stats_node_time_idx
 -- (node_id, taken_at DESC) covers the scan.
+--
+-- dc_latency is a {"<dc>": <ms>} object per row, averaged per DC over the rows of the bucket
+-- that carry that DC (a row without the key is "unknown", not 0, so it must not drag the
+-- mean down). That is a second pass over the same rows: the keys are unnested with
+-- jsonb_each, averaged per (node, bucket, dc) and folded back into one object per bucket,
+-- then joined onto the scalar aggregates by bucket. A bucket none of whose rows measured any
+-- DC gets '{}'.
 -- name: ListSnapshotsAllNodesBucketed :many
-SELECT node_id,
-       max(taken_at)::timestamptz AS taken_at,
-       round(avg(sessions_live))::int AS sessions_live,
-       round(avg(streams_live))::int AS streams_live,
-       max(bytes_up)::bigint AS bytes_up,
-       max(bytes_down)::bigint AS bytes_down,
-       avg(cpu_percent)::real AS cpu_percent,
-       avg(mem_used_percent)::real AS mem_used_percent,
-       avg(disk_used_percent)::real AS disk_used_percent
-FROM node_stats_snapshots
-WHERE taken_at >= sqlc.arg('from_at') AND taken_at <= sqlc.arg('to_at')
-GROUP BY node_id, floor(extract(epoch FROM taken_at) / sqlc.arg('step')::bigint)
-ORDER BY node_id, 2;
+WITH scalars AS (
+  SELECT r.node_id,
+         floor(extract(epoch FROM r.taken_at) / sqlc.arg('step')::bigint) AS bucket,
+         max(r.taken_at)::timestamptz AS taken_at,
+         round(avg(r.sessions_live))::int AS sessions_live,
+         round(avg(r.streams_live))::int AS streams_live,
+         max(r.bytes_up)::bigint AS bytes_up,
+         max(r.bytes_down)::bigint AS bytes_down,
+         avg(r.cpu_percent)::real AS cpu_percent,
+         avg(r.mem_used_percent)::real AS mem_used_percent,
+         avg(r.disk_used_percent)::real AS disk_used_percent
+  FROM node_stats_snapshots r
+  WHERE r.taken_at >= sqlc.arg('from_at') AND r.taken_at <= sqlc.arg('to_at')
+  GROUP BY r.node_id, 2
+), per_dc AS (
+  SELECT s.node_id,
+         floor(extract(epoch FROM s.taken_at) / sqlc.arg('step')::bigint) AS bucket,
+         d.key AS dc,
+         avg((d.value #>> '{}')::float8) AS latency_ms
+  FROM node_stats_snapshots s, jsonb_each(s.dc_latency) AS d(key, value)
+  WHERE s.taken_at >= sqlc.arg('from_at') AND s.taken_at <= sqlc.arg('to_at')
+  GROUP BY s.node_id, 2, d.key
+), dc AS (
+  SELECT node_id, bucket, jsonb_object_agg(dc, latency_ms) AS dc_latency
+  FROM per_dc GROUP BY node_id, bucket
+)
+SELECT scalars.node_id,
+       scalars.taken_at,
+       scalars.sessions_live,
+       scalars.streams_live,
+       scalars.bytes_up,
+       scalars.bytes_down,
+       scalars.cpu_percent,
+       scalars.mem_used_percent,
+       scalars.disk_used_percent,
+       coalesce(dc.dc_latency, '{}'::jsonb)::jsonb AS dc_latency
+FROM scalars
+LEFT JOIN dc ON dc.node_id = scalars.node_id AND dc.bucket = scalars.bucket
+ORDER BY scalars.node_id, scalars.taken_at;
 
 -- name: LatestSnapshots :many
 SELECT DISTINCT ON (node_id) * FROM node_stats_snapshots ORDER BY node_id, taken_at DESC;

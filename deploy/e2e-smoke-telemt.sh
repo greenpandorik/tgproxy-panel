@@ -139,6 +139,28 @@ wait_node_online() {
 	done
 }
 
+# wait_dc_data waits for the node's health to carry telemt's view of Telegram's datacenters:
+# the agent reads GET /v1/stats/upstreams from the real telemt in every heartbeat, so once the
+# node is online the next heartbeat must say dc_data_available=true with a non-empty dcs list
+# (a DC telemt has not measured yet is still listed, with known=false).
+wait_dc_data() {
+	local id="$1" deadline=90 elapsed=0 available dcs
+	log "waiting for the node's health to report Telegram DC connectivity (up to ${deadline}s)"
+	while true; do
+		http GET "/api/v1/nodes/$id"
+		expect_status 200 "$LAST_STATUS" "get node"
+		available="$(jq -r '.health.dc_data_available // false' <<<"$LAST_BODY")"
+		dcs="$(jq -r '.health.dcs | length' <<<"$LAST_BODY")"
+		if [[ "$available" == "true" && "$dcs" -gt 0 ]]; then
+			log "health carries DC data: $(jq -c '.health | {dc_data_available, upstream_healthy, effective_latency_ms, connect_success_total, dcs}' <<<"$LAST_BODY")"
+			return 0
+		fi
+		elapsed=$((elapsed + 3))
+		[[ "$elapsed" -ge "$deadline" ]] && die "node health never reported DC data within ${deadline}s (dc_data_available=$available dcs=$dcs): $(jq -c '.health' <<<"$LAST_BODY")"
+		sleep 3
+	done
+}
+
 # apply_and_wait triggers an apply and returns once the newest job is terminal. The job log is
 # left in $JOB_LOG so the caller can assert on what the agent actually did.
 apply_and_wait() {
@@ -173,6 +195,7 @@ phase_continue() {
 
 	login
 	wait_node_online "$NODE_ID"
+	wait_dc_data "$NODE_ID"
 
 	log "creating a personal key with telemt limits, bound to the node"
 	http POST /api/v1/keys "$(jq -n --arg id "$NODE_ID" --argjson q "$QUOTA_BYTES" --argjson ips "$MAX_UNIQUE_IPS" \

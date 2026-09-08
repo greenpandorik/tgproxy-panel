@@ -19,6 +19,27 @@ type HealthReport struct {
 	UptimeSeconds                                            int64
 	CPUPercent, MemUsedPercent, DiskUsedPercent              float64
 	ProfileCount                                             int
+
+	// Connectivity to Telegram's datacenters, from telemt's upstream health check. Every field
+	// is meaningless unless DcDataAvailable is true: a tproxy node never has the data, and a
+	// telemt node loses it for one heartbeat when the stats call fails.
+	DCs                      []DcLatency
+	UpstreamHealthy          bool
+	UpstreamFails            int
+	EffectiveLatencyMs       float64
+	ConnectSuccessTotal      int64
+	ConnectFailTotal         int64
+	UpstreamLastCheckAgeSecs int64
+	DcDataAvailable          bool
+}
+
+// DcLatency is one Telegram datacenter's latency EMA as telemt measures it. Known is false
+// while telemt has no measurement for the DC yet; LatencyMs is then zero and must not be read.
+type DcLatency struct {
+	DC           int
+	LatencyMs    float64
+	Known        bool
+	IPPreference string
 }
 
 type Profile struct {

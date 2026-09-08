@@ -32,7 +32,7 @@ function wrap(node: ReactNode) {
   );
 }
 
-function health(cpu: number, mem: number): NodeHealth {
+function health(cpu: number, mem: number, extra: Partial<NodeHealth> = {}): NodeHealth {
   return {
     relay_active: true,
     mtproxy_active: true,
@@ -46,7 +46,13 @@ function health(cpu: number, mem: number): NodeHealth {
     mem_used_percent: mem,
     disk_used_percent: 5,
     profile_count: 0,
+    ...extra,
   };
+}
+
+/** The DC half of a heartbeat: telemt's one figure for the route to Telegram. */
+function dc(effective_latency_ms: number): Partial<NodeHealth> {
+  return { dc_data_available: true, effective_latency_ms };
 }
 
 function node(name: string, status: Node['status'], h?: NodeHealth): Node {
@@ -136,5 +142,72 @@ describe('NodesPage load columns', () => {
     expect(screen.queryByText('50%')).toBeNull();
     // Never reported: nothing to draw.
     expect(within(rowOf('n4')).queryAllByTestId('load-bar')).toHaveLength(0);
+  });
+});
+
+describe('NodesPage Telegram column', () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({ isWriter: false } as unknown as ReturnType<typeof useAuth>);
+    setLang('en');
+  });
+
+  it('prints the latency to Telegram from the last heartbeat, toned at 150 and 400 ms', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: {
+        items: [
+          node('n1', 'online', health(1, 1, dc(42.4))),
+          node('n2', 'online', health(1, 1, dc(150))),
+          node('n3', 'degraded', health(1, 1, dc(812))),
+        ],
+        total: 3,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    expect(screen.getByRole('columnheader', { name: 'Telegram' })).toBeInTheDocument();
+
+    const n1 = within(rowOf('n1')).getByTestId('dc-latency');
+    expect(n1).toHaveTextContent('42 ms');
+    expect(n1).toHaveAttribute('data-tone', 'ok');
+    expect(n1.className).toContain('text-mute');
+
+    const n2 = within(rowOf('n2')).getByTestId('dc-latency');
+    expect(n2).toHaveTextContent('150 ms');
+    expect(n2).toHaveAttribute('data-tone', 'warn');
+    expect(n2.className).toContain('text-warn');
+
+    const n3 = within(rowOf('n3')).getByTestId('dc-latency');
+    expect(n3).toHaveTextContent('812 ms');
+    expect(n3).toHaveAttribute('data-tone', 'err');
+    expect(n3.className).toContain('text-err');
+  });
+
+  it('prints a dash for a node that reports no figure', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: {
+        items: [
+          // Offline: the last figure describes a moment the panel cannot vouch for.
+          node('n4', 'offline', health(1, 1, dc(42))),
+          // tproxy, or telemt with upstreams disabled: the agent says there is no data.
+          node('n5', 'online', health(1, 1, { dc_data_available: false, effective_latency_ms: 42 })),
+          // An older panel that omits the fields entirely.
+          node('n6', 'online', health(1, 1)),
+        ],
+        total: 3,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    expect(screen.queryAllByTestId('dc-latency')).toHaveLength(0);
+    expect(screen.queryByText(/42 ms/)).toBeNull();
+    for (const name of ['n4', 'n5', 'n6']) {
+      const cells = within(rowOf(name)).getAllByRole('cell');
+      // Name, host, relay, profiles, CPU, RAM, Telegram, heartbeat, changes.
+      expect(cells[6]).toHaveTextContent('—');
+    }
   });
 });

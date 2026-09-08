@@ -170,3 +170,79 @@ func TestMonitoringLoadSeries(t *testing.T) {
 		t.Fatalf("overview raw load %+v", pts)
 	}
 }
+
+// TestMonitoringDcLatencySeries: both monitoring reads carry dc_latency. The per-node series
+// returns each snapshot's object as stored; the overview averages per DC over the rows of the
+// bucket that measured that DC - a row without the key is "unknown" and must not count as 0.
+func TestMonitoringDcLatencySeries(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	base := time.Now().Add(-7 * time.Minute).Truncate(5 * time.Minute)
+	for i, dc := range []string{`{"1": 100, "2": 30}`, `{"1": 200}`, `{}`} {
+		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{
+			NodeID: n.ID, SessionsLive: 1, MtproxyRaw: []byte("{}"), DcLatency: []byte(dc),
+		})
+		_, _ = h.Store.Pool.Exec(t.Context(),
+			`UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`,
+			base.Add(time.Duration(i)*time.Minute), n.ID)
+	}
+	q := "from=" + base.Format(time.RFC3339) + "&to=" + time.Now().Format(time.RFC3339)
+
+	type point struct {
+		DcLatency map[string]float64 `json:"dc_latency"`
+	}
+	var series struct {
+		Points []point `json:"points"`
+	}
+	c.JSON(c.Get("/api/v1/monitoring/nodes/"+n.ID.String()+"/series?"+q), &series)
+	if len(series.Points) != 3 {
+		t.Fatalf("series %+v", series.Points)
+	}
+	if p := series.Points[0].DcLatency; len(p) != 2 || p["1"] != 100 || p["2"] != 30 {
+		t.Fatalf("series point 0 dc_latency %+v", p)
+	}
+	if p := series.Points[1].DcLatency; len(p) != 1 || p["1"] != 200 {
+		t.Fatalf("series point 1 dc_latency %+v", p)
+	}
+	if p := series.Points[2].DcLatency; p == nil || len(p) != 0 {
+		t.Fatalf("series point 2 dc_latency must be an empty object, got %+v", p)
+	}
+
+	// All three fall into one five-minute bucket: DC 1 averages its two readings, DC 2 keeps
+	// its single reading rather than being averaged with a missing 0.
+	var overview struct {
+		Series map[string][]point `json:"series"`
+	}
+	c.JSON(c.Get("/api/v1/monitoring/overview?"+q+"&step=300"), &overview)
+	pts := overview.Series[n.ID.String()]
+	if len(pts) != 1 {
+		t.Fatalf("overview buckets %+v", pts)
+	}
+	if p := pts[0].DcLatency; len(p) != 2 || p["1"] != 150 || p["2"] != 30 {
+		t.Fatalf("overview bucket dc_latency %+v (want 1: 150, 2: 30)", p)
+	}
+	// Below the bucketing threshold the raw rows carry the object too.
+	c.JSON(c.Get("/api/v1/monitoring/overview?"+q+"&step=60"), &overview)
+	pts = overview.Series[n.ID.String()]
+	if len(pts) != 3 || pts[1].DcLatency["1"] != 200 || len(pts[2].DcLatency) != 0 || pts[2].DcLatency == nil {
+		t.Fatalf("overview raw dc_latency %+v", pts)
+	}
+}
+
+// A bucket none of whose rows measured a DC reports an empty object, not null.
+func TestMonitoringDcLatencyEmptyBucket(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	base := time.Now().Add(-7 * time.Minute).Truncate(5 * time.Minute)
+	_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{NodeID: n.ID, SessionsLive: 1, MtproxyRaw: []byte("{}")})
+	_, _ = h.Store.Pool.Exec(t.Context(), `UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`, base, n.ID)
+	q := "from=" + base.Format(time.RFC3339) + "&to=" + time.Now().Format(time.RFC3339)
+	var overview struct {
+		Series map[string][]struct {
+			DcLatency map[string]float64 `json:"dc_latency"`
+		} `json:"series"`
+	}
+	c.JSON(c.Get("/api/v1/monitoring/overview?"+q+"&step=300"), &overview)
+	pts := overview.Series[n.ID.String()]
+	if len(pts) != 1 || pts[0].DcLatency == nil || len(pts[0].DcLatency) != 0 {
+		t.Fatalf("overview bucket without DC data %+v", pts)
+	}
+}

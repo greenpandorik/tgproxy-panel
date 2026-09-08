@@ -20,10 +20,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
-import { formatCompactAge } from '@/lib/format';
+import { formatCompactAge, formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { CreateNodeDialog } from './CreateNodeDialog';
+import { DC_TONE_TEXT, dcTone, nodeDcLatency } from './dcDisplay';
 import { EngineTag } from './EngineTag';
 import { InstallCommandDialog } from './InstallCommandDialog';
 import { capacityText, DASH, engineVersion, LOAD_TONE_CLASS, loadTone, nodeLoad, nodeStatus, shortVersion } from './nodeDisplay';
@@ -88,6 +89,24 @@ function LoadText({ percent }: { percent: number | undefined }) {
   return <span className={cn('mono', LOAD_TONE_CLASS[loadTone(percent)].text)}>{Math.round(percent)}%</span>;
 }
 
+/**
+ * The node's latency to Telegram from its last heartbeat: telemt's one
+ * figure across every datacenter, in mono, amber from 150 ms and red from
+ * 400, the thresholds `dcDisplay` fixes for the DC panel too. No figure - a
+ * tproxy node, an offline one, or an agent that has not measured yet -
+ * prints as a dash rather than as a number that reads as current.
+ */
+function DcLatencyText({ ms }: { ms: number | undefined }) {
+  const { t, i18n } = useTranslation();
+  if (ms === undefined) return <span className="mono text-mono text-dim">{DASH}</span>;
+  const tone = dcTone(ms);
+  return (
+    <span className={cn('mono text-mono', DC_TONE_TEXT[tone])} data-testid="dc-latency" data-tone={tone}>
+      {formatNumber(Math.round(ms), i18n.language)} {t('common.ms')}
+    </span>
+  );
+}
+
 /** The fields the machine reports about one node, formatted and toned once for both layouts. */
 function useNodeRow(node: Node) {
   const { t, i18n } = useTranslation();
@@ -99,6 +118,7 @@ function useNodeRow(node: Node) {
     relayTone: version ? 'text-mute' : 'text-dim',
     heartbeat: age ? t('common.ago', { value: age }) : t('nodes.last_seen_never'),
     load: nodeLoad(node),
+    telegram: nodeDcLatency(node),
   };
 }
 
@@ -264,6 +284,9 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
       <TableCell>
         <LoadBar percent={row.load?.mem} />
       </TableCell>
+      <TableCell className="text-right">
+        <DcLatencyText ms={row.telegram} />
+      </TableCell>
       <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
       <TableCell className="text-right">
         <DirtyTag dirty={node.dirty} />
@@ -335,7 +358,7 @@ export function NodesPage() {
         />
 
         {isLoading ? (
-          <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
+          <DataTableSkeleton columns={isWriter ? 10 : 9} rows={4} />
         ) : nodes.length === 0 ? (
           <EmptyState
             icon={Server}
@@ -362,6 +385,10 @@ export function NodesPage() {
                     <TableHead>{t('nodes.column_profiles')}</TableHead>
                     <TableHead>{t('nodes.load_cpu')}</TableHead>
                     <TableHead>{t('nodes.load_ram')}</TableHead>
+                    {/* Wide layout only: the card list below md carries the
+                        fields that decide where a key goes, and this one is
+                        read on the node page when it matters. */}
+                    <TableHead className="text-right">{t('nodes.column_telegram')}</TableHead>
                     <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
                     <TableHead className="text-right">{t('nodes.column_changes')}</TableHead>
                     {isWriter && <TableHead className="w-0" />}

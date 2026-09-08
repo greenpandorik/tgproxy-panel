@@ -67,6 +67,19 @@ export type NodeStatus = 'pending' | 'online' | 'offline' | 'degraded';
  */
 export type NodeEngine = 'tproxy' | 'telemt';
 
+/**
+ * One Telegram datacenter as telemt sees it. `latency_ms` is telemt's own
+ * moving average over its health checks; `known` is false (and the latency
+ * meaningless) for a DC it has not measured yet.
+ */
+export interface DcLatency {
+  dc: number;
+  latency_ms: number;
+  known: boolean;
+  /** Which address family telemt prefers for this DC, in telemt's own words ("ipv4", "ipv6"). */
+  ip_preference: string;
+}
+
 export interface NodeHealth {
   relay_active: boolean;
   mtproxy_active: boolean;
@@ -80,6 +93,19 @@ export interface NodeHealth {
   mem_used_percent: number;
   disk_used_percent: number;
   profile_count: number;
+  // The node's link to Telegram's datacenters, from telemt's /v1/stats/upstreams.
+  // Every field is optional: a tproxy node has none of them, and a panel older
+  // than the DC connectivity phase omits them entirely.
+  dcs?: DcLatency[];
+  upstream_healthy?: boolean;
+  upstream_fails?: number;
+  /** telemt's one latency figure for the route as a whole, in ms. */
+  effective_latency_ms?: number;
+  connect_success_total?: number;
+  connect_fail_total?: number;
+  upstream_last_check_age_secs?: number;
+  /** False on tproxy, and when telemt reported its upstreams as disabled or the call failed. */
+  dc_data_available?: boolean;
 }
 
 export interface NodeCheckResult {
@@ -505,6 +531,8 @@ export interface SeriesPoint extends LoadPoint {
   streams_live: number;
   bytes_up: number;
   bytes_down: number;
+  /** Latency to each Telegram DC at this sample, keyed by DC number ("1": 197.9). Absent on an older panel. */
+  dc_latency?: Record<string, number>;
 }
 
 // --- monitoring -----------------------------------------------------------
@@ -521,6 +549,8 @@ export interface MonitoringPoint extends LoadPoint {
   streams_live: number;
   bytes_up_rate: number;
   bytes_down_rate: number;
+  /** Mean latency to each Telegram DC over the bucket, keyed by DC number. Absent on an older panel. */
+  dc_latency?: Record<string, number>;
 }
 
 export interface MonitoringOverview {

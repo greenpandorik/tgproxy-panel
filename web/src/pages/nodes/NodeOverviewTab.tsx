@@ -28,6 +28,7 @@ import { formatCompactDuration, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { NodeCheckCard } from './NodeCheckCard';
+import { NodeDcsCard } from './NodeDcsCard';
 import { NodeListenersCard } from './NodeListenersCard';
 import { DASH, telemtVersion } from './nodeDisplay';
 
@@ -274,6 +275,17 @@ export function NodeOverviewTab({ node }: { node: Node }) {
           </>
         )}
       </Panel>
+
+      {/* The same health readout, read for its other half: how the node reaches
+          Telegram. It follows the services panel because the two answer the
+          same question in order - is the proxy up, and can it get through. */}
+      <NodeDcsCard
+        engine={node.engine}
+        offline={offline}
+        health={health}
+        error={healthQuery.isError}
+        onRetry={() => void healthQuery.refetch()}
+      />
 
       <Panel>
         <PanelHeader icon={Package} title={t('nodes.overview_versions')} />

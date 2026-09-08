@@ -38,6 +38,29 @@ message HealthReport {
   double mem_used_percent = 10;
   double disk_used_percent = 11;
   int32 profile_count = 12;
+
+  // Fields 13-20 are the node's connectivity to Telegram's datacenters, read from telemt's
+  // GET /v1/stats/upstreams in the same heartbeat cycle as the rest of the report. The
+  // tproxy agent leaves them zero with dc_data_available=false; the telemt agent sets
+  // dc_data_available=false too when the call fails or telemt answers enabled=false, so the
+  // panel can tell "no data" from "zero latency". A DC whose EMA telemt has not measured yet
+  // arrives with known=false, never with latency_ms=0.
+  repeated DcLatency dcs = 13;
+  bool upstream_healthy = 14;
+  int32 upstream_fails = 15;
+  double effective_latency_ms = 16;
+  int64 connect_success_total = 17;
+  int64 connect_fail_total = 18;
+  int64 upstream_last_check_age_secs = 19;
+  bool dc_data_available = 20;
+}
+
+// DcLatency is one Telegram datacenter as telemt's upstream health check sees it.
+message DcLatency {
+  int32 dc = 1;
+  double latency_ms = 2;
+  bool known = 3;
+  string ip_preference = 4;
 }
 
 message ProfileLimits {

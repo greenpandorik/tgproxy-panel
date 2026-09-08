@@ -34,6 +34,7 @@ Setup guides with screenshots: [English](docs/setup.en.md), [Русский](doc
 - Topbar chips: the panel version with an update highlight read from GitHub releases, the repository star count, and nodes online.
 - Forms keep a draft for 24 hours after an accidental close and offer to continue it; every page and dialog has a `?` that opens a help panel describing each field with examples (`?` key opens it too).
 - Node load: CPU and RAM in the nodes list and on the dashboard, with a CPU/RAM/disk history chart on the node page and in Monitoring.
+- Telegram reachability per node: latency to every Telegram data centre as telemt measures it, the health of the route and a connection counter, with a history chart; the nodes list and the dashboard carry the overall latency.
 
 ## Quick start
 
@@ -85,7 +86,7 @@ docker compose -f docker-compose.yml -f docker-compose.override.example.yml up -
 
 `PANEL_DOMAIN` (defaults to `localhost`) controls what Caddy requests a certificate for; for a real deployment point a DNS record at the host and set `PANEL_DOMAIN=panel.example.com` and `PANEL_PUBLIC_URL=https://panel.example.com` in `.env`. On `localhost`, Caddy issues an internal (self-signed) certificate: either trust its local CA (`docker compose exec caddy caddy trust`, or copy `/data/caddy/pki/authorities/local/root.crt` out of the `caddydata` volume into your OS/browser trust store) or curl it with `--insecure` / `-k`.
 
-To run a published image instead of building from the checkout, use `deploy/docker-compose.release.yml` (the file the installer deploys: `panel` comes from `ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}`, Caddy sits under the `caddy` profile, `deploy/docker-compose.local.yml` publishes :8080 for local mode), or replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.5.1` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
+To run a published image instead of building from the checkout, use `deploy/docker-compose.release.yml` (the file the installer deploys: `panel` comes from `ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}`, Caddy sits under the `caddy` profile, `deploy/docker-compose.local.yml` publishes :8080 for local mode), or replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.6.0` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
 
 ### First admin
 
@@ -407,7 +408,7 @@ Both flags exist for that bench only. Real nodes run with the synlimit rules and
 
 ## Status
 
-Version 1.5.1. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
+Version 1.6.0. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
 
 ## License
 

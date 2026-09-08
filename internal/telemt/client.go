@@ -244,6 +244,14 @@ func (c *Client) ConnectionsSummary(ctx context.Context) (ConnectionsSummary, er
 	return out, err
 }
 
+// UpstreamsStats reports the node's connectivity to Telegram's datacenters: per-DC latency EMAs
+// from telemt's own health checks plus the connect counters.
+func (c *Client) UpstreamsStats(ctx context.Context) (UpstreamsStats, error) {
+	var out UpstreamsStats
+	_, err := c.do(ctx, http.MethodGet, "/v1/stats/upstreams", nil, &out)
+	return out, err
+}
+
 // Metrics fetches the Prometheus exposition text from the metrics listener. It is a plain text
 // endpoint on its own port, so no envelope and no Authorization header are involved.
 func (c *Client) Metrics(ctx context.Context) (string, error) {

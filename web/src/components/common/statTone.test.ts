@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { DC_ERR_MS, DC_WARN_MS } from '@/pages/nodes/dcDisplay';
+
 import { LOAD_ERR_PERCENT, LOAD_WARN_PERCENT, statTone } from './statTone';
 
 describe('statTone', () => {
@@ -43,5 +45,14 @@ describe('statTone', () => {
   it('has no tone for a load nothing reported', () => {
     expect(statTone({ kind: 'avg_load', percent: null })).toBe('neutral');
     expect(statTone({ kind: 'avg_load', percent: Number.NaN })).toBe('neutral');
+  });
+
+  it('steps latency to Telegram on the DC thresholds, and has no tone when no node reports one', () => {
+    expect(statTone({ kind: 'dc_latency', ms: null })).toBe('neutral');
+    expect(statTone({ kind: 'dc_latency', ms: 0 })).toBe('ok');
+    expect(statTone({ kind: 'dc_latency', ms: DC_WARN_MS - 0.1 })).toBe('ok');
+    expect(statTone({ kind: 'dc_latency', ms: DC_WARN_MS })).toBe('warn');
+    expect(statTone({ kind: 'dc_latency', ms: DC_ERR_MS - 0.1 })).toBe('warn');
+    expect(statTone({ kind: 'dc_latency', ms: DC_ERR_MS })).toBe('err');
   });
 });

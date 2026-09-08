@@ -961,7 +961,33 @@ func (h *Handler) healthTelemt(ctx context.Context) *agentv1.HealthReport {
 	if users, err := h.tm.ListUsers(ctx); err == nil {
 		rep.ProfileCount = int32(len(users))
 	}
+	// DC connectivity is best-effort: a failed call (or telemt not tracking upstreams) leaves
+	// the fields zero with dc_data_available=false and never costs the heartbeat itself.
+	if st, err := h.tm.UpstreamsStats(ctx); err == nil && st.Enabled {
+		fillDcConnectivity(rep, st)
+	}
 	return rep
+}
+
+// fillDcConnectivity copies telemt's upstream health view into the report. The panel only
+// configures one (direct) route, so the first upstream is the one described; a DC whose EMA is
+// still null is reported with known=false rather than a latency of 0.
+func fillDcConnectivity(rep *agentv1.HealthReport, st telemt.UpstreamsStats) {
+	rep.DcDataAvailable = true
+	rep.ConnectSuccessTotal, rep.ConnectFailTotal = st.Zero.ConnectSuccessTotal, st.Zero.ConnectFailTotal
+	if len(st.Upstreams) == 0 {
+		return
+	}
+	u := st.Upstreams[0]
+	rep.UpstreamHealthy, rep.UpstreamFails = u.Healthy, int32(u.Fails)
+	rep.EffectiveLatencyMs, rep.UpstreamLastCheckAgeSecs = u.EffectiveLatencyMs, u.LastCheckAgeSecs
+	for _, d := range u.DC {
+		dc := &agentv1.DcLatency{Dc: int32(d.DC), IpPreference: d.IPPreference}
+		if d.LatencyEmaMs != nil {
+			dc.Known, dc.LatencyMs = true, *d.LatencyEmaMs
+		}
+		rep.Dcs = append(rep.Dcs, dc)
+	}
 }
 
 // telemtProfiles reports the users telemt has, so the panel's GetProfiles works on both engines.

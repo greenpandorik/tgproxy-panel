@@ -359,3 +359,58 @@ func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
 		t.Fatalf("snapshot without health: %+v", snaps)
 	}
 }
+
+// TestStatsSnapshotCarriesDcLatency: the snapshot copies telemt's per-DC latency out of the
+// last heartbeat as {"<dc>": <ms>}. A DC telemt has not measured yet (known=false) is left
+// out rather than written as 0, and a report without DC data at all writes '{}'.
+func TestStatsSnapshotCarriesDcLatency(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	mock.SetMetrics(f.node.ID, "tproxy_sessions_live 1\n")
+	_ = f.st.Q.SetNodeOnline(ctx, db.SetNodeOnlineParams{ID: f.node.ID})
+	raw, _ := json.Marshal(nodedriver.HealthReport{
+		RelayActive: true, DcDataAvailable: true, UpstreamHealthy: true, EffectiveLatencyMs: 41.25,
+		DCs: []nodedriver.DcLatency{
+			{DC: 1, LatencyMs: 197.9, Known: true, IPPreference: "prefer_v4"},
+			{DC: 2, LatencyMs: 36.5, Known: true, IPPreference: "prefer_v4"},
+			{DC: 4, Known: false, IPPreference: "prefer_v6"},
+		},
+	})
+	if err := f.st.Q.SetNodeHeartbeat(ctx, db.SetNodeHeartbeatParams{ID: f.node.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	s := worker.NewStats(f.st, mock, 90*time.Second, slog.New(slog.DiscardHandler))
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	if len(snaps) != 1 {
+		t.Fatalf("snapshots %+v", snaps)
+	}
+	var got map[string]float64
+	if err := json.Unmarshal(snaps[0].DcLatency, &got); err != nil {
+		t.Fatalf("dc_latency %s: %v", snaps[0].DcLatency, err)
+	}
+	if len(got) != 2 || got["1"] != 197.9 || got["2"] != 36.5 {
+		t.Fatalf("dc_latency = %s, want DC 1 and 2 only (DC 4 is unknown)", snaps[0].DcLatency)
+	}
+	if _, present := got["4"]; present {
+		t.Fatalf("an unknown DC must be omitted, not written as 0: %s", snaps[0].DcLatency)
+	}
+
+	// A heartbeat that says the data is unavailable (tproxy, or a failed stats call) writes {}
+	// even if stray DC entries are present.
+	raw, _ = json.Marshal(nodedriver.HealthReport{RelayActive: true, DCs: []nodedriver.DcLatency{{DC: 1, LatencyMs: 5, Known: true}}})
+	if err := f.st.Q.SetNodeHeartbeat(ctx, db.SetNodeHeartbeatParams{ID: f.node.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	snaps, _ = f.st.Q.LatestSnapshots(ctx)
+	if len(snaps) != 1 || string(snaps[0].DcLatency) != "{}" {
+		t.Fatalf("snapshot without DC data: %+v", snaps)
+	}
+}

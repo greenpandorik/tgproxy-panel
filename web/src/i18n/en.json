@@ -43,7 +43,8 @@
     "role_viewer": "Viewer",
     "required": "Required field",
     "reset": "Reset",
-    "ago": "{{value}} ago"
+    "ago": "{{value}} ago",
+    "ms": "ms"
   },
   "auth": {
     "login_title": "Sign in",
@@ -129,6 +130,8 @@
     "tile_alerts_none": "none open",
     "tile_avg_load": "Average load",
     "tile_avg_load_context": "CPU, online nodes",
+    "tile_dc_latency": "Latency to Telegram",
+    "tile_dc_latency_context": "mean over online nodes",
     "col_series_24h": "24h"
   },
   "nodes": {
@@ -271,6 +274,19 @@
     "load_ram": "RAM",
     "load_disk": "Disk",
     "load_empty": "No load data yet",
+    "column_telegram": "Telegram",
+    "dcs_title": "Telegram datacenters",
+    "dcs_route_direct": "direct route",
+    "dcs_connections": "connections {{ok}} of {{total}}",
+    "dcs_checked": "checked {{ago}}",
+    "dcs_column_dc": "DC",
+    "dcs_column_latency": "Latency",
+    "dcs_column_ip": "IP preference",
+    "dcs_empty": "No datacenter data yet",
+    "dcs_unavailable": "telemt is not reporting datacenter data",
+    "dcs_unavailable_engine": "Not available on this engine",
+    "dc_latency_title": "Latency to datacenters",
+    "dc_latency_empty": "No latency data yet",
     "check_title": "Prerequisite check",
     "check_run": "Run check",
     "check_empty": "Not run yet",
@@ -789,6 +805,10 @@
           "jobs": {
             "name": "Recent applies",
             "what": "The latest apply jobs on the nodes with their result and duration. An \"apply\" is the moment key and site changes are actually sent to a node."
+          },
+          "dc_latency": {
+            "name": "Latency to Telegram",
+            "what": "Mean latency to Telegram's datacenters over the online nodes that report one (telemt only). Gray below 150 ms, yellow from 150, red from 400. A dash means no node reports one."
           }
         },
         "notes": {
@@ -820,6 +840,10 @@
           "load": {
             "name": "CPU and RAM",
             "what": "Processor and memory load from the last heartbeat. Yellow from 80 %, red from 95 %. Keep headroom: an overloaded node adds latency for every client."
+          },
+          "telegram": {
+            "name": "Telegram",
+            "what": "Latency to Telegram from the last heartbeat - telemt's one figure across all datacenters. Yellow from 150 ms, red from 400. A dash on tproxy nodes and on offline nodes. Per-DC detail is on the node page, Overview tab."
           },
           "heartbeat": {
             "name": "Last heartbeat",
@@ -1038,6 +1062,33 @@
         "notes": {
           "1": "Change these only as a last resort, and plan to send new links to everyone holding a Fake-TLS link of this node. Subscription pages update on their own.",
           "2": "Saving only records the intent: the next apply (automatic, or the \"Apply\" button) sends it to the node."
+        }
+      },
+      "nodes.dcs": {
+        "title": "Telegram datacenters",
+        "intro": "How the node sees Telegram's datacenters: the state of the direct route to them and the latency to each DC. The figures are not the panel's but telemt's own: it keeps a moving average of the latency to every DC and refreshes it with its own health checks. telemt nodes only; tproxy does not report this.",
+        "fields": {
+          "route": {
+            "name": "Route",
+            "what": "The line above the table: the kind of route (the panel's is always direct), how many connections to Telegram succeeded out of all attempts, and how long ago telemt last checked the route. The dot beside it is the route's tone: green when all is well; yellow when the route is up but has been failing; red when telemt considers it down."
+          },
+          "connections": {
+            "name": "Connections",
+            "what": "telemt's counters since it started: successful and failed attempts to connect to Telegram. A growing share of failures at normal latency usually means the network between the node and Telegram, not the node itself."
+          },
+          "latency": {
+            "name": "Latency",
+            "what": "The moving average of the DC's response time in milliseconds over telemt's checks. Gray below 150 ms, yellow from 150, red from 400. A dash means the DC has not been measured yet.",
+            "tip": "A red DC does not mean the node is down: every user whose chats live in that DC feels the lag on this node. If it does not pass, move the keys to a node where that DC is green."
+          },
+          "ip_preference": {
+            "name": "IP preference",
+            "what": "Which address telemt chose for the DC, IPv4 or IPv6. It changes on its own from the check results; there is nothing to set by hand."
+          }
+        },
+        "notes": {
+          "1": "This is latency from the node to Telegram, not to the user. A node with green DCs that is far from its users is still slow for them.",
+          "2": "\"Not available on this engine\" is a tproxy node. \"telemt is not reporting datacenter data\" means telemt older than 3.5.7, or its upstream checks are disabled in its config."
         }
       },
       "keys.list": {

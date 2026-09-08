@@ -74,3 +74,28 @@ func TestProfileDisabledRoundTrip(t *testing.T) {
 		t.Fatal("disabled profile came back enabled")
 	}
 }
+
+// The DC connectivity fields ride the same HealthReport both ways: a DC telemt has not measured
+// yet keeps known=false through the round trip rather than turning into a measured 0 ms.
+func TestHealthDcFieldsRoundTrip(t *testing.T) {
+	in := HealthReport{
+		RelayActive: true, CPUPercent: 1.5,
+		DCs: []DcLatency{
+			{DC: 1, LatencyMs: 197.9, Known: true, IPPreference: "prefer_v4"},
+			{DC: 4, Known: false, IPPreference: "prefer_v6"},
+		},
+		UpstreamHealthy: true, UpstreamFails: 2, EffectiveLatencyMs: 41.25,
+		ConnectSuccessTotal: 58, ConnectFailTotal: 1, UpstreamLastCheckAgeSecs: 29, DcDataAvailable: true,
+	}
+	out := HealthFromProto(HealthToProto(in))
+	if len(out.DCs) != 2 || out.DCs[0] != in.DCs[0] || out.DCs[1] != in.DCs[1] {
+		t.Fatalf("dcs lost: %+v", out.DCs)
+	}
+	if !out.UpstreamHealthy || out.UpstreamFails != 2 || out.EffectiveLatencyMs != 41.25 ||
+		out.ConnectSuccessTotal != 58 || out.ConnectFailTotal != 1 || out.UpstreamLastCheckAgeSecs != 29 || !out.DcDataAvailable {
+		t.Fatalf("upstream fields lost: %+v", out)
+	}
+	if empty := HealthFromProto(HealthToProto(HealthReport{})); empty.DcDataAvailable || len(empty.DCs) != 0 {
+		t.Fatalf("a report without DC data must stay unavailable: %+v", empty)
+	}
+}

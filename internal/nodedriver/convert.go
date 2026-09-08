@@ -74,21 +74,37 @@ func SiteFromProto(s *agentv1.SiteBundle) SiteBundle {
 }
 
 func HealthFromProto(h *agentv1.HealthReport) HealthReport {
-	return HealthReport{
+	out := HealthReport{
 		RelayActive: h.GetRelayActive(), MTProxyActive: h.GetMtproxyActive(), CaddyActive: h.GetCaddyActive(),
 		Healthz: h.GetHealthz(), Readyz: h.GetReadyz(), TProxyVersion: h.GetTproxyVersion(), AgentVersion: h.GetAgentVersion(),
 		UptimeSeconds: h.GetUptimeSeconds(), CPUPercent: h.GetCpuPercent(), MemUsedPercent: h.GetMemUsedPercent(),
 		DiskUsedPercent: h.GetDiskUsedPercent(), ProfileCount: int(h.GetProfileCount()),
+		UpstreamHealthy: h.GetUpstreamHealthy(), UpstreamFails: int(h.GetUpstreamFails()),
+		EffectiveLatencyMs: h.GetEffectiveLatencyMs(), ConnectSuccessTotal: h.GetConnectSuccessTotal(),
+		ConnectFailTotal: h.GetConnectFailTotal(), UpstreamLastCheckAgeSecs: h.GetUpstreamLastCheckAgeSecs(),
+		DcDataAvailable: h.GetDcDataAvailable(),
 	}
+	for _, d := range h.GetDcs() {
+		out.DCs = append(out.DCs, DcLatency{DC: int(d.GetDc()), LatencyMs: d.GetLatencyMs(), Known: d.GetKnown(), IPPreference: d.GetIpPreference()})
+	}
+	return out
 }
 
 func HealthToProto(h HealthReport) *agentv1.HealthReport {
-	return &agentv1.HealthReport{
+	out := &agentv1.HealthReport{
 		RelayActive: h.RelayActive, MtproxyActive: h.MTProxyActive, CaddyActive: h.CaddyActive,
 		Healthz: h.Healthz, Readyz: h.Readyz, TproxyVersion: h.TProxyVersion, AgentVersion: h.AgentVersion,
 		UptimeSeconds: h.UptimeSeconds, CpuPercent: h.CPUPercent, MemUsedPercent: h.MemUsedPercent,
 		DiskUsedPercent: h.DiskUsedPercent, ProfileCount: int32(h.ProfileCount),
+		UpstreamHealthy: h.UpstreamHealthy, UpstreamFails: int32(h.UpstreamFails),
+		EffectiveLatencyMs: h.EffectiveLatencyMs, ConnectSuccessTotal: h.ConnectSuccessTotal,
+		ConnectFailTotal: h.ConnectFailTotal, UpstreamLastCheckAgeSecs: h.UpstreamLastCheckAgeSecs,
+		DcDataAvailable: h.DcDataAvailable,
 	}
+	for _, d := range h.DCs {
+		out.Dcs = append(out.Dcs, &agentv1.DcLatency{Dc: int32(d.DC), LatencyMs: d.LatencyMs, Known: d.Known, IpPreference: d.IPPreference})
+	}
+	return out
 }
 
 func logLineFromProto(l *agentv1.LogLine) LogLine {
