@@ -29,7 +29,25 @@ func Open(ctx context.Context, url string) (*Store, error) {
 	return &Store{Pool: pool, Q: db.New(pool)}, nil
 }
 
+// Migrate brings the schema up to date. It holds MigrateAdvisoryLockID for the
+// whole run, so two processes migrating the same fresh database wait on each
+// other instead of racing.
+//
+// The race is real and was seen in the field: `serve` migrates on start and every
+// CLI command (`admin create` included) migrates before doing its job, and when
+// the two land on a fresh database together they both run
+// `CREATE EXTENSION IF NOT EXISTS pgcrypto`. IF NOT EXISTS is not atomic across
+// sessions for extensions, so the loser fails with a duplicate-key error on
+// pg_extension_name_index and the command dies before it ever creates the admin.
+// Waiting on the lock makes the second migrator a no-op, which is what it should
+// have been all along.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
+	lock, err := advisoryLock(ctx, pool, MigrateAdvisoryLockID)
+	if err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	defer lock.Release()
+
 	goose.SetBaseFS(migrations.FS)
 	goose.SetLogger(goose.NopLogger())
 	if err := goose.SetDialect("postgres"); err != nil {

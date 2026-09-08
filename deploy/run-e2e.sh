@@ -47,16 +47,38 @@ fi
 log "building and starting postgres + panel"
 "${COMPOSE[@]}" up -d --build postgres panel
 
-log "creating admin $ADMIN_USER (ignored if it already exists)"
-for _ in $(seq 1 30); do
-	if "${COMPOSE[@]}" exec -T panel /app/panel admin create "$ADMIN_USER" "$ADMIN_PASS" 2>/tmp/admin-create.err; then
+# The panel migrates on start and `admin create` migrates too. Wait for the panel's
+# healthcheck (it answers only once its own migration has run) before creating the
+# admin, so the two never race on a fresh database.
+log "waiting for the panel to become healthy"
+for _ in $(seq 1 60); do
+	if "${COMPOSE[@]}" exec -T panel wget -q -O- http://127.0.0.1:8080/healthz >/dev/null 2>&1; then
 		break
 	fi
-	if grep -qi 'already exists\|duplicate' /tmp/admin-create.err; then
+	sleep 2
+done
+
+log "creating admin $ADMIN_USER (ignored if it already exists)"
+ADMIN_OK=0
+for _ in $(seq 1 30); do
+	if "${COMPOSE[@]}" exec -T panel /app/panel admin create "$ADMIN_USER" "$ADMIN_PASS" 2>/tmp/admin-create.err; then
+		ADMIN_OK=1
+		break
+	fi
+	# Only the admin's own unique constraint means "already there". Any other duplicate-key
+	# error (a migration racing another migrator on CREATE EXTENSION, say) is a real failure
+	# and must not be mistaken for it.
+	if grep -q 'admin_users_username_key' /tmp/admin-create.err; then
+		ADMIN_OK=1
 		break
 	fi
 	sleep 1
 done
+if [[ "$ADMIN_OK" -ne 1 ]]; then
+	log "FAIL: could not create admin $ADMIN_USER:"
+	cat /tmp/admin-create.err >&2
+	exit 1
+fi
 
 log "running e2e-smoke.sh (phase 1: create node)"
 OUT="$(PANEL_URL="$PANEL_URL" ADMIN_USER="$ADMIN_USER" ADMIN_PASS="$ADMIN_PASS" ./e2e-smoke.sh | tee /dev/stderr)"

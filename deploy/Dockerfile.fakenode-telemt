@@ -16,8 +16,8 @@ FROM debian:bookworm-slim
 # Same release the panel pins for real nodes (TELEMT_VERSION), but the musl asset: it is
 # statically linked, so it runs on this slim image without matching a glibc. The checksum is
 # verified before the binary is ever made executable, exactly as the install script does.
-ARG TELEMT_VERSION=3.5.6
-ARG TELEMT_SHA256_MUSL_X86_64=b6ec95a74ba2396d1caa5cce45aa02b1fd41d2c26fb65a25d40c48f182d15bcc
+ARG TELEMT_VERSION=3.5.7
+ARG TELEMT_SHA256_MUSL_X86_64=db26e363bb98f11a02a7fd6d0df455f4987af5cdb2a5897da7f6fb8d613fbf41
 ENV TELEMT_VERSION=${TELEMT_VERSION}
 # util-linux carries setpriv, which the systemctl shim uses to run telemt as its own account.
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl procps util-linux \

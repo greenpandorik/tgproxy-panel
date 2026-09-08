@@ -17,6 +17,33 @@ type AdvisoryLock struct {
 	id   int64
 }
 
+// MigrateAdvisoryLockID serialises schema migrations across every process that
+// talks to this database. It lives next to the panel's single-instance lock
+// (panelAdvisoryLockID in cmd/panel, ...0001) in the same flat int64 namespace,
+// so the two can never be confused: ...0001 says "one panel runs", ...0002 says
+// "one migrator runs".
+const MigrateAdvisoryLockID int64 = 0x7467_7770_0000_0002
+
+// AdvisoryLock takes the advisory lock named by id, waiting for it if another
+// session holds it. Use this where the caller must proceed once the holder is
+// done rather than give up; TryAdvisoryLock is for the "someone else is already
+// doing this, so I should not" case.
+func (s *Store) AdvisoryLock(ctx context.Context, id int64) (*AdvisoryLock, error) {
+	return advisoryLock(ctx, s.Pool, id)
+}
+
+func advisoryLock(ctx context.Context, pool *pgxpool.Pool, id int64) (*AdvisoryLock, error) {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("acquire a connection for the advisory lock: %w", err)
+	}
+	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", id); err != nil {
+		conn.Release()
+		return nil, fmt.Errorf("pg_advisory_lock: %w", err)
+	}
+	return &AdvisoryLock{conn: conn, id: id}, nil
+}
+
 // TryAdvisoryLock takes the advisory lock named by id without waiting. It reports
 // false (and no error) when another database session already holds it.
 //

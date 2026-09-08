@@ -85,7 +85,7 @@ docker compose -f docker-compose.yml -f docker-compose.override.example.yml up -
 
 `PANEL_DOMAIN` (defaults to `localhost`) controls what Caddy requests a certificate for; for a real deployment point a DNS record at the host and set `PANEL_DOMAIN=panel.example.com` and `PANEL_PUBLIC_URL=https://panel.example.com` in `.env`. On `localhost`, Caddy issues an internal (self-signed) certificate: either trust its local CA (`docker compose exec caddy caddy trust`, or copy `/data/caddy/pki/authorities/local/root.crt` out of the `caddydata` volume into your OS/browser trust store) or curl it with `--insecure` / `-k`.
 
-To run a published image instead of building from the checkout, use `deploy/docker-compose.release.yml` (the file the installer deploys: `panel` comes from `ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}`, Caddy sits under the `caddy` profile, `deploy/docker-compose.local.yml` publishes :8080 for local mode), or replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.5.0` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
+To run a published image instead of building from the checkout, use `deploy/docker-compose.release.yml` (the file the installer deploys: `panel` comes from `ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}`, Caddy sits under the `caddy` profile, `deploy/docker-compose.local.yml` publishes :8080 for local mode), or replace the `build:` block of the `panel` service in `deploy/docker-compose.yml` with `image: ghcr.io/greenpandorik/tgproxy-panel:1.5.1` (the compose file has a comment at that spot). Each release also ships `panel-linux-{amd64,arm64}` and `tgwp-agent-linux-{amd64,arm64}` binaries with a `SHA256SUMS` file.
 
 ### First admin
 
@@ -321,7 +321,7 @@ All variables live in `.env.example`; copy it to `.env` and fill in the blanks.
 | `NODE_DRIVER` | `gateway` (real gRPC agents) or `mock` (for tests/demos without real nodes). |
 | `METRICS_TOKEN` | **Required when `NODE_DRIVER=gateway`** (the panel refuses to start without it). `/metrics` is mounted at the panel root, outside the auth group, so it requires `Authorization: Bearer <token>`. Only `NODE_DRIVER=mock` (tests/demos) may leave it empty. |
 | `TPROXY_COMMIT` | The `tproxy-server` commit the install script pins nodes to. Must be 7-40 lowercase hex characters; it is interpolated into a root-run script. |
-| `TELEMT_VERSION` | The telemt release telemt nodes install (default `3.5.6`). A three-part version like `3.5.6`; it is interpolated into a root-run script. |
+| `TELEMT_VERSION` | The telemt release telemt nodes install (default `3.5.7`). A three-part version like `3.5.7`; it is interpolated into a root-run script. |
 | `TELEMT_SHA256_X86_64` | **Required when `NODE_DRIVER=gateway`.** sha256 of the release asset `telemt-x86_64-linux-gnu.tar.gz` for `TELEMT_VERSION`, 64 hex characters. The install script verifies the download against it before running anything, so a wrong or empty value is the difference between a pinned install and an unverified one. Change it together with `TELEMT_VERSION`. |
 | `TELEMT_SHA256_MUSL_X86_64` | sha256 of the same release's `telemt-x86_64-linux-musl.tar.gz`. Used only by the `fakenode-telemt` demo image. |
 | `GITHUB_REPO` | Repository the update chip reads releases and stars from (default `greenpandorik/tgproxy-panel`). |
@@ -407,7 +407,7 @@ Both flags exist for that bench only. Real nodes run with the synlimit rules and
 
 ## Status
 
-Version 1.5.0. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
+Version 1.5.1. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
 
 ## License
 

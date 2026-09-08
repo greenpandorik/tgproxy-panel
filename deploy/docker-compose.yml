@@ -13,7 +13,7 @@ services:
 
   panel:
     # To run a published image instead of building from this checkout, replace
-    # the build block with:  image: ghcr.io/greenpandorik/tgproxy-panel:1.5.0
+    # the build block with:  image: ghcr.io/greenpandorik/tgproxy-panel:1.5.1
     build:
       context: ..
       dockerfile: deploy/Dockerfile.panel
@@ -59,8 +59,8 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.fakenode-telemt
       args:
-        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.6}
-        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-b6ec95a74ba2396d1caa5cce45aa02b1fd41d2c26fb65a25d40c48f182d15bcc}
+        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.7}
+        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-db26e363bb98f11a02a7fd6d0df455f4987af5cdb2a5897da7f6fb8d613fbf41}
     platform: linux/amd64
     profiles: [dev-telemt]
     environment:

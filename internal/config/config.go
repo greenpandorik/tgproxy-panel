@@ -42,7 +42,7 @@ type Config struct {
 
 const (
 	DefaultTProxyCommit  = "52a5feb7fac38f68da5afef9cedd9b3bfc8473ca"
-	DefaultTelemtVersion = "3.5.6"
+	DefaultTelemtVersion = "3.5.7"
 	DefaultGitHubRepo    = "greenpandorik/tgproxy-panel"
 )
 
@@ -113,7 +113,7 @@ func Load(getenv func(string) string) (Config, error) {
 		return cfg, errors.New("TPROXY_COMMIT must be a git commit sha (7-40 lowercase hex characters)")
 	}
 	if !reSemver.MatchString(cfg.TelemtVersion) {
-		return cfg, errors.New("TELEMT_VERSION must be a release version like 3.5.6")
+		return cfg, errors.New("TELEMT_VERSION must be a release version like 3.5.7")
 	}
 	if !reRepo.MatchString(cfg.GitHubRepo) {
 		return cfg, errors.New("GITHUB_REPO must be an owner/name slug like greenpandorik/tgproxy-panel")

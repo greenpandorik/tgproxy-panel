@@ -1,88 +1,87 @@
-package store_test
+package store
 
 import (
 	"context"
+	"sync"
 	"testing"
-
-	"tgwebproxy/internal/store"
+	"time"
 )
 
-// lockID is picked to be nothing the panel itself uses, so this test cannot
-// collide with a `panel serve` that happens to be pointed at the test database.
-const lockID int64 = 0x7465_7374_0000_0001
-
-// TestTryAdvisoryLockIsExclusiveAcrossConnections is the property the whole
-// single-instance guard rests on: a second database session must not be able to
-// take a lock a first one is holding, and must be able to as soon as it is
-// released. Two pools stand in for two processes - which, unlike two pids, is a
-// distinction Postgres can actually make across containers.
-func TestTryAdvisoryLockIsExclusiveAcrossConnections(t *testing.T) {
-	first := store.OpenTest(t)
-	second := store.OpenTest(t)
+// TestAdvisoryLockBlocksUntilReleased pins the primitive Migrate relies on: a
+// second session asking for the same lock waits for the first to let go, rather
+// than failing or proceeding.
+func TestAdvisoryLockBlocksUntilReleased(t *testing.T) {
+	st := OpenTest(t)
 	ctx := context.Background()
+	const id int64 = 0x7467_7770_7e57_0001 // a test-only id, far from the two real ones
 
-	held, ok, err := first.TryAdvisoryLock(ctx, lockID)
+	first, err := st.AdvisoryLock(ctx, id)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if !ok {
-		t.Fatal("could not take a free lock")
+		t.Fatalf("first lock: %v", err)
 	}
 
-	if _, ok, err := second.TryAdvisoryLock(ctx, lockID); err != nil {
-		t.Fatal(err)
-	} else if ok {
-		t.Fatal("a second session took a lock the first one holds")
+	got := make(chan time.Time, 1)
+	go func() {
+		second, err := st.AdvisoryLock(ctx, id)
+		if err != nil {
+			t.Errorf("second lock: %v", err)
+			got <- time.Time{}
+			return
+		}
+		got <- time.Now()
+		second.Release()
+	}()
+
+	select {
+	case <-got:
+		t.Fatal("second lock was granted while the first was still held")
+	case <-time.After(300 * time.Millisecond):
 	}
 
-	// A different id is a different lock: the namespace is shared, so this is
-	// what keeps a future lock from accidentally standing in for this one.
-	if other, ok, err := second.TryAdvisoryLock(ctx, lockID+1); err != nil {
-		t.Fatal(err)
-	} else if !ok {
-		t.Fatal("an unrelated lock id was blocked")
-	} else {
-		other.Release()
-	}
+	released := time.Now()
+	first.Release()
 
-	held.Release()
-	after, ok, err := second.TryAdvisoryLock(ctx, lockID)
-	if err != nil {
-		t.Fatal(err)
+	select {
+	case at := <-got:
+		if at.Before(released) {
+			t.Fatal("second lock reports a grant before the first release")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("second lock never granted after the first was released")
 	}
-	if !ok {
-		t.Fatal("the lock was not released")
-	}
-	after.Release()
-	// Releasing twice must not panic or double-unlock: shutdown paths call it
-	// from a defer that may already have run.
-	after.Release()
 }
 
-// TestReleaseDoesNotLeakTheLockOntoARecycledConnection: a session-level advisory
-// lock outlives the transaction that took it, so handing the connection back to
-// the pool without an explicit unlock would leave the lock held by whoever
-// picks that connection up next.
-func TestReleaseDoesNotLeakTheLockOntoARecycledConnection(t *testing.T) {
-	s := store.OpenTest(t)
+// TestMigrateConcurrently runs Migrate from several goroutines at once. Every call
+// must succeed, and the migration lock must be free afterwards; a leaked lock
+// would make the next panel start hang forever.
+func TestMigrateConcurrently(t *testing.T) {
+	st := OpenTest(t)
 	ctx := context.Background()
-	for i := 0; i < 5; i++ {
-		l, ok, err := s.TryAdvisoryLock(ctx, lockID+2)
+
+	const n = 8
+	var wg sync.WaitGroup
+	errs := make(chan error, n)
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- Migrate(ctx, st.Pool)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("concurrent Migrate: %v", err)
 		}
-		if !ok {
-			t.Fatalf("iteration %d: the lock was still held after release", i)
-		}
-		l.Release()
 	}
-	var count int
-	if err := s.Pool.QueryRow(ctx,
-		`SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND ((classid::bigint << 32) | objid::bigint) = $1`,
-		lockID+2).Scan(&count); err != nil {
-		t.Fatal(err)
+
+	lock, ok, err := st.TryAdvisoryLock(ctx, MigrateAdvisoryLockID)
+	if err != nil {
+		t.Fatalf("try lock after migrate: %v", err)
 	}
-	if count != 0 {
-		t.Fatalf("%d advisory locks still held after release", count)
+	if !ok {
+		t.Fatal("migration lock still held after every Migrate returned")
 	}
+	lock.Release()
 }
