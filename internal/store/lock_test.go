@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // TestAdvisoryLockBlocksUntilReleased pins the primitive Migrate relies on: a
@@ -51,12 +53,23 @@ func TestAdvisoryLockBlocksUntilReleased(t *testing.T) {
 	}
 }
 
-// TestMigrateConcurrently runs Migrate from several goroutines at once. Every call
-// must succeed, and the migration lock must be free afterwards; a leaked lock
-// would make the next panel start hang forever.
+// TestMigrateConcurrently runs Migrate from several goroutines at once against a
+// pool of only two connections, which is fewer than the number of migrators.
+// That is the shape that hung CI for ten minutes when waiters sat on pooled
+// connections: with the lock on a standalone connection every call must
+// succeed, and the migration lock must be free afterwards, because a leaked
+// lock would make the next panel start hang forever.
 func TestMigrateConcurrently(t *testing.T) {
 	st := OpenTest(t)
 	ctx := context.Background()
+
+	cfg := st.Pool.Config().Copy()
+	cfg.MaxConns = 2
+	small, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatalf("small pool: %v", err)
+	}
+	defer small.Close()
 
 	const n = 8
 	var wg sync.WaitGroup
@@ -65,7 +78,7 @@ func TestMigrateConcurrently(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			errs <- Migrate(ctx, st.Pool)
+			errs <- Migrate(ctx, small)
 		}()
 	}
 	wg.Wait()
