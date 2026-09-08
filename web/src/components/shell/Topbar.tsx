@@ -82,7 +82,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
         <Menu />
       </Button>
 
-      <p className="mono min-w-0 flex-1 truncate text-micro text-dim">
+      <p className="mono min-w-0 flex-1 truncate text-micro text-mute">
         {t('shell.breadcrumb_root')}
         {section && (
           <>

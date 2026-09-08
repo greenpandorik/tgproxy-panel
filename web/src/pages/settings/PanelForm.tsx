@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Clock, Send } from 'lucide-react';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -184,7 +185,11 @@ export function PanelForm() {
 
       <Arriving>
         <Panel>
-          <PanelHeader title={t('settings.panel_section_intervals')} actions={<HelpButton topic="settings.panel" />} />
+          <PanelHeader
+            icon={Clock}
+            title={t('settings.panel_section_intervals')}
+            actions={<HelpButton topic="settings.panel" />}
+          />
           <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="panel-apply-interval">{t('settings.panel_apply_interval')}</Label>
@@ -233,7 +238,11 @@ export function PanelForm() {
 
       <Arriving index={1}>
         <Panel>
-          <PanelHeader title={t('settings.panel_telegram_alerts')} actions={<HelpButton topic="settings.telegram" />} />
+          <PanelHeader
+            icon={Send}
+            title={t('settings.panel_telegram_alerts')}
+            actions={<HelpButton topic="settings.telegram" />}
+          />
           <PanelBody className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="panel-telegram-enabled">{t('settings.panel_telegram_enabled')}</Label>

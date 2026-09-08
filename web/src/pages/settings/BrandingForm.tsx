@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Upload } from 'lucide-react';
+import { Code, Image, Palette, Type, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -294,7 +294,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
       <Arriving>
         <Panel>
-          <PanelHeader title={profile.name} meta={t('settings.branding_preview_note')} />
+          <PanelHeader icon={Image} title={profile.name} meta={t('settings.branding_preview_note')} />
           <PanelBody className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="branding-panel-name">{t('settings.branding_panel_name')}</Label>
@@ -341,7 +341,11 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
       <Arriving index={1}>
         <Panel>
-          <PanelHeader title={t('settings.branding_section_appearance')} actions={<HelpButton topic="settings.branding" />} />
+          <PanelHeader
+            icon={Palette}
+            title={t('settings.branding_section_appearance')}
+            actions={<HelpButton topic="settings.branding" />}
+          />
           <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="branding-primary">{t('settings.branding_primary_color')}</Label>
@@ -408,7 +412,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
       <Arriving index={2}>
         <Panel>
-          <PanelHeader title={t('settings.branding_section_text')} />
+          <PanelHeader icon={Type} title={t('settings.branding_section_text')} />
           <PanelBody className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="branding-login-text">{t('settings.branding_login_text')}</Label>
@@ -442,7 +446,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
       <Arriving index={3}>
         <Panel>
-          <PanelHeader title={t('settings.branding_custom_css')} />
+          <PanelHeader icon={Code} title={t('settings.branding_custom_css')} />
           <PanelBody className="space-y-4">
             <Textarea
               id="branding-custom-css"

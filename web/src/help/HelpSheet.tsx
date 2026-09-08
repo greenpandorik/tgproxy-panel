@@ -121,7 +121,7 @@ export function HelpSheet({ topic, open, onOpenChange }: HelpSheetProps) {
           )}
         </div>
 
-        <p className="mono border-t border-hairline px-4 py-3 text-mono text-dim">{t('help.shortcut_hint')}</p>
+        <p className="mono border-t border-hairline px-4 py-3 text-mono text-mute">{t('help.shortcut_hint')}</p>
       </SheetContent>
     </Sheet>
   );

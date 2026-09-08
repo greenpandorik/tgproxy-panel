@@ -17,7 +17,7 @@ import type { ReactElement, ReactNode } from 'react';
  */
 
 const CHIP =
-  'mono inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border border-hairline-strong px-2 text-micro text-dim transition-[background-color,border-color,color,scale] duration-fast ease-out hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985]';
+  'mono inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border border-hairline-strong px-2 text-micro text-mute transition-[background-color,border-color,color,scale] duration-fast ease-out hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985]';
 
 type NodesTone = 'ok' | 'warn' | 'err' | 'dim';
 

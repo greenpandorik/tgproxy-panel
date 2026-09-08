@@ -190,13 +190,18 @@ not interchangeable.
 | Token | Dark | Light | What it is for |
 |---|---|---|---|
 | `--fg` | `#f4f4f5` | `#111113` | Primary text: the value, the answer, the title. |
-| `--mute` | `#8b8d93` (5.77:1 on `--bg-2`) | `#6b6d75` (5.16:1) | Everything else a person reads: a description, an empty state, a field label, a table head, helper text, a placeholder, an error line. |
-| `--dim` | `#55575f` (2.66:1) | `#9a9ca3` (2.74:1) | Chrome only. A separator glyph, a dash standing in for a missing value, a mono context stamp beside a value already read. |
+| `--mute` | `#8b8d93` (5.77:1 on `--bg-2`) | `#6b6d75` (5.16:1) | Everything else a person reads: a description, an empty state, a field label, a table head, helper text, a placeholder, an error line - and every machine value a person actually reads: a timestamp, a count, an id, a hostname, a byte figure, a version, an IP, a status word, a pagination summary. |
+| `--dim` | `#55575f` (2.76 / 2.53 / 2.36 on `--bg` / `--bg-2` / `--bg-3`) | `#9a9ca3` (2.54 / 2.74 / 2.43) | Not a text tone. Marks that carry no information on their own: the separator glyph between two items, the dash standing in for an absent value, the gutter line numbers in the code editor, an icon that only repeats the label beside it. |
 
-`--dim` is below AA by construction and that is what it is for: it is the tone
-of something you are meant to skip. The moment it carries a word the reader
-needs - a label, an error, a placeholder, a column head - it is the wrong
-token. `text-mute` is the answer, not `text-dim` at a larger size.
+`--dim` misses the 4.5:1 floor on every surface in both themes, so it can never
+carry meaning. It is the tone of a mark you are meant to skip, not of small
+text. That a machine wrote the string is not a reason a person cannot read it:
+a timestamp, a byte count, a job duration, an audit meta line and a role name
+are all `--mute`, however incidental they look in a mock.
+
+The check is a rendered sweep, not a reading of the class name. Measure the
+computed colour of every text element against its nearest opaque background,
+in both themes; anything under 4.5:1 has to be one of the four marks above.
 
 ### Status and brand across themes
 

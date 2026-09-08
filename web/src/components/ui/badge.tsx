@@ -32,7 +32,7 @@ const badgeVariants = cva(
         /** A fact that is not wrong yet but wants noticing: config not pushed, cert near expiry. */
         warn: 'border-warn/35 bg-transparent text-warn',
         outline: 'border-hairline-strong bg-transparent text-foreground',
-        ghost: 'border-transparent bg-transparent text-dim',
+        ghost: 'border-transparent bg-transparent text-mute',
         link: 'border-transparent text-brand-ink underline-offset-4 hover:underline',
       },
     },

@@ -34,7 +34,7 @@ export function HelpButton({ topic, className }: HelpButtonProps) {
         type="button"
         variant="ghost"
         size="icon-sm"
-        className={cn('text-dim', className)}
+        className={cn('text-mute', className)}
         aria-label={t('help.open')}
         title={t('help.open')}
         data-help-button={topic}

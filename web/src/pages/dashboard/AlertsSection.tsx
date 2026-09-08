@@ -1,3 +1,4 @@
+import { Bell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useAlerts, useResolveAlert } from '@/api/dashboard';
@@ -36,6 +37,7 @@ export function AlertsSection() {
   return (
     <>
       <PanelHeader
+        icon={Bell}
         title={t('dashboard.alerts_title')}
         meta={alertsQuery.isLoading ? undefined : t('dashboard.alerts_open_count', { count: alerts.length })}
       />
@@ -64,7 +66,7 @@ export function AlertsSection() {
                     <span className="size-[7px] shrink-0 rounded-pill bg-offline" aria-hidden="true" />
                     <span className="truncate">{a.node_name || t('dashboard.alert_panel_scope')}</span>
                   </p>
-                  <p className="mono mt-1 truncate pl-[15px] text-mono text-dim">
+                  <p className="mono mt-1 truncate pl-[15px] text-mono text-mute">
                     {a.kind}
                     {age && ` · ${t('common.ago', { value: age })}`}
                   </p>

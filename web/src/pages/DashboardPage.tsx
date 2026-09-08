@@ -1,30 +1,48 @@
+import {
+  Activity,
+  ArrowDown,
+  ArrowUp,
+  Bell,
+  Clock,
+  Gauge,
+  KeyRound,
+  Plus,
+  Radio,
+  Server,
+  ServerOff,
+  TriangleAlert,
+  Waves,
+} from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useBranding } from '@/api/branding';
 import { useDashboardSummary, useNodesSeries24h } from '@/api/dashboard';
 import { useNodes } from '@/api/nodes';
+import { useAuth } from '@/auth/AuthProvider';
 import { ChartLegend } from '@/components/common/ChartLegend';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Panel, PanelHeader } from '@/components/common/Panel';
-import { StatCard } from '@/components/common/StatCard';
+import { StatGrid } from '@/components/common/StatGrid';
+import { statTone } from '@/components/common/statTone';
 import { Button } from '@/components/ui/button';
 import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
-import { formatCompactAge, formatCompactDuration, formatBytes, formatNumber, splitBytes } from '@/lib/format';
+import { formatCompactAge, formatCompactDuration, formatNumber, splitBytes } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { DASH, nodeLoad } from '@/pages/nodes/nodeDisplay';
 
 import { AlertsSection } from './dashboard/AlertsSection';
 import { NodesTable, NodesTableSkeleton } from './dashboard/NodesTable';
 import { RecentJobsSection } from './dashboard/RecentJobsSection';
 
-import type { DeltaTone } from '@/components/common/StatCard';
+import type { StatGridTile } from '@/components/common/StatGrid';
 import type { SessionsSeriesConfig } from './dashboard/SessionsChart';
 import type { Node, SeriesPoint } from '@/api/types';
 
@@ -42,6 +60,8 @@ const DELTA_WINDOW_MS = 60 * 60 * 1000;
 const DELTA_TOLERANCE_MS = 15 * 60 * 1000;
 /** Offline nodes listed by name in the tile context; past this, just the count. */
 const MAX_NAMED_OFFLINE = 2;
+/** The chart's bucket for every node past the palette. Not a node id. */
+const OTHER_SERIES_KEY = '__other';
 
 function lastPoint(points: SeriesPoint[]): SeriesPoint | undefined {
   return points.length > 0 ? points[points.length - 1] : undefined;
@@ -107,7 +127,7 @@ function buildChartData(
     color: n.status === 'offline' ? OFFLINE_SERIES_COLOR : palette[i],
   }));
   if (rest.length > 0) {
-    series.push({ key: '__other', name: otherLabel, color: 'var(--series-other)' });
+    series.push({ key: OTHER_SERIES_KEY, name: otherLabel, color: 'var(--series-other)' });
   }
 
   const rows = new Map<string, Record<string, number | string>>();
@@ -121,7 +141,7 @@ function buildChartData(
   for (const n of rest) {
     for (const p of seriesByNode[n.id] ?? []) {
       const row = rows.get(p.t) ?? { t: p.t };
-      row.__other = (Number(row.__other) || 0) + p.sessions_live;
+      row[OTHER_SERIES_KEY] = (Number(row[OTHER_SERIES_KEY]) || 0) + p.sessions_live;
       rows.set(p.t, row);
     }
   }
@@ -152,6 +172,8 @@ export function DashboardPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
+  const { isWriter } = useAuth();
+
   const summaryQuery = useDashboardSummary();
   const nodesQuery = useNodes();
   const { data: branding } = useBranding();
@@ -163,8 +185,10 @@ export function DashboardPage() {
   const nodesOnline = summary?.nodes.online ?? 0;
   const nodesTotal = summary?.nodes.total ?? 0;
   const nodesOffline = summary?.nodes.offline ?? 0;
+  const nodesDegraded = summary?.nodes.degraded ?? 0;
   const keysActive = summary?.keys.active ?? 0;
   const keysPending = summary?.keys.pending ?? 0;
+  const keysTotal = summary?.keys.total ?? 0;
 
   const seriesByNode = useMemo(() => {
     const out: Record<string, SeriesPoint[]> = {};
@@ -209,11 +233,16 @@ export function DashboardPage() {
 
   const sessionsChange = useMemo(() => sessionsHourChange(seriesByNode), [seriesByNode]);
 
-  const sessionsDelta = useMemo((): { text: string; tone: DeltaTone } | undefined => {
+  /*
+   * The hour's movement, as one mono line. It is not tinted: inside a tile
+   * the only colour is the icon's, and the arrow already says which way the
+   * number went - a green "up" would also be wrong half the time, since more
+   * sessions is not automatically good news.
+   */
+  const sessionsDelta = useMemo((): string | undefined => {
     if (sessionsChange === null) return undefined;
     const arrow = sessionsChange > 0 ? '▲' : sessionsChange < 0 ? '▼' : '·';
-    const tone: DeltaTone = sessionsChange > 0 ? 'ok' : sessionsChange < 0 ? 'err' : 'neutral';
-    return { text: t('dashboard.delta_per_hour', { value: `${arrow} ${Math.abs(sessionsChange)}%` }), tone };
+    return t('dashboard.delta_per_hour', { value: `${arrow} ${Math.abs(sessionsChange)}%` });
   }, [sessionsChange, t]);
 
   const offlineContext = useMemo(() => {
@@ -235,10 +264,193 @@ export function DashboardPage() {
     return Number.isFinite(ms) && ms > 0 ? formatCompactDuration(ms / 1000, i18n.language) : null;
   }, [chart.data, i18n.language]);
 
+  /**
+   * The colour each node already has in the chart above the table, so the
+   * sparkline in a row and the line in the chart are the same node. Nodes
+   * past the palette are folded into one "other" series there and have no
+   * colour of their own; the table falls back to --series-other for them.
+   */
+  const colorByNode = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const s of chart.series) if (s.key !== OTHER_SERIES_KEY) out[s.key] = s.color;
+    return out;
+  }, [chart.series]);
+
+  /**
+   * Average CPU across the nodes that are actually reporting. `nodeLoad`
+   * returns nothing for an offline node or one that never reported, and an
+   * average that counted those as zero would say the fleet is idle when half
+   * of it is unreachable. Null when nothing is reporting at all.
+   */
+  const avgLoad = useMemo(() => {
+    const cpus = nodes.map((n) => nodeLoad(n)?.cpu).filter((v): v is number => v !== undefined);
+    if (cpus.length === 0) return null;
+    return cpus.reduce((sum, v) => sum + v, 0) / cpus.length;
+  }, [nodes]);
+
   const recentJobs = (summary?.recent_jobs ?? []).slice(0, RECENT_JOBS_LIMIT);
-  const trafficTotal = splitBytes(traffic.up + traffic.down);
+  // Memoised rather than derived inline: the tile list below depends on it,
+  // and a fresh [] on every render would rebuild eleven tiles for nothing.
+  const openAlerts = useMemo(() => summary?.alerts ?? [], [summary?.alerts]);
+  const trafficUp = splitBytes(traffic.up);
+  const trafficDown = splitBytes(traffic.down);
   const loading = summaryQuery.isLoading || nodesQuery.isLoading;
   const failed = summaryQuery.isError || nodesQuery.isError;
+
+  /*
+   * The eleven facts, in the order the mockup reads them: the fleet, then
+   * what is on it, then what is moving through it, then what wants
+   * attention. Each tile's tone is decided by `statTone` from the fact
+   * itself, never set here - a tile is neutral until its number means
+   * something is wrong, which is what makes the one coloured tile on a
+   * healthy page worth looking at.
+   */
+  const tiles = useMemo((): StatGridTile[] => {
+    const num = (v: number) => formatNumber(v, i18n.language);
+    return [
+      {
+        id: 'nodes-online',
+        icon: Server,
+        tone: statTone({ kind: 'nodes_online', online: nodesOnline, total: nodesTotal }),
+        label: t('dashboard.nodes_online'),
+        value: num(nodesOnline),
+        unit: `/ ${num(nodesTotal)}`,
+        context: t('dashboard.tile_nodes_online_context'),
+        to: '/nodes',
+        loading,
+      },
+      {
+        id: 'nodes-offline',
+        icon: ServerOff,
+        tone: statTone({ kind: 'nodes_offline', count: nodesOffline }),
+        label: t('dashboard.tile_nodes_offline'),
+        value: num(nodesOffline),
+        context: offlineContext ?? t('dashboard.tile_nodes_offline_none'),
+        to: '/nodes',
+        loading,
+      },
+      {
+        id: 'nodes-degraded',
+        icon: TriangleAlert,
+        tone: statTone({ kind: 'degraded', count: nodesDegraded }),
+        label: t('dashboard.tile_degraded'),
+        value: num(nodesDegraded),
+        context: nodesDegraded > 0 ? t('dashboard.tile_degraded_some') : t('dashboard.tile_degraded_none'),
+        to: '/nodes',
+        loading,
+      },
+      {
+        id: 'keys-active',
+        icon: KeyRound,
+        tone: statTone({ kind: 'stateless' }),
+        label: t('dashboard.keys_active'),
+        value: num(keysActive),
+        context: t('dashboard.tile_keys_total', { count: keysTotal }),
+        to: '/keys',
+        loading,
+      },
+      {
+        id: 'keys-pending',
+        icon: Clock,
+        tone: statTone({ kind: 'keys_pending', count: keysPending }),
+        label: t('dashboard.tile_keys_pending'),
+        value: num(keysPending),
+        context: keysPending > 0 ? t('dashboard.tile_keys_pending_queued') : t('dashboard.tile_keys_pending_none'),
+        to: '/keys',
+        loading,
+      },
+      {
+        id: 'sessions',
+        icon: Radio,
+        tone: statTone({ kind: 'stateless' }),
+        label: t('dashboard.sessions_live'),
+        value: num(summary?.sessions_live ?? 0),
+        delta: sessionsDelta,
+        context: sessionsDelta ? undefined : t('dashboard.tile_sessions_context'),
+        to: '/monitoring',
+        loading,
+      },
+      {
+        id: 'streams',
+        icon: Waves,
+        tone: statTone({ kind: 'stateless' }),
+        label: t('dashboard.tile_streams'),
+        value: num(summary?.streams_live ?? 0),
+        context: t('dashboard.tile_streams_context'),
+        to: '/monitoring',
+        loading,
+      },
+      {
+        id: 'traffic-up',
+        icon: ArrowUp,
+        tone: statTone({ kind: 'stateless' }),
+        label: t('dashboard.tile_traffic_up'),
+        value: trafficUp.value,
+        unit: trafficUp.unit,
+        context: t('dashboard.tile_traffic_context'),
+        to: '/monitoring',
+        loading: loading || seriesLoading,
+      },
+      {
+        id: 'traffic-down',
+        icon: ArrowDown,
+        tone: statTone({ kind: 'stateless' }),
+        label: t('dashboard.tile_traffic_down'),
+        value: trafficDown.value,
+        unit: trafficDown.unit,
+        context: t('dashboard.tile_traffic_context'),
+        to: '/monitoring',
+        loading: loading || seriesLoading,
+      },
+      {
+        id: 'alerts-open',
+        icon: Bell,
+        tone: statTone({ kind: 'alerts_open', count: openAlerts.length }),
+        label: t('dashboard.tile_alerts_open'),
+        value: num(openAlerts.length),
+        // The newest alert names itself in the machine's own words, which is
+        // what an operator matches against the list two panels down.
+        context:
+          openAlerts.length > 0
+            ? [openAlerts[0].kind, openAlerts[0].node_name].filter(Boolean).join(' · ')
+            : t('dashboard.tile_alerts_none'),
+        loading,
+      },
+      {
+        id: 'avg-load',
+        icon: Gauge,
+        tone: statTone({ kind: 'avg_load', percent: avgLoad }),
+        label: t('dashboard.tile_avg_load'),
+        value: avgLoad === null ? DASH : num(Math.round(avgLoad)),
+        unit: avgLoad === null ? undefined : '%',
+        context: t('dashboard.tile_avg_load_context'),
+        to: '/monitoring',
+        loading,
+      },
+    ];
+  }, [
+    avgLoad,
+    i18n.language,
+    keysActive,
+    keysPending,
+    keysTotal,
+    loading,
+    nodesDegraded,
+    nodesOffline,
+    nodesOnline,
+    nodesTotal,
+    offlineContext,
+    openAlerts,
+    seriesLoading,
+    sessionsDelta,
+    summary?.sessions_live,
+    summary?.streams_live,
+    t,
+    trafficDown.unit,
+    trafficDown.value,
+    trafficUp.unit,
+    trafficUp.value,
+  ]);
 
   /*
    * The error branch comes before the empty one on purpose. When /nodes fails
@@ -272,6 +484,7 @@ export function DashboardPage() {
       <>
         <PageHeader title={t('dashboard.title')} actions={<HelpButton topic="dashboard" />} />
         <EmptyState
+          icon={Server}
           title={t('dashboard.empty_no_nodes')}
           action={
             <Button type="button" onClick={() => navigate('/nodes')}>
@@ -292,40 +505,20 @@ export function DashboardPage() {
       />
 
       {/* The three blocks arrive in the order they are read: the numbers, the
-          shape of the last day, then the fleet itself. */}
-      <div className={cn(ENTER_CLASS, 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4')} style={enterDelay(0)}>
-        <StatCard
-          label={t('dashboard.nodes_online')}
-          value={formatNumber(nodesOnline, i18n.language)}
-          unit={`/ ${formatNumber(nodesTotal, i18n.language)}`}
-          badge={nodesOffline > 0 ? t('dashboard.nodes_offline_suffix', { count: nodesOffline }) : undefined}
-          context={offlineContext}
-          loading={loading}
-        />
-        <StatCard
-          label={t('dashboard.keys_active')}
-          value={formatNumber(keysActive, i18n.language)}
-          context={keysPending > 0 ? t('dashboard.keys_pending_context', { count: keysPending }) : undefined}
-          loading={loading}
-        />
-        <StatCard
-          label={t('dashboard.sessions_live')}
-          value={formatNumber(summary?.sessions_live ?? 0, i18n.language)}
-          delta={sessionsDelta}
-          loading={loading}
-        />
-        <StatCard
-          label={t('dashboard.traffic_title')}
-          value={trafficTotal.value}
-          unit={trafficTotal.unit}
-          context={`↑ ${formatBytes(traffic.up)} · ↓ ${formatBytes(traffic.down)}`}
-          loading={loading || seriesLoading}
-        />
-      </div>
+          shape of the last day, then the fleet itself. The grid carries no
+          entrance of its own - each tile brings its own staggered one, and
+          the loading state is the same eleven tiles with skeletons in them,
+          so the row does not change shape when the data lands. */}
+      <StatGrid tiles={tiles} />
 
       <div className={cn(ENTER_CLASS, 'grid grid-cols-1 gap-4 lg:grid-cols-12')} style={enterDelay(1)}>
         <Panel className="flex flex-col lg:col-span-8">
+          {/* No range control and no expand button here, unlike the mockup:
+              the series behind this chart is a fixed 24h fetch and there is
+              no full-screen view to open, so either affordance would be a
+              control that does nothing. */}
           <PanelHeader
+            icon={Activity}
             title={t('dashboard.sessions_chart_title')}
             meta={chartStep ? t('dashboard.sessions_chart_meta', { step: chartStep }) : undefined}
           />
@@ -355,8 +548,29 @@ export function DashboardPage() {
           style, and the entrance needs its index on the element. */}
       <div className={ENTER_CLASS} style={enterDelay(2)}>
         <Panel>
-          <PanelHeader title={t('nodes.title')} meta={loading ? undefined : String(nodes.length)} />
-          {loading ? <NodesTableSkeleton /> : <NodesTable nodes={nodes} sessionsByNode={sessionsByNode} />}
+          <PanelHeader
+            icon={Server}
+            title={t('nodes.title')}
+            meta={loading ? undefined : String(nodes.length)}
+            actions={
+              isWriter && (
+                <Button type="button" variant="outline" size="sm" render={<Link to="/nodes" />}>
+                  <Plus />
+                  {t('nodes.add')}
+                </Button>
+              )
+            }
+          />
+          {loading ? (
+            <NodesTableSkeleton />
+          ) : (
+            <NodesTable
+              nodes={nodes}
+              sessionsByNode={sessionsByNode}
+              seriesByNode={seriesByNode}
+              colorByNode={colorByNode}
+            />
+          )}
         </Panel>
       </div>
     </>

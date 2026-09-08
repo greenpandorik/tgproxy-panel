@@ -1,3 +1,4 @@
+import { Eye, LayoutTemplate } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -83,6 +84,7 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
     <div className={cn(ENTER_CLASS, 'flex flex-col gap-4')}>
       <Panel>
         <PanelHeader
+          icon={LayoutTemplate}
           title={t('nodes.site_current_template')}
           meta={site?.updated_at ? formatDateTime(site.updated_at, i18n.language) : undefined}
           actions={<HelpButton topic="sites.assign" />}
@@ -100,7 +102,7 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
                   {deployed ? t('nodes.site_status_deployed') : t('nodes.site_status_pending')}
                 </span>
               </span>
-              {site.bundle_hash && <span className="mono text-mono text-dim">{site.bundle_hash.slice(0, 12)}</span>}
+              {site.bundle_hash && <span className="mono text-mono text-mute">{site.bundle_hash.slice(0, 12)}</span>}
             </>
           )}
 
@@ -132,7 +134,7 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
         {site?.files && site.files.length > 0 && (
           <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t border-hairline px-4 py-3">
             {site.files.map((f) => (
-              <li key={f} className="mono text-mono text-dim">
+              <li key={f} className="mono text-mono text-mute">
                 {f}
               </li>
             ))}
@@ -141,7 +143,7 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
       </Panel>
 
       <Panel>
-        <PanelHeader title={t('nodes.site_preview')} />
+        <PanelHeader icon={Eye} title={t('nodes.site_preview')} />
         {site?.template_id ? (
           <iframe
             key={site.bundle_hash}

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -243,6 +243,7 @@ export function AdminsForm() {
       <Arriving>
         <Panel>
           <PanelHeader
+            icon={Users}
             title={t('settings.tab_admins')}
             meta={String(admins.length)}
             actions={<HelpButton topic="settings.admins" />}
@@ -265,7 +266,7 @@ export function AdminsForm() {
                     <TableCell>
                       <RoleTag role={a.role} />
                     </TableCell>
-                    <TableCell className="mono text-mono text-dim">
+                    <TableCell className="mono text-mono text-mute">
                       {a.created_at ? formatDate(a.created_at, i18n.language) : '—'}
                     </TableCell>
                     <TableCell className="pr-4 text-right">
@@ -294,7 +295,7 @@ export function AdminsForm() {
                   <p className="truncate text-body font-medium text-foreground">{a.username}</p>
                   <div className="mt-1 flex items-center gap-2">
                     <RoleTag role={a.role} />
-                    <span className="mono text-mono text-dim">
+                    <span className="mono text-mono text-mute">
                       {a.created_at ? formatDate(a.created_at, i18n.language) : '—'}
                     </span>
                   </div>

@@ -3,11 +3,13 @@ import {
   ChevronRight,
   Edit as EditIcon,
   ExternalLink,
+  KeyRound,
   MoreHorizontal,
   Plus,
   RefreshCw,
   RotateCw,
   Trash2,
+  TriangleAlert,
   Undo2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -145,7 +147,7 @@ function PendingStatus({ status }: { status: KeyStatus }) {
 
 function ExpiresCell({ iso, locale }: { iso: string | null; locale: string }) {
   const { t } = useTranslation();
-  if (!iso) return <span className="text-label text-dim">{t('keys.no_expiry')}</span>;
+  if (!iso) return <span className="text-label text-mute">{t('keys.no_expiry')}</span>;
   return (
     <span className={cn('text-label', expiresSoon(iso) ? 'text-err' : 'text-mute')} title={formatDateTime(iso, locale)}>
       {formatRelativeTime(iso, locale)}
@@ -176,7 +178,7 @@ function NodeChips({ nodes }: { nodes: AccessKey['nodes'] }) {
  */
 function TrafficCell({ bytes, measured }: { bytes: number; measured: boolean }) {
   if (bytes <= 0 && !measured) return <span className="mono text-mono text-dim">—</span>;
-  return <span className={cn('mono text-mono', bytes > 0 ? 'text-mute' : 'text-dim')}>{formatBytes(bytes)}</span>;
+  return <span className="mono text-mono text-mute">{formatBytes(bytes)}</span>;
 }
 
 /**
@@ -471,6 +473,7 @@ export function KeysPage() {
            and tells the operator they have no keys, which is a different and
            much worse thing than "the list did not load". */
         <EmptyState
+          icon={TriangleAlert}
           title={t('common.error_generic')}
           action={
             <Button type="button" variant="outline" disabled={keysQuery.isFetching} onClick={() => void keysQuery.refetch()}>
@@ -481,6 +484,7 @@ export function KeysPage() {
         />
       ) : items.length === 0 ? (
         <EmptyState
+          icon={KeyRound}
           title={t('keys.empty_title')}
           description={t('keys.empty_description')}
           action={
@@ -549,7 +553,7 @@ export function KeysPage() {
                       <TableCell className="text-right">
                         <ExpiresCell iso={key.expires_at} locale={i18n.language} />
                       </TableCell>
-                      <TableCell className="mono text-right text-mono text-dim">
+                      <TableCell className="mono text-right text-mono text-mute">
                         {formatDate(key.created_at, i18n.language)}
                       </TableCell>
                       {isWriter && <TableCell className="w-0 text-right">{rowActions(key)}</TableCell>}
@@ -594,7 +598,7 @@ export function KeysPage() {
                       <TrafficCell bytes={key.traffic_30d} measured={measured(key)} />
                     </Field>
                     <Field label={t('keys.column_created')}>
-                      <span className="mono text-dim">{formatDate(key.created_at, i18n.language)}</span>
+                      <span className="mono text-mute">{formatDate(key.created_at, i18n.language)}</span>
                     </Field>
                     <div className="col-span-2 min-w-0">
                       <dt className="micro truncate text-mute">{t('keys.column_nodes')}</dt>
@@ -609,7 +613,7 @@ export function KeysPage() {
           </Panel>
 
           <div className={cn(ENTER_CLASS, 'flex items-center justify-between gap-2')} style={enterDelay(1)}>
-            <p className="mono text-mono text-dim">{t('keys.pagination_summary', { page, totalPages, total })}</p>
+            <p className="mono text-mono text-mute">{t('keys.pagination_summary', { page, totalPages, total })}</p>
             <div className="flex items-center gap-2">
               <Button
                 type="button"

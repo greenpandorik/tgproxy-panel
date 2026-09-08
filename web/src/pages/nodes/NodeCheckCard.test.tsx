@@ -97,7 +97,7 @@ describe('NodeCheckCard', () => {
       ),
     );
     const detail = screen.getByText('X25519MLKEM768 negotiated');
-    expect(detail.className).toContain('text-dim');
+    expect(detail.className).toContain('text-mute');
     expect(detail.closest('li')?.querySelector('.bg-ok')).not.toBeNull();
   });
 });

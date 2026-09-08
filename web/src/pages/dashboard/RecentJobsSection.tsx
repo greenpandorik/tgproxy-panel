@@ -1,3 +1,4 @@
+import { History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -33,6 +34,7 @@ export function RecentJobsSection({ jobs }: { jobs: ApplyJob[] }) {
   return (
     <>
       <PanelHeader
+        icon={History}
         title={t('dashboard.jobs_title')}
         meta={jobs.length > 0 ? String(jobs.length) : undefined}
         className="border-t border-hairline"
@@ -52,7 +54,7 @@ export function RecentJobsSection({ jobs }: { jobs: ApplyJob[] }) {
                   </Link>
                   <Badge>{job.kind}</Badge>
                 </div>
-                <span className={cn('mono shrink-0 text-mono', FAILED_STATUSES.has(job.status) ? 'text-err' : 'text-dim')}>
+                <span className={cn('mono shrink-0 text-mono', FAILED_STATUSES.has(job.status) ? 'text-err' : 'text-mute')}>
                   {timing && `${timing} · `}
                   {job.status}
                 </span>

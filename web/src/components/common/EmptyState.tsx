@@ -1,10 +1,10 @@
 import type { LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
-  /** Kept for call-site compatibility; the v2 empty state is text + action only. */
+  /** The subject's own glyph, on a tinted plate above the text. */
   icon?: LucideIcon;
   title: string;
   description?: string;
@@ -14,12 +14,31 @@ interface EmptyStateProps {
 
 /**
  * Empty is not an error and not a mood: one muted line saying what is not
- * here, and the button that fixes it. No illustration, no icon medallion -
- * they only push the useful action further down the page.
+ * here, and the button that fixes it. No illustration and no mascot.
+ *
+ * The one glyph it does take is the subject's own - the same icon the panel
+ * header and the nav item use - on the same tinted plate a stat tile draws,
+ * in the neutral tone. It is what tells the reader at a glance *which* empty
+ * thing they are looking at when three panels on a page are all empty, and
+ * it costs one line of vertical space rather than an illustration's ten.
  */
-export function EmptyState({ title, description, action, className }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 rounded-surface border border-hairline py-14 text-center', className)}>
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center gap-3 rounded-surface border border-hairline-strong py-14 text-center',
+        className,
+      )}
+    >
+      {Icon && (
+        <span
+          className="tgwp-tone-tint flex size-9 items-center justify-center rounded-control border"
+          style={{ '--tone': 'var(--mute)' } as CSSProperties}
+          aria-hidden="true"
+        >
+          <Icon size={18} strokeWidth={1.8} />
+        </span>
+      )}
       <div className="space-y-1 px-6">
         <p className="text-body text-muted-foreground">{title}</p>
         {description && <p className="text-label text-mute">{description}</p>}

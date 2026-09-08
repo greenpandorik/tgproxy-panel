@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react';
+import { Download, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -112,7 +112,7 @@ export function TotpSection() {
           with turning the second factor on or off as this one's commit action. */}
       <Arriving index={1}>
         <Panel>
-          <PanelHeader title={t('settings.totp_title')} actions={<HelpButton topic="settings.security" />} />
+          <PanelHeader icon={ShieldCheck} title={t('settings.totp_title')} actions={<HelpButton topic="settings.security" />} />
           <PanelBody className="space-y-2">
             <p className="flex items-center gap-2 text-body text-foreground">
               <span className={cn('size-[7px] shrink-0 rounded-pill', enabled ? 'bg-ok' : 'bg-pending')} aria-hidden="true" />

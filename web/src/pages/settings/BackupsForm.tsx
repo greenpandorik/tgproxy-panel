@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Download, Trash2 } from 'lucide-react';
+import { Archive, CalendarClock, Download, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -122,6 +122,7 @@ export function BackupsForm() {
       <Arriving>
         <Panel>
           <PanelHeader
+            icon={Archive}
             title={t('settings.backups_title')}
             meta={backups.length > 0 ? String(backups.length) : undefined}
             actions={
@@ -175,7 +176,7 @@ export function BackupsForm() {
                         <TableCell>
                           <KindTag kind={b.kind} />
                         </TableCell>
-                        <TableCell className="mono text-mono text-dim">{formatDateTime(b.created_at, i18n.language)}</TableCell>
+                        <TableCell className="mono text-mono text-mute">{formatDateTime(b.created_at, i18n.language)}</TableCell>
                         <TableCell className="pr-4">
                           <div className="flex items-center justify-end gap-1">
                             <a
@@ -212,7 +213,7 @@ export function BackupsForm() {
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <KindTag kind={b.kind} />
                         <span className="mono text-mono text-mute">{formatBytes(b.size)}</span>
-                        <span className="mono text-mono text-dim">{formatDateTime(b.created_at, i18n.language)}</span>
+                        <span className="mono text-mono text-mute">{formatDateTime(b.created_at, i18n.language)}</span>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
@@ -245,7 +246,11 @@ export function BackupsForm() {
       <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSaveSchedule)(e)} noValidate>
         <Arriving index={1}>
           <Panel>
-            <PanelHeader title={t('settings.backups_schedule_title')} actions={<HelpButton topic="settings.backups" />} />
+            <PanelHeader
+              icon={CalendarClock}
+              title={t('settings.backups_schedule_title')}
+              actions={<HelpButton topic="settings.backups" />}
+            />
             <PanelBody className="max-w-sm space-y-4">
               <p className="text-label text-mute">{t('settings.backups_schedule_hint')}</p>
 

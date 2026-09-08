@@ -110,7 +110,7 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
                   <SelectItem key={n.id} value={n.id}>
                     <span className="flex min-w-0 items-baseline gap-2">
                       <span className="truncate">{n.name}</span>
-                      <span className="mono truncate text-mono text-dim">{n.hostname}</span>
+                      <span className="mono truncate text-mono text-mute">{n.hostname}</span>
                     </span>
                   </SelectItem>
                 ))}

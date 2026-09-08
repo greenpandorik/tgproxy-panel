@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Network } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -120,7 +121,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
 
   return (
     <Panel>
-      <PanelHeader title={t('nodes.listeners_title')} actions={<HelpButton topic="nodes.listeners" />} />
+      <PanelHeader icon={Network} title={t('nodes.listeners_title')} actions={<HelpButton topic="nodes.listeners" />} />
       {canEdit ? (
         <form className="space-y-4 p-4" onSubmit={(e) => void handleSubmit(askToSave)(e)} noValidate>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_auto]">

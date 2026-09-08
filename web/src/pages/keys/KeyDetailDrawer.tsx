@@ -338,7 +338,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
             <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
               <StatusBadge status={key.status} />
               <Badge>{key.type}</Badge>
-              <span className="mono text-mono text-dim">{formatDateTime(key.created_at, i18n.language)}</span>
+              <span className="mono text-mono text-mute">{formatDateTime(key.created_at, i18n.language)}</span>
             </SheetDescription>
           )}
         </SheetHeader>
@@ -507,7 +507,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                   <li key={n.node_id} className="flex items-center justify-between gap-3 px-3 py-2">
                     <span className="min-w-0">
                       <span className="block truncate text-body text-foreground">{n.node_name}</span>
-                      <span className="mono block truncate text-mono text-dim">{n.hostname}</span>
+                      <span className="mono block truncate text-mono text-mute">{n.hostname}</span>
                     </span>
                     {isWriter && (
                       <Button

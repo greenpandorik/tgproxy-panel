@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Lock, Plus, Trash2 } from 'lucide-react';
+import { Check, Lock, Palette, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { BrandingForm } from './BrandingForm';
 import { Arriving, FormFooter } from './formShell';
 
+import type { CSSProperties } from 'react';
 import type { BrandingProfile } from '@/api/types';
 
 const createSchema = z.object({ name: z.string().trim().min(1) });
@@ -125,11 +126,15 @@ function CreateProfileDialog({
 }
 
 /**
- * One profile in the rail: the name, a dot and tag when it is the one the
+ * One profile in the rail: the name, a mark and tag when it is the one the
  * panel is actually serving, and the mono stamp of its last change. The
  * selected row carries the same brand-coloured 2px tab the sidebar uses for
  * the current section - it is the same idea (you are here), so it is the same
  * mark. Activate/Delete stay out of the way until the row is pointed at.
+ *
+ * The row is a card and not a table row - two lines of text and its own
+ * controls - so "this is the live one" is a check on a tinted plate in the ok
+ * tone rather than a 7px dot, the treatment every card in the panel now uses.
  */
 function ProfileRow({
   profile,
@@ -157,11 +162,19 @@ function ProfileRow({
     >
       <button type="button" className="min-w-0 flex-1 text-left" aria-pressed={selected} onClick={onSelect}>
         <span className="flex items-center gap-2">
-          {profile.is_active && <span className="size-[7px] shrink-0 rounded-pill bg-ok" aria-hidden="true" />}
+          {profile.is_active && (
+            <span
+              className="tgwp-tone-tint flex size-5 shrink-0 items-center justify-center rounded-control border"
+              style={{ '--tone': 'var(--status-ok)' } as CSSProperties}
+              aria-hidden="true"
+            >
+              <Check size={12} strokeWidth={1.8} />
+            </span>
+          )}
           <span className="truncate text-body font-medium text-foreground">{profile.name}</span>
           {profile.is_active && <Badge className="shrink-0">{t('settings.branding_active_badge')}</Badge>}
         </span>
-        <span className="mono mt-0.5 block truncate text-mono text-dim">
+        <span className="mono mt-0.5 block truncate text-mono text-mute">
           {t('settings.branding_updated', { time: formatRelativeTime(profile.updated_at, i18n.language) })}
         </span>
       </button>
@@ -272,6 +285,7 @@ export function BrandingProfilesList() {
         <Arriving>
           <Panel>
             <PanelHeader
+              icon={Palette}
               title={t('settings.branding_profiles_title')}
               meta={String(items.length)}
               actions={<HelpButton topic="settings.branding" />}

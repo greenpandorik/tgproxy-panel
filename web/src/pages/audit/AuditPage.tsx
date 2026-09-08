@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, ScrollText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -60,7 +60,7 @@ function MetaCell({ meta }: { meta: unknown }) {
 
   return (
     <div className="flex max-w-72 items-center gap-1">
-      <span className="mono min-w-0 flex-1 truncate text-mono text-dim">{metaCompact(meta)}</span>
+      <span className="mono min-w-0 flex-1 truncate text-mono text-mute">{metaCompact(meta)}</span>
       {hasMeta && (
         <Popover>
           <PopoverTrigger render={<Button type="button" variant="ghost" size="icon-xs" className="-mr-1 shrink-0" />}>
@@ -83,7 +83,7 @@ function TargetCell({ type, id }: { type: string; id: string }) {
   return (
     <div className="min-w-0">
       {type && <div className="text-label text-mute">{type}</div>}
-      {id && <div className="mono truncate text-mono text-dim">{id}</div>}
+      {id && <div className="mono truncate text-mono text-mute">{id}</div>}
     </div>
   );
 }
@@ -207,7 +207,7 @@ export function AuditPage() {
           onRetry={() => void auditQuery.refetch()}
         />
       ) : items.length === 0 ? (
-        <EmptyState title={t('audit.empty_title')} description={t('audit.empty_description')} />
+        <EmptyState icon={ScrollText} title={t('audit.empty_title')} description={t('audit.empty_description')} />
       ) : (
         <>
           <Panel className={ENTER_CLASS}>
@@ -226,7 +226,7 @@ export function AuditPage() {
                 <TableBody>
                   {items.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="mono pl-4 text-mono text-dim">
+                      <TableCell className="mono pl-4 text-mono text-mute">
                         {formatDateTime(entry.created_at, i18n.language)}
                       </TableCell>
                       <TableCell className="text-label text-foreground">{entry.username || t('audit.system_user')}</TableCell>
@@ -236,7 +236,7 @@ export function AuditPage() {
                       <TableCell>
                         <TargetCell type={entry.target_type} id={entry.target_id} />
                       </TableCell>
-                      <TableCell className="mono text-mono text-dim">{entry.ip || '—'}</TableCell>
+                      <TableCell className="mono text-mono text-mute">{entry.ip || '—'}</TableCell>
                       <TableCell className="pr-4">
                         <MetaCell meta={entry.meta} />
                       </TableCell>
@@ -251,11 +251,11 @@ export function AuditPage() {
                 <li key={entry.id} className="space-y-2 px-4 py-3">
                   <div className="flex items-start justify-between gap-2">
                     <ActionName action={entry.action} />
-                    <span className="mono shrink-0 text-mono text-dim">{formatDateTime(entry.created_at, i18n.language)}</span>
+                    <span className="mono shrink-0 text-mono text-mute">{formatDateTime(entry.created_at, i18n.language)}</span>
                   </div>
                   <p className="text-label text-foreground">{entry.username || t('audit.system_user')}</p>
                   <TargetCell type={entry.target_type} id={entry.target_id} />
-                  <span className="mono block text-mono text-dim">{entry.ip || '—'}</span>
+                  <span className="mono block text-mono text-mute">{entry.ip || '—'}</span>
                   <MetaCell meta={entry.meta} />
                 </li>
               ))}
@@ -263,7 +263,7 @@ export function AuditPage() {
           </Panel>
 
           <div className={cn(ENTER_CLASS, 'flex items-center justify-between gap-2')} style={enterDelay(1)}>
-            <p className="mono text-mono text-dim">{t('audit.pagination_summary', { page, totalPages, total })}</p>
+            <p className="mono text-mono text-mute">{t('audit.pagination_summary', { page, totalPages, total })}</p>
             <div className="flex items-center gap-2">
               <Button
                 type="button"

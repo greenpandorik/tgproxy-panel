@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react';
+import { Gauge, RefreshCw, Sigma } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -52,6 +52,7 @@ function NodeLoadPanel({ nodeId }: { nodeId: string }) {
   return (
     <Panel>
       <PanelHeader
+        icon={Gauge}
         title={t('nodes.load_title')}
         actions={
           <SegmentedControl
@@ -101,6 +102,7 @@ function NodeCountersPanel({ nodeId, online }: { nodeId: string; online: boolean
   return (
     <Panel>
       <PanelHeader
+        icon={Sigma}
         title={t('nodes.stats_title')}
         meta={entries.length > 0 ? String(entries.length) : undefined}
         actions={

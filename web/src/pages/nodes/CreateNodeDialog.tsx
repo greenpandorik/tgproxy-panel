@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Circle, CircleCheck } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Controller, useForm } from 'react-hook-form';
@@ -15,6 +16,7 @@ import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
 import { cn } from '@/lib/utils';
 
+import type { CSSProperties } from 'react';
 import type { CreateNodeResult, NodeEngine } from '@/api/types';
 
 // Mirrors internal/domain/types.go hostRe: lowercase DNS name with a dot, no scheme/path.
@@ -79,6 +81,11 @@ const defaultValues: FormValues = {
  * later, so it is not a select. Each card says what the engine gives you in one
  * line; the chosen one is filled with --bg-3 and outlined with the strong
  * hairline, the same "this one is active" treatment the range switch uses.
+ *
+ * A card is not a table row, so its state is a glyph on a tinted plate rather
+ * than a 7px dot: the chosen engine takes a filled check in the brand hue, the
+ * other an empty ring in --mute. At 20px the mark is legible next to the
+ * engine's name where a dot only registered once you already knew to look.
  */
 function EngineCards({ value, onChange }: { value: NodeEngine; onChange: (engine: NodeEngine) => void }) {
   const { t } = useTranslation();
@@ -101,9 +108,12 @@ function EngineCards({ value, onChange }: { value: NodeEngine; onChange: (engine
           >
             <span className="mono flex items-center gap-2 text-mono text-foreground">
               <span
-                className={cn('size-[7px] shrink-0 rounded-pill', active ? 'bg-brand-primary' : 'bg-hairline-strong')}
+                className="tgwp-tone-tint flex size-5 shrink-0 items-center justify-center rounded-control border"
+                style={{ '--tone': active ? 'var(--brand-primary)' : 'var(--mute)' } as CSSProperties}
                 aria-hidden="true"
-              />
+              >
+                {active ? <CircleCheck size={12} strokeWidth={1.8} /> : <Circle size={12} strokeWidth={1.8} />}
+              </span>
               {engine}
             </span>
             <span className="mt-1 block text-label text-mute">{t(`nodes.engine_${engine}_desc`)}</span>

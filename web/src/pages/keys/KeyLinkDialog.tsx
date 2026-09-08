@@ -1,4 +1,4 @@
-import { Download, RefreshCw } from 'lucide-react';
+import { Ban, Download, Lock, RefreshCw, Server, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { keyQrUrl, linkKindLabel, useKey, useKeyLinks } from '@/api/keys';
@@ -236,6 +236,7 @@ export function KeyLinkDialog({ open, onOpenChange, keyId }: KeyLinkDialogProps)
         ) : !key ? (
           <EmptyState
             className="py-10"
+            icon={TriangleAlert}
             title={t('common.error_generic')}
             action={
               <Button
@@ -251,12 +252,13 @@ export function KeyLinkDialog({ open, onOpenChange, keyId }: KeyLinkDialogProps)
             }
           />
         ) : revoked ? (
-          <EmptyState className="py-10" title={t('keys.link_revoked')} />
+          <EmptyState className="py-10" icon={Ban} title={t('keys.link_revoked')} />
         ) : !isWriter ? (
-          <EmptyState className="py-10" title={t('keys.link_no_permission')} />
+          <EmptyState className="py-10" icon={Lock} title={t('keys.link_no_permission')} />
         ) : linksQuery.isError ? (
           <EmptyState
             className="py-10"
+            icon={TriangleAlert}
             title={t('common.error_generic')}
             action={
               <Button
@@ -274,7 +276,7 @@ export function KeyLinkDialog({ open, onOpenChange, keyId }: KeyLinkDialogProps)
         ) : linksQuery.isLoading ? (
           <LinksSkeleton />
         ) : groups.length === 0 ? (
-          <EmptyState className="py-10" title={t('keys.link_no_nodes')} />
+          <EmptyState className="py-10" icon={Server} title={t('keys.link_no_nodes')} />
         ) : (
           <div className="space-y-4">
             {key.status === 'pending' && (

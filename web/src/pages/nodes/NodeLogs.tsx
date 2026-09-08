@@ -1,4 +1,4 @@
-import { Pause, Play, Trash2 } from 'lucide-react';
+import { Pause, Play, Terminal, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -123,6 +123,7 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
   return (
     <Panel className={ENTER_CLASS}>
       <PanelHeader
+        icon={Terminal}
         title={t('nodes.logs_title')}
         meta={visibleLines.length > 0 ? String(visibleLines.length) : undefined}
         actions={
@@ -221,7 +222,7 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
         ) : (
           visibleLines.map((l, i) => (
             <div key={i} className="break-all whitespace-pre-wrap">
-              <span className="text-dim">[{l.service}]</span> {l.line}
+              <span className="text-mute">[{l.service}]</span> {l.line}
             </div>
           ))
         )}

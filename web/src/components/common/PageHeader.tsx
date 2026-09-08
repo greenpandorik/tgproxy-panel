@@ -21,7 +21,7 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-display text-foreground">{title}</h1>
-        {description && <p className="mono truncate text-mono text-dim">{description}</p>}
+        {description && <p className="mono truncate text-mono text-mute">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>

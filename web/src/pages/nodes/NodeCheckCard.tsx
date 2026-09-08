@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react';
+import { ListChecks, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useRunNodeCheck } from '@/api/nodes';
@@ -54,7 +54,7 @@ function CheckRow({ result }: { result: NodeCheckResult }) {
         <span
           className={cn(
             'mono min-w-0 text-mono break-words sm:text-right',
-            tone === 'ok' && 'text-dim',
+            tone === 'ok' && 'text-mute',
             tone === 'info' && 'text-info',
             tone === 'err' && 'text-err',
           )}
@@ -91,6 +91,7 @@ export function NodeCheckCard({ node }: { node: Node }) {
   return (
     <Panel>
       <PanelHeader
+        icon={ListChecks}
         title={t('nodes.check_title')}
         meta={ranAt ? (age ? t('common.ago', { value: age }) : formatDateTime(ranAt, i18n.language)) : undefined}
         actions={

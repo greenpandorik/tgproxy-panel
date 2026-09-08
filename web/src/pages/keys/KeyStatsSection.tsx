@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react';
+import { Activity, ArrowDownUp, Radio, RefreshCw, TriangleAlert } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -6,12 +6,15 @@ import { useBranding } from '@/api/branding';
 import { useKeyStats } from '@/api/keys';
 import { EmptyState } from '@/components/common/EmptyState';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { StatGrid } from '@/components/common/StatGrid';
+import { statTone } from '@/components/common/statTone';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { seriesPalette } from '@/lib/chart';
 import { formatBytes, formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
+import type { StatGridTile } from '@/components/common/StatGrid';
 import type { KeyStatsRange } from '@/api/keys';
 import type { KeyStatsNode } from '@/api/types';
 import type { TrafficPoint } from './KeyTrafficChart';
@@ -43,35 +46,71 @@ function connectionsNow(node: KeyStatsNode): number {
   return node.points.length > 0 ? node.points[node.points.length - 1].connections : 0;
 }
 
-/** One figure of the pair above the charts: the number large, what it counts under it. */
-function Total({ label, value, unit }: { label: string; value: string; unit?: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="mono text-title text-foreground">
-        {value}
-        {unit && <span className="ml-1 text-label text-mute">{unit}</span>}
-      </p>
-      <p className="mt-1 truncate text-label text-mute">{label}</p>
-    </div>
-  );
+/**
+ * The pair of figures above the charts, as the panel's stat tiles.
+ *
+ * Neither number can be good or bad on its own - a key holding forty
+ * connections is not a fault, and neither is one holding none - so both plates
+ * stay neutral and only the glyph carries colour, which is the same bargain
+ * every tile in the panel makes. Two columns at every width: the drawer is
+ * narrow, and a third column would leave a hole where a tile is not.
+ */
+const TOTALS_GRID = 'sm:grid-cols-2 lg:grid-cols-2';
+
+function totalsTiles({
+  connections,
+  traffic,
+  trafficLabel,
+  connectionsLabel,
+  loading,
+}: {
+  connections: string;
+  traffic: [string, string | undefined];
+  trafficLabel: string;
+  connectionsLabel: string;
+  loading?: boolean;
+}): StatGridTile[] {
+  return [
+    {
+      id: 'connections',
+      icon: Radio,
+      tone: statTone({ kind: 'stateless' }),
+      label: connectionsLabel,
+      value: connections,
+      loading,
+    },
+    {
+      id: 'traffic',
+      icon: ArrowDownUp,
+      tone: statTone({ kind: 'stateless' }),
+      label: trafficLabel,
+      value: traffic[0],
+      unit: traffic[1],
+      loading,
+    },
+  ];
 }
 
 /**
- * The silhouette of what is loading: the totals tile with its two figures, then
- * one node's caption and plot. A generic bar would tell the operator something
- * is coming; this tells them what, so nothing jumps when it lands.
+ * The silhouette of what is loading: the two totals tiles with their labels
+ * already in place, then one node's caption and plot. A generic bar would tell
+ * the operator something is coming; this tells them what, so nothing jumps
+ * when it lands.
  */
-function StatsSkeleton() {
+function StatsSkeleton({ range }: { range: KeyStatsRange }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 rounded-surface border border-hairline px-4 py-3">
-        {[0, 1].map((i) => (
-          <div key={i} className="space-y-2">
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-3 w-28" />
-          </div>
-        ))}
-      </div>
+      <StatGrid
+        className={TOTALS_GRID}
+        tiles={totalsTiles({
+          connections: '0',
+          traffic: ['0', undefined],
+          connectionsLabel: t('keys.stats_connections_now'),
+          trafficLabel: t(`keys.stats_traffic_range_${range}`),
+          loading: true,
+        })}
+      />
       <div className="space-y-2">
         <Skeleton className="h-3 w-32" />
         <Skeleton className="h-[110px] w-full" />
@@ -132,12 +171,13 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
       </div>
 
       {!hasTelemtNode ? (
-        <EmptyState className="py-8" title={t('keys.stats_unavailable')} />
+        <EmptyState className="py-8" icon={Activity} title={t('keys.stats_unavailable')} />
       ) : statsQuery.isLoading ? (
-        <StatsSkeleton />
+        <StatsSkeleton range={range} />
       ) : statsQuery.isError ? (
         <EmptyState
           className="py-8"
+          icon={TriangleAlert}
           title={t('common.error_generic')}
           action={
             <Button
@@ -153,20 +193,25 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
           }
         />
       ) : nodes.length === 0 ? (
-        <EmptyState className="py-8" title={t('keys.stats_empty')} />
+        <EmptyState className="py-8" icon={Activity} title={t('keys.stats_empty')} />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 rounded-surface border border-hairline px-4 py-3">
-            <Total label={t('keys.stats_connections_now')} value={formatNumber(totals?.connections_now ?? 0, i18n.language)} />
-            <Total label={t(`keys.stats_traffic_range_${range}`)} value={traffic[0]} unit={traffic[1]} />
-          </div>
+          <StatGrid
+            className={TOTALS_GRID}
+            tiles={totalsTiles({
+              connections: formatNumber(totals?.connections_now ?? 0, i18n.language),
+              traffic: [traffic[0], traffic[1]],
+              connectionsLabel: t('keys.stats_connections_now'),
+              trafficLabel: t(`keys.stats_traffic_range_${range}`),
+            })}
+          />
 
           <div className="space-y-4">
             {nodes.map((node) => (
               <div key={node.node_id}>
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="truncate text-label text-foreground">{node.node_name}</span>
-                  <span className="mono shrink-0 text-mono text-dim">
+                  <span className="mono shrink-0 text-mono text-mute">
                     {t('keys.stats_node_connections', { count: connectionsNow(node) })}
                   </span>
                 </div>

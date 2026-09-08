@@ -116,7 +116,7 @@ export function LoginStatusLine({ className }: { className?: string }) {
   }
 
   return (
-    <p className={cn('mono flex flex-wrap gap-x-6 gap-y-1 text-micro text-dim', className)}>
+    <p className={cn('mono flex flex-wrap gap-x-6 gap-y-1 text-micro text-mute', className)}>
       <span>v{data.version}</span>
       <span>
         {t('login.status_api')} {t('login.status_ok')}

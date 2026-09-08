@@ -61,7 +61,7 @@ export function NodeCapacityList({ nodes, selectedIds, onChange, className }: No
               <Checkbox checked={checked} disabled={full} onCheckedChange={(v) => toggle(node.id, !!v)} />
               <span className="min-w-0">
                 <span className="block truncate text-body text-foreground">{node.name}</span>
-                <span className="mono block truncate text-mono text-dim">{node.hostname}</span>
+                <span className="mono block truncate text-mono text-mute">{node.hostname}</span>
               </span>
             </span>
             <span className={cn('mono shrink-0 text-mono', full ? 'text-err' : 'text-mute')}>

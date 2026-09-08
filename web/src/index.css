@@ -21,16 +21,33 @@
  * Nothing below this block should hard-code a colour.
  */
 :root {
-  /* Surfaces: page ground, panels, hover/active. */
+  /*
+   * Surfaces: page ground, panels, hover/active.
+   *
+   * Phase 9 raised --bg-2 one full step away from --bg (the step in this
+   * ramp is 6/255, and the card was sitting one step up; it now sits two)
+   * and moved --bg-3 up with it so the row/menu hover stays a visible step
+   * above the card it sits on. Together with the panel border moving to the
+   * stronger hairline, a card now reads as a card on the page rather than as
+   * a slightly different shade of it. Measured on the new ramp
+   * (--bg #09090b / --bg-2 #151518 / --bg-3 #1c1c1f):
+   *   --fg   18.10 / 16.58 / 15.47
+   *   --mute  6.00 /  5.49 /  5.12
+   *   --dim   2.76 /  2.53 /  2.36  (non-text chrome, sub-AA by construction)
+   *   ok      8.73 /  8.00 /  7.46      warn 9.26 / 8.49 / 7.92
+   *   err     5.29 /  4.84 /  4.52      info 5.41 / 4.95 / 4.62
+   * so both text tones and all four status hues still clear 4.5:1 on every
+   * surface. Numbers produced by the WCAG relative-luminance formula.
+   */
   --bg: #09090b;
-  --bg-2: #0f0f11;
-  --bg-3: #151517;
+  --bg-2: #151518;
+  --bg-3: #1c1c1f;
 
   /* Hairlines. --line separates, --line-2 outlines something interactive. */
   --line: rgba(255, 255, 255, 0.07);
   --line-2: rgba(255, 255, 255, 0.12);
 
-  /* Text: primary, secondary, and the "machine wrote this" dim. */
+  /* Text: primary, secondary, and the non-text chrome tone. */
   --fg: #f4f4f5;
   --mute: #8b8d93;
   --dim: #55575f;
@@ -38,10 +55,10 @@
   /*
    * Status semantics. Never used for decoration. The values below are the
    * *dark* ones; the light theme redefines all four further down, because a
-   * hue that reads at 8:1 on #09090b reads at 2:1 on #fafafa. Measured on the
-   * three dark surfaces (--bg #09090b / --bg-2 #0f0f11 / --bg-3 #151517):
-   * ok 8.73 / 8.40 / 8.00, warn 9.26 / 8.92 / 8.49, err 5.29 / 5.09 / 4.85,
-   * info 5.41 / 5.21 / 4.96.
+   * hue that reads at 8:1 on #09090b reads at 2:1 on #f6f6f8. Measured on the
+   * three dark surfaces (--bg #09090b / --bg-2 #151518 / --bg-3 #1c1c1f):
+   * ok 8.73 / 8.00 / 7.46, warn 9.26 / 8.49 / 7.92, err 5.29 / 4.84 / 4.52,
+   * info 5.41 / 4.95 / 4.62.
    */
   --status-ok: #22c55e;
   --status-warn: #f59e0b;
@@ -68,7 +85,7 @@
    * Brand, overridden at runtime from /api/v1/branding. The fallbacks are the
    * TGProxy Panel defaults (docs/design/brand.md): magenta 5.02:1 and teal
    * 6.23:1, both measured on the *dark* --bg - on the light ground the same
-   * two are 3.80:1 and 3.06:1, which is what --brand-ink below exists for.
+   * two are 3.67:1 and 2.96:1, which is what --brand-ink below exists for.
    * Both are far in hue from every status colour above, so a brand mark is
    * never mistaken for a state.
    */
@@ -80,7 +97,7 @@
    * active nav marker, the focus ring, the checkbox and the first chart
    * series, all of which are graphics and only owe 3:1. A link is prose and
    * owes 4.5:1, and magenta at 5.02:1 on the near-black ground is only
-   * 3.80:1 on the light one. So the light theme darkens the same hue for the
+   * 3.67:1 on the light one. So the light theme darkens the same hue for the
    * text uses only, through color-mix, which means an operator-supplied brand
    * colour is darkened with it instead of being ignored.
    */
@@ -199,7 +216,21 @@
 
 /* Light mirror: the same five roles, inverted. Hairlines go to black alpha. */
 :root[data-theme='light'] {
-  --bg: #fafafa;
+  /*
+   * The same one-step raise, from the other side. --bg-2 is already white
+   * and cannot go up, so the ground goes down instead and the card rises
+   * relative to it: the gap between --bg and --bg-2 goes from 4/255 to
+   * 9/255. --bg-3 stays where it is - it is the darkest of the three here,
+   * and every tone measured on it is already within 0.06 of the 4.5 floor,
+   * so there is no room below it. Measured on the new light ramp
+   * (--bg #f6f6f8 / --bg-2 #ffffff / --bg-3 #f1f1f3):
+   *   --fg   17.47 / 18.86 / 16.72
+   *   --mute  4.78 /  5.16 /  4.57
+   *   --dim   2.54 /  2.74 /  2.43  (non-text chrome, sub-AA by construction)
+   *   ok      4.76 /  5.14 /  4.56      warn 4.76 / 5.14 / 4.56
+   *   err     4.76 /  5.14 /  4.56      info 4.77 / 5.15 / 4.56
+   */
+  --bg: #f6f6f8;
   --bg-2: #ffffff;
   --bg-3: #f1f1f3;
 
@@ -213,17 +244,17 @@
   /*
    * Status, re-picked for light. The dark hues are tuned to glow off a
    * near-black ground and simply vanish here: on the three light surfaces
-   * (--bg #fafafa / --bg-2 #ffffff / --bg-3 #f1f1f3) the dark ok is
-   * 2.18 / 2.28 / 2.02, warn 2.06 / 2.15 / 1.90, err 3.61 / 3.76 / 3.34 and
-   * info 3.52 / 3.68 / 3.26 - every inline form error, every warning line and
+   * (--bg #f6f6f8 / --bg-2 #ffffff / --bg-3 #f1f1f3) the dark ok is
+   * 2.11 / 2.28 / 2.02, warn 1.99 / 2.15 / 1.90, err 3.49 / 3.76 / 3.34 and
+   * info 3.41 / 3.68 / 3.26 - every inline form error, every warning line and
    * every status dot below AA. These four are the same four hues taken down
    * to the same lightness, so ok is still green and warn still amber, and all
    * twelve combinations clear 4.5:1 (measured, in the same bg / bg-2 / bg-3
    * order):
-   *   ok   #167e3c  4.93 / 5.14 / 4.56
-   *   warn #986206  4.93 / 5.14 / 4.56
-   *   err  #da1313  4.93 / 5.14 / 4.56
-   *   info #0b63f2  4.93 / 5.15 / 4.56
+   *   ok   #167e3c  4.76 / 5.14 / 4.56
+   *   warn #986206  4.76 / 5.14 / 4.56
+   *   err  #da1313  4.76 / 5.14 / 4.56
+   *   info #0b63f2  4.77 / 5.15 / 4.56
    * The 7px status dots are non-text graphics owing 3:1 and clear that with
    * room to spare at the same values.
    */
@@ -235,8 +266,8 @@
   /*
    * The brand hue as text, one step down in oklab lightness so a link, a link
    * button and a brand chip all clear 4.5:1 on a light surface. The default
-   * magenta resolves to #ad2c6f (5.98 / 6.24 / 5.53) and the default teal to
-   * #0b7b74 (4.91 / 5.12 / 4.54). Because it is a mix rather than a constant,
+   * magenta resolves to #ad2c6f (5.78 / 6.24 / 5.53) and the default teal to
+   * #0b7b74 (4.75 / 5.12 / 4.54). Because it is a mix rather than a constant,
    * an operator who sets their own --brand-primary at runtime gets a darkened
    * text colour too, instead of a hard-coded magenta ignoring their brand.
    * --brand-primary itself is untouched: the identity stays the identity.
@@ -362,13 +393,22 @@
 
   /*
    * Surface/line/text utilities: bg-surface, border-hairline, text-mute, ...
-   * text-mute and text-dim are the two secondary text roles and are not
-   * interchangeable. --mute is everything a person reads that is not primary:
-   * a description, an empty state, a field label, a table head, helper text,
-   * a placeholder, an error. --dim is 2.66:1 dark and 2.74:1 light and is
-   * therefore not a text tone at all - it is chrome: a separator glyph, a
-   * dash standing in for a missing value, a mono context stamp beside a value
-   * you already read. If it carries a word the reader needs, it is --mute.
+   * text-mute and text-dim are not two weights of the same thing: only one of
+   * them is a text tone. --mute is everything a person reads that is not
+   * primary - a description, an empty state, a field label, a table head,
+   * helper text, a placeholder, an error - and that includes every machine
+   * value a person actually reads: a timestamp, a count, an id, a hostname, a
+   * byte figure, a version, an IP, a status word, a pagination summary. That a
+   * machine wrote it is not a reason a person cannot read it.
+   *
+   * --dim measures 2.76 / 2.53 / 2.36 on the three dark surfaces and
+   * 2.54 / 2.74 / 2.43 on the three light ones, against a 4.5:1 floor, so it
+   * can never carry meaning. It is reserved for marks that carry none on their
+   * own: the separator glyph between two items, the dash standing in for an
+   * absent value, the gutter line numbers in the code editor, and an icon that
+   * only repeats the label beside it. Nothing else. A rendered sweep of the
+   * panel is the check, not a reading of the class name: if removing the mark
+   * would lose the reader a word, a number or a stamp, it is --mute.
    */
   --color-surface: var(--bg-2);
   --color-elevated: var(--bg-3);
@@ -476,6 +516,25 @@
     --tw-duration: var(--dur-base);
     transition-duration: var(--dur-base);
     animation-duration: var(--dur-base);
+  }
+  /*
+   * The tinted plate a stat tile's icon sits on. The tile sets --tone to one
+   * status token and this paints the whole plate from it: the glyph at full
+   * strength, the fill at 10% and the border at 20%, exactly as the mockup
+   * draws it (docs/design/mock-2026-09-07-d.html). One rule rather than a
+   * class per tone, so a tone that changes with the system's state is a
+   * single custom property and not a class swap.
+   *
+   * Contrast of the glyph against its own tint, over --bg-2 and over --bg-3
+   * (the tile's hover), measured: neutral 4.84 / 4.48, ok 6.86 / 6.34,
+   * warn 7.21 / 6.65, err 4.40 / 4.10, info 4.44 / 4.12 in dark; neutral
+   * 4.53 / 4.06, ok 4.49 / 4.02, warn 4.50 / 4.03, err 4.33 / 3.88,
+   * info 4.45 / 3.98 in light. A glyph is a non-text graphic and owes 3:1.
+   */
+  .tgwp-tone-tint {
+    background-color: color-mix(in srgb, var(--tone) 10%, transparent);
+    border-color: color-mix(in srgb, var(--tone) 20%, transparent);
+    color: var(--tone);
   }
   /*
    * Entrance: fade plus a 2px rise, nothing else. Put it on a panel, a stat

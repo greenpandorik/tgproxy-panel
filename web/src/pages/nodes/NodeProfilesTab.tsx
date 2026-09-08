@@ -1,3 +1,4 @@
+import { Layers } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -103,7 +104,7 @@ function ProfilesTable({
               {telemt ? telemtLimitsSummary(isDbProfile(p) ? p.telemt_limits : undefined, t) : limitsSummary(p.limits, t)}
             </TableCell>
             {showKeyMeta && (
-              <TableCell className="mono text-right text-mono text-dim">
+              <TableCell className="mono text-right text-mono text-mute">
                 {isDbProfile(p) && p.key_expires_at ? formatDate(p.key_expires_at, i18n.language) : DASH}
               </TableCell>
             )}
@@ -137,7 +138,7 @@ function PanelError({ onRetry }: { onRetry: () => void }) {
 function Section({ title, meta, actions, children }: { title: string; meta?: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <Panel className={ENTER_CLASS}>
-      <PanelHeader title={title} meta={meta} actions={actions} />
+      <PanelHeader icon={Layers} title={title} meta={meta} actions={actions} />
       {children}
     </Panel>
   );

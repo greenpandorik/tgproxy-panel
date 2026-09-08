@@ -1,4 +1,4 @@
-import { ArrowLeft, Link2, Loader2, Upload, X } from 'lucide-react';
+import { ArrowLeft, CircleCheck, Code, Eye, Link2, Loader2, Paperclip, Upload, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { ReactNode } from 'react';
@@ -359,7 +359,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
         <div className="flex min-w-0 flex-col gap-4">
           <Arriving index={0}>
             <Panel>
-              <PanelHeader title={t('sites.field_html')} meta={t('sites.editor_lines', { count: lineCount })} />
+              <PanelHeader icon={Code} title={t('sites.field_html')} meta={t('sites.editor_lines', { count: lineCount })} />
               <PanelBody>
                 <LineNumberedTextarea
                   value={html}
@@ -377,6 +377,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
           <Arriving index={1}>
             <Panel>
               <PanelHeader
+                icon={Paperclip}
                 title={t('sites.assets_title')}
                 meta={assetEntries.length > 0 ? formatBytes(assetsTotalBytes) : undefined}
                 actions={
@@ -404,7 +405,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
                   {assetEntries.map(([path, b64]) => (
                     <li key={path} className="flex h-11 items-center gap-3 px-4">
                       <span className="mono min-w-0 flex-1 truncate text-mono text-foreground">{path}</span>
-                      <span className="mono shrink-0 text-mono text-dim">{formatBytes(base64ByteSize(b64))}</span>
+                      <span className="mono shrink-0 text-mono text-mute">{formatBytes(base64ByteSize(b64))}</span>
                       {isWriter && (
                         <Button
                           type="button"
@@ -428,7 +429,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
         <div className="flex min-w-0 flex-col gap-4">
           <Arriving index={2}>
             <Panel>
-              <PanelHeader title={t('sites.preview_title')} />
+              <PanelHeader icon={Eye} title={t('sites.preview_title')} />
               <PanelBody>
                 {/* The rendered site is someone else's page: it keeps its own white
                   ground, framed by the panel rather than themed by it. The wrapper
@@ -443,6 +444,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
           <Arriving index={3}>
             <Panel>
               <PanelHeader
+                icon={CircleCheck}
                 title={t('sites.validation_title')}
                 meta={lastValidation ? `${lastValidation.errors.length} err · ${lastValidation.warnings.length} warn` : undefined}
               />

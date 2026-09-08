@@ -37,7 +37,7 @@ export function ErrorState({
       role="alert"
       className={cn(
         'flex flex-col items-center justify-center gap-3 text-center',
-        inset ? 'px-6 py-10' : 'rounded-surface border border-hairline py-14',
+        inset ? 'px-6 py-10' : 'rounded-surface border border-hairline-strong py-14',
         className,
       )}
     >

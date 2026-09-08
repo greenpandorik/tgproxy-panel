@@ -1,3 +1,4 @@
+import { Plug, Server } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -84,7 +85,7 @@ function NodeCard({
         <div className="flex min-w-0 items-center gap-2">
           <StatusBadge status={node.status as Status} hideLabel />
           <h2 className="truncate text-title text-foreground">{node.node_name}</h2>
-          <span className="mono truncate text-mono text-dim">{node.hostname}</span>
+          <span className="mono truncate text-mono text-mute">{node.hostname}</span>
         </div>
         <Link to={`/nodes/${node.node_id}`} className="shrink-0 text-label text-brand-ink hover:underline">
           {t('monitoring.open_node')}
@@ -178,6 +179,7 @@ export function MonitoringPage() {
         />
       ) : nodes.length === 0 ? (
         <EmptyState
+          icon={Server}
           title={t('monitoring.empty_no_nodes')}
           action={
             <Button type="button" onClick={() => navigate('/nodes')}>
@@ -202,7 +204,7 @@ export function MonitoringPage() {
 
       <Arriving index={nodes.length}>
         <Panel>
-          <PanelHeader title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
+          <PanelHeader icon={Plug} title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
           <PanelBody className="space-y-4">
             <p className="max-w-[72ch] text-body text-mute">{t('monitoring.prometheus_description')}</p>
             <pre className="mono overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2.5 text-mono text-foreground">

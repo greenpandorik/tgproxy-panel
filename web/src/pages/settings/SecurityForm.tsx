@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Lock } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -73,7 +74,11 @@ export function SecurityForm() {
       <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
         <Arriving>
           <Panel>
-            <PanelHeader title={t('settings.security_password_title')} actions={<HelpButton topic="settings.security" />} />
+            <PanelHeader
+              icon={Lock}
+              title={t('settings.security_password_title')}
+              actions={<HelpButton topic="settings.security" />}
+            />
             <PanelBody className="max-w-sm space-y-4">
               <p className="text-label text-mute">{t('settings.security_note')}</p>
 

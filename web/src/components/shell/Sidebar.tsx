@@ -81,7 +81,7 @@ function NavRow({
     >
       <item.icon className="size-[15px] shrink-0" strokeWidth={1.8} aria-hidden="true" />
       {!collapsed && <span className="truncate">{label}</span>}
-      {!collapsed && count && <span className="mono ml-auto text-micro text-dim">{count}</span>}
+      {!collapsed && count && <span className="mono ml-auto text-micro text-mute">{count}</span>}
     </Link>
   );
 
@@ -93,7 +93,7 @@ function NavRow({
         <TooltipTrigger render={link} />
         <TooltipContent side="right">
           {label}
-          {count ? <span className="mono text-dim"> {count}</span> : null}
+          {count ? <span className="mono text-mute"> {count}</span> : null}
         </TooltipContent>
       </Tooltip>
     </li>
@@ -180,7 +180,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
       </div>
 
       <div className="mt-4 flex items-end gap-1 border-t border-hairline pt-3">
-        <div className={cn('mono min-w-0 flex-1 text-micro text-dim', collapsed ? 'text-center' : 'px-2')}>
+        <div className={cn('mono min-w-0 flex-1 text-micro text-mute', collapsed ? 'text-center' : 'px-2')}>
           {collapsed ? (
             <span
               className={cn('inline-block size-1.5 rounded-pill', apiOk && dbOk ? 'bg-ok' : 'bg-err')}
@@ -211,7 +211,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
                   type="button"
                   onClick={onToggle}
                   aria-label={t('shell.toggle_sidebar')}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-control text-dim transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
+                  className="flex size-6 shrink-0 items-center justify-center rounded-control text-mute transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
                 >
                   <PanelLeftClose className="size-3.5" aria-hidden="true" />
                 </button>
@@ -230,7 +230,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
                 type="button"
                 onClick={onToggle}
                 aria-label={t('shell.toggle_sidebar')}
-                className="mt-2 flex h-7 w-full items-center justify-center rounded-control text-dim transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
+                className="mt-2 flex h-7 w-full items-center justify-center rounded-control text-mute transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
               >
                 <PanelLeftOpen className="size-3.5" aria-hidden="true" />
               </button>

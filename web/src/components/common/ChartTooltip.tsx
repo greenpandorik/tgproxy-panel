@@ -26,7 +26,7 @@ export function ChartTooltip({ active, payload, label, locale, formatValue }: Ch
 
   return (
     <div className="rounded-surface border border-hairline-strong bg-card px-2.5 py-2 shadow-popover">
-      <p className="mono mb-1.5 text-micro text-dim">{formatTimeTick(label ?? '', locale)}</p>
+      <p className="mono mb-1.5 text-micro text-mute">{formatTimeTick(label ?? '', locale)}</p>
       <ul className="space-y-1">
         {payload.map((entry) => (
           <li key={String(entry.dataKey)} className="flex items-center gap-2 text-label">

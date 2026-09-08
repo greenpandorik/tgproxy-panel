@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Дашборд - D</title>
+<!--
+  Direction D - A, with three borrowings from C.
+
+  The argument: A is the base and stays the base. Its tile design is untouched -
+  a coloured icon on a 10% tint of its own tone, a neutral caption, a neutral
+  value - and so are its surfaces, its spacing and its type. Three things come
+  across from C, each because it answers something A left open:
+
+    1. Panel headers carry an icon on the left and their next action on the
+       right. In A a header states a name and a count and then stops, so the
+       operator who has just read a panel has to leave it to act on it. The
+       sessions chart gets its range control and an expand affordance, Алерты
+       gets Все, Последние применения gets its history, and Ноды gets search,
+       filter and Добавить ноду.
+    2. The nodes table gains a 24 hour sparkline, one per row, drawn from the
+       same series the chart above it draws, in that node's colour. A row in A
+       says how a node is right now; the sparkline says how it got there, which
+       is the question an operator actually opens a node to answer.
+    3. The tile grid goes from four columns to five, so eleven tiles land as
+       5 + 5 + 1 instead of A's 4 + 4 + 3, and the load tile gives up the two
+       column span it needed to fill A's last row. Measured, the grid is 413px
+       tall either way and the chart starts at the same y: three rows is three
+       rows. What five columns actually buy is the reading rhythm - two full
+       rows and a remainder, rather than a short row that looks full.
+
+  What is deliberately not taken from C: the persistent status strip under the
+  topbar. It restates the tiles a hundred pixels above it, and paying for that
+  with a permanent band is the wrong trade on a page that now scrolls less.
+
+  What it still costs: eleven equal tiles is still eleven facts with no first
+  among them, and five columns makes each one narrower, so the context line
+  under a value has less room. The remainder row leaves four fifths of its width
+  empty, which is honest about the count but not pretty. The per-row sparkline is
+  cheap at three nodes and will not be at forty.
+
+  Scales: respects docs/design/type-and-shape.md exactly, as A does and B and C
+  do not. Type roles display / title / body / label / micro / mono only, radii
+  8 / 12 / pill only, durations 120ms and 180ms on the one curve, entrance
+  staggered 40ms and capped at six. The sparkline is a data mark, not a control
+  and not a surface, so it takes no radius at all.
+-->
+<style>
+/* Real tokens, copied verbatim from web/src/index.css. */
+:root{
+  --bg:#09090b; --bg-2:#0f0f11; --bg-3:#151517;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
+  --fg:#f4f4f5; --mute:#8b8d93; --dim:#55575f;
+  --status-ok:#22c55e; --status-warn:#f59e0b; --status-err:#ef4444; --status-info:#3b82f6;
+  --brand-primary:#e23c92; --brand-accent:#12a198; --brand-ink:var(--brand-primary);
+  --r-control:8px; --r-surface:12px; --r-pill:9999px;
+  --ease-out:cubic-bezier(.2,0,0,1); --dur-fast:120ms; --dur-base:180ms;
+  --t-display:26px; --t-display-lh:30px; --t-title:17px; --t-title-lh:24px;
+  --t-body:14px; --t-body-lh:21px; --t-label:12.5px; --t-label-lh:16px;
+  --t-micro:11px; --t-micro-lh:14px; --t-mono:12.5px; --t-mono-lh:18px;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#fafafa; --bg-2:#ffffff; --bg-3:#f1f1f3;
+  --line:rgba(0,0,0,.08); --line-2:rgba(0,0,0,.14);
+  --fg:#111113; --mute:#6b6d75; --dim:#9a9ca3;
+  --status-ok:#167e3c; --status-warn:#986206; --status-err:#da1313; --status-info:#0b63f2;
+  --brand-ink:color-mix(in oklab,var(--brand-primary) 82%,black);
+  color-scheme:light;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-sans);
+  font-size:var(--t-body);line-height:var(--t-body-lh);-webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale}
+th,td{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.012em;
+  font-size:var(--t-mono);line-height:var(--t-mono-lh)}
+.micro{font-size:var(--t-micro);line-height:var(--t-micro-lh);font-weight:500;
+  letter-spacing:.04em;text-transform:uppercase}
+.mute{color:var(--mute)} .dim{color:var(--dim)}
+svg{display:block;flex:none}
+a{color:inherit;text-decoration:none}
+.dot{width:7px;height:7px;border-radius:var(--r-pill);background:var(--status-ok);flex:none}
+.dot.off{background:var(--status-err)} .dot.deg{background:var(--status-warn)}
+.dot.brand{background:var(--brand-primary)}
+
+/* shell */
+.app{display:grid;grid-template-columns:var(--nav-w) 1fr;min-height:100vh}
+.side{border-right:1px solid var(--line);display:flex;flex-direction:column;background:var(--bg)}
+.logo{display:flex;align-items:center;gap:9px;padding:0 16px;height:57px;font-weight:600;
+  letter-spacing:-.01em;border-bottom:1px solid transparent}
+.mark{width:16px;height:16px;border:2px solid var(--brand-primary);border-radius:3px;
+  transform:rotate(45deg);flex:none}
+.navgroup{color:var(--dim);padding:14px 16px 6px}
+.navitem{display:flex;align-items:center;gap:10px;color:var(--mute);position:relative;
+  transition:background var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out)}
+.navitem .cnt{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-micro);color:var(--dim)}
+.sidefoot{margin-top:auto;border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:5px}
+.sidefoot .who{display:flex;align-items:center;gap:8px;font-size:var(--t-label)}
+
+.top{height:57px;border-bottom:1px solid var(--line);display:flex;align-items:center;
+  gap:10px;padding:0 20px;background:var(--bg)}
+.crumb{color:var(--mute);font-size:var(--t-label);display:flex;align-items:center;gap:7px}
+.crumb b{color:var(--fg);font-weight:500}
+.crumb .sep{color:var(--dim)}
+.searchbox{margin-left:auto;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;
+  border:1px solid var(--line-2);border-radius:var(--r-control);color:var(--dim);
+  width:240px;font-size:var(--t-label);background:var(--bg-2)}
+.searchbox kbd{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-micro);
+  border:1px solid var(--line-2);border-radius:4px;padding:1px 5px}
+.chip{display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:1px solid var(--line-2);
+  border-radius:var(--r-control);font-family:var(--font-mono);font-size:var(--t-micro);
+  color:var(--mute);background:var(--bg-2)}
+.chip.brandchip{color:var(--brand-ink);border-color:color-mix(in srgb,var(--brand-primary) 35%,transparent)}
+.seg{display:flex;border:1px solid var(--line-2);border-radius:var(--r-control);overflow:hidden;
+  background:var(--bg-2);height:28px}
+.seg span{padding:0 9px;display:flex;align-items:center;font-family:var(--font-mono);
+  font-size:var(--t-micro);color:var(--dim)}
+.seg span.on{background:var(--bg-3);color:var(--fg)}
+.iconbtn{width:28px;height:28px;display:grid;place-items:center;border:1px solid transparent;
+  border-radius:var(--r-control);color:var(--mute)}
+.avatar{display:flex;align-items:center;gap:8px;font-size:var(--t-label)}
+.avatar i{width:24px;height:24px;border-radius:var(--r-pill);display:grid;place-items:center;
+  background:var(--bg-3);border:1px solid var(--line-2);font-style:normal;
+  font-size:var(--t-micro);color:var(--mute)}
+
+/* chart */
+.chart{display:grid;grid-template-columns:34px 1fr;grid-template-rows:1fr auto;
+  column-gap:8px;align-items:stretch}
+.chart-y{display:flex;flex-direction:column;justify-content:space-between;text-align:right;
+  color:var(--dim);font-family:var(--font-mono);font-size:var(--t-micro);padding:8px 0 20px}
+.chart-plot{position:relative;min-width:0}
+.chart-svg{width:100%;overflow:visible}
+.chart-svg .grid{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.chart-x{grid-column:2;display:flex;justify-content:space-between;color:var(--dim);
+  font-family:var(--font-mono);font-size:var(--t-micro);padding-top:6px}
+.legend{display:flex;gap:18px;align-items:center;font-size:var(--t-label);color:var(--mute)}
+.legend span{display:flex;align-items:center;gap:7px}
+.legend i{width:12px;height:2px;border-radius:1px;flex:none}
+.spark{overflow:visible}
+
+/* table */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:var(--t-micro);line-height:var(--t-micro-lh);font-weight:500;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--mute);
+  border-bottom:1px solid var(--line);white-space:nowrap}
+td{border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;
+  font-size:var(--t-mono);letter-spacing:-.012em}
+.btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;
+  border:1px solid var(--line-2);border-radius:var(--r-control);background:var(--bg-2);
+  color:var(--fg);font-size:var(--t-label);font-family:inherit}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--mute)}
+.tag{font-family:var(--font-mono);font-size:var(--t-micro);border:1px solid var(--line-2);
+  border-radius:var(--r-control);padding:1px 6px;color:var(--mute)}
+
+:root{--nav-w:240px}
+.navitem{margin:0 8px;padding:7px 10px;border-radius:var(--r-control);font-size:var(--t-body)}
+.navitem.on{background:var(--bg-3);color:var(--fg)}
+.navitem.on::before{content:"";position:absolute;left:-8px;top:7px;bottom:7px;width:2px;
+  border-radius:var(--r-pill);background:var(--brand-primary)}
+.navgroup{padding-left:18px}
+.main{display:flex;flex-direction:column;min-width:0}
+.page{padding:18px 24px 26px;display:grid;gap:14px;align-content:start}
+.pagehead{display:flex;align-items:baseline;gap:12px}
+.pagehead h1{font-size:var(--t-display);line-height:var(--t-display-lh);font-weight:600;
+  letter-spacing:-.02em}
+.pagehead .meta{color:var(--mute);font-size:var(--t-label)}
+.pagehead .help{margin-left:auto}
+
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.tile .bar{height:4px;border-radius:var(--r-pill);background:var(--bg-3);overflow:hidden;margin-top:2px}
+.tile .bar i{display:block;height:100%;background:var(--tone);border-radius:var(--r-pill)}
+.tile{background:var(--bg-2);border:1px solid var(--line-2);border-radius:var(--r-surface);
+  padding:13px 14px 14px;display:grid;gap:8px;align-content:start;
+  transition:border-color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out)}
+.tile .head{display:flex;align-items:center;gap:9px;min-width:0}
+.tile .ico{width:28px;height:28px;border-radius:var(--r-control);display:grid;place-items:center;
+  background:color-mix(in srgb,var(--tone) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--tone) 20%,transparent);color:var(--tone);flex:none}
+.tile .cap{color:var(--mute);font-size:var(--t-label);line-height:var(--t-label-lh)}
+.tile .val{font-size:var(--t-display);line-height:var(--t-display-lh);font-weight:600;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:5px}
+.tile .val u{text-decoration:none;font-size:var(--t-label);font-weight:400;color:var(--mute);
+  font-family:var(--font-mono)}
+.tile .ctx{color:var(--dim);font-size:var(--t-label);line-height:var(--t-label-lh);
+  font-family:var(--font-mono);letter-spacing:-.012em;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+
+.cols{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+.panel{background:var(--bg-2);border:1px solid var(--line-2);border-radius:var(--r-surface);
+  overflow:hidden}
+.phead{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.phead .pi{color:var(--mute)}
+.phead h2{font-size:var(--t-title);line-height:var(--t-title-lh);font-weight:600;letter-spacing:-.01em}
+.phead .pm{color:var(--dim);font-family:var(--font-mono);font-size:var(--t-mono)}
+.phead .act{margin-left:auto;display:flex;align-items:center;gap:6px}
+.phead .act .btn{color:var(--mute)}
+.phead .ib{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-control);
+  border:1px solid var(--line-2);background:var(--bg-2);color:var(--mute)}
+.chartbody{padding:14px 16px 10px}
+.chartfoot{border-top:1px solid var(--line);padding:11px 16px}
+.stack>.panel+.panel{margin-top:16px}
+.alertrow{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.alertbody{display:grid;gap:3px;min-width:0}
+.alertname{display:flex;align-items:center;gap:8px;font-size:var(--t-body)}
+.alertrow .btn{margin-left:auto}
+.jobrow{display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--line)}
+.jobrow:first-of-type{border-top:0}
+.jobname{font-size:var(--t-body)}
+.jobdur{margin-left:auto}
+.jobok{color:var(--status-ok);font-family:var(--font-mono);font-size:var(--t-mono);
+  display:flex;align-items:center;gap:5px}
+th{padding:9px 16px}
+td{padding:11px 16px;font-size:var(--t-body)}
+.cellname{display:flex;align-items:center;gap:9px}
+.rowact{text-align:right;width:1%;white-space:nowrap}
+.sparkcell{width:92px}
+
+.tgwp-enter{animation:tgwp-enter var(--dur-base) var(--ease-out) both;
+  animation-delay:calc(min(var(--enter-index,0),5) * 40ms)}
+@keyframes tgwp-enter{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+<aside class="side"><div class="logo"><span class="mark"></span>TGProxy Panel</div><nav class="nav"><div class="navgroup micro">Обзор</div><a class="navitem on"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Дашборд</span></a><a class="navitem"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Мониторинг</span></a><div class="navgroup micro">Инфраструктура</div><a class="navitem"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg><span>Ноды</span><span class="cnt">2/3</span></a><a class="navitem"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Шаблоны сайтов</span></a><div class="navgroup micro">Доступ</div><a class="navitem"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="M16.5 6.5 19.5 9.5"/></svg><span>Ключи</span><span class="cnt">7</span></a><div class="navgroup micro">Система</div><a class="navitem"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8M16 17H8M10 9H8"/></svg><span>Журнал аудита</span></a><a class="navitem"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3"/><circle cx="12" cy="4" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="20" r="2"/></svg><span>Настройки</span></a></nav><div class="sidefoot"><div class="who"><span class="dot"></span><span>root</span><span class="dim">·</span><span class="mute">Владелец</span></div><div class="mono dim">api ok · db ok · 1 алерт</div></div></aside>
+<div class="main">
+<header class="top"><div class="crumb"><span>панель</span><span class="sep">/</span><b>Дашборд</b></div><div class="searchbox"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Поиск, команды...</span><kbd>&#8984;K</kbd></div><div class="chip brandchip"><span class="dot brand"></span>v1.3.0</div><div class="chip"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg> 5.7k</div><div class="chip"><span class="dot"></span>2/3</div><div class="seg"><span class="on">ru</span><span>en</span></div><div class="iconbtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg></div><div class="avatar"><i>R</i><span>root</span></div></header>
+<main class="page">
+  <div class="pagehead">
+    <h1>Дашборд</h1>
+    <span class="meta">обновлено 2 с назад</span>
+    <span class="help iconbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+  </div>
+
+  <section class="grid"><div class="tile tgwp-enter" style="--tone:var(--status-ok);--enter-index:0"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg></span><span class="cap">Ноды онлайн</span></div><div class="val">2<u>/ 3</u></div><div class="ctx">Helsinki офлайн</div></div><div class="tile tgwp-enter" style="--tone:var(--status-err);--enter-index:1"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/><path d="M2 2l20 20"/></svg></span><span class="cap">Ноды офлайн</span></div><div class="val">1</div><div class="ctx">без heartbeat 3 ч</div></div><div class="tile tgwp-enter" style="--tone:var(--status-warn);--enter-index:2"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4M12 17h.01"/></svg></span><span class="cap">Деградированные</span></div><div class="val">0</div><div class="ctx">все службы отвечают</div></div><div class="tile tgwp-enter" style="--tone:var(--brand-primary);--enter-index:3"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="M16.5 6.5 19.5 9.5"/></svg></span><span class="cap">Активные ключи</span></div><div class="val">7</div><div class="ctx">из 9 всего</div></div><div class="tile tgwp-enter" style="--tone:var(--brand-primary);--enter-index:4"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><span class="cap">Ключи в ожидании</span></div><div class="val">2</div><div class="ctx">применятся батчем</div></div><div class="tile tgwp-enter" style="--tone:var(--status-info);--enter-index:5"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/></svg></span><span class="cap">Сессии</span></div><div class="val">85</div><div class="ctx">▼ 29% за час</div></div><div class="tile tgwp-enter" style="--tone:var(--status-info);--enter-index:5"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5s2.5 2 5 2c1.3 0 1.9-.5 2.5-1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2s2.5 2 5 2c1.3 0 1.9-.5 2.5-1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2s2.5 2 5 2c1.3 0 1.9-.5 2.5-1"/></svg></span><span class="cap">Потоки</span></div><div class="val">12</div><div class="ctx">сейчас в эфире</div></div><div class="tile tgwp-enter" style="--tone:var(--brand-accent);--enter-index:5"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></span><span class="cap">Трафик вверх</span></div><div class="val">494.1<u>MB</u></div><div class="ctx">за сутки</div></div><div class="tile tgwp-enter" style="--tone:var(--brand-accent);--enter-index:5"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></span><span class="cap">Трафик вниз</span></div><div class="val">2.5<u>GB</u></div><div class="ctx">за сутки</div></div><div class="tile tgwp-enter" style="--tone:var(--status-warn);--enter-index:5"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg></span><span class="cap">Открытые алерты</span></div><div class="val">1</div><div class="ctx">node_offline · Helsinki</div></div><div class="tile tgwp-enter" style="--tone:var(--status-ok);--enter-index:5"><div class="head"><span class="ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span><span class="cap">Средняя загрузка</span></div><div class="val">13<u>%</u></div><div class="ctx">CPU, онлайн-ноды</div><div class="bar"><i style="width:13%"></i></div></div></section>
+
+  <section class="cols tgwp-enter" style="--enter-index:1">
+    <div class="panel">
+      <div class="phead"><span class="pi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span><h2>Сессии по нодам</h2>
+        <span class="pm">шаг 1 мин</span>
+        <span class="act"><span class="seg"><span>1 ч</span><span class="on">24 ч</span><span>7 д</span></span><span class="ib"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg></span></span></div>
+      <div class="chartbody"><div class="chart"><div class="chart-y"><span>60</span><span>40</span><span>20</span><span>0</span></div><div class="chart-plot"><svg class="chart-svg" viewBox="0 0 1000 240" preserveAspectRatio="none" style="height:212px" aria-hidden="true"><defs><linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--brand-primary)" stop-opacity=".18"/><stop offset="100%" stop-color="var(--brand-primary)" stop-opacity="0"/></linearGradient><linearGradient id="gB" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--brand-accent)" stop-opacity=".18"/><stop offset="100%" stop-color="var(--brand-accent)" stop-opacity="0"/></linearGradient></defs><line x1="0" y1="214.0" x2="1000" y2="214.0" class="grid"/><line x1="0" y1="147.3" x2="1000" y2="147.3" class="grid"/><line x1="0" y1="80.7" x2="1000" y2="80.7" class="grid"/><line x1="0" y1="14.0" x2="1000" y2="14.0" class="grid"/><path d="M0.0 94.1 L10.4 80.7 L20.8 63.9 L31.2 62.6 L41.7 54.1 L52.1 46.5 L62.5 49.2 L72.9 41.0 L83.3 38.5 L93.8 37.1 L104.2 52.6 L114.6 54.2 L125.0 64.8 L135.4 60.9 L145.8 72.8 L156.2 95.1 L166.7 90.6 L177.1 103.4 L187.5 121.5 L197.9 134.9 L208.3 155.3 L218.8 169.6 L229.2 171.7 L239.6 189.6 L250.0 194.0 L260.4 194.0 L270.8 194.0 L281.2 194.0 L291.7 194.0 L302.1 194.0 L312.5 194.0 L322.9 194.0 L333.3 193.2 L343.8 182.5 L354.2 176.7 L364.6 169.3 L375.0 145.3 L385.4 133.1 L395.8 123.1 L406.2 112.6 L416.7 106.8 L427.1 96.2 L437.5 83.8 L447.9 77.2 L458.3 56.1 L468.8 54.9 L479.2 41.3 L489.6 45.2 L500.0 33.1 L510.4 34.8 L520.8 51.2 L531.2 51.2 L541.7 44.6 L552.1 59.4 L562.5 59.3 L572.9 79.5 L583.3 96.2 L593.8 98.6 L604.2 108.5 L614.6 130.1 L625.0 146.0 L635.4 154.1 L645.8 154.9 L656.2 169.2 L666.7 189.9 L677.1 194.0 L687.5 194.0 L697.9 194.0 L708.3 194.0 L718.8 194.0 L729.2 194.0 L739.6 194.0 L750.0 194.0 L760.4 188.1 L770.8 190.4 L781.2 172.0 L791.7 170.4 L802.1 153.5 L812.5 144.8 L822.9 131.1 L833.3 106.1 L843.8 96.5 L854.2 93.1 L864.6 71.8 L875.0 73.4 L885.4 61.4 L895.8 46.1 L906.2 44.1 L916.7 49.7 L927.1 32.4 L937.5 45.9 L947.9 47.2 L958.3 42.2 L968.8 55.6 L979.2 63.6 L989.6 73.2 L1000.0 74.0 L1000.0 214.0 L0.0 214.0 Z" fill="url(#gA)"/><path d="M0.0 43.5 L10.4 40.7 L20.8 27.6 L31.2 34.8 L41.7 30.6 L52.1 35.2 L62.5 37.7 L72.9 33.7 L83.3 56.3 L93.8 59.5 L104.2 73.9 L114.6 83.4 L125.0 84.8 L135.4 109.6 L145.8 118.3 L156.2 135.0 L166.7 142.7 L177.1 160.1 L187.5 176.4 L197.9 182.1 L208.3 191.3 L218.8 191.8 L229.2 194.0 L239.6 194.0 L250.0 194.0 L260.4 194.0 L270.8 194.0 L281.2 194.0 L291.7 192.9 L302.1 177.9 L312.5 172.6 L322.9 157.2 L333.3 144.9 L343.8 134.8 L354.2 120.4 L364.6 111.2 L375.0 94.1 L385.4 78.5 L395.8 78.4 L406.2 53.0 L416.7 53.5 L427.1 49.6 L437.5 43.3 L447.9 35.8 L458.3 38.4 L468.8 32.7 L479.2 34.4 L489.6 34.3 L500.0 43.5 L510.4 43.1 L520.8 57.3 L531.2 73.9 L541.7 76.2 L552.1 91.9 L562.5 100.6 L572.9 118.1 L583.3 127.5 L593.8 153.7 L604.2 164.8 L614.6 164.1 L625.0 190.6 L635.4 183.5 L645.8 190.6 L656.2 194.0 L666.7 194.0 L677.1 194.0 L687.5 194.0 L697.9 194.0 L708.3 193.3 L718.8 185.7 L729.2 184.8 L739.6 179.8 L750.0 157.6 L760.4 140.8 L770.8 126.6 L781.2 120.7 L791.7 115.9 L802.1 99.8 L812.5 82.4 L822.9 74.4 L833.3 67.3 L843.8 55.2 L854.2 42.3 L864.6 43.0 L875.0 39.3 L885.4 36.6 L895.8 39.2 L906.2 28.5 L916.7 31.4 L927.1 49.1 L937.5 49.7 L947.9 55.0 L958.3 76.9 L968.8 87.4 L979.2 90.7 L989.6 67.7 L1000.0 70.7 L1000.0 214.0 L0.0 214.0 Z" fill="url(#gB)"/><path d="M0.0 94.1 L10.4 80.7 L20.8 63.9 L31.2 62.6 L41.7 54.1 L52.1 46.5 L62.5 49.2 L72.9 41.0 L83.3 38.5 L93.8 37.1 L104.2 52.6 L114.6 54.2 L125.0 64.8 L135.4 60.9 L145.8 72.8 L156.2 95.1 L166.7 90.6 L177.1 103.4 L187.5 121.5 L197.9 134.9 L208.3 155.3 L218.8 169.6 L229.2 171.7 L239.6 189.6 L250.0 194.0 L260.4 194.0 L270.8 194.0 L281.2 194.0 L291.7 194.0 L302.1 194.0 L312.5 194.0 L322.9 194.0 L333.3 193.2 L343.8 182.5 L354.2 176.7 L364.6 169.3 L375.0 145.3 L385.4 133.1 L395.8 123.1 L406.2 112.6 L416.7 106.8 L427.1 96.2 L437.5 83.8 L447.9 77.2 L458.3 56.1 L468.8 54.9 L479.2 41.3 L489.6 45.2 L500.0 33.1 L510.4 34.8 L520.8 51.2 L531.2 51.2 L541.7 44.6 L552.1 59.4 L562.5 59.3 L572.9 79.5 L583.3 96.2 L593.8 98.6 L604.2 108.5 L614.6 130.1 L625.0 146.0 L635.4 154.1 L645.8 154.9 L656.2 169.2 L666.7 189.9 L677.1 194.0 L687.5 194.0 L697.9 194.0 L708.3 194.0 L718.8 194.0 L729.2 194.0 L739.6 194.0 L750.0 194.0 L760.4 188.1 L770.8 190.4 L781.2 172.0 L791.7 170.4 L802.1 153.5 L812.5 144.8 L822.9 131.1 L833.3 106.1 L843.8 96.5 L854.2 93.1 L864.6 71.8 L875.0 73.4 L885.4 61.4 L895.8 46.1 L906.2 44.1 L916.7 49.7 L927.1 32.4 L937.5 45.9 L947.9 47.2 L958.3 42.2 L968.8 55.6 L979.2 63.6 L989.6 73.2 L1000.0 74.0" stroke="var(--brand-primary)" stroke-width="1.8" fill="none" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><path d="M0.0 43.5 L10.4 40.7 L20.8 27.6 L31.2 34.8 L41.7 30.6 L52.1 35.2 L62.5 37.7 L72.9 33.7 L83.3 56.3 L93.8 59.5 L104.2 73.9 L114.6 83.4 L125.0 84.8 L135.4 109.6 L145.8 118.3 L156.2 135.0 L166.7 142.7 L177.1 160.1 L187.5 176.4 L197.9 182.1 L208.3 191.3 L218.8 191.8 L229.2 194.0 L239.6 194.0 L250.0 194.0 L260.4 194.0 L270.8 194.0 L281.2 194.0 L291.7 192.9 L302.1 177.9 L312.5 172.6 L322.9 157.2 L333.3 144.9 L343.8 134.8 L354.2 120.4 L364.6 111.2 L375.0 94.1 L385.4 78.5 L395.8 78.4 L406.2 53.0 L416.7 53.5 L427.1 49.6 L437.5 43.3 L447.9 35.8 L458.3 38.4 L468.8 32.7 L479.2 34.4 L489.6 34.3 L500.0 43.5 L510.4 43.1 L520.8 57.3 L531.2 73.9 L541.7 76.2 L552.1 91.9 L562.5 100.6 L572.9 118.1 L583.3 127.5 L593.8 153.7 L604.2 164.8 L614.6 164.1 L625.0 190.6 L635.4 183.5 L645.8 190.6 L656.2 194.0 L666.7 194.0 L677.1 194.0 L687.5 194.0 L697.9 194.0 L708.3 193.3 L718.8 185.7 L729.2 184.8 L739.6 179.8 L750.0 157.6 L760.4 140.8 L770.8 126.6 L781.2 120.7 L791.7 115.9 L802.1 99.8 L812.5 82.4 L822.9 74.4 L833.3 67.3 L843.8 55.2 L854.2 42.3 L864.6 43.0 L875.0 39.3 L885.4 36.6 L895.8 39.2 L906.2 28.5 L916.7 31.4 L927.1 49.1 L937.5 49.7 L947.9 55.0 L958.3 76.9 L968.8 87.4 L979.2 90.7 L989.6 67.7 L1000.0 70.7" stroke="var(--brand-accent)" stroke-width="1.8" fill="none" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg></div><div class="chart-x"><span>11:47</span><span>15:02</span><span>18:17</span><span>21:33</span><span>00:51</span><span>04:12</span><span>07:32</span><span>10:52</span></div></div></div>
+      <div class="chartfoot"><div class="legend"><span><i style="background:var(--brand-primary)"></i>Amsterdam</span><span><i style="background:var(--brand-accent)"></i>Frankfurt</span><span><i style="background:var(--dim)"></i>Helsinki</span></div></div>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <div class="phead"><span class="pi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg></span><h2>Алерты</h2>
+          <span class="pm">открыто 1</span>
+          <span class="act"><span class="btn">Все <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></div>
+        <div class="alertrow"><div class="alertbody"><div class="alertname"><span class="dot off"></span>Helsinki</div><div class="mono dim">node_offline · 3 ч назад</div></div><span class="btn">Разрешить</span></div>
+      </div>
+      <div class="panel">
+        <div class="phead"><span class="pi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><h2>Последние применения</h2>
+          <span class="pm">2</span>
+          <span class="act"><span class="ib"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span></span></div>
+        <div class="jobrow"><span class="jobname">Amsterdam</span><span class="tag">both</span><span class="mono dim jobdur">18 с</span><span class="jobok"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> ok</span></div><div class="jobrow"><span class="jobname">Frankfurt</span><span class="tag">profiles</span><span class="mono dim jobdur">12 с</span><span class="jobok"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> ok</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel tgwp-enter" style="--enter-index:2">
+    <div class="phead"><span class="pi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg></span><h2>Ноды</h2><span class="pm">3</span>
+      <span class="act"><span class="ib"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span><span class="ib"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8Z"/></svg></span><span class="btn"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Добавить ноду</span></span></div>
+    <table><thead><tr><th>Нода</th><th>Хост</th><th>Relay</th><th class="num">Профили</th><th class="num">CPU</th><th class="num">Сессии</th><th>24 ч</th><th class="num">Последний heartbeat</th><th></th></tr></thead><tbody><tr><td><span class="cellname"><span class="dot"></span>Amsterdam</span></td><td class="mono mute">ams1.proxy-demo.net</td><td class="mono mute">52a5feb</td><td class="num mute">4 / 128</td><td class="num mute">13%</td><td class="num">42</td><td class="sparkcell"><svg class="spark" viewBox="0 0 76 22" width="76" height="22" fill="none" preserveAspectRatio="none" aria-hidden="true"><path d="M0.0 9.2 L3.2 5.6 L6.3 4.2 L9.5 6.6 L12.7 8.9 L15.8 14.7 L19.0 18.2 L22.2 18.2 L25.3 18.1 L28.5 13.8 L31.7 10.4 L34.8 5.8 L38.0 3.7 L41.2 4.8 L44.3 9.4 L47.5 13.9 L50.7 17.8 L53.8 18.2 L57.0 18.2 L60.2 16.1 L63.3 10.3 L66.5 7.3 L69.7 5.2 L72.8 4.5 L76.0 7.4" stroke="var(--brand-primary)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num">2 с назад</td><td class="rowact"><span class="btn">Открыть</span></td></tr><tr><td><span class="cellname"><span class="dot"></span>Frankfurt</span></td><td class="mono mute">fra1.proxy-demo.net</td><td class="mono mute">52a5feb</td><td class="num mute">7 / 128</td><td class="num mute">13%</td><td class="num">43</td><td class="sparkcell"><svg class="spark" viewBox="0 0 76 22" width="76" height="22" fill="none" preserveAspectRatio="none" aria-hidden="true"><path d="M0.0 4.7 L3.2 3.5 L6.3 5.8 L9.5 8.4 L12.7 13.6 L15.8 18.0 L19.0 18.2 L22.2 18.1 L25.3 13.8 L28.5 9.2 L31.7 5.6 L34.8 4.2 L38.0 4.7 L41.2 7.6 L44.3 12.2 L47.5 17.9 L50.7 18.2 L53.8 18.1 L57.0 14.9 L60.2 11.2 L63.3 6.8 L66.5 4.3 L69.7 3.6 L72.8 7.7 L76.0 7.1" stroke="var(--brand-accent)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num">2 с назад</td><td class="rowact"><span class="btn">Открыть</span></td></tr><tr><td><span class="cellname"><span class="dot off"></span>Helsinki</span></td><td class="mono mute">hel1.proxy-demo.net</td><td class="mono mute">—</td><td class="num mute">1 / 128</td><td class="num mute">—</td><td class="num">—</td><td class="sparkcell"><svg class="spark" viewBox="0 0 76 22" width="76" height="22" fill="none" preserveAspectRatio="none" aria-hidden="true"><path d="M0.0 20.0 L76.0 20.0" stroke="var(--dim)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="2 3"/></svg></td><td class="num" style="color:var(--status-err)">3 ч назад</td><td class="rowact"><span class="btn">Открыть</span></td></tr></tbody></table>
+  </section>
+</main>
+</div>
+</div>
+</body></html>

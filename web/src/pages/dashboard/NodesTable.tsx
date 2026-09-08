@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+import { Sparkline } from '@/components/common/Sparkline';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +12,7 @@ import { capacityText, LOAD_TONE_CLASS, loadTone, nodeLoad } from '@/pages/nodes
 
 import type { ReactNode } from 'react';
 import type { Status } from '@/components/common/StatusBadge';
-import type { Node } from '@/api/types';
+import type { Node, SeriesPoint } from '@/api/types';
 
 const DASH = '—';
 
@@ -19,6 +20,10 @@ interface NodesTableProps {
   nodes: Node[];
   /** Live sessions per node id, taken from the newest monitoring sample. */
   sessionsByNode: Record<string, number | undefined>;
+  /** The last 24h of samples per node id, already fetched for the chart above. */
+  seriesByNode: Record<string, SeriesPoint[]>;
+  /** The colour each node has in that chart, so a row and a line match. */
+  colorByNode: Record<string, string>;
 }
 
 /** What the machine reports about one node, already formatted and toned. */
@@ -101,7 +106,17 @@ function NodeCard({ node, sessions }: { node: Node; sessions: number | undefined
   );
 }
 
-function NodeTableRow({ node, sessions }: { node: Node; sessions: number | undefined }) {
+function NodeTableRow({
+  node,
+  sessions,
+  points,
+  color,
+}: {
+  node: Node;
+  sessions: number | undefined;
+  points: SeriesPoint[];
+  color: string;
+}) {
   const { t } = useTranslation();
   const row = useNodeRow(node, sessions);
 
@@ -118,6 +133,9 @@ function NodeTableRow({ node, sessions }: { node: Node; sessions: number | undef
       <TableCell className="mono text-mono text-mute">{row.profiles}</TableCell>
       <TableCell className={cn('mono text-right text-mono', row.cpuTone)}>{row.cpu}</TableCell>
       <TableCell className={cn('mono text-right text-mono', row.sessionsTone)}>{row.sessions}</TableCell>
+      <TableCell>
+        <Sparkline points={points.map((p) => p.sessions_live)} color={color} offline={row.offline} />
+      </TableCell>
       <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
       <TableCell className="text-right">
         <Button variant="outline" size="sm" render={<Link to={`/nodes/${node.id}`} />}>
@@ -128,7 +146,7 @@ function NodeTableRow({ node, sessions }: { node: Node; sessions: number | undef
   );
 }
 
-/** The eight column heads, shared by the table and by its skeleton. */
+/** The nine column heads, shared by the table and by its skeleton. */
 function NodeHeads() {
   const { t } = useTranslation();
   return (
@@ -140,6 +158,7 @@ function NodeHeads() {
         <TableHead>{t('nodes.column_profiles')}</TableHead>
         <TableHead className="text-right">{t('nodes.load_cpu')}</TableHead>
         <TableHead className="text-right">{t('dashboard.col_sessions')}</TableHead>
+        <TableHead>{t('dashboard.col_series_24h')}</TableHead>
         <TableHead className="text-right">{t('dashboard.col_heartbeat')}</TableHead>
         <TableHead className="w-0" />
       </TableRow>
@@ -147,8 +166,8 @@ function NodeHeads() {
   );
 }
 
-/** Widths of the seven value columns, so the skeleton has the table's texture. */
-const SKELETON_WIDTHS = ['w-28', 'w-40', 'w-14', 'w-12', 'w-10', 'w-10', 'w-20'];
+/** Widths of the eight value columns, so the skeleton has the table's texture. */
+const SKELETON_WIDTHS = ['w-28', 'w-40', 'w-14', 'w-12', 'w-10', 'w-10', 'w-[76px]', 'w-20'];
 
 /**
  * The fleet while it is still loading: the real heads over rows of the real
@@ -167,8 +186,10 @@ export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
             {placeholders.map((i) => (
               <TableRow key={i}>
                 {SKELETON_WIDTHS.map((w, col) => (
-                  <TableCell key={col} className={col >= 4 ? 'text-right' : undefined}>
-                    <Skeleton className={cn('h-3', w, col >= 4 && 'ml-auto')} />
+                  // Column 6 is the sparkline: a mark, not a number, so its
+                  // placeholder stays left where the line will start.
+                  <TableCell key={col} className={col >= 4 && col !== 6 ? 'text-right' : undefined}>
+                    <Skeleton className={cn('h-3', w, col >= 4 && col !== 6 && 'ml-auto')} />
                   </TableCell>
                 ))}
                 <TableCell>
@@ -212,15 +233,24 @@ export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
  * use, CPU load, sessions, heartbeat - is mono, so the eye can run down a
  * column and spot the row that does not match its neighbours.
  *
- * Narrow: the same eight fields as a stacked row, because a table that has to
- * be scrolled sideways hides exactly the columns this panel exists to show -
+ * Wide also carries a 24h sparkline per row, in the colour that node already
+ * has in the chart above, so the row says how the node got here and not only
+ * where it is. A node that stopped reporting gets a flat dashed rule in
+ * --dim rather than a line at zero: the panel does not know that its sessions
+ * went to zero, only that it stopped being told.
+ *
+ * Narrow: the same fields as a stacked row, because a table that has to be
+ * scrolled sideways hides exactly the columns this panel exists to show -
  * sessions, heartbeat, and the way into the node. Column headers cannot
- * survive the fold, so each value carries its own label instead.
+ * survive the fold, so each value carries its own label instead, and the
+ * sparkline is dropped outright rather than squeezed into a phone: a 76px
+ * mark at half that width is a smudge, and every fact it hints at is already
+ * spelled out in the fields above it.
  *
  * Either way a node that has stopped reporting says so in red on its
  * heartbeat, the field that actually went wrong; the rest of it stays quiet.
  */
-export function NodesTable({ nodes, sessionsByNode }: NodesTableProps) {
+export function NodesTable({ nodes, sessionsByNode, seriesByNode, colorByNode }: NodesTableProps) {
   return (
     <>
       <div className="hidden md:block">
@@ -228,7 +258,13 @@ export function NodesTable({ nodes, sessionsByNode }: NodesTableProps) {
           <NodeHeads />
           <TableBody>
             {nodes.map((node) => (
-              <NodeTableRow key={node.id} node={node} sessions={sessionsByNode[node.id]} />
+              <NodeTableRow
+                key={node.id}
+                node={node}
+                sessions={sessionsByNode[node.id]}
+                points={seriesByNode[node.id] ?? []}
+                color={colorByNode[node.id] ?? 'var(--series-other)'}
+              />
             ))}
           </TableBody>
         </Table>

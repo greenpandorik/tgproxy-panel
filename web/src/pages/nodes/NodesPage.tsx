@@ -1,4 +1,4 @@
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreHorizontal, Plus, Server } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -338,6 +338,7 @@ export function NodesPage() {
           <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
         ) : nodes.length === 0 ? (
           <EmptyState
+            icon={Server}
             title={t('nodes.empty_title')}
             description={t('nodes.empty_description')}
             action={
