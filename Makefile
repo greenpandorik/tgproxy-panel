@@ -6,7 +6,7 @@ export PATH := $(GOBIN):$(PATH)
 VERSION ?=
 LDFLAGS := -s -w $(if $(VERSION),-X tgwebproxy/internal/version.Version=$(patsubst v%,%,$(VERSION)),)
 
-.PHONY: tools test lint fmt sqlc proto web run build agent-linux e2e e2e-telemt test-install test-node-preflight
+.PHONY: tools test lint fmt sqlc proto web run build agent-linux e2e e2e-telemt test-install test-node-preflight test-agent-upgrade
 
 tools:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -72,3 +72,10 @@ test-install:
 # and TGWP_DRY_RUN=1 must get past it; a resolving hostname and the [r]/[c] menu must pass.
 test-node-preflight:
 	./deploy/test-node-preflight.sh
+
+# test-agent-upgrade runs `tgwp-agent upgrade` against a stub panel inside ubuntu:24.04 (no
+# network, no tty, a busybox httpd serving the manifest): --check must report the plan and
+# change nothing, an unattended run without --yes must refuse, and a download whose sha256
+# does not match the panel's pin must abort with the installed binary untouched.
+test-agent-upgrade:
+	./deploy/test-agent-upgrade.sh

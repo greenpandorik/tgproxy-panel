@@ -12,7 +12,7 @@ docker compose up -d panel
 
 On start, `panel serve` runs pending migrations and re-seeds preset site templates before it starts listening, so a version bump is a plain restart. If a migration ever needs to run standalone (e.g. before a blue/green cutover), use `docker compose run --rm panel migrate`.
 
-Nodes are not affected by a panel upgrade unless you also bump `TPROXY_COMMIT` and reinstall — see "Reinstalling the agent" below.
+Nodes are not affected by a panel upgrade: they keep running the engine and agent they have until you upgrade them. A panel release that moves the pinned telemt is applied per node with `tgwp-agent upgrade` on the host (see "Upgrading the pinned version" under "telemt nodes"); a `tproxy` node moved to a new `TPROXY_COMMIT` still needs a re-install — see "Reinstalling the agent" below.
 
 ## Master key rotation
 
@@ -186,6 +186,8 @@ curl -fsSL https://panel.example.com/api/v1/install/<new-token>.sh | sudo bash
 
 This is safe to re-run on a host that already has `tproxy-server` installed — the installer skips the official `install.sh` step if `/usr/local/bin/tproxy-server` already exists, and just re-registers the node and refreshes `/etc/tgwp-agent/agent.env` and the `tgwp-agent` systemd unit with a fresh token.
 
+To move a node to a **newer agent or engine** the re-install is no longer the way: the node still holds a valid token, so `tgwp-agent upgrade` on the host does it in place, without a new install token and without re-running the installer. See "Upgrading the pinned version" under "telemt nodes". Re-installing stays the answer when the token itself is gone.
+
 ## Relay restart caveat (tproxy engine)
 
 This is a property of the `tproxy` engine only; on a telemt node an apply never restarts anything (see "telemt nodes" below). Every apply that changes profiles, MTProxy secrets, or the site ends with `systemctl restart tproxy-server` (and `mtproxy` if secrets changed). `tproxy-server` has no live-reload: existing sessions on that node are dropped when it restarts, and the site it serves is loaded into memory once at startup, so a site-only change also requires — and gets — a restart. Prefer applying during low-traffic windows for busy nodes; the panel does not currently stagger or schedule applies for you.
@@ -230,9 +232,24 @@ tapi /v1/config         # editable config: censorship, server.listeners, web, ge
 **Upgrading the pinned version.** The version is pinned in the panel's environment, not on the node: `TELEMT_VERSION` plus `TELEMT_SHA256_X86_64`, the sha256 of that release's `telemt-x86_64-linux-gnu.tar.gz`. To move a fleet:
 
 1. Take the new release's checksum from the project's release page and set **both** variables together in `.env`. They are validated on startup (a non-semver version or a checksum that is not 64 hex characters is refused), and the panel will not render an install script without them — an unverifiable download is never handed to a root shell.
-2. Restart the panel so the new pin is in effect.
-3. Per node, regenerate an install command from the node page and re-run it on the host. The script re-downloads telemt, verifies it against the new checksum, overwrites `/usr/local/bin/telemt`, re-runs `init-node` (which keeps the existing API token) and restarts the unit — so a node is briefly down while it restarts, and its live sessions are dropped. Roll through the fleet one node at a time.
-4. Confirm with `GET /api/v1/nodes/{id}` that `telemt_version` reads the new version; the agent takes it from `/v1/system/info` on every heartbeat, so it reflects the process that is actually running rather than what was installed.
+
+   `sudo /opt/tgproxy-panel/install.sh --update` does this step for you when the new pin ships with a panel release: it takes `TELEMT_VERSION`, `TELEMT_SHA256_X86_64` and `TELEMT_SHA256_MUSL_X86_64` from that release's `.env.example` and rewrites them in `.env`, printing each `old → new`. Nothing else in `.env` is touched — secrets, domain and admin data are left exactly as they were. Before this existed, an updated panel kept handing out install scripts for the engine version the *first* install had written.
+2. Restart the panel so the new pin is in effect (`install.sh --update` restarts the stack itself).
+3. Per node, over ssh as root — no panel session and no install token needed:
+
+   ```bash
+   tgwp-agent upgrade --check   # what would change; changes nothing
+   tgwp-agent upgrade           # prints the plan and asks before doing it
+   tgwp-agent upgrade --yes     # unattended; required when there is no terminal
+   ```
+
+   It reads `/etc/tgwp-agent/agent.env`, asks the panel what this node should be running (`GET /api/v1/node/upgrade`, authenticated with the node's own token — the same credential the agent already uses for gRPC), compares that with what is installed (`telemt --version`, falling back to telemt's own `/v1/system/info`, and the agent binary's `version`) and replaces only what differs. `--telemt` and `--agent` narrow the scope to one component.
+
+   Each replacement is: download to a temp file → verify the panel's sha256 (**a mismatch aborts before anything is replaced**) → keep the previous binary → install atomically → restart the unit → wait for it to prove itself (telemt: `/v1/health/ready` on its control API, up to 60s; the agent: the unit is active and has logged that it reconnected) → on failure, put the previous binary back from the copy on disk and restart it. The rollback needs no network, so a bad release cannot strand a node. telemt is restarted, so live sessions on that node are dropped: roll through the fleet one node at a time.
+
+   Run it from a login shell. Inside `tgwp-agent.service` itself the command refuses, because restarting the unit would kill the upgrade halfway through.
+4. Fallback (still supported): regenerate an install command from the node page and re-run it on the host. The script re-downloads telemt, verifies it against the new checksum, overwrites `/usr/local/bin/telemt`, re-runs `init-node` (which keeps the existing API token) and restarts the unit. Use it when the node's agent predates `tgwp-agent upgrade` (an older binary answers the subcommand with a config error instead of a plan), when the agent binary itself is broken, or when a node needs the rest of the install re-applied — it re-does everything, including Caddy and the firewall rules, and consumes a fresh install token.
+5. Confirm with `GET /api/v1/nodes/{id}` that `telemt_version` reads the new version; the agent takes it from `/v1/system/info` on every heartbeat, so it reflects the process that is actually running rather than what was installed.
 
 Downgrading is the same procedure with the older version and its checksum. Keep `TELEMT_SHA256_MUSL_X86_64` (used only by the `fakenode-telemt` demo image) in step with the other two if you rely on `make e2e-telemt`.
 

@@ -576,3 +576,22 @@ func TestRenderForPreflight(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestTelemtReleaseURLMatchesScript keeps the Go spelling of the telemt download URL
+// (TelemtReleaseURL, used by the node upgrade endpoint) and the shell one in script.sh.tmpl
+// from drifting apart: an upgrading node must fetch exactly the file a fresh install does.
+func TestTelemtReleaseURLMatchesScript(t *testing.T) {
+	script, err := Render(telemtParams())
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := TelemtReleaseURL("3.5.5")
+	if want := "https://github.com/telemt/telemt/releases/download/3.5.5/" + TelemtReleaseAsset; url != want {
+		t.Fatalf("TelemtReleaseURL = %q, want %q", url, want)
+	}
+	// The script builds the same URL with $TELEMT_VERSION substituted by the shell.
+	shell := strings.Replace(url, "/3.5.5/", "/$TELEMT_VERSION/", 1)
+	if !strings.Contains(script, shell) {
+		t.Fatalf("the install script does not download %s", shell)
+	}
+}

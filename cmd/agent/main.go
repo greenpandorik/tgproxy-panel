@@ -18,6 +18,37 @@ func main() {
 		case "version":
 			fmt.Println(agent.Version)
 			return
+		case "upgrade":
+			// Self-upgrade: the node asks the panel what it should be running and moves
+			// itself there. No panel session, no install token, no re-install.
+			fs := flag.NewFlagSet("upgrade", flag.ExitOnError)
+			fs.Usage = func() {
+				fmt.Fprint(os.Stderr, `Usage: tgwp-agent upgrade [--telemt|--agent] [--check] [--yes]
+
+Asks the panel (GET /api/v1/node/upgrade, authenticated with this node's own token from
+the agent env file) what this node should be running, compares it with what is installed
+and replaces what differs: download, verify the panel's sha256, install, restart the unit,
+wait for it to report healthy, and roll back to the previous binary if it does not.
+
+`)
+				fs.PrintDefaults()
+			}
+			envPath := fs.String("env", agent.DefaultAgentEnvPath, "agent env file holding TGWP_PANEL_URL and TGWP_TOKEN")
+			onlyTelemt := fs.Bool("telemt", false, "only consider the proxy engine")
+			onlyAgent := fs.Bool("agent", false, "only consider the agent binary")
+			check := fs.Bool("check", false, "report what would change and change nothing")
+			yes := fs.Bool("yes", false, "do not ask for confirmation (required without a terminal)")
+			agentBin := fs.String("agent-bin", agent.DefaultAgentBin, "installed agent binary")
+			telemtBin := fs.String("telemt-bin", agent.DefaultTelemtBin, "installed telemt binary")
+			_ = fs.Parse(os.Args[2:])
+			// The failure is already reported as a ✘ line by the command itself.
+			if err := agent.RunUpgrade(context.Background(), agent.UpgradeOptions{
+				EnvPath: *envPath, Scope: agent.UpgradeScope{Telemt: *onlyTelemt, Agent: *onlyAgent},
+				Check: *check, Yes: *yes, AgentBin: *agentBin, TelemtBin: *telemtBin,
+			}); err != nil {
+				os.Exit(1)
+			}
+			return
 		case "init-node":
 			fs := flag.NewFlagSet("init-node", flag.ExitOnError)
 			engine := fs.String("engine", agent.EngineTProxy, "node engine: tproxy or telemt")

@@ -226,7 +226,7 @@ What this changes in the panel:
 - **Two links per key.** On a telemt node a key offers both a WEB link (`https://t.me/webproxy?server=…`) and a Fake-TLS one (`https://t.me/proxy?server=…&port=<classic_port>&secret=ee…`). A tproxy node offers the WEB link only.
 - **Key limits** (traffic quota, up/down rate, max unique IPs, max connections) work on telemt only — telemt enforces them itself. On tproxy nodes the fields are shown as unavailable.
 - **Applying without a restart.** Profile changes on a telemt node go over the control API and live sessions are not cut. On a tproxy node every apply restarts the relay.
-- **The telemt version is pinned.** `TELEMT_VERSION` and `TELEMT_SHA256_X86_64` in `.env` are what the install script downloads and verifies. Change them only as a pair; upgrading a node to a new version means re-running the install (see the runbook).
+- **The telemt version is pinned.** `TELEMT_VERSION` and `TELEMT_SHA256_X86_64` in `.env` are what the install script downloads and verifies. Change them only as a pair. Nodes already installed are moved to a new pin with `tgwp-agent upgrade` on the node itself — see below.
 
 A local demo bench with the real telemt binary (no VPS and no Telegram client needed):
 
@@ -235,6 +235,20 @@ make e2e-telemt
 ```
 
 It brings up postgres + the panel, builds `deploy/Dockerfile.fakenode-telemt` (telemt from the release, checksum verified), creates a telemt node and a key with limits, and asserts that telemt on the "node" really received the user over the control API. `make e2e` does the same for the tproxy engine.
+
+### Upgrading a node
+
+A node upgrades itself. When the panel's pinned telemt moves (a panel update, or you changed `TELEMT_VERSION`/`TELEMT_SHA256_X86_64` in `.env`), log into the node over ssh as root and run:
+
+```bash
+tgwp-agent upgrade --check   # what would change; changes nothing
+tgwp-agent upgrade           # prints the plan and asks
+tgwp-agent upgrade --yes     # unattended; required when there is no terminal
+```
+
+The command reads the token the node already has in `/etc/tgwp-agent/agent.env` and asks the panel what it should be running, so you do **not** need to generate an install command in the panel and you do not re-run the whole installation. It upgrades only what differs — the telemt binary, the agent binary, or both (`--telemt` / `--agent` narrow it) — verifies every download against the panel's sha256 before it replaces anything, keeps the previous binary, restarts the unit and waits for it to come back healthy; if it does not, the previous binary is put back and restarted. Restarting telemt drops the live sessions on that node, so upgrade one node at a time.
+
+`sudo /opt/tgproxy-panel/install.sh --update` on the panel host now also moves the telemt pins in `.env` to whatever the new panel release ships, so the usual order is: update the panel, then run `tgwp-agent upgrade` on each node.
 
 ## 8. Issuing keys
 

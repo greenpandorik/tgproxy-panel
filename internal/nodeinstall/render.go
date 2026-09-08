@@ -148,3 +148,18 @@ func tarGzBase64(files map[string][]byte) (string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
+
+// TelemtReleaseAsset is the release asset a telemt node installs: the x86_64 glibc tarball.
+// TelemtReleaseURL builds its download URL.
+//
+// script.sh.tmpl builds the same URL in shell from $TELEMT_VERSION, because the script is
+// what a fresh install runs; this is the Go spelling of it, used by the node upgrade
+// endpoint so an upgrading node is pointed at exactly the file a fresh install downloads.
+// TestTelemtReleaseURLMatchesScript keeps the two from drifting apart.
+const TelemtReleaseAsset = "telemt-x86_64-linux-gnu.tar.gz"
+
+// TelemtReleaseURL is the download URL of the pinned telemt release. version is validated by
+// config (reSemver) and again by Render before it ever reaches a script.
+func TelemtReleaseURL(version string) string {
+	return "https://github.com/telemt/telemt/releases/download/" + version + "/" + TelemtReleaseAsset
+}

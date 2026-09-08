@@ -10,7 +10,8 @@
 # files of the chosen release into the install directory (default /opt/tgproxy-panel);
 # writes .env with freshly generated secrets; starts the stack; waits for /healthz; creates
 # the first owner account; prints a summary. Re-running it on a host that already has .env
-# is an update: the image is pulled again and the stack restarted, .env is kept.
+# is an update: the image is pulled again and the stack restarted, .env is kept (except the
+# telemt engine pins, which move to the values the new release ships).
 # --uninstall stops the stack.
 #
 # Every option can also come from the environment as TGWP_<NAME> (TGWP_DOMAIN, TGWP_YES, ...).
@@ -55,7 +56,9 @@ host, or updates / removes an existing installation. Run as root.
 Mode:
   (none)                 Install; if $DEFAULT_DIR/.env already exists, update instead.
   --update               Pull the image for --version (default: latest release) and restart.
-                         Keeps .env and all data.
+                         Keeps .env and all data, but moves TELEMT_VERSION and the two
+                         TELEMT_SHA256_* pins to the values the release ships, so new node
+                         installs get the engine this panel expects.
   --uninstall            Stop and remove the containers. Asks before removing the data
                          volumes; --purge removes them (and the install directory) without
                          asking.
@@ -103,8 +106,8 @@ else
 	GREEN="" RED="" YELLOW="" DIM="" BOLD="" RESET=""
 fi
 case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
-*[Uu][Tt][Ff]-8* | *[Uu][Tt][Ff]8*) SYM_OK='✔' SYM_FAIL='✘' SYM_WAIT='…' ;;
-*) SYM_OK='[ok]' SYM_FAIL='[x]' SYM_WAIT='[..]' ;;
+*[Uu][Tt][Ff]-8* | *[Uu][Tt][Ff]8*) SYM_OK='✔' SYM_FAIL='✘' SYM_WAIT='…' SYM_ARROW='→' ;;
+*) SYM_OK='[ok]' SYM_FAIL='[x]' SYM_WAIT='[..]' SYM_ARROW='->' ;;
 esac
 
 step() { printf '\n%s==> %s%s\n' "$BOLD" "$*" "$RESET"; }
@@ -769,6 +772,36 @@ update_env() {
 	PUBLIC_URL="$(env_get "$DIR/.env" PANEL_PUBLIC_URL)"
 }
 
+# sync_engine_pins: on --update, move the node engine pins in .env to the values the release
+# being installed ships in its .env.example (already downloaded by fetch_deploy_files, from
+# the same ref as everything else). Without this a panel updated to a release with a newer
+# pinned telemt keeps handing out install scripts for the old one, because .env was written
+# once at install time and never touched again.
+#
+# Only these three keys are considered, and only when the release carries a value for them.
+# Secrets, the domain, the version and everything else in .env are never touched.
+sync_engine_pins() {
+	local key cur new changed=0
+	if [[ ! -f "$DIR/.env.example" ]]; then
+		warn "no .env.example for this release; the telemt pins in .env were left as they are"
+		return 0
+	fi
+	for key in TELEMT_VERSION TELEMT_SHA256_X86_64 TELEMT_SHA256_MUSL_X86_64; do
+		new="$(env_get "$DIR/.env.example" "$key")"
+		[[ -n "$new" ]] || continue
+		cur="$(env_get "$DIR/.env" "$key")"
+		[[ "$cur" != "$new" ]] || continue
+		env_set "$DIR/.env" "$key" "$new"
+		ok "$key: ${cur:-(unset)} $SYM_ARROW $new"
+		changed=1
+	done
+	if [[ "$changed" -eq 0 ]]; then
+		ok "engine pins already current (telemt $(env_get "$DIR/.env" TELEMT_VERSION))"
+	else
+		info "existing nodes are moved to the new engine with: tgwp-agent upgrade (on each node)"
+	fi
+}
+
 # pull_panel_image: for updates. A mirror or a locally loaded image (--image) that cannot
 # be pulled is still usable when a copy exists locally.
 pull_panel_image() {
@@ -1151,6 +1184,7 @@ do_install_or_update() {
 		fi
 		ok ".env kept: $DIR/.env"
 		ok "PANEL_VERSION: $VERSION"
+		sync_engine_pins
 	fi
 	compose_setup
 	step "Stack"

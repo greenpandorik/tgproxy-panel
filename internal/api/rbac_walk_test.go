@@ -66,6 +66,15 @@ var publicReads = map[string]bool{
 	"GET /s/{token}.json": true,
 }
 
+// nodeTokenReads lists the /api/v1 read routes authenticated by a node's *own* agent token
+// (`Authorization: Bearer <node token>`, the credential the gRPC gateway takes), not by an
+// admin session. They are deliberately not in publicReads: an anonymous caller must still get
+// 401, and so must a logged-in admin, because a session carries no node identity and these
+// answers are per-node. TestEveryReadRouteIsProtected checks both directions.
+var nodeTokenReads = map[string]bool{
+	"GET /api/v1/node/upgrade": true,
+}
+
 // TestEveryMutatingRouteIsProtected walks the real chi route table and asserts
 // that every mutating /api/v1 route sits behind requireAuth + csrfCheck +
 // RequireRole. It is a structural test: a route added without the middleware
@@ -157,6 +166,9 @@ func errCodeOf(t *testing.T, resp *http.Response) (string, int) {
 func TestEveryReadRouteIsProtected(t *testing.T) {
 	h := apitest.New(t)
 	anon := h.Anonymous()
+	h.CreateAdmin("owner", "pass-123456", "owner")
+	owner := h.Login("owner", "pass-123456")
+	seenNodeToken := map[string]bool{}
 
 	repl := strings.NewReplacer(
 		"{id}", uuid.New().String(),
@@ -191,10 +203,23 @@ func TestEveryReadRouteIsProtected(t *testing.T) {
 		if resp := anon.Do(method, repl.Replace(route), nil); statusOf(t, resp) != http.StatusUnauthorized {
 			t.Errorf("%s: anonymous got %d, want 401", key, resp.StatusCode)
 		}
+		if nodeTokenReads[key] {
+			seenNodeToken[key] = true
+			// The other half of "node token, not session": an owner's cookie is not a node
+			// identity, so it must not open the route either.
+			if resp := owner.Do(method, repl.Replace(route), nil); statusOf(t, resp) != http.StatusUnauthorized {
+				t.Errorf("%s: owner session got %d, want 401 (node-token route)", key, resp.StatusCode)
+			}
+		}
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("walk: %v", err)
+	}
+	for key := range nodeTokenReads {
+		if !seenNodeToken[key] {
+			t.Errorf("nodeTokenReads lists %q, but the route table has no such route", key)
+		}
 	}
 	if walked < 15 {
 		t.Fatalf("walked only %d read routes, expected the full route table", walked)

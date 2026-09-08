@@ -147,6 +147,11 @@ func (s *Server) Handler() chi.Router {
 		r.Get("/install/{token}.sh", s.handleInstallScript)
 		r.Post("/install/{token}/register", s.handleInstallRegister)
 		r.Get("/install/agent/{platform}", s.handleAgentDownload)
+		// Node-token route, not a session route: an installed node asks what it should be
+		// running (`tgwp-agent upgrade`) with the agent token it already holds, the same
+		// credential the gRPC gateway takes. Outside the session group because there is no
+		// cookie on a node; the handler does the auth itself and 401s otherwise.
+		r.Get("/node/upgrade", s.handleNodeUpgrade)
 		r.Get("/branding", s.handleGetActiveBranding)
 		r.Get("/branding/assets/{id}/{file}", s.handleBrandingAsset)
 		// Public by design: the login screen renders it before anyone has a

@@ -187,6 +187,13 @@ status="$(in_dind curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: appl
 [[ "$status" == "401" ]] || die "login with a wrong password returned HTTP $status, want 401"
 
 # --- 6. update pass ---------------------------------------------------------------------
+# The engine pins in .env have to follow the release: a panel updated to a release with a
+# newer pinned telemt must hand out install scripts for that one, and until --update synced
+# them it kept the pin the first install wrote. Stale the version here and check it moves.
+PIN_VERSION="$(sed -n 's/^TELEMT_VERSION=//p' "$REPO_DIR/.env.example" | tail -n 1)"
+[[ -n "$PIN_VERSION" ]] || die ".env.example carries no TELEMT_VERSION"
+in_dind sed -i 's/^TELEMT_VERSION=.*/TELEMT_VERSION=0.0.1/' "$INSTALL_DIR/.env"
+
 log "running install.sh --update inside dind"
 : >"$INSTALL_LOG"
 if ! in_dind bash /repo/install.sh --update --yes --version "$VERSION" 2>&1 | tee "$INSTALL_LOG"; then
@@ -200,6 +207,9 @@ if grep -qF 'docker compose pull: last 30 lines' "$INSTALL_LOG"; then
 	die "the failed pull dumped its output although the local copy was used"
 fi
 in_dind grep -q '^MASTER_KEY=.\+' "$INSTALL_DIR/.env" || die ".env lost MASTER_KEY after --update"
+assert_line "$INSTALL_LOG" "TELEMT_VERSION: 0.0.1 → $PIN_VERSION" "--update did not sync the telemt engine pins"
+in_dind grep -q "^TELEMT_VERSION=$PIN_VERSION\$" "$INSTALL_DIR/.env" ||
+	die ".env still carries the stale TELEMT_VERSION after --update"
 wait_healthy tgproxy-panel-panel-1
 in_dind curl -fsS http://127.0.0.1:8080/healthz >/dev/null || die "healthz failed after --update"
 status="$(in_dind curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
