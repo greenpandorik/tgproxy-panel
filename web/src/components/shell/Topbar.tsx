@@ -19,7 +19,7 @@ import { setLang } from '@/i18n';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import { navItemForPath } from './nav';
-import { StatusChips, StatusMenuRows } from './StatusChips';
+import { StatusMenuRows } from './StatusChips';
 
 const ROLE_KEY: Record<string, string> = {
   owner: 'common.role_owner',
@@ -70,7 +70,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-hairline bg-background px-3 sm:px-5">
+    <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-hairline bg-card px-3 sm:px-5">
       <Button
         type="button"
         variant="ghost"
@@ -82,7 +82,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
         <Menu />
       </Button>
 
-      <p className="mono min-w-0 flex-1 truncate text-micro text-mute">
+      <p className="min-w-0 flex-1 truncate text-label text-mute">
         {t('shell.breadcrumb_root')}
         {section && (
           <>
@@ -99,7 +99,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
       <button
         type="button"
         onClick={onOpenCommand}
-        className="hidden h-7 w-56 items-center gap-2 rounded-control border border-hairline-strong px-2.5 text-label text-mute transition-[background-color,color,scale] duration-fast ease-out hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985] md:flex xl:w-64"
+        className="hidden h-9 w-56 items-center gap-2 rounded-control border border-hairline-strong px-2.5 text-label text-mute transition-[background-color,color,scale] duration-fast ease-out hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985] md:flex xl:w-64"
       >
         <Search className="size-3.5 shrink-0" aria-hidden="true" />
         <span className="truncate">{t('shell.command_placeholder')}</span>
@@ -119,8 +119,6 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
         <Search />
       </Button>
 
-      <StatusChips />
-
       <LanguageSwitch />
 
       <Button type="button" variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={t('common.theme')}>
@@ -138,7 +136,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
           {/* Below md the topbar has no room for the status chips, so the
               same facts open the menu as plain rows. */}
           <StatusMenuRows />
-          <DropdownMenuSeparator className="md:hidden" />
+          <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuLabel className="flex items-center justify-between gap-2">
               <span className="truncate">{user?.username}</span>

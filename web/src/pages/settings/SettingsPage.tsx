@@ -9,6 +9,7 @@ import { HelpButton, type HelpTopic } from '@/help';
 import { AdminsForm } from './AdminsForm';
 import { BackupsForm } from './BackupsForm';
 import { BrandingProfilesList } from './BrandingProfilesList';
+import { PreferencesForm } from './PreferencesForm';
 import { PanelForm } from './PanelForm';
 import { SecurityForm } from './SecurityForm';
 
@@ -43,7 +44,14 @@ export function SettingsPage() {
         </TabsList>
 
         <TabsContent value="branding" className="pt-4">
-          <BrandingProfilesList />
+          <div className="space-y-6">
+            <PreferencesForm />
+            <div className="space-y-1">
+              <h2 className="text-title">{t('preferences.project_title')}</h2>
+              <p className="text-body text-mute">{t('preferences.project_description')}</p>
+            </div>
+            <BrandingProfilesList />
+          </div>
         </TabsContent>
         <TabsContent value="security" className="pt-4">
           <SecurityForm />

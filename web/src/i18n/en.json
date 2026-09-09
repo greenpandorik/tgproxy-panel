@@ -1,7 +1,7 @@
 {
   "nav": {
-    "dashboard": "Dashboard",
-    "nodes": "Nodes",
+    "dashboard": "Overview",
+    "nodes": "Servers",
     "keys": "Keys",
     "sites": "Site Templates",
     "monitoring": "Monitoring",
@@ -81,22 +81,22 @@
     "footer_nodes": "{{count}} nodes"
   },
   "dashboard": {
-    "title": "Dashboard",
+    "title": "Overview",
     "nodes_online": "Nodes online",
     "keys_active": "Active keys",
     "sessions_live": "Sessions",
     "empty_no_nodes": "Add your first node",
     "nodes_offline_suffix": "{{count}} offline",
     "traffic_title": "Traffic today",
-    "alerts_title": "Alerts",
-    "alerts_empty": "No active alerts",
-    "alert_resolve": "Resolve",
+    "alerts_title": "Needs attention",
+    "alerts_empty": "No open notifications",
+    "alert_resolve": "Dismiss notification",
     "alert_resolved": "Alert resolved",
-    "sessions_chart_title": "Sessions by node",
+    "sessions_chart_title": "Connections over 24 hours",
     "sessions_chart_empty": "No monitoring data yet",
     "sessions_chart_other": "Other",
-    "jobs_title": "Recent applies",
-    "jobs_empty": "No applies yet",
+    "jobs_title": "Recent changes",
+    "jobs_empty": "No changes yet",
     "updated_ago": "updated {{value}} ago",
     "keys_pending_context": "{{count}} awaiting apply",
     "offline_one": "{{name}} no heartbeat for {{ago}}",
@@ -105,10 +105,10 @@
     "delta_per_hour": "{{value}} in the last hour",
     "sessions_chart_meta": "24h · {{step}} step",
     "alerts_open_count": "{{count}} open",
-    "col_node": "Node",
-    "col_relay": "Relay",
+    "col_node": "Server",
+    "col_relay": "Proxy version",
     "col_sessions": "Sessions",
-    "col_heartbeat": "Last heartbeat",
+    "col_heartbeat": "Last response",
     "alert_panel_scope": "Panel",
     "tile_nodes_online_context": "by last heartbeat",
     "tile_nodes_offline": "Nodes offline",
@@ -132,11 +132,20 @@
     "tile_avg_load_context": "CPU, online nodes",
     "tile_dc_latency": "Latency to Telegram",
     "tile_dc_latency_context": "mean over online nodes",
-    "col_series_24h": "24h"
+    "col_series_24h": "24h",
+    "fleet_hint": "Reachable servers / total",
+    "total_traffic": "Traffic over 24 hours",
+    "traffic_both": "Combined incoming and outgoing",
+    "manage_access": "Manage access",
+    "all_servers": "All servers",
+    "alert_node_offline": "Server is not responding",
+    "alert_node_degraded": "Some services are unavailable",
+    "alert_apply_failed": "Could not apply settings",
+    "alert_unknown": "Check the server status"
   },
   "nodes": {
-    "title": "Nodes",
-    "add": "Add node",
+    "title": "Servers",
+    "add": "Add server",
     "empty_title": "No nodes yet",
     "empty_description": "Add your first node to issue keys and serve traffic.",
     "column_name": "Name",
@@ -576,7 +585,7 @@
   },
   "settings": {
     "title": "Settings",
-    "tab_branding": "Branding",
+    "tab_branding": "Appearance",
     "tab_security": "Security",
     "tab_admins": "Admins",
     "tab_panel": "Panel",
@@ -720,7 +729,13 @@
     "totp_status_off": "Off",
     "security_password_title": "Password",
     "admins_add": "Add",
-    "panel_section_intervals": "Intervals"
+    "panel_section_intervals": "Intervals",
+    "branding_logo_dark": "Dark theme logo",
+    "branding_logo_dark_hint": "Optional. Uses the main logo when no dark variant is uploaded.",
+    "branding_assets_immediate": "Images are saved immediately after upload. Use Save for name, color and text changes.",
+    "branding_advanced": "Advanced: custom CSS",
+    "branding_preview": "Preview",
+    "branding_preview_hint": "Name and images in both themes. You can also preview colors directly in the interface."
   },
   "drafts": {
     "banner": "Draft from <time>{{time}}</time>",
@@ -741,7 +756,10 @@
     "version_tooltip": "Panel version",
     "update_available": "v{{version}} is available",
     "github_tooltip": "Project on GitHub",
-    "nodes_tooltip": "Nodes online"
+    "nodes_tooltip": "Nodes online",
+    "skip_content": "Skip to content",
+    "panel_available": "Panel available",
+    "panel_unavailable": "Panel unreachable"
   },
   "command": {
     "title": "Command palette",
@@ -772,21 +790,21 @@
     "shortcut_hint": "? opens the help for the current page",
     "topics": {
       "dashboard": {
-        "title": "Dashboard",
+        "title": "Overview",
         "intro": "A summary of the whole proxy network: how many nodes answer, how many keys work, how many people are connected right now and what went wrong. The numbers refresh on their own; the \"updated … ago\" stamp next to the title says how fresh they are.",
         "fields": {
           "nodes_online": {
-            "name": "Nodes online",
-            "what": "How many nodes sent a heartbeat recently (the threshold is \"Offline after\" in the panel settings, 90 seconds by default). A node silent for longer counts as offline and is named under the number.",
+            "name": "Reachable servers",
+            "what": "The number of online servers and the total fleet size. A server that stops responding beyond the offline threshold is marked unavailable. See the server list below for details.",
             "tip": "An offline node hands out nothing: clients bound only to it will not connect."
           },
           "keys_active": {
             "name": "Active keys",
-            "what": "Keys with status \"Active\" - the ones whose profile is already on the nodes. Next to it: how many keys are still waiting to be applied.",
+            "what": "Keys with Active status. The total number of keys appears below. Open the card to manage keys and inspect pending changes.",
             "tip": "If the pending count never shrinks, an apply is failing on some node: open the node → Overview → Recent applies."
           },
           "sessions": {
-            "name": "Sessions",
+            "name": "Connections",
             "what": "How many client sessions are open on all nodes right now. One session is roughly one connected device. The delta is the change over the last hour."
           },
           "traffic": {
@@ -794,21 +812,17 @@
             "what": "Inbound plus outbound traffic of every node over the last 24 hours. Computed from stats snapshots, so it can lag a few minutes."
           },
           "chart": {
-            "name": "Sessions by node",
-            "what": "A 24-hour chart with one line per node; the busiest nodes get their own line, the rest fold into \"Other\". A node that went offline is drawn grey."
+            "name": "Connections over 24 hours",
+            "what": "Connection history per server over the last 24 hours. Each server has its own line; larger fleets group additional servers as Other. Offline servers appear gray. Open Monitoring for detailed charts."
           },
           "alerts": {
-            "name": "Alerts",
-            "what": "Open problems: a node went offline, an apply failed, a panel error. \"Resolve\" closes the entry - it does not fix the cause, it only removes it from the list.",
+            "name": "Needs attention",
+            "what": "Open notifications about problems. Select a server name to inspect its status. Dismiss notification removes the entry but does not fix the cause.",
             "tip": "The same events arrive in Telegram once notifications are on: Settings → Panel."
           },
           "jobs": {
-            "name": "Recent applies",
+            "name": "Recent changes",
             "what": "The latest apply jobs on the nodes with their result and duration. An \"apply\" is the moment key and site changes are actually sent to a node."
-          },
-          "dc_latency": {
-            "name": "Latency to Telegram",
-            "what": "Mean latency to Telegram's datacenters over the online nodes that report one (telemt only). Gray below 150 ms, yellow from 150, red from 400. A dash means no node reports one."
           }
         },
         "notes": {
@@ -1615,7 +1629,7 @@
         }
       },
       "settings.branding": {
-        "title": "Branding",
+        "title": "Appearance",
         "intro": "How the panel looks to admins and to users on the subscription page: name, logo, colours, texts. Settings are grouped into profiles; the active profile applies to everyone at once, no rebuild. It is handy to keep a \"live\" and a \"draft\" profile and switch.",
         "fields": {
           "profiles": {
@@ -1641,7 +1655,7 @@
           },
           "primary_color": {
             "name": "Primary colour",
-            "what": "The colour of the active menu item, links, focus rings and the first chart series. #rgb or #rrggbb. The main button stays neutral on purpose.",
+            "what": "The primary button and first chart-series color. Links, focus and active navigation use theme-adjusted shades for readability. Accepts #rgb or #rrggbb.",
             "example": "#e8590c"
           },
           "accent_color": {
@@ -1669,10 +1683,18 @@
           "custom_css": {
             "name": "Custom CSS",
             "what": "Your styles on top of the theme. The panel strips dangerous fragments (external imports, expressions, scripts) and reports what it removed. Fonts and images from foreign domains cannot be loaded from here."
+          },
+          "personal": {
+            "name": "Personal preferences",
+            "what": "Theme (light, dark or system), density and sidebar state are saved in this browser. They do not change other users’ appearance. Reset restores the project theme, comfortable density and expanded sidebar."
+          },
+          "logo_dark": {
+            "name": "Dark theme logo",
+            "what": "Optional logo variant for a dark background. Used in navigation and on the login page; falls back to the main logo when not uploaded. The same formats and size limit apply."
           }
         },
         "notes": {
-          "1": "The preview on the right updates live, but other users see changes only after \"Save\" - and only if the profile is active.",
+          "1": "Preview name, colors and CSS directly in the interface; wide screens also show a separate preview. Save commits these fields. Images save immediately after upload. Shared changes affect everyone only for the active profile.",
           "2": "Check contrast: brand-coloured text on the dark ground must stay readable (aim for at least 4.5:1)."
         }
       },
@@ -1717,5 +1739,23 @@
         }
       }
     }
+  },
+  "preferences": {
+    "title": "Personal preferences",
+    "description": "Make the panel comfortable for you. These preferences are saved in this browser and do not change the appearance for other users.",
+    "theme": "Interface theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "density": "Density",
+    "comfortable": "Comfortable",
+    "compact": "Compact",
+    "sidebar": "Sidebar",
+    "expanded": "Expanded",
+    "collapsed": "Collapsed",
+    "autosaved": "Changes apply immediately",
+    "reset": "Reset appearance and layout",
+    "project_title": "Project appearance",
+    "project_description": "The active profile’s name, images and colors are visible to everyone using the panel."
   }
 }

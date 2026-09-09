@@ -289,3 +289,63 @@ func TestBrandingAssetCopyFailureIsAudited(t *testing.T) {
 		t.Fatalf("no branding.asset_copy_failed audit entry with kind=logo: %+v", audit.Items)
 	}
 }
+
+// Dark logos use the same validated upload and public serving path as the main
+// logo. Cloning a profile must copy the file into the clone's own directory.
+func TestBrandingDarkLogoUploadAndClone(t *testing.T) {
+	h, c, _ := ownerWithNode(t)
+	var profiles struct {
+		Items []struct {
+			ID uuid.UUID `json:"id"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/branding/profiles"), &profiles)
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("file", "dark.svg")
+	_, _ = fw.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="white"/></svg>`))
+	_ = mw.Close()
+	response := c.PostRaw("/api/v1/branding/profiles/"+profiles.Items[0].ID.String()+"/upload?kind=logo_dark", mw.FormDataContentType(), body.Bytes())
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("upload: %d", response.StatusCode)
+	}
+	_ = response.Body.Close()
+	var active struct {
+		URL string `json:"logo_dark_url"`
+	}
+	h.Anonymous().JSON(h.Anonymous().Get("/api/v1/branding"), &active)
+	if active.URL == "" {
+		t.Fatal("dark logo missing from public branding")
+	}
+	var clone struct {
+		URL string `json:"logo_dark_url"`
+	}
+	c.JSON(c.Post("/api/v1/branding/profiles", map[string]any{"name": "Dark clone"}), &clone)
+	if clone.URL == "" || clone.URL == active.URL {
+		t.Fatal("clone did not receive its own dark logo")
+	}
+	for _, url := range []string{active.URL, clone.URL} {
+		r := h.Anonymous().Get(url)
+		if r.StatusCode != http.StatusOK || r.Header.Get("Content-Type") != "image/svg+xml" {
+			t.Fatalf("asset unavailable: %s (%d)", url, r.StatusCode)
+		}
+		_ = r.Body.Close()
+	}
+}
+
+// A replacement with the same extension must not keep the browser's cached URL.
+func TestBrandingUploadVersionsSameExtension(t *testing.T) {
+	_, c, _ := ownerWithNode(t)
+	var profiles struct {
+		Items []struct {
+			ID uuid.UUID `json:"id"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/branding/profiles"), &profiles)
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>`)
+	first := uploadBrandingAsset(t, c, profiles.Items[0].ID, "logo.svg", svg)
+	second := uploadBrandingAsset(t, c, profiles.Items[0].ID, "logo.svg", svg)
+	if first == second {
+		t.Fatal("replacement retained cached asset URL")
+	}
+}

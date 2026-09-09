@@ -71,7 +71,7 @@ function renderSidebar() {
   );
 }
 
-describe('Sidebar node count', () => {
+describe('Sidebar navigation', () => {
   beforeEach(() => {
     setLang('ru');
     vi.stubGlobal(
@@ -86,11 +86,9 @@ describe('Sidebar node count', () => {
     );
   });
 
-  it('counts nodes by persisted status, not by the driver probe', async () => {
+  it('links to servers without duplicating dashboard counters', async () => {
     renderSidebar();
-
-    expect(await screen.findByText('1/2')).toBeInTheDocument();
-    // The probe-based tally (0 up) must not reach the rail.
-    expect(screen.queryByText('0/2')).toBeNull();
+    expect(await screen.findByRole('link', { name: 'Серверы' })).toHaveAttribute('href', '/nodes');
+    expect(screen.queryByText('1/2')).toBeNull();
   });
 });

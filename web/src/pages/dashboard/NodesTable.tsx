@@ -80,7 +80,7 @@ function NodeCard({ node, sessions }: { node: Node; sessions: number | undefined
           </p>
           <p className="mono mt-1 truncate pl-[15px] text-mono text-mute">{node.hostname}</p>
         </div>
-        <Button variant="outline" size="sm" className="shrink-0" render={<Link to={`/nodes/${node.id}`} />}>
+        <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link to={`/nodes/${node.id}`} />}>
           {t('nodes.action_open')}
         </Button>
       </div>
@@ -138,7 +138,7 @@ function NodeTableRow({
       </TableCell>
       <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
       <TableCell className="text-right">
-        <Button variant="outline" size="sm" render={<Link to={`/nodes/${node.id}`} />}>
+        <Button variant="outline" size="sm" nativeButton={false} render={<Link to={`/nodes/${node.id}`} />}>
           {t('nodes.action_open')}
         </Button>
       </TableCell>

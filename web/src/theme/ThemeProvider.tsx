@@ -1,134 +1,138 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-
 import { useBranding } from '@/api/branding';
 import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
-
+import { brandForeground } from './contrast';
+import { DEFAULT_PRIMARY_COLOR } from '@/components/brand/brand';
+import { readPreference, readThemePreference, savePreference } from './preferences';
+import type { Density, ThemePreference } from './preferences';
 import type { Branding } from '@/api/types';
 
 export type Theme = 'dark' | 'light';
-
-const THEME_STORAGE_KEY = 'theme';
-const BRAND_CSS_ID = 'brand-css';
-const DEFAULT_TITLE = DEFAULT_PANEL_NAME;
-
-/** Subset of Branding the settings form can preview live, before saving. */
-export type BrandingPreview = Partial<
-  Pick<Branding, 'panel_name' | 'favicon_url' | 'primary_color' | 'accent_color' | 'theme_default' | 'custom_css'>
->;
-
+export type BrandingPreview = Partial<Branding>;
 interface ThemeContextValue {
   theme: Theme;
-  setTheme: (t: Theme) => void;
+  preference: ThemePreference;
+  setTheme: (t: ThemePreference) => void;
   toggleTheme: () => void;
-  /** Applies branding field overrides to the live page (colors, title, favicon, custom CSS, theme) until cleared with `null`. Used by the Branding settings form for a live preview before Save. */
+  density: Density;
+  setDensity: (d: Density) => void;
+  collapsed: boolean;
+  setCollapsed: (c: boolean) => void;
+  resetPreferences: () => void;
+  branding: BrandingPreview | undefined;
   previewBranding: (override: BrandingPreview | null) => void;
 }
-
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider');
   return ctx;
 }
-
-function storedTheme(): Theme | null {
-  const v = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return v === 'dark' || v === 'light' ? v : null;
+/** Optional context lets public identity components also render in isolation. */
+export function useBrandingIdentity() {
+  const { data } = useBranding();
+  const ctx = useContext(ThemeContext);
+  return { branding: ctx?.branding ?? data, theme: ctx?.theme ?? 'light' };
 }
-
-function applyFavicon(url: string | undefined): void {
-  if (!url) return;
-  let link = document.querySelector<HTMLLinkElement>('#favicon');
-  if (!link) {
-    link = document.createElement('link');
-    link.id = 'favicon';
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
-  link.href = url;
-}
-
-function applyCustomCss(css: string | undefined): void {
-  let style = document.getElementById(BRAND_CSS_ID) as HTMLStyleElement | null;
-  if (!css) {
-    style?.remove();
-    return;
-  }
-  if (!style) {
-    style = document.createElement('style');
-    style.id = BRAND_CSS_ID;
-    document.head.appendChild(style);
-  }
-  style.textContent = css;
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const { data: branding } = useBranding();
-  const [theme, setThemeState] = useState<Theme>(() => storedTheme() ?? 'dark');
-  const [userChose, setUserChose] = useState<boolean>(() => storedTheme() !== null);
-  // Tracks the last branding.theme_default we've reacted to, so the
-  // "adopt the branding default until the user picks a theme" adjustment
-  // below can run during render (React's documented pattern for state that
-  // depends on a prop) instead of as a setState-in-effect cascade.
-  const [appliedDefault, setAppliedDefault] = useState<Theme | undefined>(undefined);
-  // Set by BrandingForm's live preview; null means "use the saved branding".
-  const [preview, setPreview] = useState<BrandingPreview | null>(null);
-
-  if (!userChose && branding?.theme_default && branding.theme_default !== appliedDefault) {
-    setAppliedDefault(branding.theme_default);
-    setThemeState(branding.theme_default);
-  }
-
-  // The branding form can preview a profile's default theme, but only for
-  // someone who has not picked a theme themselves - exactly the audience that
-  // default is for. Overriding an explicit choice made the settings page flip
-  // to dark under an operator working in light, with the toggle apparently
-  // doing nothing.
-  useEffect(() => {
-    document.documentElement.dataset.theme = !userChose && preview?.theme_default ? preview.theme_default : theme;
-  }, [theme, userChose, preview?.theme_default]);
-
-  useEffect(() => {
-    const primary = preview?.primary_color ?? branding?.primary_color;
-    const accent = preview?.accent_color ?? branding?.accent_color;
-    if (primary) document.documentElement.style.setProperty('--brand-primary', primary);
-    if (accent) document.documentElement.style.setProperty('--brand-accent', accent);
-  }, [branding?.primary_color, branding?.accent_color, preview?.primary_color, preview?.accent_color]);
-
-  useEffect(() => {
-    document.title = preview?.panel_name ?? branding?.panel_name ?? DEFAULT_TITLE;
-  }, [branding?.panel_name, preview?.panel_name]);
-
-  useEffect(() => {
-    applyFavicon(preview?.favicon_url ?? branding?.favicon_url);
-  }, [branding?.favicon_url, preview?.favicon_url]);
-
-  useEffect(() => {
-    applyCustomCss(preview?.custom_css ?? branding?.custom_css);
-  }, [branding?.custom_css, preview?.custom_css]);
-
-  const value = useMemo<ThemeContextValue>(
-    () => ({
-      theme,
-      setTheme: (t: Theme) => {
-        window.localStorage.setItem(THEME_STORAGE_KEY, t);
-        setUserChose(true);
-        setThemeState(t);
-      },
-      toggleTheme: () => {
-        setThemeState((prev) => {
-          const next: Theme = prev === 'dark' ? 'light' : 'dark';
-          window.localStorage.setItem(THEME_STORAGE_KEY, next);
-          setUserChose(true);
-          return next;
-        });
-      },
-      previewBranding: setPreview,
-    }),
-    [theme],
+  const { data: savedBranding } = useBranding();
+  const [choice, setChoice] = useState<ThemePreference | null>(readThemePreference);
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
+  const [density, setDensityState] = useState<Density>(() =>
+    readPreference('panel-density') === 'compact' ? 'compact' : 'comfortable',
   );
+  const [collapsed, setCollapsedState] = useState(() => readPreference('sidebar-collapsed') === '1');
+  const [preview, setPreview] = useState<BrandingPreview | null>(null);
+  const branding = useMemo(
+    () => (savedBranding || preview ? { ...savedBranding, ...preview } : undefined),
+    [savedBranding, preview],
+  );
+  const preference = choice ?? branding?.theme_default ?? 'light';
+  const theme: Theme = preference === 'system' ? (systemDark ? 'dark' : 'light') : preference;
 
+  useEffect(() => {
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!media) return;
+    const update = () => setSystemDark(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+  useEffect(() => {
+    document.documentElement.dataset.density = density;
+  }, [density]);
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--primary-foreground',
+      brandForeground(branding?.primary_color || DEFAULT_PRIMARY_COLOR),
+    );
+    for (const [name, value] of [
+      ['--brand-primary', branding?.primary_color],
+      ['--brand-accent', branding?.accent_color],
+    ]) {
+      if (value) document.documentElement.style.setProperty(name!, value);
+      else document.documentElement.style.removeProperty(name!);
+    }
+  }, [branding?.primary_color, branding?.accent_color]);
+  useEffect(() => {
+    document.title = branding?.panel_name || DEFAULT_PANEL_NAME;
+  }, [branding?.panel_name]);
+  useEffect(() => {
+    let link = document.querySelector<HTMLLinkElement>('#favicon');
+    if (!link) {
+      link = document.createElement('link');
+      link.id = 'favicon';
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = branding?.favicon_url || '/favicon.svg';
+    link.removeAttribute('type');
+  }, [branding?.favicon_url]);
+  useEffect(() => {
+    let style = document.getElementById('brand-css');
+    if (!branding?.custom_css) {
+      style?.remove();
+      return;
+    }
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'brand-css';
+      document.head.appendChild(style);
+    }
+    style.textContent = branding.custom_css;
+  }, [branding?.custom_css]);
+  const value = useMemo<ThemeContextValue>(() => {
+    const setTheme = (next: ThemePreference) => {
+      savePreference('theme', next);
+      setChoice(next);
+    };
+    return {
+      theme,
+      preference,
+      setTheme,
+      toggleTheme: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
+      density,
+      setDensity: (next) => {
+        savePreference('panel-density', next);
+        setDensityState(next);
+      },
+      collapsed,
+      setCollapsed: (next) => {
+        savePreference('sidebar-collapsed', next ? '1' : '0');
+        setCollapsedState(next);
+      },
+      resetPreferences: () => {
+        ['theme', 'panel-density', 'sidebar-collapsed'].forEach((key) => savePreference(key, null));
+        setChoice(null);
+        setDensityState('comfortable');
+        setCollapsedState(false);
+      },
+      branding,
+      previewBranding: setPreview,
+    };
+  }, [theme, preference, density, collapsed, branding]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

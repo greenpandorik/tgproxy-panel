@@ -22,7 +22,7 @@ func (q *Queries) ActivateBrandingOne(ctx context.Context, id uuid.UUID) error {
 
 const createBranding = `-- name: CreateBranding :one
 INSERT INTO branding_profiles (name, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at, logo_dark_path
 `
 
 type CreateBrandingParams struct {
@@ -72,6 +72,7 @@ func (q *Queries) CreateBranding(ctx context.Context, arg CreateBrandingParams) 
 		&i.FooterText,
 		&i.CustomCss,
 		&i.UpdatedAt,
+		&i.LogoDarkPath,
 	)
 	return i, err
 }
@@ -101,7 +102,7 @@ func (q *Queries) DeleteBranding(ctx context.Context, id uuid.UUID) (int64, erro
 }
 
 const getActiveBranding = `-- name: GetActiveBranding :one
-SELECT id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at FROM branding_profiles WHERE is_active = true LIMIT 1
+SELECT id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at, logo_dark_path FROM branding_profiles WHERE is_active = true LIMIT 1
 `
 
 func (q *Queries) GetActiveBranding(ctx context.Context) (BrandingProfile, error) {
@@ -123,12 +124,13 @@ func (q *Queries) GetActiveBranding(ctx context.Context) (BrandingProfile, error
 		&i.FooterText,
 		&i.CustomCss,
 		&i.UpdatedAt,
+		&i.LogoDarkPath,
 	)
 	return i, err
 }
 
 const getBranding = `-- name: GetBranding :one
-SELECT id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at FROM branding_profiles WHERE id = $1
+SELECT id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at, logo_dark_path FROM branding_profiles WHERE id = $1
 `
 
 func (q *Queries) GetBranding(ctx context.Context, id uuid.UUID) (BrandingProfile, error) {
@@ -150,12 +152,13 @@ func (q *Queries) GetBranding(ctx context.Context, id uuid.UUID) (BrandingProfil
 		&i.FooterText,
 		&i.CustomCss,
 		&i.UpdatedAt,
+		&i.LogoDarkPath,
 	)
 	return i, err
 }
 
 const listBranding = `-- name: ListBranding :many
-SELECT id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at FROM branding_profiles ORDER BY is_active DESC, name
+SELECT id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at, logo_dark_path FROM branding_profiles ORDER BY is_active DESC, name
 `
 
 func (q *Queries) ListBranding(ctx context.Context) ([]BrandingProfile, error) {
@@ -183,6 +186,7 @@ func (q *Queries) ListBranding(ctx context.Context) ([]BrandingProfile, error) {
 			&i.FooterText,
 			&i.CustomCss,
 			&i.UpdatedAt,
+			&i.LogoDarkPath,
 		); err != nil {
 			return nil, err
 		}
@@ -197,6 +201,7 @@ func (q *Queries) ListBranding(ctx context.Context) ([]BrandingProfile, error) {
 const setBrandingAsset = `-- name: SetBrandingAsset :exec
 UPDATE branding_profiles SET
   logo_path = CASE WHEN $2::text = 'logo' THEN $3 ELSE logo_path END,
+  logo_dark_path = CASE WHEN $2::text = 'logo_dark' THEN $3 ELSE logo_dark_path END,
   favicon_path = CASE WHEN $2::text = 'favicon' THEN $3 ELSE favicon_path END,
   login_bg_path = CASE WHEN $2::text = 'login_bg' THEN $3 ELSE login_bg_path END,
   updated_at = now() WHERE id = $1
@@ -215,7 +220,7 @@ func (q *Queries) SetBrandingAsset(ctx context.Context, arg SetBrandingAssetPara
 
 const updateBranding = `-- name: UpdateBranding :one
 UPDATE branding_profiles SET name = $2, panel_name = $3, primary_color = $4, accent_color = $5, theme_default = $6, login_text = $7, support_link = $8, footer_text = $9, custom_css = $10, updated_at = now()
-WHERE id = $1 RETURNING id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at
+WHERE id = $1 RETURNING id, name, is_active, panel_name, logo_path, favicon_path, primary_color, accent_color, theme_default, login_bg_path, login_text, support_link, footer_text, custom_css, updated_at, logo_dark_path
 `
 
 type UpdateBrandingParams struct {
@@ -261,6 +266,7 @@ func (q *Queries) UpdateBranding(ctx context.Context, arg UpdateBrandingParams) 
 		&i.FooterText,
 		&i.CustomCss,
 		&i.UpdatedAt,
+		&i.LogoDarkPath,
 	)
 	return i, err
 }

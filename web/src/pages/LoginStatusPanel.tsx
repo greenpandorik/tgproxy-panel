@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useBranding } from '@/api/branding';
+import { useBrandingIdentity } from '@/theme/ThemeProvider';
 import { usePublicStatus } from '@/api/status';
 import type { PublicStatus } from '@/api/status';
 import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
@@ -132,13 +133,14 @@ export function LoginStatusLine({ className }: { className?: string }) {
  * there is no panel and the form would otherwise be unbranded.
  */
 export function LoginWordmark({ className }: { className?: string }) {
-  const { data: branding } = useBranding();
+  const { branding, theme } = useBrandingIdentity();
+  const logoUrl = theme === 'dark' ? branding?.logo_dark_url || branding?.logo_url : branding?.logo_url;
   const name = branding?.panel_name || DEFAULT_PANEL_NAME;
 
   return (
     <div className={cn('flex items-center gap-2.5 text-title', className)}>
-      {branding?.logo_url ? (
-        <img src={branding.logo_url} alt={name} className="max-h-7 max-w-[180px] object-contain" />
+      {logoUrl ? (
+        <img src={logoUrl} alt={name} className="max-h-7 max-w-[180px] object-contain" />
       ) : (
         <>
           <Logo size={24} />

@@ -448,6 +448,7 @@ export interface NodeSite {
 export interface Branding {
   panel_name: string;
   logo_url: string;
+  logo_dark_url?: string;
   favicon_url: string;
   primary_color: string;
   accent_color: string;
@@ -479,7 +480,7 @@ export interface BrandingProfileInput {
   custom_css: string;
 }
 
-export type BrandingAssetKind = 'logo' | 'favicon' | 'login_bg';
+export type BrandingAssetKind = 'logo' | 'logo_dark' | 'favicon' | 'login_bg';
 
 // --- dashboard ------------------------------------------------------------
 

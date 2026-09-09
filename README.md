@@ -253,7 +253,9 @@ Every access key can get a public, unauthenticated "subscription" link: one URL 
 
 ## Branding profiles
 
-Settings, Branding manages one or more named profiles (panel name, primary/accent color, default theme, support link, footer text, logo/favicon uploads); the active one styles the login page, the SPA header, and every public subscription page. Owner/admin only:
+Settings → Appearance separates personal display preferences from shared branding. Light/dark/system theme, comfortable/compact density and sidebar collapse are saved in the current browser; they do not change other users’ settings. The workspace uses the available width.
+
+The project appearance section manages one or more named profiles (panel name, primary/accent color, default theme, support link, footer text, main/dark logo, favicon and login-background uploads); the active one styles the login page, the SPA header, and every public subscription page. Owner/admin only:
 
 | Route | Behaviour |
 | --- | --- |
@@ -261,10 +263,10 @@ Settings, Branding manages one or more named profiles (panel name, primary/accen
 | `POST /api/v1/branding/profiles {name}` | Create a new profile (not yet active). |
 | `PUT /api/v1/branding/profiles/{id}` | Edit a profile's fields. |
 | `POST /api/v1/branding/profiles/{id}/activate` | Make this profile the active one. |
-| `POST /api/v1/branding/profiles/{id}/upload` | Upload a logo/favicon asset (SVGs are parsed and rejected if they contain script vectors). |
+| `POST /api/v1/branding/profiles/{id}/upload` | Upload an image with `?kind=logo`, `logo_dark`, `favicon` or `login_bg` (SVGs are parsed and rejected if they contain script vectors). |
 | `DELETE /api/v1/branding/profiles/{id}` | Delete a profile. Refuses on the currently active one; activate another profile first. |
 
-`GET /api/v1/branding` (public, no auth) serves the subset the login page and public pages need before anyone is signed in.
+`GET /api/v1/branding` (public, no auth) serves the subset the login page and public pages need before anyone is signed in. The optional `logo_dark_url` is used by the SPA navigation and login page in dark mode, falling back to `logo_url`. Image uploads save immediately; text, colors and CSS use Save. Asset URLs are versioned so replacing an image appears immediately. Migration `00010_branding_dark_logo.sql` adds the optional dark-logo path without changing existing profiles.
 
 ## Backups and restore
 

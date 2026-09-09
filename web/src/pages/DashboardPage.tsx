@@ -1,19 +1,4 @@
-import {
-  Activity,
-  ArrowDown,
-  ArrowUp,
-  Bell,
-  Clock,
-  Gauge,
-  Globe,
-  KeyRound,
-  Plus,
-  Radio,
-  Server,
-  ServerOff,
-  TriangleAlert,
-  Waves,
-} from 'lucide-react';
+import { Activity, ArrowDownUp, KeyRound, Radio, Server } from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -37,8 +22,6 @@ import { ApiError } from '@/lib/api';
 import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
 import { formatCompactAge, formatCompactDuration, formatNumber, splitBytes } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { meanDcLatency } from '@/pages/nodes/dcDisplay';
-import { DASH, nodeLoad } from '@/pages/nodes/nodeDisplay';
 
 import { AlertsSection } from './dashboard/AlertsSection';
 import { NodesTable, NodesTableSkeleton } from './dashboard/NodesTable';
@@ -60,8 +43,7 @@ const RECENT_JOBS_LIMIT = 6;
 const DELTA_WINDOW_MS = 60 * 60 * 1000;
 // A point more than 15 min away from "an hour ago" is not an hour-ago reading.
 const DELTA_TOLERANCE_MS = 15 * 60 * 1000;
-/** Offline nodes listed by name in the tile context; past this, just the count. */
-const MAX_NAMED_OFFLINE = 2;
+
 /** The chart's bucket for every node past the palette. Not a node id. */
 const OTHER_SERIES_KEY = '__other';
 
@@ -186,10 +168,9 @@ export function DashboardPage() {
   const summary = summaryQuery.data;
   const nodesOnline = summary?.nodes.online ?? 0;
   const nodesTotal = summary?.nodes.total ?? 0;
-  const nodesOffline = summary?.nodes.offline ?? 0;
-  const nodesDegraded = summary?.nodes.degraded ?? 0;
+
   const keysActive = summary?.keys.active ?? 0;
-  const keysPending = summary?.keys.pending ?? 0;
+
   const keysTotal = summary?.keys.total ?? 0;
 
   const seriesByNode = useMemo(() => {
@@ -247,19 +228,6 @@ export function DashboardPage() {
     return t('dashboard.delta_per_hour', { value: `${arrow} ${Math.abs(sessionsChange)}%` });
   }, [sessionsChange, t]);
 
-  const offlineContext = useMemo(() => {
-    const offline = nodes.filter((n) => n.status === 'offline');
-    if (offline.length === 0) return undefined;
-    if (offline.length > MAX_NAMED_OFFLINE) return t('dashboard.offline_many', { count: offline.length });
-    if (offline.length === 1) {
-      const age = formatCompactAge(offline[0].last_seen_at, i18n.language);
-      return age
-        ? t('dashboard.offline_one', { name: offline[0].name, ago: age })
-        : t('dashboard.offline_names', { names: offline[0].name });
-    }
-    return t('dashboard.offline_names', { names: offline.map((n) => n.name).join(', ') });
-  }, [nodes, t, i18n.language]);
-
   const chartStep = useMemo(() => {
     if (chart.data.length < 2) return null;
     const ms = new Date(String(chart.data[1].t)).getTime() - new Date(String(chart.data[0].t)).getTime();
@@ -278,201 +246,53 @@ export function DashboardPage() {
     return out;
   }, [chart.series]);
 
-  /**
-   * Average CPU across the nodes that are actually reporting. `nodeLoad`
-   * returns nothing for an offline node or one that never reported, and an
-   * average that counted those as zero would say the fleet is idle when half
-   * of it is unreachable. Null when nothing is reporting at all.
-   */
-  const avgLoad = useMemo(() => {
-    const cpus = nodes.map((n) => nodeLoad(n)?.cpu).filter((v): v is number => v !== undefined);
-    if (cpus.length === 0) return null;
-    return cpus.reduce((sum, v) => sum + v, 0) / cpus.length;
-  }, [nodes]);
-
-  /**
-   * The fleet's latency to Telegram: the mean over the nodes that report one.
-   * Same exclusions as the load average - an offline node's last figure and
-   * a tproxy node's absence of one would both drag the mean somewhere no
-   * node actually is. Null when no node reports.
-   */
-  const dcLatency = useMemo(() => meanDcLatency(nodes), [nodes]);
-
   const recentJobs = (summary?.recent_jobs ?? []).slice(0, RECENT_JOBS_LIMIT);
-  // Memoised rather than derived inline: the tile list below depends on it,
-  // and a fresh [] on every render would rebuild eleven tiles for nothing.
-  const openAlerts = useMemo(() => summary?.alerts ?? [], [summary?.alerts]);
-  const trafficUp = splitBytes(traffic.up);
-  const trafficDown = splitBytes(traffic.down);
+  const totalTraffic = splitBytes(traffic.up + traffic.down);
   const loading = summaryQuery.isLoading || nodesQuery.isLoading;
   const failed = summaryQuery.isError || nodesQuery.isError;
 
-  /*
-   * The twelve facts, in the order the mockup reads them: the fleet, then
-   * what is on it, then what is moving through it, then what wants
-   * attention, and last how far Telegram is. Each tile's tone is decided by
-   * `statTone` from the fact itself, never set here - a tile is neutral
-   * until its number means something is wrong, which is what makes the one
-   * coloured tile on a healthy page worth looking at.
-   */
-  const tiles = useMemo((): StatGridTile[] => {
-    const num = (v: number) => formatNumber(v, i18n.language);
-    return [
-      {
-        id: 'nodes-online',
-        icon: Server,
-        tone: statTone({ kind: 'nodes_online', online: nodesOnline, total: nodesTotal }),
-        label: t('dashboard.nodes_online'),
-        value: num(nodesOnline),
-        unit: `/ ${num(nodesTotal)}`,
-        context: t('dashboard.tile_nodes_online_context'),
-        to: '/nodes',
-        loading,
-      },
-      {
-        id: 'nodes-offline',
-        icon: ServerOff,
-        tone: statTone({ kind: 'nodes_offline', count: nodesOffline }),
-        label: t('dashboard.tile_nodes_offline'),
-        value: num(nodesOffline),
-        context: offlineContext ?? t('dashboard.tile_nodes_offline_none'),
-        to: '/nodes',
-        loading,
-      },
-      {
-        id: 'nodes-degraded',
-        icon: TriangleAlert,
-        tone: statTone({ kind: 'degraded', count: nodesDegraded }),
-        label: t('dashboard.tile_degraded'),
-        value: num(nodesDegraded),
-        context: nodesDegraded > 0 ? t('dashboard.tile_degraded_some') : t('dashboard.tile_degraded_none'),
-        to: '/nodes',
-        loading,
-      },
-      {
-        id: 'keys-active',
-        icon: KeyRound,
-        tone: statTone({ kind: 'stateless' }),
-        label: t('dashboard.keys_active'),
-        value: num(keysActive),
-        context: t('dashboard.tile_keys_total', { count: keysTotal }),
-        to: '/keys',
-        loading,
-      },
-      {
-        id: 'keys-pending',
-        icon: Clock,
-        tone: statTone({ kind: 'keys_pending', count: keysPending }),
-        label: t('dashboard.tile_keys_pending'),
-        value: num(keysPending),
-        context: keysPending > 0 ? t('dashboard.tile_keys_pending_queued') : t('dashboard.tile_keys_pending_none'),
-        to: '/keys',
-        loading,
-      },
-      {
-        id: 'sessions',
-        icon: Radio,
-        tone: statTone({ kind: 'stateless' }),
-        label: t('dashboard.sessions_live'),
-        value: num(summary?.sessions_live ?? 0),
-        delta: sessionsDelta,
-        context: sessionsDelta ? undefined : t('dashboard.tile_sessions_context'),
-        to: '/monitoring',
-        loading,
-      },
-      {
-        id: 'streams',
-        icon: Waves,
-        tone: statTone({ kind: 'stateless' }),
-        label: t('dashboard.tile_streams'),
-        value: num(summary?.streams_live ?? 0),
-        context: t('dashboard.tile_streams_context'),
-        to: '/monitoring',
-        loading,
-      },
-      {
-        id: 'traffic-up',
-        icon: ArrowUp,
-        tone: statTone({ kind: 'stateless' }),
-        label: t('dashboard.tile_traffic_up'),
-        value: trafficUp.value,
-        unit: trafficUp.unit,
-        context: t('dashboard.tile_traffic_context'),
-        to: '/monitoring',
-        loading: loading || seriesLoading,
-      },
-      {
-        id: 'traffic-down',
-        icon: ArrowDown,
-        tone: statTone({ kind: 'stateless' }),
-        label: t('dashboard.tile_traffic_down'),
-        value: trafficDown.value,
-        unit: trafficDown.unit,
-        context: t('dashboard.tile_traffic_context'),
-        to: '/monitoring',
-        loading: loading || seriesLoading,
-      },
-      {
-        id: 'alerts-open',
-        icon: Bell,
-        tone: statTone({ kind: 'alerts_open', count: openAlerts.length }),
-        label: t('dashboard.tile_alerts_open'),
-        value: num(openAlerts.length),
-        // The newest alert names itself in the machine's own words, which is
-        // what an operator matches against the list two panels down.
-        context:
-          openAlerts.length > 0
-            ? [openAlerts[0].kind, openAlerts[0].node_name].filter(Boolean).join(' · ')
-            : t('dashboard.tile_alerts_none'),
-        loading,
-      },
-      {
-        id: 'avg-load',
-        icon: Gauge,
-        tone: statTone({ kind: 'avg_load', percent: avgLoad }),
-        label: t('dashboard.tile_avg_load'),
-        value: avgLoad === null ? DASH : num(Math.round(avgLoad)),
-        unit: avgLoad === null ? undefined : '%',
-        context: t('dashboard.tile_avg_load_context'),
-        to: '/monitoring',
-        loading,
-      },
-      {
-        id: 'dc-latency',
-        icon: Globe,
-        tone: statTone({ kind: 'dc_latency', ms: dcLatency }),
-        label: t('dashboard.tile_dc_latency'),
-        value: dcLatency === null ? DASH : num(Math.round(dcLatency)),
-        unit: dcLatency === null ? undefined : t('common.ms'),
-        context: t('dashboard.tile_dc_latency_context'),
-        to: '/nodes',
-        loading,
-      },
-    ];
-  }, [
-    avgLoad,
-    dcLatency,
-    i18n.language,
-    keysActive,
-    keysPending,
-    keysTotal,
-    loading,
-    nodesDegraded,
-    nodesOffline,
-    nodesOnline,
-    nodesTotal,
-    offlineContext,
-    openAlerts,
-    seriesLoading,
-    sessionsDelta,
-    summary?.sessions_live,
-    summary?.streams_live,
-    t,
-    trafficDown.unit,
-    trafficDown.value,
-    trafficUp.unit,
-    trafficUp.value,
-  ]);
+  const tiles: StatGridTile[] = [
+    {
+      id: 'nodes-online',
+      icon: Server,
+      tone: statTone({ kind: 'nodes_online', online: nodesOnline, total: nodesTotal }),
+      label: t('dashboard.nodes_online'),
+      value: formatNumber(nodesOnline, i18n.language),
+      unit: `/ ${formatNumber(nodesTotal, i18n.language)}`,
+      context: t('dashboard.fleet_hint'),
+      to: '/nodes',
+      loading,
+    },
+    {
+      id: 'keys-active',
+      icon: KeyRound,
+      label: t('dashboard.keys_active'),
+      value: formatNumber(keysActive, i18n.language),
+      context: t('dashboard.tile_keys_total', { count: keysTotal }),
+      to: '/keys',
+      loading,
+    },
+    {
+      id: 'sessions',
+      icon: Radio,
+      label: t('dashboard.sessions_live'),
+      value: formatNumber(summary?.sessions_live ?? 0, i18n.language),
+      delta: sessionsDelta,
+      context: sessionsDelta ? undefined : t('dashboard.tile_sessions_context'),
+      to: '/monitoring',
+      loading,
+    },
+    {
+      id: 'traffic',
+      icon: ArrowDownUp,
+      label: t('dashboard.total_traffic'),
+      value: totalTraffic.value,
+      unit: totalTraffic.unit,
+      context: t('dashboard.traffic_both'),
+      to: '/monitoring',
+      loading: loading || seriesLoading,
+    },
+  ];
 
   /*
    * The error branch comes before the empty one on purpose. When /nodes fails
@@ -523,15 +343,45 @@ export function DashboardPage() {
       <PageHeader
         title={t('dashboard.title')}
         description={<UpdatedAgo at={summaryQuery.dataUpdatedAt} />}
-        actions={<HelpButton topic="dashboard" />}
+        actions={
+          <>
+            {isWriter && (
+              <Button nativeButton={false} render={<Link to="/keys" />}>
+                <KeyRound />
+                {t('dashboard.manage_access')}
+              </Button>
+            )}
+            <HelpButton topic="dashboard" />
+          </>
+        }
       />
 
-      {/* The three blocks arrive in the order they are read: the numbers, the
-          shape of the last day, then the fleet itself. The grid carries no
-          entrance of its own - each tile brings its own staggered one, and
-          the loading state is the same twelve tiles with skeletons in them,
-          so the row does not change shape when the data lands. */}
       <StatGrid tiles={tiles} />
+      <Panel>
+        <AlertsSection />
+      </Panel>
+
+      {/* Wrapped rather than classed directly: Panel takes a className but no
+          style, and the entrance needs its index on the element. */}
+      <div className={ENTER_CLASS} style={enterDelay(2)}>
+        <Panel>
+          <PanelHeader
+            icon={Server}
+            title={t('nodes.title')}
+            meta={loading ? undefined : String(nodes.length)}
+            actions={
+              <Button type="button" variant="outline" size="sm" nativeButton={false} render={<Link to="/nodes" />}>
+                {t('dashboard.all_servers')}
+              </Button>
+            }
+          />
+          {loading ? (
+            <NodesTableSkeleton />
+          ) : (
+            <NodesTable nodes={nodes} sessionsByNode={sessionsByNode} seriesByNode={seriesByNode} colorByNode={colorByNode} />
+          )}
+        </Panel>
+      </div>
 
       <div className={cn(ENTER_CLASS, 'grid grid-cols-1 gap-4 lg:grid-cols-12')} style={enterDelay(1)}>
         <Panel className="flex flex-col lg:col-span-8">
@@ -542,6 +392,11 @@ export function DashboardPage() {
           <PanelHeader
             icon={Activity}
             title={t('dashboard.sessions_chart_title')}
+            actions={
+              <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/monitoring" />}>
+                {t('nav.monitoring')}
+              </Button>
+            }
             meta={chartStep ? t('dashboard.sessions_chart_meta', { step: chartStep }) : undefined}
           />
           <div className="flex-1 px-2 pt-3">
@@ -561,38 +416,7 @@ export function DashboardPage() {
         </Panel>
 
         <Panel className="lg:col-span-4">
-          <AlertsSection />
           <RecentJobsSection jobs={recentJobs} />
-        </Panel>
-      </div>
-
-      {/* Wrapped rather than classed directly: Panel takes a className but no
-          style, and the entrance needs its index on the element. */}
-      <div className={ENTER_CLASS} style={enterDelay(2)}>
-        <Panel>
-          <PanelHeader
-            icon={Server}
-            title={t('nodes.title')}
-            meta={loading ? undefined : String(nodes.length)}
-            actions={
-              isWriter && (
-                <Button type="button" variant="outline" size="sm" render={<Link to="/nodes" />}>
-                  <Plus />
-                  {t('nodes.add')}
-                </Button>
-              )
-            }
-          />
-          {loading ? (
-            <NodesTableSkeleton />
-          ) : (
-            <NodesTable
-              nodes={nodes}
-              sessionsByNode={sessionsByNode}
-              seriesByNode={seriesByNode}
-              colorByNode={colorByNode}
-            />
-          )}
         </Panel>
       </div>
     </>

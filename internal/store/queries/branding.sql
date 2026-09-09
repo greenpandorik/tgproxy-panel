@@ -18,6 +18,7 @@ WHERE id = $1 RETURNING *;
 -- name: SetBrandingAsset :exec
 UPDATE branding_profiles SET
   logo_path = CASE WHEN $2::text = 'logo' THEN $3 ELSE logo_path END,
+  logo_dark_path = CASE WHEN $2::text = 'logo_dark' THEN $3 ELSE logo_dark_path END,
   favicon_path = CASE WHEN $2::text = 'favicon' THEN $3 ELSE favicon_path END,
   login_bg_path = CASE WHEN $2::text = 'login_bg' THEN $3 ELSE login_bg_path END,
   updated_at = now() WHERE id = $1;

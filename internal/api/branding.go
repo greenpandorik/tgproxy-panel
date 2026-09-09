@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -19,7 +20,7 @@ import (
 const maxBrandingAssetSize = 512 << 10
 
 // brandingAssetKinds are the upload slots a branding profile exposes.
-var brandingAssetKinds = map[string]bool{"logo": true, "favicon": true, "login_bg": true}
+var brandingAssetKinds = map[string]bool{"logo": true, "logo_dark": true, "favicon": true, "login_bg": true}
 
 func (s *Server) mountBranding(r chi.Router) {
 	r.With(RequireRole(writers...)).Get("/branding/profiles", s.handleListBrandingProfiles)
@@ -69,14 +70,24 @@ func (s *Server) copyBrandingAssetFile(ctx context.Context, srcID, dstID uuid.UU
 
 // publicBrandingJSON is the shape served by the unauthenticated GET /branding endpoint.
 func publicBrandingJSON(b db.BrandingProfile) map[string]any {
+	// Replacing a logo keeps its filename; version the URL so browsers show
+	// the new upload immediately despite the public asset cache.
+	assetURL := func(path string) string {
+		url := brandingAssetURL(b.ID, path)
+		if url == "" {
+			return ""
+		}
+		return url + "?v=" + strconv.FormatInt(b.UpdatedAt.UnixNano(), 10)
+	}
 	return map[string]any{
 		"panel_name":    b.PanelName,
-		"logo_url":      brandingAssetURL(b.ID, b.LogoPath),
-		"favicon_url":   brandingAssetURL(b.ID, b.FaviconPath),
+		"logo_url":      assetURL(b.LogoPath),
+		"logo_dark_url": assetURL(b.LogoDarkPath),
+		"favicon_url":   assetURL(b.FaviconPath),
 		"primary_color": b.PrimaryColor,
 		"accent_color":  b.AccentColor,
 		"theme_default": b.ThemeDefault,
-		"login_bg_url":  brandingAssetURL(b.ID, b.LoginBgPath),
+		"login_bg_url":  assetURL(b.LoginBgPath),
 		"login_text":    b.LoginText,
 		"support_link":  b.SupportLink,
 		"footer_text":   b.FooterText,
@@ -170,6 +181,7 @@ func (s *Server) handleCreateBrandingProfile(w http.ResponseWriter, r *http.Requ
 	// directory, or clear the path when the source file is missing.
 	for _, kv := range []struct{ kind, path string }{
 		{"logo", active.LogoPath},
+		{"logo_dark", active.LogoDarkPath},
 		{"favicon", active.FaviconPath},
 		{"login_bg", active.LoginBgPath},
 	} {
@@ -327,7 +339,7 @@ func (s *Server) handleUploadBrandingAsset(w http.ResponseWriter, r *http.Reques
 	}
 	kind := r.URL.Query().Get("kind")
 	if !brandingAssetKinds[kind] {
-		validation(w, map[string]string{"kind": "must be logo, favicon or login_bg"})
+		validation(w, map[string]string{"kind": "must be logo, logo_dark, favicon or login_bg"})
 		return
 	}
 	if err := r.ParseMultipartForm(1 << 20); err != nil {

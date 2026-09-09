@@ -76,13 +76,13 @@ export function StatTile({
     <>
       <div className="flex items-center gap-2.5">
         <span
-          className="tgwp-tone-tint flex size-7 shrink-0 items-center justify-center rounded-control border"
+          className="tgwp-tone-tint flex size-7 shrink-0 sm:size-9 items-center justify-center rounded-control border"
           style={{ '--tone': TONE_VAR[tone] } as CSSProperties}
           aria-hidden="true"
         >
           <Icon size={16} strokeWidth={1.8} />
         </span>
-        <span className="truncate text-label text-mute">{label}</span>
+        <span className="min-w-0 text-label text-mute">{label}</span>
       </div>
 
       {loading ? (
@@ -99,13 +99,13 @@ export function StatTile({
       {loading ? (
         <Skeleton className="mt-2 h-3 w-24" />
       ) : (
-        <p className="mono mt-1 truncate text-mono text-mute">{[delta, context].filter(Boolean).join(' ') || '\u00a0'}</p>
+        <p className="mt-2 text-label text-mute">{[delta, context].filter(Boolean).join(' ') || '\u00a0'}</p>
       )}
     </>
   );
 
   const shell = cn(
-    'block rounded-surface border border-hairline-strong bg-card px-3.5 py-3',
+    'block rounded-surface border border-hairline-strong bg-card px-5 py-4',
     to && 'transition-[background-color,border-color,scale] active:scale-[0.985] hover:bg-elevated',
     className,
   );

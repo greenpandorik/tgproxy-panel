@@ -1,120 +1,40 @@
+/* Tabler-inspired fluid operations panel. Shared semantic tokens; brand values can be overridden at runtime. */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is([data-theme="dark"] *));
 
-/*
- * TGProxy Panel design tokens - visual language v2
- * (docs/superpowers/specs/2026-09-05-ui-redesign.md).
- *
- * The palette is deliberately almost colourless: three near-black surfaces,
- * two hairline strengths, three text weights. Colour is spent only on status
- * (ok/warn/err/info) and on the operator's own brand hue, which is injected
- * at runtime onto <html> by ThemeProvider from GET /api/v1/branding and marks
- * exactly five things: the active nav item, the focus ring, links, the first
- * chart series and the core of the logo mark. The primary button is *not* branded - it is --fg on
- * --bg, so the single strongest contrast on the page always means "the main
- * action here", whatever hue the operator picked.
- *
- * Dark is the default look; [data-theme="light"] mirrors every surface token.
- * Nothing below this block should hard-code a colour.
- */
 :root {
-  /*
-   * Surfaces: page ground, panels, hover/active.
-   *
-   * Phase 9 raised --bg-2 one full step away from --bg (the step in this
-   * ramp is 6/255, and the card was sitting one step up; it now sits two)
-   * and moved --bg-3 up with it so the row/menu hover stays a visible step
-   * above the card it sits on. Together with the panel border moving to the
-   * stronger hairline, a card now reads as a card on the page rather than as
-   * a slightly different shade of it. Measured on the new ramp
-   * (--bg #09090b / --bg-2 #151518 / --bg-3 #1c1c1f):
-   *   --fg   18.10 / 16.58 / 15.47
-   *   --mute  6.00 /  5.49 /  5.12
-   *   --dim   2.76 /  2.53 /  2.36  (non-text chrome, sub-AA by construction)
-   *   ok      8.73 /  8.00 /  7.46      warn 9.26 / 8.49 / 7.92
-   *   err     5.29 /  4.84 /  4.52      info 5.41 / 4.95 / 4.62
-   * so both text tones and all four status hues still clear 4.5:1 on every
-   * surface. Numbers produced by the WCAG relative-luminance formula.
-   */
-  --bg: #09090b;
-  --bg-2: #151518;
-  --bg-3: #1c1c1f;
+  --bg: #151f2c;
+  --bg-2: #1d2939;
+  --bg-3: #263548;
 
-  /* Hairlines. --line separates, --line-2 outlines something interactive. */
   --line: rgba(255, 255, 255, 0.07);
   --line-2: rgba(255, 255, 255, 0.12);
 
-  /* Text: primary, secondary, and the non-text chrome tone. */
-  --fg: #f4f4f5;
-  --mute: #8b8d93;
+  --fg: #edf2f7;
+  --mute: #a6b3c4;
   --dim: #55575f;
 
-  /*
-   * Status semantics. Never used for decoration. The values below are the
-   * *dark* ones; the light theme redefines all four further down, because a
-   * hue that reads at 8:1 on #09090b reads at 2:1 on #f6f6f8. Measured on the
-   * three dark surfaces (--bg #09090b / --bg-2 #151518 / --bg-3 #1c1c1f):
-   * ok 8.73 / 8.00 / 7.46, warn 9.26 / 8.49 / 7.92, err 5.29 / 4.84 / 4.52,
-   * info 5.41 / 4.95 / 4.62.
-   */
   --status-ok: #22c55e;
   --status-warn: #f59e0b;
-  --status-err: #ef4444;
-  --status-info: #3b82f6;
+  --status-err: #ff8585;
+  --status-info: #80b6ff;
 
-  /*
-   * The fill under the one solid destructive button (the confirm in a delete
-   * dialog). --status-err itself is a *text* red and white on it is only
-   * 3.76:1; this one is dark enough to carry the white label in either theme:
-   * #ffffff on #da1313 is 5.14:1. Same hue family, one step down in lightness.
-   *
-   * The hover is a second token rather than the panel's usual /85 opacity
-   * step, because opacity moves a fill *towards the ground*: on the near-black
-   * theme that darkens the red and the white label gets easier to read, but on
-   * the light theme it lightens it and the label drops to 4.42:1. Darkening
-   * outright is the only version that holds in both. White on #b81010 is
-   * 6.73:1.
-   */
   --destructive-solid: #da1313;
   --destructive-solid-hover: #b81010;
 
-  /*
-   * Brand, overridden at runtime from /api/v1/branding. The fallbacks are the
-   * TGProxy Panel defaults (docs/design/brand.md): magenta 5.02:1 and teal
-   * 6.23:1, both measured on the *dark* --bg - on the light ground the same
-   * two are 3.67:1 and 2.96:1, which is what --brand-ink below exists for.
-   * Both are far in hue from every status colour above, so a brand mark is
-   * never mistaken for a state.
-   */
   --brand-primary: #e23c92;
   --brand-accent: #12a198;
 
-  /*
-   * The brand hue as *text*. --brand-primary is the identity: it fills the
-   * active nav marker, the focus ring, the checkbox and the first chart
-   * series, all of which are graphics and only owe 3:1. A link is prose and
-   * owes 4.5:1, and magenta at 5.02:1 on the near-black ground is only
-   * 3.67:1 on the light one. So the light theme darkens the same hue for the
-   * text uses only, through color-mix, which means an operator-supplied brand
-   * colour is darkened with it instead of being ignored.
-   */
-  --brand-ink: var(--brand-primary);
+  --brand-ink: color-mix(in srgb, var(--brand-primary) 40%, white);
 
-  /* Panel-wide status aliases used by StatusBadge and the tables. */
   --status-online: var(--status-ok);
   --status-offline: var(--status-err);
   --status-degraded: var(--status-warn);
   --status-pending: var(--mute);
 
-  /*
-   * shadcn/base-ui semantic layer, mapped onto the tokens above so every
-   * component and page inherits the language without knowing about it.
-   * --primary stays the brand hue (links, focus, checkbox/switch fills);
-   * the neutral primary *button* is spelled out in button.tsx instead.
-   */
   --background: var(--bg);
   --foreground: var(--fg);
   --card: var(--bg-2);
@@ -122,7 +42,7 @@
   --popover: var(--bg-2);
   --popover-foreground: var(--fg);
   --primary: var(--brand-primary);
-  --primary-foreground: #ffffff;
+  --primary-foreground: #000000;
   --secondary: var(--bg-2);
   --secondary-foreground: var(--fg);
   --muted: var(--bg-3);
@@ -135,65 +55,29 @@
   --input: var(--line-2);
   --ring: var(--brand-primary);
 
-  /* The one shadow in the system: popovers lifting off the page. */
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.4);
 
-  /*
-   * Type scale - phase 8 refit (docs/design/type-and-shape.md,
-   * docs/superpowers/specs/2026-09-07-ui-refit.md).
-   *
-   * Six roles, no sizes outside them. Before the refit the panel was set
-   * almost entirely at 12-13px and hierarchy was carried by colour alone,
-   * which is why nothing on a page read as a heading. Each role below owns
-   * exactly one job: display is the page and the KPI number, title is what a
-   * panel or a dialog calls itself, body is everything a person reads, label
-   * is what a field is called, micro is chrome (table heads, chips), and mono
-   * is anything a machine produced.
-   */
   --t-display: 26px;
   --t-display-lh: 30px;
   --t-title: 17px;
   --t-title-lh: 24px;
   --t-body: 14px;
   --t-body-lh: 21px;
-  --t-label: 12.5px;
-  --t-label-lh: 16px;
-  --t-micro: 11px;
-  --t-micro-lh: 14px;
+  --t-label: 13px;
+  --t-label-lh: 19px;
+  --t-micro: 12px;
+  --t-micro-lh: 18px;
   --t-mono: 12.5px;
   --t-mono-lh: 18px;
 
-  /*
-   * Shape lock. One radius per role and nothing else in the whole panel:
-   * --r-control on anything you click or type into, --r-surface on anything
-   * that contains those, --r-pill only on status dots, avatars and counters.
-   * Table rows and dividers stay square (0) - a rounded row would fight the
-   * hairline grid the tables are built on.
-   */
-  --r-control: 8px;
-  --r-surface: 12px;
+  --r-control: 6px;
+  --r-surface: 8px;
   --r-pill: 9999px;
 
-  /*
-   * Motion. CSS only, no animation library. --ease-out is deliberately the
-   * same name Tailwind gives its own easing token, so the `ease-out` utility
-   * and every hand-written transition below share one curve: fast out of the
-   * gate, long settle. --dur-fast is for a state the pointer is holding
-   * (hover, press), --dur-base for something arriving or leaving.
-   * Both collapse to 0ms under prefers-reduced-motion at the end of this file.
-   */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --dur-fast: 120ms;
   --dur-base: 180ms;
 
-  /*
-   * Chart series. Series 1 and 2 are the operator's brand pair (the spec
-   * makes brand-primary the first series and brand-accent the second); 3-8
-   * continue with the dataviz skill's dark-column categorical hues, in a
-   * fixed order that is never reassigned by rank. Series 5 is a blue rather
-   * than the skill's pink: with a magenta default primary, pink would be the
-   * one hue a chart could not tell from series 1.
-   */
   --series-1: var(--brand-primary);
   --series-2: var(--brand-accent);
   --series-3: #d95926;
@@ -204,7 +88,7 @@
   --series-8: #e66767;
   --series-other: var(--dim);
 
-  --sidebar: var(--bg);
+  --sidebar: var(--bg-2);
   --sidebar-foreground: var(--fg);
   --sidebar-primary: var(--brand-primary);
   --sidebar-primary-foreground: #ffffff;
@@ -214,65 +98,24 @@
   --sidebar-ring: var(--brand-primary);
 }
 
-/* Light mirror: the same five roles, inverted. Hairlines go to black alpha. */
 :root[data-theme='light'] {
-  /*
-   * The same one-step raise, from the other side. --bg-2 is already white
-   * and cannot go up, so the ground goes down instead and the card rises
-   * relative to it: the gap between --bg and --bg-2 goes from 4/255 to
-   * 9/255. --bg-3 stays where it is - it is the darkest of the three here,
-   * and every tone measured on it is already within 0.06 of the 4.5 floor,
-   * so there is no room below it. Measured on the new light ramp
-   * (--bg #f6f6f8 / --bg-2 #ffffff / --bg-3 #f1f1f3):
-   *   --fg   17.47 / 18.86 / 16.72
-   *   --mute  4.78 /  5.16 /  4.57
-   *   --dim   2.54 /  2.74 /  2.43  (non-text chrome, sub-AA by construction)
-   *   ok      4.76 /  5.14 /  4.56      warn 4.76 / 5.14 / 4.56
-   *   err     4.76 /  5.14 /  4.56      info 4.77 / 5.15 / 4.56
-   */
-  --bg: #f6f6f8;
+  --bg: #f1f5f9;
   --bg-2: #ffffff;
-  --bg-3: #f1f1f3;
+  --bg-3: #e9eff5;
 
   --line: rgba(0, 0, 0, 0.08);
   --line-2: rgba(0, 0, 0, 0.14);
 
-  --fg: #111113;
-  --mute: #6b6d75;
+  --fg: #182433;
+  --mute: #526478;
   --dim: #9a9ca3;
 
-  /*
-   * Status, re-picked for light. The dark hues are tuned to glow off a
-   * near-black ground and simply vanish here: on the three light surfaces
-   * (--bg #f6f6f8 / --bg-2 #ffffff / --bg-3 #f1f1f3) the dark ok is
-   * 2.11 / 2.28 / 2.02, warn 1.99 / 2.15 / 1.90, err 3.49 / 3.76 / 3.34 and
-   * info 3.41 / 3.68 / 3.26 - every inline form error, every warning line and
-   * every status dot below AA. These four are the same four hues taken down
-   * to the same lightness, so ok is still green and warn still amber, and all
-   * twelve combinations clear 4.5:1 (measured, in the same bg / bg-2 / bg-3
-   * order):
-   *   ok   #167e3c  4.76 / 5.14 / 4.56
-   *   warn #986206  4.76 / 5.14 / 4.56
-   *   err  #da1313  4.76 / 5.14 / 4.56
-   *   info #0b63f2  4.77 / 5.15 / 4.56
-   * The 7px status dots are non-text graphics owing 3:1 and clear that with
-   * room to spare at the same values.
-   */
   --status-ok: #167e3c;
   --status-warn: #986206;
   --status-err: #da1313;
   --status-info: #0b63f2;
 
-  /*
-   * The brand hue as text, one step down in oklab lightness so a link, a link
-   * button and a brand chip all clear 4.5:1 on a light surface. The default
-   * magenta resolves to #ad2c6f (5.78 / 6.24 / 5.53) and the default teal to
-   * #0b7b74 (4.75 / 5.12 / 4.54). Because it is a mix rather than a constant,
-   * an operator who sets their own --brand-primary at runtime gets a darkened
-   * text colour too, instead of a hard-coded magenta ignoring their brand.
-   * --brand-primary itself is untouched: the identity stays the identity.
-   */
-  --brand-ink: color-mix(in oklab, var(--brand-primary) 82%, black);
+  --brand-ink: color-mix(in srgb, var(--brand-primary) 40%, black);
 
   --destructive-foreground: #ffffff;
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.14);
@@ -289,18 +132,6 @@
   --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-  /*
-   * The named type roles (see --t-* above), and the only type scale in the
-   * panel. Tailwind's own t-shirt sizes (text-xs .. text-2xl) were retuned
-   * here while the pages were migrating; the migration is finished and every
-   * one of them is gone from src/**, so the retuning went with them. Asking
-   * for text-sm now gets Tailwind's stock 14px, which is why nothing does.
-   *
-   * text-micro carries size and leading but *not* the uppercase and tracking
-   * of the micro role, because a chip can be micro-sized and still be a
-   * hostname. The full role - uppercase, +0.04em - is the `.micro` utility
-   * at the bottom of this file.
-   */
   --text-display: var(--t-display);
   --text-display--line-height: var(--t-display-lh);
   --text-display--letter-spacing: -0.02em;
@@ -318,41 +149,19 @@
   --text-mono: var(--t-mono);
   --text-mono--line-height: var(--t-mono-lh);
 
-  /*
-   * Tracking. --tracking-micro is the type system's own value and belongs to
-   * the micro role; uppercase-with-tracking exists nowhere else.
-   * --tracking-code is not a type-scale value at all - it is the gap between
-   * the digit cells of a one-time-code field, where the eye has to count six
-   * characters in a group rather than read a word. It is named here so the
-   * two OTP inputs share one number instead of spelling out an arbitrary em
-   * each, and so a reviewer can tell it apart from a typographic decision.
-   */
   --tracking-micro: 0.04em;
   --tracking-code: 0.35em;
 
-  /* Radii: 4 tags, 6 controls, 8 panels. Nothing rounder. */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 8px;
   --radius-2xl: 10px;
 
-  /*
-   * Shape lock utilities: rounded-control, rounded-surface, rounded-pill.
-   * These supersede the t-shirt radii above everywhere in src/components/ui.
-   */
   --radius-control: var(--r-control);
   --radius-surface: var(--r-surface);
   --radius-pill: var(--r-pill);
 
-  /*
-   * Motion defaults. Tailwind has no theme namespace for durations, so
-   * instead of a `duration-fast` utility the panel retunes what every
-   * `transition-*` utility already falls back to: --dur-fast on the panel's
-   * curve. A plain `transition-colors` is therefore already correct, and the
-   * reduced-motion block at the end of this file zeroes it. The rare slower
-   * transition asks for the other token by name: duration-base.
-   */
   --default-transition-duration: var(--dur-fast);
   --default-transition-timing-function: var(--ease-out);
 
@@ -391,25 +200,6 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
 
-  /*
-   * Surface/line/text utilities: bg-surface, border-hairline, text-mute, ...
-   * text-mute and text-dim are not two weights of the same thing: only one of
-   * them is a text tone. --mute is everything a person reads that is not
-   * primary - a description, an empty state, a field label, a table head,
-   * helper text, a placeholder, an error - and that includes every machine
-   * value a person actually reads: a timestamp, a count, an id, a hostname, a
-   * byte figure, a version, an IP, a status word, a pagination summary. That a
-   * machine wrote it is not a reason a person cannot read it.
-   *
-   * --dim measures 2.76 / 2.53 / 2.36 on the three dark surfaces and
-   * 2.54 / 2.74 / 2.43 on the three light ones, against a 4.5:1 floor, so it
-   * can never carry meaning. It is reserved for marks that carry none on their
-   * own: the separator glyph between two items, the dash standing in for an
-   * absent value, the gutter line numbers in the code editor, and an icon that
-   * only repeats the label beside it. Nothing else. A rendered sweep of the
-   * panel is the check, not a reading of the class name: if removing the mark
-   * would lose the reader a word, a number or a stamp, it is --mute.
-   */
   --color-surface: var(--bg-2);
   --color-elevated: var(--bg-3);
   --color-hairline: var(--line);
@@ -417,17 +207,10 @@
   --color-mute: var(--mute);
   --color-dim: var(--dim);
 
-  /*
-   * Brand utilities: bg-brand-primary, text-brand-accent, ...
-   * text-brand-ink is the one to reach for when the brand hue is carrying
-   * words (a link, a link button, a brand chip); bg-/border-brand-primary
-   * stay on the identity value. See --brand-ink at the top of this file.
-   */
   --color-brand-primary: var(--brand-primary);
   --color-brand-accent: var(--brand-accent);
   --color-brand-ink: var(--brand-ink);
 
-  /* Fixed status semantics, independent of brand/theme. */
   --color-ok: var(--status-ok);
   --color-warn: var(--status-warn);
   --color-err: var(--status-err);
@@ -459,7 +242,7 @@
   ::selection {
     background-color: color-mix(in oklab, var(--brand-primary) 35%, transparent);
   }
-  /* Every number in the panel is compared against the one above it. */
+
   th,
   td,
   input[type='number'] {
@@ -468,11 +251,6 @@
 }
 
 @layer utilities {
-  /*
-   * .mono marks a value the machine produced - a hostname, an id, a commit,
-   * a byte count, a timestamp. It is the panel's one strong typographic
-   * signal, so it carries tabular figures and a hair of negative tracking.
-   */
   .mono {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -482,12 +260,7 @@
   .font-tabular {
     font-variant-numeric: tabular-nums;
   }
-  /*
-   * .micro is the whole micro role in one class: 11/14, +0.04em, uppercase.
-   * It marks chrome rather than content - a table head, a group label, a
-   * status caption. Uppercase with tracking exists *only* here; any other
-   * uppercase run in the panel is a bug.
-   */
+
   .micro {
     font-size: var(--t-micro);
     line-height: var(--t-micro-lh);
@@ -495,18 +268,7 @@
     letter-spacing: var(--tracking-micro);
     text-transform: uppercase;
   }
-  /*
-   * Durations as utilities. Tailwind v4 has no theme namespace for them, so
-   * these are spelled out once here rather than as duration-base
-   * at every call site. Both read the tokens, so the reduced-motion block at
-   * the end of this file still zeroes them. A bare `transition-*` is already
-   * --dur-fast, so .duration-fast is only for the handful of places that want
-   * to say so out loud next to a hand-written property list. --tw-duration is
-   * set as well as the two longhands because tw-animate-css builds animate-in
-   * and animate-out as an `animation` shorthand that reads that variable; a
-   * bare animation-duration next to the shorthand is a coin toss on source
-   * order, and this is not.
-   */
+
   .duration-fast {
     --tw-duration: var(--dur-fast);
     transition-duration: var(--dur-fast);
@@ -517,33 +279,13 @@
     transition-duration: var(--dur-base);
     animation-duration: var(--dur-base);
   }
-  /*
-   * The tinted plate a stat tile's icon sits on. The tile sets --tone to one
-   * status token and this paints the whole plate from it: the glyph at full
-   * strength, the fill at 10% and the border at 20%, exactly as the mockup
-   * draws it (docs/design/mock-2026-09-07-d.html). One rule rather than a
-   * class per tone, so a tone that changes with the system's state is a
-   * single custom property and not a class swap.
-   *
-   * Contrast of the glyph against its own tint, over --bg-2 and over --bg-3
-   * (the tile's hover), measured: neutral 4.84 / 4.48, ok 6.86 / 6.34,
-   * warn 7.21 / 6.65, err 4.40 / 4.10, info 4.44 / 4.12 in dark; neutral
-   * 4.53 / 4.06, ok 4.49 / 4.02, warn 4.50 / 4.03, err 4.33 / 3.88,
-   * info 4.45 / 3.98 in light. A glyph is a non-text graphic and owes 3:1.
-   */
+
   .tgwp-tone-tint {
     background-color: color-mix(in srgb, var(--tone) 10%, transparent);
     border-color: color-mix(in srgb, var(--tone) 20%, transparent);
     color: var(--tone);
   }
-  /*
-   * Entrance: fade plus a 2px rise, nothing else. Put it on a panel, a stat
-   * tile or a table row that has just arrived, and set --enter-index on each
-   * sibling to stagger them. The delay is clamped at index 5, so a list of
-   * forty rows still finishes inside 200ms and the sixth row onwards arrives
-   * with the fifth - the pattern is a hint that content landed, not a show.
-   * See components/ui/motion.ts for the helper that fills in the index.
-   */
+
   .tgwp-enter {
     animation: tgwp-enter var(--dur-base) var(--ease-out) both;
     animation-delay: calc(min(var(--enter-index, 0), 5) * 40ms);
@@ -561,7 +303,6 @@
   }
 }
 
-/* Signature motif: a soft pulsing ring behind "live" status dots (online/active). */
 @keyframes tgwp-pulse {
   0% {
     transform: scale(1);
@@ -577,26 +318,6 @@
   animation: tgwp-pulse 1.8s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
 }
 
-/*
- * Reduced motion. Three layers, deliberately belt and braces.
- *
- * 1. The duration tokens go to zero, so every transition built on
- *    --dur-fast / --dur-base becomes an instant state change without any
- *    component knowing about it - including every plain `transition-*`
- *    utility, which falls back to --dur-fast through
- *    --default-transition-duration above.
- * 2. The blanket rule below catches everything the tokens cannot reach: a
- *    keyframe animation with its own duration (the overlay fade/zoom/slide
- *    that tw-animate-css writes for dialogs, sheets, popovers, selects,
- *    menus and tooltips), a skeleton's animate-pulse, and every animate-spin
- *    on a loading icon. 1ms rather than 0s because a 0s animation never fires
- *    animationend, and iteration-count 1 is what actually stops an infinite
- *    loop. This is the layer that keeps the guarantee true for code written
- *    after this file, which is why it is a wildcard and not a list.
- * 3. The two motifs that would still read as motion at 1ms - the live pulse
- *    ring, which is a growing circle, and the entrance, which starts at
- *    opacity 0 - are switched off outright rather than accelerated.
- */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-fast: 0ms;
@@ -621,12 +342,6 @@
   }
 }
 
-/*
- * Line-number gutter for the site template HTML editor (TemplateEditorPage).
- * No code-editor dependency: numbers are generated by a CSS counter over one
- * row-per-line div, kept in lockstep with the plain <textarea> next to it via
- * an identical font/line-height and a synced scrollTop (see LineNumberedTextarea).
- */
 .tgwp-editor-gutter {
   counter-reset: line;
 }
@@ -637,4 +352,74 @@
 
 .tgwp-editor-gutter-row::before {
   content: counter(line);
+}
+
+:root {
+  --control-height: 38px;
+  --cell-padding-y: 14px;
+}
+:root[data-density='compact'] {
+  --control-height: 32px;
+  --cell-padding-y: 8px;
+}
+[data-slot='input'],
+[data-slot='select-trigger'] {
+  min-height: var(--control-height);
+}
+[data-slot='table-cell'] {
+  padding-block: var(--cell-padding-y);
+}
+[data-slot='table-head'] {
+  background: var(--bg);
+  font-weight: 600;
+}
+[data-slot='button'] {
+  cursor: pointer;
+}
+[data-slot='button']:disabled {
+  cursor: default;
+}
+:root {
+  color-scheme: dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+::selection {
+  background: color-mix(in srgb, var(--brand-primary) 25%, transparent);
+}
+input,
+textarea {
+  caret-color: var(--brand-ink);
+}
+a,
+button,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+:where(a, button, summary):focus-visible {
+  outline: 2px solid var(--brand-ink);
+  outline-offset: 3px;
+}
+@media (pointer: coarse) {
+  [data-slot='button'],
+  [data-slot='input'],
+  [data-slot='select-trigger'],
+  .panel-nav-link {
+    min-height: 44px;
+  }
+}
+.branding-preview[data-theme='light'] {
+  color: #182433;
+  background: #f1f5f9;
+}
+.branding-preview[data-theme='light'] .preview-header {
+  background: #ffffff;
+}
+.branding-preview[data-theme='dark'] {
+  color: #edf2f7;
+  background: #151f2c;
+}
+.branding-preview[data-theme='dark'] .preview-header {
+  background: #1d2939;
 }

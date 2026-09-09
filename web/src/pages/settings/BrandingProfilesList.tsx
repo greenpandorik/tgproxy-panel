@@ -179,7 +179,7 @@ function ProfileRow({
         </span>
       </button>
       {!profile.is_active && (
-        <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/profile:opacity-100 focus-within:opacity-100">
+        <span className="flex shrink-0 items-center gap-0.5 ">
           <Button type="button" variant="ghost" size="xs" onClick={onActivate}>
             {t('settings.branding_activate')}
           </Button>
@@ -255,7 +255,7 @@ export function BrandingProfilesList() {
   if (profilesQuery.isLoading) {
     // The rail on the left and the stack of form panels on the right, in silhouette.
     return (
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[264px_1fr]">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[264px_minmax(0,1fr)]">
         <Skeleton className="h-64 w-full rounded-surface" />
         <div className="space-y-4">
           <Skeleton className="h-48 w-full rounded-surface" />
@@ -277,7 +277,7 @@ export function BrandingProfilesList() {
   }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[264px_1fr]">
+    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[264px_minmax(0,1fr)]">
       {/* Head, body, footer, like every other form behind these tabs: the rail's
           own action sits in the footer rather than in a 264px header that cannot
           hold both a title and this label. */}

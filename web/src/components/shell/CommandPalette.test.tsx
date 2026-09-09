@@ -36,7 +36,11 @@ function node(over: Record<string, unknown>) {
 // One clean node and two with unapplied changes, so "Применить всё" has
 // something to confirm.
 const NODES = {
-  items: [node({}), node({ id: 'n-fra', name: 'Frankfurt', hostname: 'fra1.proxy-demo.net', dirty: true }), node({ id: 'n-hel', name: 'Helsinki', hostname: 'hel1.proxy-demo.net', dirty: true })],
+  items: [
+    node({}),
+    node({ id: 'n-fra', name: 'Frankfurt', hostname: 'fra1.proxy-demo.net', dirty: true }),
+    node({ id: 'n-hel', name: 'Helsinki', hostname: 'hel1.proxy-demo.net', dirty: true }),
+  ],
   total: 3,
   page: 1,
   per_page: 50,
@@ -91,7 +95,7 @@ describe('CommandPalette', () => {
 
     expect(await screen.findByText('Разделы')).toBeInTheDocument();
     expect(screen.getByText('Действия')).toBeInTheDocument();
-    expect(screen.getByText('Дашборд')).toBeInTheDocument();
+    expect(screen.getByText('Обзор')).toBeInTheDocument();
     expect(screen.getByText('Создать ключ')).toBeInTheDocument();
     expect(screen.getByText('Применить всё')).toBeInTheDocument();
 

@@ -485,6 +485,7 @@ type BrandingProfile struct {
 	FooterText   string    `json:"footer_text"`
 	CustomCss    string    `json:"custom_css"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	LogoDarkPath string    `json:"logo_dark_path"`
 }
 
 type KeyBinding struct {

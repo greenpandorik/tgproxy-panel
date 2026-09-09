@@ -48,7 +48,7 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
         // title to nothing and pushing the button past the edge. With nothing
         // to wrap it still measures the standard 44px, which is what the
         // title role's 24px line plus 2x8px of padding needs.
-        'flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-4 py-2',
+        'flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-5 py-3',
         className,
       )}
     >
@@ -57,7 +57,7 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
         <h2 className="truncate text-title text-foreground">{title}</h2>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {meta !== undefined && meta !== null && meta !== '' && <span className="mono text-mono text-mute">{meta}</span>}
+        {meta !== undefined && meta !== null && meta !== '' && <span className="text-label text-mute">{meta}</span>}
         {actions}
       </div>
     </div>
@@ -65,5 +65,5 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
 }
 
 export function PanelBody({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('p-4', className)}>{children}</div>;
+  return <div className={cn('p-5', className)}>{children}</div>;
 }

@@ -1,4 +1,5 @@
 import { Bell } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { useAlerts, useResolveAlert } from '@/api/dashboard';
@@ -8,6 +9,7 @@ import { PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
+import { ErrorState } from '@/components/common/ErrorState';
 import { ApiError } from '@/lib/api';
 import { formatCompactAge } from '@/lib/format';
 
@@ -53,6 +55,12 @@ export function AlertsSection() {
             </li>
           ))}
         </ul>
+      ) : alertsQuery.isError ? (
+        <ErrorState
+          message={t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void alertsQuery.refetch()}
+        />
       ) : alerts.length === 0 ? (
         <PanelEmpty>{t('dashboard.alerts_empty')}</PanelEmpty>
       ) : (
@@ -60,14 +68,20 @@ export function AlertsSection() {
           {alerts.map((a) => {
             const age = formatCompactAge(a.created_at, i18n.language);
             return (
-              <li key={a.id} className="flex items-start justify-between gap-3 px-4 py-3">
+              <li key={a.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-body text-foreground">
                     <span className="size-[7px] shrink-0 rounded-pill bg-offline" aria-hidden="true" />
-                    <span className="truncate">{a.node_name || t('dashboard.alert_panel_scope')}</span>
+                    {a.node_id ? (
+                      <Link to={`/nodes/${a.node_id}`} className="truncate font-medium hover:underline">
+                        {a.node_name || t('dashboard.alert_panel_scope')}
+                      </Link>
+                    ) : (
+                      <span>{t('dashboard.alert_panel_scope')}</span>
+                    )}
                   </p>
-                  <p className="mono mt-1 truncate pl-[15px] text-mono text-mute">
-                    {a.kind}
+                  <p className="mt-1 pl-[15px] text-label text-mute">
+                    {t(`dashboard.alert_${a.kind}`, { defaultValue: a.message || t('dashboard.alert_unknown') })}
                     {age && ` · ${t('common.ago', { value: age })}`}
                   </p>
                 </div>

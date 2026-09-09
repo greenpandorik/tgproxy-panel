@@ -16,3 +16,8 @@ tgwp-agent*
 # Installed agent skills are third-party content fetched by `npx skills add`;
 # skills-lock.json records which ones this project uses.
 .agents/
+
+# Impeccable design-tool cache and verification screenshots: regenerated on
+# every run, not source.
+.impeccable/
+/output/

@@ -66,16 +66,14 @@ describe('Topbar status chips', () => {
     } as unknown as ReturnType<typeof usePublicStatus>);
   });
 
-  it('shows the version, GitHub and nodes chips in the header', () => {
+  it('keeps system details out of the header', () => {
     renderTopbar();
-
-    const header = screen.getByRole('banner');
-    expect(header).toContainElement(screen.getByTestId('version-chip'));
-    expect(header).toContainElement(screen.getByTestId('github-chip'));
-    expect(header).toContainElement(screen.getByTestId('nodes-chip'));
+    expect(screen.queryByTestId('version-chip')).toBeNull();
+    expect(screen.queryByTestId('github-chip')).toBeNull();
+    expect(screen.queryByTestId('nodes-chip')).toBeNull();
   });
 
-  it('repeats the same facts as rows inside the user menu', async () => {
+  it('keeps version, update and fleet details accessible in the user menu', async () => {
     renderTopbar();
     const user = userEvent.setup();
 

@@ -174,7 +174,7 @@ export function StatusMenuRows() {
   const tone = status ? nodesTone(status.nodes_online, status.nodes_total) : 'dim';
 
   return (
-    <div className="md:hidden">
+    <div>
       {update && (
         <Row label={t('shell.version_tooltip')}>
           <span>{versionLabel(update.current)}</span>

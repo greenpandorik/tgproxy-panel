@@ -40,7 +40,7 @@ export interface HelpTopicDef {
 
 export const HELP_TOPICS = {
   dashboard: {
-    fields: ['nodes_online', 'keys_active', 'sessions', 'traffic', 'chart', 'alerts', 'jobs', 'dc_latency'],
+    fields: ['nodes_online', 'keys_active', 'sessions', 'traffic', 'chart', 'alerts', 'jobs'],
     docs: 'monitoring',
   },
 
@@ -168,9 +168,11 @@ export const HELP_TOPICS = {
   },
   'settings.branding': {
     fields: [
+      'personal',
       'profiles',
       'panel_name',
       'logo',
+      'logo_dark',
       'favicon',
       'login_bg',
       'primary_color',
