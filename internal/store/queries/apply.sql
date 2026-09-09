@@ -21,3 +21,6 @@ SELECT * FROM node_sites WHERE node_id = $1;
 -- that was never sent, with no recovery path through the UI.
 -- name: SetNodeSiteDeployed :exec
 UPDATE node_sites SET deployed_hash = @hash WHERE node_id = @node_id AND bundle_hash = @hash;
+
+-- name: DeleteOldApplyJobs :execrows
+DELETE FROM apply_jobs WHERE finished_at IS NOT NULL AND finished_at < $1;

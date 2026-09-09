@@ -50,6 +50,18 @@ func (q *Queries) CountAuditFiltered(ctx context.Context, arg CountAuditFiltered
 	return count, err
 }
 
+const deleteOldAudit = `-- name: DeleteOldAudit :execrows
+DELETE FROM audit_log WHERE created_at < $1
+`
+
+func (q *Queries) DeleteOldAudit(ctx context.Context, createdAt time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldAudit, createdAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertAudit = `-- name: InsertAudit :exec
 INSERT INTO audit_log (admin_user_id, action, target_type, target_id, meta, ip) VALUES ($1, $2, $3, $4, $5, $6)
 `

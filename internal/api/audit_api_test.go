@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"tgwebproxy/internal/api/apitest"
 )
 
 func TestAuditFilters(t *testing.T) {
@@ -136,5 +138,41 @@ func TestAuditHugePageIsClamped(t *testing.T) {
 			t.Fatalf("page=%s got %d, want 200", p, resp.StatusCode)
 		}
 		_ = resp.Body.Close()
+	}
+}
+
+// A rejected sign-in is the one thing worth seeing in the audit trail that no successful
+// action produces, so it must be filed for a wrong password and for a username that matches
+// no account at all.
+func TestFailedLoginsAreAudited(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+
+	anon := h.Anonymous()
+	if resp := anon.Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "wrong-one"}); resp.StatusCode != 401 {
+		t.Fatalf("wrong password: %d", resp.StatusCode)
+	}
+	if resp := anon.Post("/api/v1/auth/login", map[string]string{"username": "ghost", "password": "wrong-one"}); resp.StatusCode != 401 {
+		t.Fatalf("unknown user: %d", resp.StatusCode)
+	}
+
+	c := h.Login("root", "pass-123456")
+	var got struct {
+		Items []struct {
+			Action string         `json:"action"`
+			Meta   map[string]any `json:"meta"`
+		} `json:"items"`
+		Total int `json:"total"`
+	}
+	c.JSON(c.Get("/api/v1/audit?action=auth.login_failed"), &got)
+	if got.Total != 2 {
+		t.Fatalf("auth.login_failed total %d, want 2", got.Total)
+	}
+	reasons := map[string]bool{}
+	for _, it := range got.Items {
+		reasons[it.Meta["reason"].(string)] = true
+	}
+	if !reasons["bad_password"] || !reasons["unknown_user"] {
+		t.Fatalf("reasons %v, want both bad_password and unknown_user", reasons)
 	}
 }

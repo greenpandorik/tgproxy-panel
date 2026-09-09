@@ -99,3 +99,48 @@ func seedExpiredKeyStats2(t *testing.T, st *store.Store, n int) {
 		t.Fatal(err)
 	}
 }
+
+func countRows(t *testing.T, st *store.Store, table string) int {
+	t.Helper()
+	var n int
+	if err := st.Pool.QueryRow(context.Background(), `SELECT count(*) FROM `+table).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestSweepHistoryTrimsAuditAndApplyJobs(t *testing.T) {
+	st := store.OpenTest(t)
+	ctx := context.Background()
+	var nodeID uuid.UUID
+	if err := st.Pool.QueryRow(ctx,
+		`INSERT INTO nodes (name, hostname) VALUES ('n', 'history.test') RETURNING id`).Scan(&nodeID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Pool.Exec(ctx,
+		`INSERT INTO audit_log (action, target_type, target_id, meta, ip, created_at)
+		 VALUES ('old.action', 'admin', '', '{}', '', now() - $1::interval),
+		        ('fresh.action', 'admin', '', '{}', '', now())`,
+		(auditRetention + 48*time.Hour).String()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Pool.Exec(ctx,
+		`INSERT INTO apply_jobs (node_id, status, kind, started_at, finished_at)
+		 VALUES ($1, 'ok', 'both', now() - $2::interval, now() - $2::interval),
+		        ($1, 'ok', 'both', now(), now()),
+		        ($1, 'running', 'both', now() - $2::interval, NULL)`,
+		nodeID, (applyJobRetention + 48*time.Hour).String()); err != nil {
+		t.Fatal(err)
+	}
+
+	s := NewStats(st, nil, 90*time.Second, slog.New(slog.DiscardHandler))
+	s.sweepHistory(ctx)
+
+	if n := countRows(t, st, "audit_log"); n != 1 {
+		t.Fatalf("audit_log has %d rows, want only the fresh one", n)
+	}
+	// The unfinished job stays whatever its age: only a finished one is history.
+	if n := countRows(t, st, "apply_jobs"); n != 2 {
+		t.Fatalf("apply_jobs has %d rows, want the fresh and the still-running one", n)
+	}
+}

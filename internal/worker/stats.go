@@ -169,6 +169,7 @@ type Stats struct {
 	notifyWG    sync.WaitGroup
 
 	lastKeyStatsSweep time.Time
+	lastHistorySweep  time.Time
 	now               func() time.Time
 }
 
@@ -279,6 +280,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 		s.log.Error("delete expired sessions", "err", err)
 	}
 	s.sweepKeyStats(ctx)
+	s.sweepHistory(ctx)
 	return s.st.Q.DeleteOldSnapshots(ctx, time.Now().Add(-retention))
 }
 
@@ -348,6 +350,35 @@ func (s *Stats) sweepKeyStats(ctx context.Context) {
 
 // retention is how long both snapshot tables are kept.
 const retention = 30 * 24 * time.Hour
+
+const (
+	historySweepEvery = time.Hour
+	// auditRetention is longer than the rest: the audit trail is what an operator reads
+	// after an incident, and an incident is not always noticed the same month.
+	auditRetention    = 180 * 24 * time.Hour
+	applyJobRetention = 30 * 24 * time.Hour
+)
+
+// sweepHistory trims the two tables that would otherwise grow for the life of the install:
+// the audit trail and the finished apply jobs with their logs.
+func (s *Stats) sweepHistory(ctx context.Context) {
+	now := s.clock()
+	if !s.lastHistorySweep.IsZero() && now.Sub(s.lastHistorySweep) < historySweepEvery {
+		return
+	}
+	s.lastHistorySweep = now
+	if n, err := s.st.Q.DeleteOldAudit(ctx, now.Add(-auditRetention)); err != nil {
+		s.log.Error("delete old audit entries", "err", err)
+	} else if n > 0 {
+		s.log.Info("audit retention sweep", "deleted", n)
+	}
+	cutoff := now.Add(-applyJobRetention)
+	if n, err := s.st.Q.DeleteOldApplyJobs(ctx, &cutoff); err != nil {
+		s.log.Error("delete old apply jobs", "err", err)
+	} else if n > 0 {
+		s.log.Info("apply job retention sweep", "deleted", n)
+	}
+}
 
 // keySnapshots writes one key_stats_snapshots row per key that telemt reported on this node.
 func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetrics, stats map[string]string) error {

@@ -38,6 +38,18 @@ func (q *Queries) CreateApplyJob(ctx context.Context, arg CreateApplyJobParams) 
 	return i, err
 }
 
+const deleteOldApplyJobs = `-- name: DeleteOldApplyJobs :execrows
+DELETE FROM apply_jobs WHERE finished_at IS NOT NULL AND finished_at < $1
+`
+
+func (q *Queries) DeleteOldApplyJobs(ctx context.Context, finishedAt *time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldApplyJobs, finishedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const finishApplyJob = `-- name: FinishApplyJob :exec
 UPDATE apply_jobs SET status = $2, finished_at = now(), error = $3, log = $4 WHERE id = $1
 `

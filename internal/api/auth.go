@@ -16,6 +16,25 @@ type loginReq struct {
 	Password string `json:"password"`
 }
 
+// maxLoggedUsername bounds what an unauthenticated caller can write into a log line or an
+// audit row.
+const maxLoggedUsername = 64
+
+func clipUsername(u string) string {
+	if len(u) > maxLoggedUsername {
+		return u[:maxLoggedUsername] + "…"
+	}
+	return u
+}
+
+// recordLoginFailure logs a rejected sign-in and files it in the audit trail. userID is empty
+// when the username matched no account.
+func (s *Server) recordLoginFailure(r *http.Request, reason, username, userID string) {
+	name := clipUsername(username)
+	s.log.Warn("login failed", "reason", reason, "username", name, "ip", ipFrom(r.Context()))
+	s.Audit(r.Context(), "auth.login_failed", "admin", userID, map[string]any{"reason": reason, "username": name})
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !s.loginLimiter.Allow(ipFrom(r.Context())) {
 		writeError(w, 429, "rate_limited", "too many attempts, try later", nil)
@@ -30,16 +49,19 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// burn time to keep timing similar
 		_, _ = crypto.VerifyPassword(req.Password, "$argon2id$v=19$m=65536,t=3,p=2$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		s.recordLoginFailure(r, "unknown_user", req.Username, "")
 		writeError(w, 401, "invalid_credentials", "wrong username or password", nil)
 		return
 	}
 	if u.LockedUntil != nil && u.LockedUntil.After(time.Now()) {
+		s.recordLoginFailure(r, "locked", u.Username, u.ID.String())
 		writeError(w, 423, "locked", "account temporarily locked", nil)
 		return
 	}
 	ok, _ := crypto.VerifyPassword(req.Password, u.PasswordHash)
 	if !ok {
 		_ = s.store.Q.RecordFailedLogin(r.Context(), u.ID)
+		s.recordLoginFailure(r, "bad_password", u.Username, u.ID.String())
 		writeError(w, 401, "invalid_credentials", "wrong username or password", nil)
 		return
 	}

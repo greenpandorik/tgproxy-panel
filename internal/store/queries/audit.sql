@@ -26,3 +26,6 @@ WHERE (sqlc.narg('action')::text IS NULL OR a.action LIKE sqlc.narg('action') ||
   AND (sqlc.narg('username')::text IS NULL OR u.username = sqlc.narg('username'))
   AND (sqlc.narg('from_at')::timestamptz IS NULL OR a.created_at >= sqlc.narg('from_at'))
   AND (sqlc.narg('to_at')::timestamptz IS NULL OR a.created_at <= sqlc.narg('to_at'));
+
+-- name: DeleteOldAudit :execrows
+DELETE FROM audit_log WHERE created_at < $1;

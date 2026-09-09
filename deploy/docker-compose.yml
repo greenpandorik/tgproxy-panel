@@ -6,6 +6,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tgwp}
       POSTGRES_DB: tgwp
     volumes: [pgdata:/var/lib/postgresql/data]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "5"}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tgwp"]
       interval: 5s
@@ -27,6 +30,9 @@ services:
       postgres:
         condition: service_healthy
     volumes: [paneldata:/data]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "5"}
     expose: ["8080"]
     # /healthz is served only once migrations have run and the HTTP server is listening, so
     # dependants gated on service_healthy never proxy to a half-started panel. wget comes
@@ -47,6 +53,9 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "5"}
     depends_on:
       panel:
         condition: service_healthy

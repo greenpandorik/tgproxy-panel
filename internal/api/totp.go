@@ -324,6 +324,11 @@ func (s *Server) handleTOTPVerify(w http.ResponseWriter, r *http.Request) {
 	if !s.acceptSecondFactor(r.Context(), u, strings.TrimSpace(req.Code), strings.TrimSpace(req.RecoveryCode)) {
 		_ = s.store.Q.RecordFailedLogin(r.Context(), u.ID)
 		_ = s.loginLimiter.Allow(ip)
+		reason := "bad_totp_code"
+		if usedRecovery {
+			reason = "bad_recovery_code"
+		}
+		s.recordLoginFailure(r, reason, u.Username, u.ID.String())
 		invalid()
 		return
 	}
