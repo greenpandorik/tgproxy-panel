@@ -5,9 +5,22 @@
 
 # TGProxy panel
 
+[![CI](https://github.com/greenpandorik/tgproxy-panel/actions/workflows/ci.yml/badge.svg)](https://github.com/greenpandorik/tgproxy-panel/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/greenpandorik/tgproxy-panel?sort=semver)](https://github.com/greenpandorik/tgproxy-panel/releases)
+[![Go](https://img.shields.io/github/go-mod/go-version/greenpandorik/tgproxy-panel)](go.mod)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+
 A control panel for Telegram proxy nodes. It creates and revokes keys, pushes configuration to nodes over gRPC, serves a decoy site on each node and watches node health. A node runs telemt (the default engine) or tproxy-server plus MTProxy; a small agent on the node takes instructions from the panel. One panel manages many nodes.
 
 Setup guides with screenshots: [English](docs/setup.en.md), [Русский](docs/setup.ru.md).
+
+| | |
+|---|---|
+| [Setup guide](docs/setup.en.md) | Install the panel and your first node, with screenshots |
+| [Runbook](docs/runbook.md) | Backups, restore, key rotation, and what to do when something breaks |
+| [Monitoring](docs/monitoring.md) | The `/metrics` endpoint and the Grafana dashboard |
+| [Contributing](CONTRIBUTING.md) | Local development, the test suites, and how changes are reviewed |
+| [Security](SECURITY.md) | Reporting a vulnerability, and what the panel does to protect a deployment |
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" width="49%" alt="Dashboard">
