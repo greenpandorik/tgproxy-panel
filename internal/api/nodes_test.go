@@ -3,6 +3,7 @@ package api_test
 import (
 	"bufio"
 	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -122,6 +123,33 @@ func TestNodePatchAdTag(t *testing.T) {
 	c.JSON(c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"ad_tag": ""}), &got)
 	if got.AdTag != "" {
 		t.Fatalf("ad tag not cleared: %+v", got)
+	}
+}
+
+// The sponsor-channel field needs a secret to hand @MTProxybot, and the node's own "default"
+// profile - created with the node, before any access key exists - is where it comes from.
+func TestNodeRegistrationSecret(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+
+	var got struct {
+		Secret string `json:"secret"`
+	}
+	resp := c.Get("/api/v1/nodes/" + n.ID.String() + "/registration-secret")
+	if resp.StatusCode != 200 {
+		t.Fatalf("registration-secret: %d", resp.StatusCode)
+	}
+	c.JSON(resp, &got)
+	if !regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(got.Secret) {
+		t.Fatalf("secret %q is not 32 lowercase hex characters", got.Secret)
+	}
+
+	h.CreateAdmin("v", "pass-123456", "viewer")
+	viewer := h.Login("v", "pass-123456")
+	if resp := viewer.Get("/api/v1/nodes/" + n.ID.String() + "/registration-secret"); resp.StatusCode != 403 {
+		t.Fatalf("viewer: expected 403, got %d", resp.StatusCode)
 	}
 }
 

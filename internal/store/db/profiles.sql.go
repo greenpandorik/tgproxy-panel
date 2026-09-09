@@ -82,6 +82,36 @@ func (q *Queries) DeleteProfilesByKey(ctx context.Context, accessKeyID uuid.Null
 	return err
 }
 
+const getNodeProfileByName = `-- name: GetNodeProfileByName :one
+SELECT id, node_id, access_key_id, name, secret_enc, backend, carrier_mode, limits, sync_state, created_at FROM profiles WHERE node_id = $1 AND name = $2
+`
+
+type GetNodeProfileByNameParams struct {
+	NodeID uuid.UUID `json:"node_id"`
+	Name   string    `json:"name"`
+}
+
+// GetNodeProfileByName reads one node's own profile by name - the "default" profile every
+// node is created with, whose secret is what the node itself answers with on any listener
+// (classic/Fake-TLS included), independent of whether any access key has been bound yet.
+func (q *Queries) GetNodeProfileByName(ctx context.Context, arg GetNodeProfileByNameParams) (Profile, error) {
+	row := q.db.QueryRow(ctx, getNodeProfileByName, arg.NodeID, arg.Name)
+	var i Profile
+	err := row.Scan(
+		&i.ID,
+		&i.NodeID,
+		&i.AccessKeyID,
+		&i.Name,
+		&i.SecretEnc,
+		&i.Backend,
+		&i.CarrierMode,
+		&i.Limits,
+		&i.SyncState,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listNodeProfiles = `-- name: ListNodeProfiles :many
 SELECT id, node_id, access_key_id, name, secret_enc, backend, carrier_mode, limits, sync_state, created_at FROM profiles WHERE node_id = $1 ORDER BY created_at
 `

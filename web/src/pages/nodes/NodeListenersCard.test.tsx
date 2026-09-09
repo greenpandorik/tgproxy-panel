@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/i18n';
 import { setLang } from '@/i18n';
-import { usePatchNode } from '@/api/nodes';
+import { useNodeRegistrationSecret, usePatchNode } from '@/api/nodes';
 
 import { NodeListenersCard } from './NodeListenersCard';
 
@@ -16,6 +16,7 @@ import type { Node } from '@/api/types';
 vi.mock('@/api/nodes', async (importOriginal) => ({
   ...(await importOriginal<typeof NodesApi>()),
   usePatchNode: vi.fn(),
+  useNodeRegistrationSecret: vi.fn(),
 }));
 
 function wrap(node: ReactNode) {
@@ -55,6 +56,9 @@ describe('NodeListenersCard', () => {
     setLang('en');
     mutateAsync.mockReset().mockResolvedValue(node);
     vi.mocked(usePatchNode).mockReturnValue({ mutateAsync } as unknown as ReturnType<typeof usePatchNode>);
+    vi.mocked(useNodeRegistrationSecret).mockReturnValue({
+      data: { secret: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+    } as unknown as ReturnType<typeof useNodeRegistrationSecret>);
   });
 
   it('shows the public IP next to the Fake-TLS fields, prefilled', () => {
@@ -145,5 +149,20 @@ describe('NodeListenersCard', () => {
       public_ip: '104.239.66.187',
       ad_tag: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     });
+  });
+
+  it('offers a link to @MTProxybot and a way to copy what it needs', () => {
+    render(wrap(<NodeListenersCard node={node} canEdit />));
+    expect(screen.getByRole('link', { name: /Open @MTProxybot/ })).toHaveAttribute('href', 'https://t.me/MTProxybot');
+    expect(screen.getByRole('button', { name: 'Copy 104.239.66.187:8443 for the bot' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy the secret for the bot' })).toBeInTheDocument();
+  });
+
+  it('has nothing to copy the secret with while it is still loading', () => {
+    vi.mocked(useNodeRegistrationSecret).mockReturnValue({
+      data: undefined,
+    } as unknown as ReturnType<typeof useNodeRegistrationSecret>);
+    render(wrap(<NodeListenersCard node={node} canEdit />));
+    expect(screen.queryByRole('button', { name: 'Copy the secret for the bot' })).toBeNull();
   });
 });

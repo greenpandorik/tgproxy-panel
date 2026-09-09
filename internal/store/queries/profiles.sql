@@ -5,6 +5,12 @@ VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
 -- name: ListNodeProfiles :many
 SELECT * FROM profiles WHERE node_id = $1 ORDER BY created_at;
 
+-- GetNodeProfileByName reads one node's own profile by name - the "default" profile every
+-- node is created with, whose secret is what the node itself answers with on any listener
+-- (classic/Fake-TLS included), independent of whether any access key has been bound yet.
+-- name: GetNodeProfileByName :one
+SELECT * FROM profiles WHERE node_id = $1 AND name = $2;
+
 -- ListNodeProfilesWithKey is ListNodeProfiles plus the columns of the bound access key that
 -- the telemt engine has to push to the node - the per-user limits, the expiry, and the status
 -- (a revoked key must be served as a disabled user even in the window before its profile row

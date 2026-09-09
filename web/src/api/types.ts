@@ -181,6 +181,10 @@ export interface InstallCommandResult {
   expires_at: string;
 }
 
+export interface RegistrationSecretResult {
+  secret: string;
+}
+
 export type SyncState = 'in_sync' | 'pending' | 'db_only' | 'node_only' | string;
 
 export interface Profile {

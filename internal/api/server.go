@@ -195,6 +195,7 @@ func (s *Server) mountProtected(r chi.Router) {
 		r.With(RequireRole(writers...)).Patch("/", s.handlePatchNode)
 		r.With(RequireRole(writers...)).Delete("/", s.handleDeleteNode)
 		r.With(RequireRole(writers...)).Get("/install-command", s.handleInstallCommand)
+		r.With(RequireRole(writers...)).Get("/registration-secret", s.handleNodeRegistrationSecret)
 		r.Get("/health", s.handleNodeHealth)
 		r.Get("/profiles", s.handleNodeProfiles)
 		r.Get("/stats", s.handleNodeStats)

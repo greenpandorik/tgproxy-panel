@@ -411,6 +411,33 @@ func (s *Server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
+// handleNodeRegistrationSecret answers the one question the sponsor-channel field can't:
+// which secret to hand @MTProxybot. It reveals the node's own "default" profile's secret -
+// the plain 32-hex value every listener on the node (WEB and, on a telemt node, classic/
+// Fake-TLS) answers with, the same one FakeTLSSecret wraps for a Fake-TLS link - so it exists
+// for every node regardless of whether any access key is bound yet, and is exactly what
+// @MTProxybot's own verification connects with. Writer-gated like install-command: whoever
+// can read this can connect to the proxy as this node's own identity.
+func (s *Server) handleNodeRegistrationSecret(w http.ResponseWriter, r *http.Request) {
+	n, ok := s.loadNode(w, r)
+	if !ok {
+		return
+	}
+	p, err := s.store.Q.GetNodeProfileByName(r.Context(), db.GetNodeProfileByNameParams{NodeID: n.ID, Name: "default"})
+	if err != nil {
+		s.log.Error("node registration secret: load default profile", "err", err, "node", n.ID)
+		internal(w)
+		return
+	}
+	secret, err := s.box.DecryptString(p.SecretEnc)
+	if err != nil {
+		s.log.Error("node registration secret: decrypt", "err", err, "node", n.ID)
+		internal(w)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"secret": secret})
+}
+
 func (s *Server) handleInstallCommand(w http.ResponseWriter, r *http.Request) {
 	n, ok := s.loadNode(w, r)
 	if !ok {

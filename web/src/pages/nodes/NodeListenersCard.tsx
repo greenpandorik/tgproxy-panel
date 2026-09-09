@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
-import { usePatchNode } from '@/api/nodes';
+import { useNodeRegistrationSecret, usePatchNode } from '@/api/nodes';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
 import { Panel, PanelHeader } from '@/components/common/Panel';
@@ -86,6 +86,7 @@ const valuesOf = (node: Node): FormValues => ({
 export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: boolean }) {
   const { t } = useTranslation();
   const patchNode = usePatchNode(node.id);
+  const registrationSecret = useNodeRegistrationSecret(node.id, canEdit);
   const [pending, setPending] = useState<Pending>(null);
 
   const {
@@ -195,6 +196,14 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
                   value={`${node.public_ip}:${node.classic_port}`}
                   showLabel
                   label={t('nodes.field_ad_tag_copy_address', { address: `${node.public_ip}:${node.classic_port}` })}
+                  className="h-6 px-2 text-label"
+                />
+              )}
+              {registrationSecret.data && (
+                <CopyButton
+                  value={registrationSecret.data.secret}
+                  showLabel
+                  label={t('nodes.field_ad_tag_copy_secret')}
                   className="h-6 px-2 text-label"
                 />
               )}
