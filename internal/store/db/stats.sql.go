@@ -228,7 +228,7 @@ func (q *Queries) LatestKeyStatsSnapshots(ctx context.Context, accessKeyID uuid.
 }
 
 const latestSnapshots = `-- name: LatestSnapshots :many
-SELECT DISTINCT ON (node_id) id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency FROM node_stats_snapshots ORDER BY node_id, taken_at DESC
+SELECT DISTINCT ON (node_id) id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries FROM node_stats_snapshots ORDER BY node_id, taken_at DESC
 `
 
 func (q *Queries) LatestSnapshots(ctx context.Context) ([]NodeStatsSnapshot, error) {
@@ -256,6 +256,15 @@ func (q *Queries) LatestSnapshots(ctx context.Context) ([]NodeStatsSnapshot, err
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
 			&i.DcLatency,
+			&i.WebCarrierSelectionsHttps,
+			&i.WebCarrierSelectionsHttpsLanes,
+			&i.WebCarrierSelectionsWebsocket,
+			&i.WebCarrierSelectionsWebsocketLanes,
+			&i.WebCarrierFailures,
+			&i.WebRejectedAttempts,
+			&i.WebEvictedSessions,
+			&i.WebBridgeRecoveries,
+			&i.WebLearningEntries,
 		); err != nil {
 			return nil, err
 		}
@@ -432,7 +441,7 @@ func (q *Queries) ListOpenAlerts(ctx context.Context) ([]ListOpenAlertsRow, erro
 }
 
 const listSnapshots = `-- name: ListSnapshots :many
-SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at
+SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at
 `
 
 type ListSnapshotsParams struct {
@@ -466,6 +475,15 @@ func (q *Queries) ListSnapshots(ctx context.Context, arg ListSnapshotsParams) ([
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
 			&i.DcLatency,
+			&i.WebCarrierSelectionsHttps,
+			&i.WebCarrierSelectionsHttpsLanes,
+			&i.WebCarrierSelectionsWebsocket,
+			&i.WebCarrierSelectionsWebsocketLanes,
+			&i.WebCarrierFailures,
+			&i.WebRejectedAttempts,
+			&i.WebEvictedSessions,
+			&i.WebBridgeRecoveries,
+			&i.WebLearningEntries,
 		); err != nil {
 			return nil, err
 		}

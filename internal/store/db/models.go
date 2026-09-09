@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AdminRole string
@@ -506,30 +507,45 @@ type KeyStatsSnapshot struct {
 }
 
 type Node struct {
-	ID                  uuid.UUID  `json:"id"`
-	Name                string     `json:"name"`
-	Hostname            string     `json:"hostname"`
-	PublicIp            string     `json:"public_ip"`
-	AcmeEmail           string     `json:"acme_email"`
-	Status              NodeStatus `json:"status"`
-	AgentTokenHash      *string    `json:"agent_token_hash"`
-	InstallTokenHash    *string    `json:"install_token_hash"`
-	InstallTokenExpires *time.Time `json:"install_token_expires"`
-	TproxyVersion       string     `json:"tproxy_version"`
-	AgentVersion        string     `json:"agent_version"`
-	MaxProfiles         int32      `json:"max_profiles"`
-	Dirty               bool       `json:"dirty"`
-	LastSeenAt          *time.Time `json:"last_seen_at"`
-	LastApplyAt         *time.Time `json:"last_apply_at"`
-	LastHealth          []byte     `json:"last_health"`
-	CreatedAt           time.Time  `json:"created_at"`
-	DirtySeq            int64      `json:"dirty_seq"`
-	LastCheck           []byte     `json:"last_check"`
-	Engine              NodeEngine `json:"engine"`
-	TlsDomain           string     `json:"tls_domain"`
-	ClassicPort         int32      `json:"classic_port"`
-	TelemtVersion       string     `json:"telemt_version"`
-	AdTag               string     `json:"ad_tag"`
+	ID                          uuid.UUID  `json:"id"`
+	Name                        string     `json:"name"`
+	Hostname                    string     `json:"hostname"`
+	PublicIp                    string     `json:"public_ip"`
+	AcmeEmail                   string     `json:"acme_email"`
+	Status                      NodeStatus `json:"status"`
+	AgentTokenHash              *string    `json:"agent_token_hash"`
+	InstallTokenHash            *string    `json:"install_token_hash"`
+	InstallTokenExpires         *time.Time `json:"install_token_expires"`
+	TproxyVersion               string     `json:"tproxy_version"`
+	AgentVersion                string     `json:"agent_version"`
+	MaxProfiles                 int32      `json:"max_profiles"`
+	Dirty                       bool       `json:"dirty"`
+	LastSeenAt                  *time.Time `json:"last_seen_at"`
+	LastApplyAt                 *time.Time `json:"last_apply_at"`
+	LastHealth                  []byte     `json:"last_health"`
+	CreatedAt                   time.Time  `json:"created_at"`
+	DirtySeq                    int64      `json:"dirty_seq"`
+	LastCheck                   []byte     `json:"last_check"`
+	Engine                      NodeEngine `json:"engine"`
+	TlsDomain                   string     `json:"tls_domain"`
+	ClassicPort                 int32      `json:"classic_port"`
+	TelemtVersion               string     `json:"telemt_version"`
+	AdTag                       string     `json:"ad_tag"`
+	TelemtBuild                 string     `json:"telemt_build"`
+	TelemtCapabilities          []byte     `json:"telemt_capabilities"`
+	TelemtCapabilitiesCheckedAt *time.Time `json:"telemt_capabilities_checked_at"`
+	TelemtUpdateAvailable       string     `json:"telemt_update_available"`
+	TelemtWebPolicy             []byte     `json:"telemt_web_policy"`
+}
+
+type NodeDiagnostic struct {
+	ID            int64      `json:"id"`
+	NodeID        uuid.UUID  `json:"node_id"`
+	StartedAt     time.Time  `json:"started_at"`
+	FinishedAt    *time.Time `json:"finished_at"`
+	OverallStatus string     `json:"overall_status"`
+	Trigger       string     `json:"trigger"`
+	Checks        []byte     `json:"checks"`
 }
 
 type NodeSite struct {
@@ -542,21 +558,30 @@ type NodeSite struct {
 }
 
 type NodeStatsSnapshot struct {
-	ID              int64     `json:"id"`
-	NodeID          uuid.UUID `json:"node_id"`
-	TakenAt         time.Time `json:"taken_at"`
-	SessionsLive    int32     `json:"sessions_live"`
-	StreamsLive     int32     `json:"streams_live"`
-	BytesUp         int64     `json:"bytes_up"`
-	BytesDown       int64     `json:"bytes_down"`
-	SessionsCreated int64     `json:"sessions_created"`
-	LimitHits       int64     `json:"limit_hits"`
-	MtproxyRaw      []byte    `json:"mtproxy_raw"`
-	RelayRaw        string    `json:"relay_raw"`
-	CpuPercent      float32   `json:"cpu_percent"`
-	MemUsedPercent  float32   `json:"mem_used_percent"`
-	DiskUsedPercent float32   `json:"disk_used_percent"`
-	DcLatency       []byte    `json:"dc_latency"`
+	ID                                 int64       `json:"id"`
+	NodeID                             uuid.UUID   `json:"node_id"`
+	TakenAt                            time.Time   `json:"taken_at"`
+	SessionsLive                       int32       `json:"sessions_live"`
+	StreamsLive                        int32       `json:"streams_live"`
+	BytesUp                            int64       `json:"bytes_up"`
+	BytesDown                          int64       `json:"bytes_down"`
+	SessionsCreated                    int64       `json:"sessions_created"`
+	LimitHits                          int64       `json:"limit_hits"`
+	MtproxyRaw                         []byte      `json:"mtproxy_raw"`
+	RelayRaw                           string      `json:"relay_raw"`
+	CpuPercent                         float32     `json:"cpu_percent"`
+	MemUsedPercent                     float32     `json:"mem_used_percent"`
+	DiskUsedPercent                    float32     `json:"disk_used_percent"`
+	DcLatency                          []byte      `json:"dc_latency"`
+	WebCarrierSelectionsHttps          pgtype.Int8 `json:"web_carrier_selections_https"`
+	WebCarrierSelectionsHttpsLanes     pgtype.Int8 `json:"web_carrier_selections_https_lanes"`
+	WebCarrierSelectionsWebsocket      pgtype.Int8 `json:"web_carrier_selections_websocket"`
+	WebCarrierSelectionsWebsocketLanes pgtype.Int8 `json:"web_carrier_selections_websocket_lanes"`
+	WebCarrierFailures                 pgtype.Int8 `json:"web_carrier_failures"`
+	WebRejectedAttempts                pgtype.Int8 `json:"web_rejected_attempts"`
+	WebEvictedSessions                 pgtype.Int8 `json:"web_evicted_sessions"`
+	WebBridgeRecoveries                pgtype.Int8 `json:"web_bridge_recoveries"`
+	WebLearningEntries                 pgtype.Int4 `json:"web_learning_entries"`
 }
 
 type Profile struct {
