@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"errors"
+	"io"
 	"testing"
 
 	agentv1 "tgwebproxy/proto/agent/v1"
@@ -50,5 +52,43 @@ func TestTailLogs(t *testing.T) {
 	})
 	if len(got) < 2 || !got[len(got)-1].Done || got[0].Lines[0].Service != "tproxy-server" {
 		t.Fatalf("chunks: %+v", got)
+	}
+}
+
+// failingReader yields one usable line and then fails, the way journalctl does when it is
+// killed mid-stream.
+type failingReader struct{ done bool }
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if r.done {
+		return 0, errors.New("journalctl died")
+	}
+	r.done = true
+	return copy(p, "host telemt[1]: started\n"), nil
+}
+
+func (r *failingReader) Close() error { return nil }
+
+type failingStreamExec struct{ Exec }
+
+func (f *failingStreamExec) Start(context.Context, string, ...string) (io.ReadCloser, error) {
+	return &failingReader{}, nil
+}
+
+// A stream that died must not reach the operator as a tidy end of the log.
+func TestTailLogsReportsAStreamThatDied(t *testing.T) {
+	h, _ := testHandler(t, &fakeExec{}, true)
+	h.exec = &failingStreamExec{Exec: h.exec}
+	var got []*agentv1.LogChunk
+	h.TailLogs(context.Background(), &agentv1.TailLogsRequest{Services: []string{"telemt"}, Lines: 10}, func(c *agentv1.LogChunk) error {
+		got = append(got, c)
+		return nil
+	})
+	last := got[len(got)-1]
+	if !last.Done {
+		t.Fatalf("the stream must still end with Done: %+v", got)
+	}
+	if last.Error == "" {
+		t.Fatal("a died stream must say so instead of looking like the end of the log")
 	}
 }

@@ -54,5 +54,11 @@ func (h *Handler) TailLogs(ctx context.Context, req *agentv1.TailLogsRequest, se
 		}
 	}
 	flush()
-	_ = send(&agentv1.LogChunk{Done: true})
+	done := &agentv1.LogChunk{Done: true}
+	// A scan that stopped on an error (a line past the buffer, a read that failed) would
+	// otherwise reach the operator as a clean end of the log.
+	if err := sc.Err(); err != nil && ctx.Err() == nil {
+		done.Error = err.Error()
+	}
+	_ = send(done)
 }
