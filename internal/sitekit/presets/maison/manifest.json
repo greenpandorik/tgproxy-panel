@@ -1,0 +1,11 @@
+{
+  "name": "Maison Journal",
+  "category": "editorial",
+  "variables": {
+    "company_name": "Maison Journal",
+    "headline": "Objects, spaces and quiet ideas.",
+    "description": "A small independent journal about interiors, craft and contemporary living.",
+    "contact_email": "post@maisonjournal.co",
+    "footer_text": "Printed twice a year in Antwerp."
+  }
+}

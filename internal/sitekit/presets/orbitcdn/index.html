@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbit CDN — edge delivery for sites, APIs and assets</title>
+  <meta name="description" content="Orbit CDN delivers websites, APIs and static assets from 72 edge locations with smart caching and instant purge.">
+  <style>
+  *, *::before, *::after { box-sizing: border-box }
+  body {
+    margin: 0;
+    background: #f7f7fa;
+    color: #14152b;
+    font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  h1, h2, h3, p { margin: 0 }
+  a { color: inherit; text-decoration: none }
+  a:focus-visible { outline: 3px solid #46e0d2; outline-offset: 3px }
+  .hold { max-width: 1200px; margin: 0 auto; padding: 0 26px }
+
+  .top-block {
+    position: relative;
+    overflow: hidden;
+    background: #1b2196;
+    background-image: linear-gradient(160deg, #1b2196 0%, #141873 100%);
+    color: #fff;
+  }
+  .nav-line { position: relative; z-index: 2; display: flex; align-items: center; gap: 30px; height: 74px }
+  .nav-line .name { font-size: 19px; font-weight: 800; letter-spacing: -.02em }
+  .nav-line nav { margin-left: auto; display: flex; gap: 28px; font-size: 15px }
+  .nav-line nav a { color: rgba(255,255,255,.82) }
+  .nav-line nav a:hover { color: #fff }
+  .go {
+    background: #46e0d2;
+    color: #14152b;
+    border-radius: 999px;
+    padding: 9px 20px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .banner { position: relative; z-index: 2; padding: 44px 0 0 }
+  .banner h1 {
+    font-size: clamp(2.7rem, 8vw, 5rem);
+    font-weight: 800;
+    letter-spacing: -.035em;
+    line-height: .98;
+  }
+  .banner p {
+    margin-top: 24px;
+    max-width: 34rem;
+    color: rgba(255,255,255,.78);
+    font-size: 18px;
+  }
+  .banner .links { margin-top: 30px; display: flex; gap: 26px; align-items: center; flex-wrap: wrap }
+  .banner .links a:first-child { border-bottom: 2px solid #46e0d2; padding-bottom: 3px; font-weight: 700 }
+  .banner .links a + a { color: rgba(255,255,255,.78) }
+
+  .orbit {
+    position: absolute;
+    right: -186px;
+    top: -18px;
+    width: 1020px;
+    height: 866px;
+    z-index: 1;
+  }
+
+  .facts {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    gap: 56px;
+    flex-wrap: wrap;
+    padding: 62px 0 34px;
+    color: #46e0d2;
+    font-size: 15px;
+  }
+
+  .strand { border-bottom: 1px solid #e2e2ea }
+  .strand .hold {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 60px;
+    padding: 66px 26px;
+  }
+  .strand h2 { font-size: 1.7rem; letter-spacing: -.02em }
+  .strand p { margin-top: 14px; color: #5b5d78; max-width: 30rem }
+  .strand dl { margin: 20px 0 0; font-size: 15px }
+  .strand dt { font-weight: 700 }
+  .strand dd { margin: 2px 0 12px; color: #5b5d78 }
+  .strand svg { width: 100%; height: auto; max-width: 420px; justify-self: center }
+  .strand:nth-of-type(even) .art { order: -1 }
+
+  .tiers { padding: 66px 0 78px }
+  .tiers h2 { font-size: 1.7rem; letter-spacing: -.02em }
+  .tiers > .hold > p { margin-top: 12px; color: #5b5d78; max-width: 36rem }
+  .rack { margin-top: 34px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px }
+  .tier { border: 1px solid #d8d8e4; background: #fff; padding: 26px 24px 28px }
+  .tier.picked { border: 2px solid #46e0d2 }
+  .tier h3 { font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: #5b5d78 }
+  .tier .cost { margin-top: 10px; font-size: 2.1rem; font-weight: 800; letter-spacing: -.03em }
+  .tier .cost small { font-size: 15px; font-weight: 400; color: #5b5d78; letter-spacing: 0 }
+  .tier ul { margin: 18px 0 0; padding: 0; list-style: none; font-size: 15px; color: #5b5d78 }
+  .tier li { padding: 7px 0; border-top: 1px solid #eeeef4 }
+
+  .base { background: #1b2196; color: rgba(255,255,255,.78); padding: 56px 0 40px; font-size: 15px }
+  .base .cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px }
+  .base h3 { color: #fff; font-size: 13px; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 12px }
+  .base ul { margin: 0; padding: 0; list-style: none }
+  .base li { margin-bottom: 8px }
+  .base a:hover { color: #46e0d2 }
+  .base .foot { margin-top: 42px; padding-top: 20px; border-top: 1px solid #3a3fa8; display: flex; gap: 28px; flex-wrap: wrap; font-size: 14px }
+  .base .foot a { color: #46e0d2 }
+
+  @media (max-width: 860px) {
+    .nav-line nav { display: none }
+    .banner { padding-top: 26px }
+    .orbit { right: -230px; top: 120px; width: 460px; height: 400px; opacity: .55 }
+    .facts { gap: 8px 30px; padding: 46px 0 30px }
+    .strand .hold { grid-template-columns: 1fr; gap: 30px; padding: 44px 26px }
+    .strand:nth-of-type(even) .art { order: 0 }
+    .strand svg { max-width: 300px; justify-self: start }
+    .rack { grid-template-columns: 1fr }
+    .base .cols { grid-template-columns: 1fr 1fr; gap: 22px }
+    .base .foot { gap: 6px 22px; margin-top: 34px }
+  }
+  </style>
+</head>
+<body>
+
+<div class="top-block">
+  <svg class="orbit" viewBox="0 0 660 560" aria-hidden="true">
+    <ellipse cx="330" cy="280" rx="250" ry="112" fill="none" stroke="#46e0d2" stroke-width="1.4" opacity=".85"/>
+    <ellipse cx="330" cy="280" rx="250" ry="112" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.2" transform="rotate(58 330 280)"/>
+    <ellipse cx="330" cy="280" rx="192" ry="192" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.2"/>
+    <ellipse cx="330" cy="280" rx="250" ry="112" fill="none" stroke="#46e0d2" stroke-width="1.2" opacity=".45" transform="rotate(-34 330 280)"/>
+    <ellipse cx="330" cy="280" rx="132" ry="240" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1.2" transform="rotate(22 330 280)"/>
+    <circle cx="330" cy="280" r="46" fill="#46e0d2" opacity=".16"/>
+    <circle cx="330" cy="280" r="26" fill="#46e0d2"/>
+    <circle cx="580" cy="280" r="6" fill="#46e0d2"/>
+    <circle cx="196" cy="219" r="5" fill="#fff"/>
+    <circle cx="430" cy="106" r="5.5" fill="#46e0d2"/>
+    <circle cx="232" cy="440" r="5" fill="#fff"/>
+    <circle cx="482" cy="424" r="4.5" fill="#46e0d2"/>
+    <circle cx="330" cy="88" r="4.5" fill="#fff"/>
+  </svg>
+
+  <div class="hold">
+    <div class="nav-line">
+      <a class="name" href="#top">Orbit CDN</a>
+      <nav>
+        <a href="#edge">Network</a>
+        <a href="#caching">Caching</a>
+        <a href="#tiers">Pricing</a>
+      </nav>
+      <a class="go" href="#start">Get started</a>
+    </div>
+
+    <div class="banner" id="top">
+      <h1>Fast delivery.<br>Everywhere.</h1>
+      <p data-variants="A lightweight edge platform for websites, APIs and static assets.|Websites, APIs and static assets, served from the city your visitor is in.|One edge platform for every request your product has to answer.">A lightweight edge platform for websites, APIs and static assets.</p>
+      <div class="links">
+        <a href="#start">Put a site on Orbit</a>
+        <a href="#docs">Read the docs</a>
+      </div>
+    </div>
+
+    <div class="facts">
+      <span>72 edge locations</span>
+      <span>p50 18 ms</span>
+      <span>99.99% delivery</span>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<section class="strand" id="edge" data-block="network">
+  <div class="hold">
+    <div>
+      <h2>Global edge</h2>
+      <p data-variants="Requests land in the nearest of seventy-two locations and stay on our backbone until they have to leave it. Anycast routing moves traffic away from a sick site within seconds, and you never change a DNS record to make that happen.|Every location runs the same stack, so a request gets the same answer in Osaka as it does in Frankfurt. The two largest sites in each region are built to carry each other, and we prove it by draining one of them every month.|We announce the same prefix from every site, which puts the routing decision in the network rather than in your DNS. Sites are drained for maintenance in the middle of the local night and filled again an hour later.">Requests land in the nearest of seventy-two locations and stay on our backbone until they have to leave it. Anycast routing moves traffic away from a sick site within seconds, and you never change a DNS record to make that happen.</p>
+      <dl>
+        <dt>Peering</dt><dd>412 networks, including 38 mobile carriers</dd>
+        <dt>Capacity</dt><dd>Provisioned at four times the last twelve-month peak</dd>
+      </dl>
+    </div>
+    <div class="art">
+      <svg viewBox="0 0 320 240" fill="none" aria-hidden="true">
+        <circle cx="160" cy="120" r="98" stroke="#1b2196" stroke-width="1.4"/>
+        <ellipse cx="160" cy="120" rx="98" ry="36" stroke="#5b5d78" stroke-width="1"/>
+        <ellipse cx="160" cy="120" rx="98" ry="70" stroke="#5b5d78" stroke-width="1"/>
+        <ellipse cx="160" cy="120" rx="36" ry="98" stroke="#5b5d78" stroke-width="1"/>
+        <ellipse cx="160" cy="120" rx="70" ry="98" stroke="#5b5d78" stroke-width="1"/>
+        <circle cx="120" cy="72" r="5" fill="#1b2196"/>
+        <circle cx="205" cy="90" r="5" fill="#46e0d2"/>
+        <circle cx="98" cy="140" r="5" fill="#46e0d2"/>
+        <circle cx="186" cy="168" r="5" fill="#1b2196"/>
+        <circle cx="243" cy="132" r="4" fill="#1b2196"/>
+        <circle cx="142" cy="205" r="4" fill="#46e0d2"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="strand" id="caching" data-block="caching">
+  <div class="hold">
+    <div>
+      <h2>Smart caching</h2>
+      <p data-variants="Orbit reads your cache headers and fills the gaps with rules you write in plain conditions. Stale responses keep serving while a single request goes back to origin, so a slow backend never turns into a slow page.|Rules are conditions on the request, evaluated in order, which is what makes them readable a year later. Hold an object past its expiry, revalidate it in the background, or vary it on a header you pick.|A rule can key on anything in the request, not only the path, so one stored object can be served three ways. An edit to a rule reaches every location in about ten seconds.">Orbit reads your cache headers and fills the gaps with rules you write in plain conditions. Stale responses keep serving while a single request goes back to origin, so a slow backend never turns into a slow page.</p>
+      <dl>
+        <dt>Hit ratio</dt><dd>94.2% median across accounts last quarter</dd>
+        <dt>Origin shield</dt><dd>One regional parent per origin, on by default</dd>
+      </dl>
+    </div>
+    <div class="art">
+      <svg viewBox="0 0 320 240" fill="none" aria-hidden="true">
+        <rect x="30" y="34" width="150" height="42" rx="6" stroke="#1b2196" stroke-width="1.4"/>
+        <rect x="30" y="98" width="150" height="42" rx="6" stroke="#5b5d78" stroke-width="1.2"/>
+        <rect x="30" y="162" width="150" height="42" rx="6" stroke="#5b5d78" stroke-width="1.2"/>
+        <g stroke="#c9c9d8" stroke-width="3" stroke-linecap="round">
+          <path d="M46 49h58M46 61h34"/><path d="M46 113h58M46 125h44"/><path d="M46 177h58M46 189h26"/>
+        </g>
+        <rect x="232" y="98" width="60" height="42" rx="6" fill="#46e0d2" opacity=".25"/>
+        <rect x="232" y="98" width="60" height="42" rx="6" stroke="#1b2196" stroke-width="1.4"/>
+        <path d="M180 55h34c8 0 12 6 12 14v22" stroke="#46e0d2" stroke-width="2"/>
+        <path d="M180 183h34c8 0 12-6 12-14v-22" stroke="#5b5d78" stroke-width="1.2" stroke-dasharray="5 5"/>
+        <path d="M226 92l-4 7h8z" fill="#46e0d2"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="strand" id="purge" data-block="purge">
+  <div class="hold">
+    <div>
+      <h2>Instant purge</h2>
+      <p data-variants="Clear a path, a tag or an entire property from every location with one call. A purge finishes in under two seconds worldwide, which is short enough to run it from a publish step without holding up the deploy.|Tag objects on the way out and drop the whole set later with one key. A build step can call it as its last action and get an answer back before the next step needs to start.|Purges are idempotent and cost nothing, so the sane thing is to run one after every deploy rather than work out what changed. Your call never queues behind another account.">Clear a path, a tag or an entire property from every location with one call. A purge finishes in under two seconds worldwide, which is short enough to run it from a publish step without holding up the deploy.</p>
+      <dl>
+        <dt>Granularity</dt><dd>URL, surrogate key or wildcard prefix</dd>
+        <dt>Limit</dt><dd>50,000 keys per call on every plan</dd>
+      </dl>
+    </div>
+    <div class="art">
+      <svg viewBox="0 0 320 240" fill="none" aria-hidden="true">
+        <g stroke="#1b2196" stroke-width="2" stroke-linecap="round">
+          <path d="M160 76V44"/><path d="M160 164v32"/><path d="M116 120H84"/><path d="M204 120h32"/>
+          <path d="M129 89l-23-23"/><path d="M191 151l23 23"/><path d="M191 89l23-23"/><path d="M129 151l-23 23"/>
+        </g>
+        <g stroke="#46e0d2" stroke-width="2" stroke-linecap="round">
+          <path d="M147 68l-6-26"/><path d="M173 172l6 26"/><path d="M108 107l-26-6"/><path d="M212 133l26 6"/>
+          <path d="M198 105l25-11"/><path d="M122 135l-25 11"/>
+        </g>
+        <circle cx="160" cy="120" r="26" fill="#1b2196"/>
+        <circle cx="160" cy="120" r="10" fill="#46e0d2"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="tiers" id="tiers" data-block="plans">
+  <div class="hold">
+    <h2>Plans</h2>
+    <p data-variants="Billed monthly on the traffic you actually serve. Overage is charged at the same rate as the plan, never a penalty rate.|Plans move up or down on the day you ask and the month is prorated to the hour. Allowance does not roll over.|Certificates, cache rules and the full API are on every plan. Delivery and support are the only things that change.">Billed monthly on the traffic you actually serve. Overage is charged at the same rate as the plan, never a penalty rate.</p>
+    <div class="rack">
+      <div class="tier">
+        <h3>Starter</h3>
+        <div class="cost">$9<small> / month</small></div>
+        <ul>
+          <li>1 TB of delivery included</li>
+          <li>Two properties, one origin each</li>
+          <li>Email support, next business day</li>
+        </ul>
+      </div>
+      <div class="tier picked">
+        <h3>Team</h3>
+        <div class="cost">$49<small> / month</small></div>
+        <ul>
+          <li>10 TB of delivery included</li>
+          <li>Unlimited properties and cache rules</li>
+          <li>Log delivery every five minutes</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <h3>Scale</h3>
+        <div class="cost">$240<small> / month</small></div>
+        <ul>
+          <li>60 TB of delivery included</li>
+          <li>Dedicated origin shield and custom certificates</li>
+          <li>Shared channel with the on-call engineers</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="base">
+  <div class="hold">
+    <div class="cols">
+      <div><h3>Platform</h3><ul><li><a href="#edge">Network map</a></li><li><a href="#caching">Cache rules</a></li><li><a href="#purge">Purge API</a></li><li><a href="#certs">Certificates</a></li></ul></div>
+      <div><h3>Developers</h3><ul><li><a href="#docs">Documentation</a></li><li><a href="#cli">Command line tool</a></li><li><a href="#changelog">Changelog</a></li><li><a href="#status">Status</a></li></ul></div>
+      <div><h3>Company</h3><ul><li><a href="#about">About</a></li><li><a href="#jobs">Careers</a></li><li><a href="#press">Press</a></li><li><a href="#contact">Contact</a></li></ul></div>
+      <div><h3>Legal</h3><ul><li><a href="#terms">Terms of service</a></li><li><a href="#privacy">Privacy notice</a></li><li><a href="#aup">Acceptable use</a></li><li><a href="#sla">Service levels</a></li></ul></div>
+    </div>
+    <div class="foot">
+      <span>Orbit CDN Ltd, registered in Ireland.</span>
+      <a href="mailto:hello@orbitcdn.io">hello@orbitcdn.io</a>
+      <span>14 Fenian Street, Dublin 2</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -167,7 +167,7 @@ phase_continue() {
 	http GET /api/v1/site-templates
 	expect_status 200 "$LAST_STATUS" "list site templates"
 	local template_id
-	template_id="$(jq -r '.items[] | select(.name=="studio") | .id' <<<"$LAST_BODY" | head -n1)"
+	template_id="$(jq -r '.items[] | select(.name=="corporate") | .id' <<<"$LAST_BODY" | head -n1)"
 	[[ -n "$template_id" ]] || die "no 'studio' preset found in site-templates: $LAST_BODY"
 	http POST "/api/v1/nodes/$NODE_ID/site" "$(jq -n --arg t "$template_id" '{template_id:$t}')"
 	expect_status 200 "$LAST_STATUS" "assign site"

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frame Studio</title>
+<meta name="description" content="Frame Studio is an independent photography studio in Copenhagen working on editorial and commercial commissions: portrait, editorial and places.">
+<style>
+body { margin: 0; background: #e4e2dd; color: #1c1c1c; font-family: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif; font-size: 14px; line-height: 1.62; }
+main, header, footer, section { display: block; }
+.page { max-width: 1180px; margin: 0 auto; padding: 0 26px; }
+a { color: inherit; text-decoration: none; }
+a:hover { color: #77746e; }
+a:focus-visible { outline: 2px solid #1c1c1c; outline-offset: 4px; }
+h1, h2 { margin: 0; font-weight: 600; }
+
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 22px 0 34px; font-size: 13px; }
+header b { font-weight: 600; letter-spacing: 0.06em; }
+header nav { display: flex; flex-wrap: wrap; gap: 22px; letter-spacing: 0.06em; color: #77746e; }
+
+figure { margin: 0; }
+figure > div { background: #ffffff; padding: 22px; }
+figure > div > div { border: 1px solid #cfccc6; box-shadow: inset 0 0 70px rgba(0,0,0,.2); background-color: #96948f; }
+figcaption { padding: 11px 2px 0; letter-spacing: 0.06em; font-size: 13px; }
+figcaption span { display: block; color: #77746e; }
+
+.lead { max-width: 900px; margin: 0 auto; }
+.lead > div > div { aspect-ratio: 3 / 2; background-image:
+  radial-gradient(52% 20% at 30% 20%, rgba(255,255,255,.34), rgba(255,255,255,0) 78%),
+  radial-gradient(7% 34% at 61% 74%, rgba(255,255,255,.3), rgba(255,255,255,0) 74%),
+  radial-gradient(70% 22% at 62% 56%, rgba(255,255,255,.32), rgba(255,255,255,0) 72%),
+  linear-gradient(180deg, #6f6d69 0%, #9b9994 22%, #cbc9c4 42%, #f4f2ef 48.6%, #a9a7a2 49.6%, #8a8884 60%, #66645f 76%, #47453f 92%, #383630 100%); }
+.words { max-width: 900px; margin: 40px auto 74px; }
+.words h1 { font-size: 1.6rem; line-height: 1.24; margin-bottom: 10px; letter-spacing: -0.01em; }
+.words p { margin: 0; font-size: 15px; color: #77746e; max-width: 44ch; }
+
+#prints { columns: 3; column-gap: 34px; padding-bottom: 24px; }
+#prints figure { break-inside: avoid; margin-bottom: 34px; }
+#prints figure:nth-of-type(1) > div > div { aspect-ratio: 3 / 4; background-image:
+  radial-gradient(4% 4% at 44% 38%, rgba(255,255,255,.5), rgba(255,255,255,0) 100%),
+  radial-gradient(10% 9% at 47% 40%, #34332f 72%, rgba(52,51,47,0) 94%),
+  radial-gradient(28% 26% at 47% 82%, #34332f 62%, rgba(52,51,47,0) 88%),
+  radial-gradient(58% 38% at 64% 20%, rgba(255,255,255,.7), rgba(255,255,255,0) 72%),
+  linear-gradient(180deg, #d3d1cc 0%, #a09e99 52%, #6f6d69 100%); }
+#prints figure:nth-of-type(2) > div > div { aspect-ratio: 3 / 2; background-image:
+  radial-gradient(56% 26% at 34% 70%, rgba(255,255,255,.6), rgba(255,255,255,0) 74%),
+  radial-gradient(52% 30% at 44% 98%, #23221d 60%, rgba(35,34,29,0) 76%),
+  radial-gradient(70% 40% at 76% 112%, #5d5b57 58%, rgba(93,91,87,0) 74%),
+  radial-gradient(84% 44% at 8% 108%, #3d3b38 58%, rgba(61,59,56,0) 72%),
+  linear-gradient(180deg, #f2f0ed 0%, #d8d6d1 40%, #b2b0ab 72%, #97958f 100%); }
+#prints figure:nth-of-type(3) > div > div { aspect-ratio: 1 / 1; background-image:
+  radial-gradient(7% 8% at 38% 52%, rgba(255,255,255,.95), rgba(255,255,255,0) 90%),
+  radial-gradient(15% 17% at 40% 57%, #eae8e4 60%, rgba(234,232,228,0) 82%),
+  radial-gradient(13% 15% at 59% 63%, #adaba6 62%, rgba(173,171,166,0) 84%),
+  linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,.4) 78%),
+  linear-gradient(180deg, #c6c4bf 0 57%, #85837e 57%, #66645f 100%); }
+#prints figure:nth-of-type(4) > div > div { aspect-ratio: 3 / 4; background-image:
+  radial-gradient(9% 7% at 47% 38%, #191917 74%, rgba(25,25,23,0) 94%),
+  radial-gradient(19% 26% at 47% 80%, #191917 62%, rgba(25,25,23,0) 84%),
+  linear-gradient(92deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.9) 30%, rgba(255,255,255,.9) 66%, rgba(255,255,255,0) 66%),
+  linear-gradient(180deg, #514f4b, #2b2a28); }
+#prints figure:nth-of-type(5) > div > div { aspect-ratio: 3 / 4; background-image:
+  linear-gradient(97deg, rgba(255,255,255,0) 24%, rgba(255,255,255,.92) 24%, rgba(255,255,255,.92) 47%, rgba(255,255,255,0) 47%),
+  linear-gradient(97deg, rgba(255,255,255,0) 55%, rgba(255,255,255,.36) 55%, rgba(255,255,255,.36) 62%, rgba(255,255,255,0) 62%),
+  linear-gradient(178deg, #a09e99 0 63%, #4d4b48 63%, #3a3936 100%); }
+#prints figure:nth-of-type(6) > div > div { aspect-ratio: 3 / 2; background-image:
+  radial-gradient(7% 13% at 65% 40%, #efedea 58%, rgba(239,237,234,0) 86%),
+  radial-gradient(15% 40% at 63% 84%, #292927 60%, rgba(41,41,39,0) 82%),
+  linear-gradient(90deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,0) 42%),
+  linear-gradient(164deg, #b8b6b1 0%, #6b6965 52%, #3c3b38 100%); }
+#prints figure:nth-of-type(7) > div > div { aspect-ratio: 3 / 4; background-image:
+  linear-gradient(97deg, rgba(255,255,255,0) 56%, rgba(255,255,255,.82) 61%, rgba(255,255,255,0) 69%),
+  radial-gradient(26% 22% at 42% 44%, #565450 40%, rgba(86,84,80,0) 80%),
+  radial-gradient(90% 70% at 46% 46%, rgba(0,0,0,0) 30%, rgba(0,0,0,.55) 100%),
+  linear-gradient(180deg, #34332f, #171614); }
+#prints figure:nth-of-type(8) > div > div { aspect-ratio: 3 / 4; background-image:
+  radial-gradient(76% 22% at 50% 27%, rgba(255,255,255,.72), rgba(255,255,255,0) 72%),
+  linear-gradient(180deg, #d5d3ce 0 25%, #f0eeeb 25% 29%, #97958f 29% 33%, #7f7d79 33% 51%, #a5a39e 51% 55%, #6c6a66 55% 75%, #504e4b 75% 100%); }
+
+#kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; padding: 46px 0 60px; border-top: 1px solid #cfccc6; }
+#kinds h2 { font-size: 15px; margin-bottom: 8px; }
+#kinds p { margin: 0; color: #77746e; max-width: 40ch; }
+
+#info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; padding: 46px 0 70px; border-top: 1px solid #cfccc6; }
+#info h2 { font-size: 13px; letter-spacing: 0.06em; color: #77746e; font-weight: 400; margin-bottom: 10px; }
+#info p { margin: 0 0 4px; }
+
+footer { border-top: 1px solid #cfccc6; padding: 20px 0 40px; display: flex; justify-content: space-between; gap: 16px; font-size: 13px; letter-spacing: 0.06em; }
+
+@media (max-width: 900px) {
+  #prints { columns: 2; }
+  #kinds, #info { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  #prints { columns: 1; }
+  #kinds, #info { grid-template-columns: 1fr; gap: 28px; }
+  .page { padding: 0 18px; }
+  .words { margin: 28px auto 54px; }
+  header { flex-direction: column; gap: 12px; padding-bottom: 26px; }
+  header nav { gap: 16px; }
+  figure > div { padding: 14px; }
+  footer { flex-direction: column; gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<header>
+  <b>Frame Studio</b>
+  <nav>
+    <a href="#prints">Work</a>
+    <a href="#kinds">Portrait</a>
+    <a href="#kinds">Editorial</a>
+    <a href="#kinds">Places</a>
+    <a href="#info">Contact</a>
+  </nav>
+</header>
+
+<main>
+
+<div data-block="opening">
+
+<figure class="lead">
+  <div><div></div></div>
+  <figcaption>Skagen, the last hour<span data-variants="Nordjylland, 2026|Nordjylland, 2025|Skagen Odde, 2026">Nordjylland, 2026</span></figcaption>
+</figure>
+
+<div class="words">
+  <h1 data-variants="Portraits, places, honest light.|Photographs made in daylight.|Faces, buildings, and the coast.">Portraits, places, honest light.</h1>
+  <p data-variants="Independent photography studio for editorial and commercial work.|An independent studio in Copenhagen, working on commission.|Editorial and commercial work, made in Denmark and abroad.">Independent photography studio for editorial and commercial work.</p>
+</div>
+
+</div>
+
+<section id="prints" data-block="prints">
+  <figure><div><div></div></div><figcaption>Marta, second sitting<span>Nørrebro, 2026</span></figcaption></figure>
+  <figure><div><div></div></div><figcaption>The ridge at first light<span>Vestlandet, 2025</span></figcaption></figure>
+  <figure><div><div></div></div><figcaption>Two bowls, north window<span>Studio, 2025</span></figcaption></figure>
+  <figure><div><div></div></div><figcaption>Backlit, studio door<span>Copenhagen, 2026</span></figcaption></figure>
+  <figure><div><div></div></div><figcaption>Half past three, empty room<span>Christianshavn, 2024</span></figcaption></figure>
+  <figure><div><div></div></div><figcaption>Anders, before the shift<span>Aarhus, 2025</span></figcaption></figure>
+  <figure><div><div></div></div><figcaption>Light leak, third roll<span>Studio, 2024</span></figcaption></figure>
+  <figure><div><div></div></div><figcaption>Slow water<span>Roskilde Fjord, 2026</span></figcaption></figure>
+</section>
+
+<section id="kinds" data-block="commissions">
+  <div>
+    <h2>Portrait</h2>
+    <p>Sittings run about ninety minutes, usually in daylight, usually with far fewer people in the room than clients expect. We photograph founders, writers, cooks and crews, and we send a first edit within four days.</p>
+  </div>
+  <div>
+    <h2>Editorial</h2>
+    <p>Commissions for magazines, weekend supplements and long-form features, shot on location with a small kit. We are used to short notice, tight corridors and one honest hour with the subject.</p>
+  </div>
+  <div>
+    <h2>Places</h2>
+    <p data-variants="Buildings, coastlines, interiors and the light that happens to be in them. This work is often made for architects and hotels, though a good deal of it began as personal travel and was licensed later.|Exteriors, interiors, coastlines and rooms, photographed as they are on the day. Architects and hotels commission most of it; the rest is archive work that was licensed long after it was made.|Places are shot over two or three visits, because the light that makes a building is rarely there the first time. Architects, hotels and a few tourism boards commission this work.">Buildings, coastlines, interiors and the light that happens to be in them. This work is often made for architects and hotels, though a good deal of it began as personal travel and was licensed later.</p>
+  </div>
+</section>
+
+<section id="info" data-block="studio">
+  <div>
+    <h2>Studio</h2>
+    <p>Ryesgade 44, 3rd floor</p>
+    <p>2200 København N</p>
+    <p>Visits by appointment, Tuesday to Friday</p>
+  </div>
+  <div>
+    <h2>Representation</h2>
+    <p>Hald &amp; Sons, Copenhagen and Berlin</p>
+    <p>Print sales through Galleri Nord</p>
+    <p>Archive licensing handled in house</p>
+  </div>
+  <div>
+    <h2>Rates</h2>
+    <p>Day rate from 14 000 DKK</p>
+    <p>Half day and portrait sittings from 7 500 DKK</p>
+    <p>Booking two to six weeks ahead through spring</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>Frame Studio</span>
+  <a href="mailto:studio@framestudio.dk">studio@framestudio.dk</a>
+</footer>
+
+</div>
+</body>
+</html>

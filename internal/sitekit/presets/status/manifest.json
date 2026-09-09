@@ -1,0 +1,11 @@
+{
+  "name": "Northline Status",
+  "category": "status",
+  "variables": {
+    "company_name": "Northline Status",
+    "headline": "All systems operational.",
+    "description": "Live service availability and recent maintenance history.",
+    "contact_email": "status@northline.example",
+    "footer_text": "Northline Systems, status updates are published as incidents are confirmed."
+  }
+}

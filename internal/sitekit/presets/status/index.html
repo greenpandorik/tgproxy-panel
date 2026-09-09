@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Northline Status</title>
+    <meta name="description" content="Live service availability and recent maintenance history.">
+    <style>
+    html { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: inherit; }
+    body {
+      margin: 0;
+      background: #f5f6f8;
+      color: #14181f;
+      font-family: -apple-system, "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    a { color: #4a5568; }
+    a:focus-visible, button:focus-visible, input:focus-visible {
+      outline: 2px solid #16794c;
+      outline-offset: 2px;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+    .pagehead { background: #fff; border-bottom: 1px solid #e2e5ea; }
+    .pagehead .container { display: flex; align-items: center; gap: 10px; height: 58px; }
+    .masthead__brand { display: flex; align-items: center; gap: 9px; font-size: 15.5px; font-weight: 600; }
+    .masthead__brand span { color: #626b78; font-weight: 400; }
+    .masthead__nav { margin-left: auto; display: flex; align-items: center; gap: 18px; font-size: 13px; }
+    .masthead__nav a, .colophon a { text-decoration: none; }
+    .masthead__nav a:hover, .colophon a:hover { text-decoration: underline; }
+    .btn {
+      border: 1px solid #d5d9e0;
+      background: #fff;
+      border-radius: 5px;
+      padding: 5px 13px;
+      font: inherit;
+      font-size: 13px;
+      color: #14181f;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: #a9b1bd; }
+
+    main { padding: 24px 0 48px; }
+    .card {
+      background: #fff;
+      border: 1px solid #e2e5ea;
+      border-radius: 7px;
+      margin-bottom: 16px;
+    }
+    .card__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 18px;
+      border-bottom: 1px solid #e2e5ea;
+    }
+    .card__title { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+
+    .banner {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      background: #e4f3ec;
+      border: 1px solid #c6e3d5;
+      border-left: 4px solid #16794c;
+      border-radius: 7px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+    .banner h1 { margin: 0 0 4px; font-size: 1.55rem; font-weight: 600; letter-spacing: -.01em; }
+    .banner p { margin: 0; color: #2f4a3f; }
+    .banner .banner__meta { margin-top: 7px; font-size: 12.5px; color: #626b78; }
+
+    .legend { display: flex; gap: 14px; font-size: 12.5px; color: #626b78; align-items: center; }
+    .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    .legend .ok { background: #16794c; }
+    .legend .warn { background: #b4770e; }
+
+    .component { padding: 15px 18px; border-bottom: 1px solid #eef0f3; }
+    .component:last-child { border-bottom: 0; }
+    .component__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .component__name { font-size: 15px; font-weight: 500; margin: 0; }
+    .component__desc { margin: 1px 0 0; font-size: 12.5px; color: #626b78; }
+    .pill {
+      flex: 0 0 auto;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 11px;
+      padding: 2px 10px;
+      white-space: nowrap;
+    }
+    .pill--ok { background: #e4f3ec; color: #16794c; }
+    .pill--warn { background: #fdf1dc; color: #b4770e; }
+
+    .strip {
+      position: relative;
+      height: 10px;
+      margin: 11px 0 5px;
+      overflow: hidden;
+      background-image: repeating-linear-gradient(90deg, #16794c 0 4px, transparent 4px 6px);
+    }
+    .strip i {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background-image: repeating-linear-gradient(90deg, #b4770e 0 4px, #fff 4px 6px);
+    }
+    .strip__meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11.5px;
+      color: #8b939f;
+      font-variant-numeric: tabular-nums;
+    }
+    .strip__meta b { font-weight: 500; color: #626b78; }
+
+    .figures { display: flex; }
+    .figures div { flex: 1; padding: 15px 18px; border-right: 1px solid #e2e5ea; }
+    .figures div:last-child { border-right: 0; }
+    .figures strong { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .figures span { font-size: 12.5px; color: #626b78; }
+
+    .day { padding: 16px 18px; border-bottom: 1px solid #eef0f3; }
+    .day:last-child { border-bottom: 0; }
+    .day > h3 {
+      margin: 0 0 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #626b78;
+      padding-bottom: 7px;
+      border-bottom: 1px solid #eef0f3;
+    }
+    .incident h4 { margin: 0; font-size: 15px; font-weight: 600; }
+    .incident > p { margin: 2px 0 9px; font-size: 12.5px; font-weight: 500; }
+    .state--resolved { color: #16794c; }
+    .state--monitoring { color: #b4770e; }
+    .incident dl { margin: 0; padding-left: 13px; border-left: 2px solid #e2e5ea; }
+    .incident dt { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .incident dd { margin: 0 0 10px; color: #3d4652; font-size: 13.5px; }
+    .incident dd:last-child { margin-bottom: 0; }
+
+    .window { padding: 15px 18px; }
+    .window h3 { margin: 0 0 2px; font-size: 14.5px; font-weight: 600; }
+    .window .when { font-size: 12.5px; color: #b4770e; font-weight: 500; margin: 0 0 5px; }
+    .window p { margin: 0; color: #3d4652; }
+
+    .signup { display: flex; gap: 8px; padding: 15px 18px 6px; }
+    .signup input {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid #d5d9e0;
+      border-radius: 5px;
+      padding: 7px 11px;
+      font: inherit;
+      background: #fff;
+    }
+    .signup button {
+      border: 1px solid #16794c;
+      background: #16794c;
+      color: #fff;
+      border-radius: 5px;
+      padding: 7px 16px;
+      font: inherit;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .signup + p { margin: 0; padding: 0 18px 15px; font-size: 12.5px; color: #626b78; }
+
+    .colophon { border-top: 1px solid #e2e5ea; background: #fff; padding: 18px 0 26px; text-align: center; }
+    .colophon nav { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; font-size: 13px; }
+    .colophon p { margin: 9px 0 0; font-size: 12.5px; color: #626b78; }
+
+    @media (max-width: 620px) {
+      .container { padding: 0 14px; }
+      .pagehead .container { gap: 8px; }
+      .masthead__nav { gap: 12px; }
+      .masthead__nav a { display: none; }
+      .banner { padding: 15px 16px; }
+      .banner h1 { font-size: 1.35rem; }
+      .component__top { display: block; }
+      .pill { display: inline-block; margin-top: 6px; }
+      .figures div { padding: 13px 11px; }
+      .figures strong { font-size: 17px; }
+      .figures span { font-size: 11.5px; line-height: 1.4; display: block; }
+      .signup { display: block; }
+      .signup input { width: 100%; margin-bottom: 8px; }
+      .signup button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="pagehead">
+    <div class="container">
+        <div class="masthead__brand">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="#16794c"/><rect x="4.4" y="4.4" width="7.2" height="7.2" rx="1.4" fill="#fff"/></svg>
+            Northline <span>Status</span>
+        </div>
+        <div class="masthead__nav">
+            <a href="#history">History</a>
+            <a href="#support">Support</a>
+            <button type="button" class="btn">Subscribe</button>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+
+    <section class="banner">
+        <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="#16794c"/><path d="M7.8 13.4l3.4 3.4 7-7.2" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div>
+            <h1>All systems operational.</h1>
+            <p data-variants="Live service availability and recent maintenance history.|Current availability for every Northline service.|Component status, incident history and planned work.">Live service availability and recent maintenance history.</p>
+            <p class="banner__meta">Updated 9 April 2026 at 14:02 UTC</p>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card__head">
+            <h2 class="card__title">Systems</h2>
+            <div class="legend"><span><i class="ok"></i>Operational</span><span><i class="warn"></i>Degraded</span></div>
+        </div>
+
+        <div class="component">
+            <div class="component__top">
+                <div>
+                    <h3 class="component__name">API</h3>
+                    <p class="component__desc" data-variants="Public REST and streaming endpoints, all regions.|REST and streaming endpoints in every region.|Public request handling for all API versions.">Public REST and streaming endpoints, all regions.</p>
+                </div>
+                <span class="pill pill--ok">Operational</span>
+            </div>
+            <div class="strip"></div>
+            <div class="strip__meta"><span>90 days ago</span><b>99.98% uptime</b><span>Today</span></div>
+        </div>
+
+        <div class="component">
+            <div class="component__top">
+                <div>
+                    <h3 class="component__name">Dashboard</h3>
+                    <p class="component__desc">Web console, project settings and billing views.</p>
+                </div>
+                <span class="pill pill--ok">Operational</span>
+            </div>
+            <div class="strip"></div>
+            <div class="strip__meta"><span>90 days ago</span><b>99.99% uptime</b><span>Today</span></div>
+        </div>
+
+        <div class="component">
+            <div class="component__top">
+                <div>
+                    <h3 class="component__name">Edge network</h3>
+                    <p class="component__desc" data-variants="Request routing and caching across 31 locations.|Routing, caching and TLS termination at the edge.|Cache and routing tier in front of every origin.">Request routing and caching across 31 locations.</p>
+                </div>
+                <span class="pill pill--ok">Operational</span>
+            </div>
+            <div class="strip"><i style="left:57%;width:5%"></i></div>
+            <div class="strip__meta"><span>90 days ago</span><b>99.91% uptime</b><span>Today</span></div>
+        </div>
+
+        <div class="component">
+            <div class="component__top">
+                <div>
+                    <h3 class="component__name">Webhook delivery</h3>
+                    <p class="component__desc">Outbound event delivery and retry scheduling.</p>
+                </div>
+                <span class="pill pill--ok">Operational</span>
+            </div>
+            <div class="strip"><i style="left:71%;width:15%"></i></div>
+            <div class="strip__meta"><span>90 days ago</span><b>99.62% uptime</b><span>Today</span></div>
+        </div>
+
+        <div class="component">
+            <div class="component__top">
+                <div>
+                    <h3 class="component__name">Authentication</h3>
+                    <p class="component__desc">Sign-in, token issuance and key rotation.</p>
+                </div>
+                <span class="pill pill--ok">Operational</span>
+            </div>
+            <div class="strip"></div>
+            <div class="strip__meta"><span>90 days ago</span><b>100.00% uptime</b><span>Today</span></div>
+        </div>
+
+        <div class="component">
+            <div class="component__top">
+                <div>
+                    <h3 class="component__name">Object storage</h3>
+                    <p class="component__desc">Bucket reads, writes and lifecycle rules.</p>
+                </div>
+                <span class="pill pill--ok">Operational</span>
+            </div>
+            <div class="strip"></div>
+            <div class="strip__meta"><span>90 days ago</span><b>99.97% uptime</b><span>Today</span></div>
+        </div>
+    </section>
+
+    <section class="card figures" data-block="figures">
+        <div><strong>99.94%</strong><span>Uptime, last 90 days</span></div>
+        <div><strong>99.99%</strong><span>Uptime, last 30 days</span></div>
+        <div><strong>142 ms</strong><span>API response, 24 h median</span></div>
+    </section>
+
+    <section class="card" id="history" data-block="history">
+        <div class="card__head"><h2 class="card__title">Past incidents</h2><span class="legend">Times shown in UTC</span></div>
+
+        <div class="day">
+            <h3>7 April 2026</h3>
+            <div class="incident">
+                <h4>Delayed webhook delivery in eu-west</h4>
+                <p class="state--monitoring">Monitoring</p>
+                <dl>
+                    <dt>16:41</dt>
+                    <dd>The backlog has drained and new events are being sent within the usual two seconds. We are leaving this open overnight while the retry queue works through the rest.</dd>
+                    <dt>15:20</dt>
+                    <dd>Added four workers to the eu-west delivery pool. The oldest queued event is now 9 minutes behind, down from 41 minutes.</dd>
+                    <dt>14:58</dt>
+                    <dd>We are investigating delayed outbound webhooks for projects in eu-west. Events are being accepted and stored; delivery is running behind. No events have been dropped.</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="day">
+            <h3>29 March 2026</h3>
+            <div class="incident">
+                <h4>Scheduled database upgrade — completed</h4>
+                <p class="state--resolved">Resolved</p>
+                <dl>
+                    <dt>04:35</dt>
+                    <dd>The upgrade finished ahead of the window and all replicas are serving reads.</dd>
+                    <dt>03:12</dt>
+                    <dd>Primary failover completed in 38 seconds. Writes were rejected during that period and clients retrying with backoff succeeded.</dd>
+                    <dt>02:00</dt>
+                    <dd>Maintenance has begun as announced. Expect brief write errors while the primary is promoted.</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="day">
+            <h3>18 March 2026</h3>
+            <div class="incident">
+                <h4>Elevated errors on cached edge responses</h4>
+                <p class="state--resolved">Resolved</p>
+                <dl>
+                    <dt>11:26</dt>
+                    <dd>Error rates have been at baseline for 90 minutes. A validation step now blocks that configuration from reaching the rollout pipeline.</dd>
+                    <dt>09:44</dt>
+                    <dd>A cache configuration pushed at 09:31 was rolled back. Roughly 0.6% of requests in three locations returned 502 for 13 minutes.</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="day">
+            <h3>2 March 2026</h3>
+            <div class="incident">
+                <h4>Sign-in failures for accounts using hardware keys</h4>
+                <p class="state--resolved">Resolved</p>
+                <dl>
+                    <dt>21:08</dt>
+                    <dd>All affected accounts can sign in. Sessions created before 19:50 were unaffected and no credentials needed resetting.</dd>
+                    <dt>20:15</dt>
+                    <dd>Identified an expired signing certificate in the assertion verifier. A replacement is being deployed region by region.</dd>
+                    <dt>19:52</dt>
+                    <dd>We are investigating reports that hardware key sign-in is rejected. Password and recovery-code sign-in is unaffected.</dd>
+                </dl>
+            </div>
+        </div>
+    </section>
+
+    <section class="card" data-block="maintenance">
+        <div class="card__head"><h2 class="card__title">Scheduled maintenance</h2></div>
+        <div class="window">
+            <h3>Storage metadata migration</h3>
+            <p class="when">Sunday 26 April 2026, 01:00 – 04:00 UTC</p>
+            <p>Bucket listings may take up to a minute to reflect new objects during the window; reads and writes continue as normal.</p>
+        </div>
+    </section>
+
+    <section class="card" data-block="updates">
+        <div class="signup">
+            <input type="email" placeholder="you@company.com" aria-label="Email address">
+            <button type="button">Subscribe</button>
+        </div>
+        <p data-variants="Subscribers get one message when an incident is opened, one when it is resolved, and a reminder two days before scheduled maintenance.|One email when an incident is opened and one when it closes. Maintenance windows are announced two days in advance.|We write at the start and the end of every incident, and again two days before any scheduled maintenance window.">Subscribers get one message when an incident is opened, one when it is resolved, and a reminder two days before scheduled maintenance.</p>
+    </section>
+
+</main>
+
+<footer class="colophon">
+    <nav aria-label="Footer">
+        <a href="#history">Incident history</a>
+        <a href="#support">Support</a>
+        <a href="#docs">Documentation</a>
+        <a href="mailto:status@northline.example">Contact</a>
+    </nav>
+    <p data-variants="Northline Systems, status updates are published as incidents are confirmed.|Northline Systems. Incident notes are posted by the operations team.|Northline Systems, publishing component status since 2019.">Northline Systems, status updates are published as incidents are confirmed.</p>
+</footer>
+
+</body>
+</html>

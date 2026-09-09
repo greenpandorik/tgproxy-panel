@@ -1,0 +1,11 @@
+{
+  "name": "Atlas",
+  "category": "docs",
+  "variables": {
+    "company_name": "Atlas",
+    "headline": "Documentation that stays out of your way.",
+    "description": "Guides, references and examples for the Atlas developer platform.",
+    "contact_email": "",
+    "footer_text": "Atlas 3.2.1 — released 12 March 2026"
+  }
+}

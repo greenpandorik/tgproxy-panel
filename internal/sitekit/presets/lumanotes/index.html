@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Luma Notes</title>
+    <meta name="description" content="Luma Notes is a quiet notebook for capturing ideas, organising projects and searching everything you have written.">
+    <style>
+        html {
+            box-sizing: border-box;
+        }
+        *, *::before, *::after {
+            box-sizing: inherit;
+        }
+        body {
+            margin: 0;
+            padding: 0 24px;
+            background: #f5f4f9;
+            color: #2b2a35;
+            font-family: "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+            font-size: 17px;
+            line-height: 1.75;
+        }
+        a {
+            color: inherit;
+        }
+        a:focus-visible {
+            outline: 2px solid #6b5ce7;
+            outline-offset: 4px;
+            border-radius: 3px;
+        }
+
+        .brandline {
+            padding: 54px 0 0;
+            text-align: center;
+        }
+        .masthead__brand {
+            display: inline-block;
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: .01em;
+            text-decoration: none;
+        }
+        .masthead__links {
+            margin: 22px 0 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .masthead__links a {
+            font-size: 14px;
+            letter-spacing: .09em;
+            color: #6f6d80;
+            text-decoration: none;
+        }
+        .masthead__links a:hover {
+            color: #6b5ce7;
+        }
+
+        .intro {
+            max-width: 36rem;
+            margin: 96px auto 0;
+            text-align: center;
+        }
+        .intro__title {
+            margin: 0;
+            font-size: clamp(2.1rem, 6.5vw, 3.4rem);
+            font-weight: 300;
+            line-height: 1.15;
+            letter-spacing: -.015em;
+        }
+        .intro__sub {
+            margin: 26px auto 0;
+            max-width: 30rem;
+            color: #6f6d80;
+        }
+        .pill {
+            display: inline-block;
+            margin-top: 34px;
+            padding: 11px 30px;
+            border: 1px solid #6b5ce7;
+            border-radius: 999px;
+            color: #6b5ce7;
+            font-size: 15px;
+            text-decoration: none;
+        }
+        .pill:hover {
+            background: #e9e6f7;
+        }
+
+        .card {
+            position: relative;
+            max-width: 41rem;
+            margin: 74px auto 0;
+            padding: 34px 34px 30px;
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 34px 90px rgba(107, 92, 231, .16), 0 6px 22px rgba(107, 92, 231, .07);
+        }
+        .card__title {
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: -.01em;
+        }
+        .card__meta {
+            margin-top: 4px;
+            font-size: 13.5px;
+            color: #6f6d80;
+        }
+        .card__row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 13px 0;
+            border-top: 1px solid #f0eff5;
+            font-size: 16px;
+        }
+        .card__row:first-of-type {
+            margin-top: 22px;
+        }
+        .card__box {
+            flex: 0 0 auto;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1.5px solid #cfcbe4;
+        }
+        .card__box--on {
+            border-color: #6b5ce7;
+            background: #6b5ce7;
+            position: relative;
+        }
+        .card__box--on::after {
+            content: "";
+            position: absolute;
+            left: 6px;
+            top: 4px;
+            width: 5px;
+            height: 9px;
+            border: solid #ffffff;
+            border-width: 0 1.7px 1.7px 0;
+            transform: rotate(43deg);
+        }
+        .card__row--done span {
+            color: #9b99ab;
+            text-decoration: line-through;
+        }
+        .card__caret {
+            display: inline-block;
+            width: 2px;
+            height: 19px;
+            background: #6b5ce7;
+            vertical-align: -4px;
+        }
+        .card__tags {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+        .card__tags span {
+            padding: 4px 13px;
+            border-radius: 999px;
+            background: #e9e6f7;
+            color: #5b4fc4;
+            font-size: 13px;
+        }
+
+        .notes {
+            max-width: 34rem;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .notes > h2 {
+            margin: 0 0 14px;
+            font-size: 21px;
+            font-weight: 500;
+            letter-spacing: -.01em;
+        }
+        .notes > section {
+            margin-top: 84px;
+        }
+        .notes p {
+            margin: 0;
+            color: #6f6d80;
+        }
+        .notes > section + section::before {
+            content: "\2022";
+            display: block;
+            margin-bottom: 84px;
+            color: #6b5ce7;
+            font-size: 15px;
+            line-height: 1;
+        }
+        .notes > section:first-child {
+            margin-top: 108px;
+        }
+
+        .quote {
+            max-width: 34rem;
+            margin: 112px auto 0;
+            text-align: center;
+        }
+        .quote blockquote {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 300;
+            line-height: 1.55;
+            letter-spacing: -.01em;
+        }
+        .quote cite {
+            display: block;
+            margin-top: 22px;
+            font-style: normal;
+            font-size: 14.5px;
+            color: #6f6d80;
+        }
+
+        .closing {
+            max-width: 32rem;
+            margin: 112px auto 0;
+            text-align: center;
+        }
+        .closing p {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 300;
+            letter-spacing: -.01em;
+        }
+
+        .colophon {
+            margin: 118px 0 68px;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 26px;
+        }
+        .colophon a {
+            font-size: 13.5px;
+            color: #6f6d80;
+            text-decoration: none;
+        }
+        .colophon a:hover {
+            color: #6b5ce7;
+        }
+
+        @media (max-width: 600px) {
+            .intro {
+                margin-top: 60px;
+            }
+            .card {
+                margin-top: 52px;
+                padding: 26px 22px 24px;
+                border-radius: 16px;
+            }
+            .notes > section:first-child {
+                margin-top: 78px;
+            }
+            .notes > section {
+                margin-top: 62px;
+            }
+            .notes > section + section::before {
+                margin-bottom: 62px;
+            }
+            .quote, .closing {
+                margin-top: 82px;
+            }
+            .quote blockquote, .closing p {
+                font-size: 19px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header class="brandline">
+    <a class="masthead__brand" href="#top">Luma Notes</a>
+    <ul class="masthead__links">
+        <li><a href="#tour">Tour</a></li>
+        <li><a href="#spaces">Spaces</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#help">Help</a></li>
+    </ul>
+</header>
+
+<main id="top">
+
+    <section class="intro">
+        <h1 class="intro__title" data-variants="A calmer place for your ideas.|Somewhere quiet to think.|A quiet notebook that keeps up.">A calmer place for your ideas.</h1>
+        <p class="intro__sub" data-variants="Capture notes, organize projects and keep your thinking close at hand.|Write the thought down first and decide where it belongs later.|A notebook that holds years of writing without ever feeling full.">Capture notes, organize projects and keep your thinking close at hand.</p>
+        <a class="pill" href="#tour">Take the tour</a>
+    </section>
+
+    <div class="card" data-block="notecard">
+        <div class="card__title">Thursday, reading list</div>
+        <div class="card__meta">Edited 11:40 &nbsp;in&nbsp; Personal</div>
+        <div class="card__row card__row--done"><i class="card__box card__box--on"></i><span>Finish the chapter on tidal rivers</span></div>
+        <div class="card__row card__row--done"><i class="card__box card__box--on"></i><span>Send Ines the bird notes from Sunday</span></div>
+        <div class="card__row"><i class="card__box"></i><span>Ask the library about the 1974 survey<i class="card__caret"></i></span></div>
+        <div class="card__tags"><span>reading</span><span>rivers</span><span>later</span></div>
+    </div>
+
+    <div class="notes" id="tour" data-block="features">
+        <section>
+            <h2>Fast capture</h2>
+            <p data-variants="A note opens the moment you press the key, wherever you are in the app. There is no template to pick and no folder to choose first, so a half-formed thought costs you nothing to write down.|One key opens a blank note from anywhere in the app, already inside the space you were last working in. Nothing is asked of you before you type, and nothing is lost if you stop halfway.|The cursor is waiting before the window has finished opening. You are never asked to name a note, file it, or decide what sort of note it is going to be, and none of that is needed later either.">A note opens the moment you press the key, wherever you are in the app. There is no template to pick and no folder to choose first, so a half-formed thought costs you nothing to write down.</p>
+        </section>
+        <section id="spaces">
+            <h2>Private spaces</h2>
+            <p>Keep work, study and home in separate spaces that never mix in a list. Each space has its own tags and its own recent notes, and you can hide one entirely until you want it back.</p>
+        </section>
+        <section>
+            <h2>Simple search</h2>
+            <p>Type a few words and Luma looks through titles, body text and tags at once. Results keep the sentence around the match, so you can tell the right note from the near miss without opening either.</p>
+        </section>
+    </div>
+
+    <div class="quote" data-block="voice">
+        <blockquote>I moved eleven years of half-finished notebooks into Luma over a weekend and I have actually reread them since.</blockquote>
+        <cite data-variants="Hana Ostrowski, translator, Kraków|Devon Aylward, archivist, Glasgow|Marit Halvorsen, editor, Bergen">Hana Ostrowski, translator, Kraków</cite>
+    </div>
+
+    <div class="closing" data-block="pricing">
+        <p data-variants="Free for one space. Six euro a month for as many as you like.|One space costs nothing. Six euro a month lifts the limit.|Six euro a month for every space you need, or none at all for one.">Free for one space. Six euro a month for as many as you like.</p>
+        <a class="pill" href="#pricing">Start writing</a>
+    </div>
+
+</main>
+
+<footer>
+    <ul class="colophon">
+        <li><a href="#help">Help centre</a></li>
+        <li><a href="#privacy">Privacy</a></li>
+        <li><a href="#terms">Terms</a></li>
+        <li><a href="#contact">Contact</a></li>
+    </ul>
+</footer>
+
+</body>
+</html>

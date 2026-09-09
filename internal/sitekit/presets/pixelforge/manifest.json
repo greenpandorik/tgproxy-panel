@@ -1,0 +1,11 @@
+{
+  "name": "PixelForge",
+  "category": "studio",
+  "variables": {
+    "company_name": "PixelForge",
+    "headline": "Small team. Sharp products.",
+    "description": "We design and ship thoughtful interfaces for the web.",
+    "contact_email": "build@pixelforge.studio",
+    "footer_text": "© 2026 PixelForge"
+  }
+}

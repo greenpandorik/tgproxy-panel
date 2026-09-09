@@ -1,0 +1,11 @@
+{
+  "name": "Alex Morgan",
+  "category": "portfolio",
+  "variables": {
+    "company_name": "Alex Morgan",
+    "headline": "Designer & developer.",
+    "description": "I make useful digital products, write about interfaces and occasionally take photographs.",
+    "contact_email": "alex@morgan.dev",
+    "footer_text": "This site is 12 KB and has been here since 2016."
+  }
+}

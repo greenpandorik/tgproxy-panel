@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alex Morgan</title>
+<meta name="description" content="Alex Morgan is a designer and developer in Bristol. Product work, notes about interfaces, and the occasional photograph.">
+<style>
+html { -webkit-text-size-adjust: 100% }
+body { margin: 0; background: #fff; color: #2d2d2d; font: 18px/1.72 Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif }
+.column { max-width: 34rem; margin: 0 auto; padding: 6rem 22px 5rem }
+a { color: #0f6f66; text-decoration: underline; text-underline-offset: 1px }
+a:hover { text-decoration-thickness: 2px }
+a:focus-visible { outline: 2px solid #0f6f66; outline-offset: 3px; border-radius: 1px }
+p { margin: 0 0 1.15em }
+mark { background: #fdeaa0; color: inherit; padding: 0 .1em }
+.sans, nav, dt, .meta, .year, .desc, footer { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif }
+
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem }
+header b { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-weight: 600; font-size: 15px; letter-spacing: .01em }
+nav { font-size: 13.5px }
+nav a { margin-left: .85rem; color: #6d6d6d; text-decoration-color: #d8d5d0 }
+nav a:hover { color: #0f6f66 }
+
+.face { position: relative; width: 56px; height: 56px; border-radius: 50%; overflow: hidden; background: #eeece7; margin: 2.1rem 0 1.9rem }
+.face span { position: absolute; display: block }
+.face .hair { left: 14px; top: 7px; width: 28px; height: 27px; border-radius: 14px 14px 12px 12px; background: #7e7b75 }
+.face .head { left: 18px; top: 13px; width: 21px; height: 24px; border-radius: 10px 10px 9px 9px; background: #fbfaf7 }
+.face .fringe { left: 14px; top: 7px; width: 28px; height: 10px; border-radius: 14px 14px 6px 6px; background: #45423e }
+.face .neck { left: 24px; top: 33px; width: 9px; height: 9px; background: #e7e3db }
+.face .body { left: 5px; top: 39px; width: 46px; height: 26px; border-radius: 23px 23px 0 0; background: #0f6f66 }
+
+h1 { font-size: 1.5rem; line-height: 1.3; font-weight: 600; margin: 0 0 .9rem; letter-spacing: -.01em }
+h2 { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: .04em; color: #6d6d6d; margin: 3.2rem 0 .9rem }
+
+.work { list-style: none; margin: 0; padding: 0 }
+.work li { display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap; padding: .55rem 0; border-bottom: 1px solid #e6e4e0; font-size: 16px; line-height: 1.5 }
+.work li:first-child { border-top: 1px solid #e6e4e0 }
+.work .name { font-weight: 600 }
+.work .desc { color: #6d6d6d; font-size: 14.5px; flex: 1 1 auto }
+.work .year { color: #6d6d6d; font-size: 13px; font-variant-numeric: tabular-nums; margin-left: auto }
+
+dl { margin: 0; font-size: 16px }
+dt { float: left; clear: left; width: 7rem; color: #6d6d6d; font-size: 13px; line-height: 2.05 }
+dd { margin: 0 0 .35rem 7rem; line-height: 1.75 }
+
+.elsewhere { list-style: none; margin: 1.4rem 0 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.95 }
+.elsewhere span { color: #6d6d6d; display: inline-block; width: 5.5rem }
+
+footer { margin-top: 3.6rem; padding-top: 1.1rem; border-top: 1px solid #e6e4e0; font-size: 13.5px; color: #6d6d6d; line-height: 1.7 }
+
+@media (max-width: 460px) {
+  .column { padding-top: 3.4rem }
+  dt { float: none; width: auto; line-height: 1.6 }
+  dd { margin-left: 0; margin-bottom: .85rem }
+  .work li { display: grid; grid-template-columns: 1fr auto; gap: 0 .6rem }
+  .work .name { grid-column: 1; grid-row: 1 }
+  .work .year { grid-column: 2; grid-row: 1; text-align: right; margin-left: 0 }
+  .work .desc { grid-column: 1 / -1; grid-row: 2 }
+}
+</style>
+</head>
+<body>
+<div class="column">
+
+  <header>
+    <b>Alex Morgan</b>
+    <nav><a href="#work">work</a><a href="#notes">notes</a><a href="#about">about</a></nav>
+  </header>
+
+  <main>
+
+  <div>
+
+  <div class="face" aria-hidden="true">
+    <span class="hair"></span><span class="head"></span><span class="fringe"></span><span class="neck"></span><span class="body"></span>
+  </div>
+
+  <h1 data-variants="Designer &amp; developer.|Design and front-end.|I design and build.">Designer &amp; developer.</h1>
+
+  <p data-variants="I make useful digital products, write about interfaces and occasionally take photographs.|I build software for people at work, write about interfaces, and develop my own film.|I design and build small tools, write about how they are used, and take photographs.">I make useful digital products, write about interfaces and occasionally take photographs.</p>
+
+  <p>I live in Bristol and work four days a week as the only designer at <a href="#work">Halden Health</a>, where I look after a scheduling tool used by about nine hundred district nurses. The other day is for my own things: a slow rewrite of my photo archive, and a small typesetting tool I have been picking at since February. I do take on <mark>one project</mark> most quarters, usually design and front-end together.</p>
+
+  <p>What I am interested in at the moment is how much software can be removed before people notice, keyboard-first interfaces, and the odd fact that <mark>almost every form</mark> asks for more than it needs. I read a lot about the history of printed timetables, which is less strange than it sounds.</p>
+
+  </div>
+
+  <section data-block="work">
+  <h2 id="work">Work</h2>
+  <ul class="work">
+    <li><span class="name">Halden Health</span> <span class="desc">Rota and visit planning for community nursing teams</span> <span class="year">2021&ndash;</span></li>
+    <li><span class="name">Setterby</span> <span class="desc">A typesetting tool for short print runs</span> <span class="year">2024</span></li>
+    <li><span class="name">Ovenbird</span> <span class="desc" data-variants="Reading queue with no unread counts|A reading queue that stays quiet|Saved reading, without the badges">Reading queue with no unread counts</span> <span class="year">2022</span></li>
+    <li><span class="name">Marlowe Press</span> <span class="desc">Catalogue and shop for an independent publisher</span> <span class="year">2020</span></li>
+    <li><span class="name">Quay Signal</span> <span class="desc">Departure boards for a small ferry operator</span> <span class="year">2019</span></li>
+    <li><span class="name">Fieldnote</span> <span class="desc">Offline notebook for survey work</span> <span class="year">2017</span></li>
+  </ul>
+  </section>
+
+  <section data-block="notes">
+  <h2 id="notes">Notes</h2>
+  <dl>
+    <dt>12 Aug 2026</dt><dd><a href="#">The form that asked for my middle name</a></dd>
+    <dt>3 Jun 2026</dt><dd><a href="#" data-variants="Rota software is a scheduling problem wearing a UI|The week I removed half the settings screen|Why shift patterns do not fit a calendar">Rota software is a scheduling problem wearing a UI</a></dd>
+    <dt>28 Feb 2026</dt><dd><a href="#">Setting a book in a browser</a></dd>
+    <dt>9 Nov 2025</dt><dd><a href="#">Against the empty state illustration</a></dd>
+    <dt>14 Jul 2025</dt><dd><a href="#">Six years of departure boards</a></dd>
+    <dt>2 Mar 2025</dt><dd><a href="#">What I learned from printed timetables</a></dd>
+    <dt>21 Oct 2024</dt><dd><a href="#">Keyboard shortcuts nobody discovers</a></dd>
+  </dl>
+  </section>
+
+  <section data-block="about">
+  <h2 id="about">About</h2>
+  <p>I grew up in Sheffield, studied graphic design at Leeds, and fell into building things when a print job needed a website attached to it. That was 2013. I have been doing both ever since and have stopped trying to pick one.</p>
+
+  <p>Most of my work is quiet infrastructure for people who did not choose the software they use. Nurses, ferry crews, printers. It suits me. I am slow, I ask a lot of questions, and I would rather ship something narrow that works on the third Tuesday of the month than something broad that does not.</p>
+
+  <p>Outside that: a Rolleiflex I develop at home, long walks along the Avon, and an ongoing argument with my brother about whether Sheffield is in the north.</p>
+
+  </section>
+
+  <section data-block="elsewhere">
+  <ul class="elsewhere">
+    <li><span>Photos</span> <a href="#">alexmorgan on Glass</a></li>
+    <li><span>Code</span> <a href="#">github.com/amrgn</a></li>
+    <li><span>Reading</span> <a href="#">a list, updated rarely</a></li>
+    <li><span>Post</span> <a href="#">a letter, three or four times a year</a></li>
+  </ul>
+  </section>
+
+  </main>
+
+  <footer>
+    <a href="mailto:alex@morgan.dev">alex@morgan.dev</a> <span data-variants="&mdash; This site is 12 KB and has been here since 2016.|&mdash; Bristol, England. I reply to email slowly.|&mdash; Ten years of this page, updated on and off.">&mdash; This site is 12 KB and has been here since 2016.</span>
+  </footer>
+
+</div>
+</body>
+</html>

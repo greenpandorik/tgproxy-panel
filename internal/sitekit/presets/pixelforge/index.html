@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixelForge — interface design and build</title>
+<meta name="description" content="PixelForge is a small studio that designs and ships thoughtful interfaces for the web. Interfaces, prototypes, engineering.">
+<style>
+    html { box-sizing: border-box; -webkit-text-size-adjust: 100%; }
+    *, *::before, *::after { box-sizing: inherit; }
+    body { margin: 0; background: #fdfdfb; color: #16161d; font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif; font-size: 16px; line-height: 1.55; }
+    h1, h2, h3 { font-weight: 700; letter-spacing: 0.005em; margin: 0; }
+    p { margin: 0; }
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible { outline: 3px solid #e0218a; outline-offset: 2px; }
+    .rig { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+    .meta { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #5c5c68; }
+
+    .bar { display: flex; align-items: stretch; justify-content: space-between; border: 2px solid #16161d; margin-top: 26px; }
+    .bar__brand { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-weight: 700; letter-spacing: 0.005em; }
+    .bar__links { display: flex; }
+    .bar__links a { display: flex; align-items: center; padding: 12px 18px; border-left: 2px solid #16161d; text-decoration: none; font-size: 14px; }
+    .bar__links a:hover { background: #e0218a; color: #fdfdfb; }
+
+    .slab { display: grid; grid-template-columns: 7fr 5fr; border: 2px solid #16161d; margin-top: -2px; }
+    .hero__say { padding: 54px 44px 58px; }
+    .hero__say h1 { font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.06; max-width: 12ch; }
+    .hero__say p { margin: 20px 0 32px; color: #5c5c68; max-width: 34ch; }
+    .btn { display: inline-block; padding: 12px 22px; border: 2px solid #16161d; text-decoration: none; font-weight: 700; font-size: 14px; }
+    .btn--hot { background: #e0218a; color: #16161d; margin-right: 12px; }
+    .btn--hot:hover { background: #16161d; color: #e0218a; }
+    .btn--flat:hover { background: #16161d; color: #fdfdfb; }
+    .hero__art { border-left: 2px solid #16161d; padding: 30px; display: flex; align-items: center; justify-content: center; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; width: 100%; max-width: 320px; }
+    .grid i { display: block; aspect-ratio: 1; background: #e6e6e2; }
+    .grid i.ink { background: #16161d; }
+    .grid i.hot { background: #e0218a; }
+
+    .lane { padding: 84px 0 0; }
+    .lane > h2 { font-size: 1.35rem; margin-bottom: 26px; }
+    .work { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; }
+    .work__item { border: 2px solid #16161d; background: #fdfdfb; box-shadow: 6px 6px 0 #16161d; transition: transform 120ms linear; }
+    .work__item:hover { transform: translate(3px, 3px); box-shadow: 3px 3px 0 #16161d; }
+    .shot { position: relative; height: 168px; border-bottom: 2px solid #16161d; overflow: hidden; }
+    .shot b, .shot i { position: absolute; display: block; }
+    .shot--a { background: #e0218a; background-image: radial-gradient(circle 30px at 78% 66%, #16161d 99%, transparent 100%); }
+    .shot--a b { left: 22px; top: 0; width: 34px; height: 112px; background: #16161d; }
+    .shot--a i { right: 0; bottom: 22px; width: 96px; height: 16px; background: #e6e6e2; }
+    .shot--b { background: #16161d; background-image: radial-gradient(circle 24px at 26% 34%, #e0218a 99%, transparent 100%); }
+    .shot--b b { left: 0; bottom: 0; width: 100%; height: 40px; background: #e6e6e2; }
+    .shot--b i { right: 40px; top: 26px; width: 14px; height: 96px; background: #e0218a; }
+    .shot--c { background: #e6e6e2; background-image: radial-gradient(circle 38px at 22% 74%, #16161d 99%, transparent 100%); }
+    .shot--c b { right: 24px; top: 24px; width: 108px; height: 62px; background: #16161d; }
+    .shot--c i { right: 24px; bottom: 30px; width: 62px; height: 12px; background: #e0218a; }
+    .work__body { padding: 20px 22px 22px; }
+    .work__body h3 { font-size: 1.05rem; }
+    .work__body p { color: #5c5c68; font-size: 14px; margin: 8px 0 16px; }
+    .work__body .meta { display: flex; justify-content: space-between; border-top: 2px solid #16161d; padding-top: 10px; }
+
+    .rows { border: 2px solid #16161d; }
+    .rows > div { display: grid; grid-template-columns: 260px 1fr; border-bottom: 2px solid #16161d; }
+    .rows > div:last-child { border-bottom: 0; }
+    .rows h3 { padding: 26px 24px; border-right: 2px solid #16161d; font-size: 1.05rem; }
+    .rows__text { padding: 26px 28px; }
+    .rows__text p { color: #5c5c68; max-width: 62ch; }
+    .rows__text ul { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 0; padding: 0; }
+    .rows__text li { border: 2px solid #16161d; padding: 3px 10px; font-size: 13px; }
+
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+    .steps > div { display: grid; grid-template-columns: 46px 1fr; gap: 14px; align-items: start; }
+    .steps span { border: 2px solid #16161d; width: 46px; height: 46px; display: grid; place-items: center; font-weight: 700; }
+    .steps h3 { font-size: 0.98rem; margin-bottom: 4px; }
+    .steps p { color: #5c5c68; font-size: 14px; }
+
+    .base { margin-top: 90px; background: #16161d; color: #e6e6e2; }
+    .base__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 56px 0 48px; }
+    .base__cols h2 { font-size: 1.6rem; color: #fdfdfb; }
+    .base__cols p { color: #b6b6b0; font-size: 14px; margin-top: 12px; max-width: 40ch; }
+    .base a { color: #e0218a; }
+    .base dl { margin: 0; font-size: 14px; }
+    .base dt { color: #7d7d88; }
+    .base dd { margin: 0 0 14px; }
+    .strip { height: 10px; background-image: repeating-linear-gradient(90deg, #e0218a 0 10px, #16161d 10px 20px, #e6e6e2 20px 30px, #16161d 30px 40px); }
+
+    @media (max-width: 940px) {
+        .slab { grid-template-columns: 1fr; }
+        .hero__art { border-left: 0; border-top: 2px solid #16161d; }
+        .work, .steps { grid-template-columns: 1fr; }
+        .rows > div { grid-template-columns: 1fr; }
+        .rows h3 { border-right: 0; border-bottom: 2px solid #16161d; padding: 18px 22px; }
+        .base__cols { grid-template-columns: 1fr; gap: 28px; }
+    }
+    @media (max-width: 560px) {
+        .bar { flex-direction: column; }
+        .bar__links { border-top: 2px solid #16161d; }
+        .bar__links a { flex: 1; justify-content: center; padding: 10px 8px; }
+        .bar__links a:first-child { border-left: 0; }
+        .hero__say { padding: 34px 22px 38px; }
+        .btn { display: block; text-align: center; margin: 0 0 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .work__item { transition: none; }
+        .work__item:hover { transform: none; box-shadow: 6px 6px 0 #16161d; }
+    }
+</style>
+</head>
+<body>
+
+<div class="rig">
+<header class="bar">
+    <div class="bar__brand">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path fill="#e0218a" d="M0 0h8v8H0z"/><path fill="#16161d" d="M12 0h8v8h-8zM0 12h8v8H0zM12 12h8v8h-8z"/></svg>
+        PixelForge
+    </div>
+    <nav class="bar__links">
+        <a href="#work">Work</a>
+        <a href="#services">Services</a>
+        <a href="#process">Process</a>
+        <a href="#contact">Contact</a>
+    </nav>
+</header>
+
+<main>
+<section class="slab" data-block="opening">
+    <div class="hero__say">
+        <h1 data-variants="Small team. Sharp products.|Small studio. Real software.|Four people. Shipped work.">Small team. Sharp products.</h1>
+        <p data-variants="We design and ship thoughtful interfaces for the web.|We design interfaces and write the front end ourselves.|Interface design and front-end build, in one team.">We design and ship thoughtful interfaces for the web.</p>
+        <a class="btn btn--hot" href="#contact">Start a project</a>
+        <a class="btn btn--flat" href="#work">See the work</a>
+    </div>
+    <div class="hero__art">
+        <div class="grid" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="hot"></i><i class="hot"></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="hot"></i><i class="hot"></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="hot"></i><i class="hot"></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="ink"></i><i class="hot"></i><i class="hot"></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="ink"></i><i class="ink"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="hot"></i><i class="hot"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+    </div>
+</section>
+
+<section class="lane" id="work" data-block="work">
+    <h2>Recent work</h2>
+    <div class="work">
+        <article class="work__item">
+            <div class="shot shot--a" aria-hidden="true"><b></b><i></i></div>
+            <div class="work__body">
+                <h3>Ledgerline</h3>
+                <p data-variants="Invoicing and job tracking for electricians working on their own.|Quotes, invoices and job history for a one-person trade.|One place for jobs, hours and the money owed on them.">Invoicing and job tracking for electricians working on their own.</p>
+                <div class="meta"><span>2026</span><span>Design and build</span></div>
+            </div>
+        </article>
+        <article class="work__item">
+            <div class="shot shot--b" aria-hidden="true"><b></b><i></i></div>
+            <div class="work__body">
+                <h3>Vantage Rail</h3>
+                <p>A crew scheduling console that four depots now run their shifts on.</p>
+                <div class="meta"><span>2025</span><span>Interface design</span></div>
+            </div>
+        </article>
+        <article class="work__item">
+            <div class="shot shot--c" aria-hidden="true"><b></b><i></i></div>
+            <div class="work__body">
+                <h3>Braided Roasters</h3>
+                <p>Subscription checkout rebuilt after their orders doubled in a year.</p>
+                <div class="meta"><span>2025</span><span>Prototype and front end</span></div>
+            </div>
+        </article>
+    </div>
+</section>
+
+<section class="lane" id="services" data-block="services">
+    <h2 data-variants="What we take on|Three things we do|Where we help">What we take on</h2>
+    <div class="rows">
+        <div>
+            <h3>Interfaces</h3>
+            <div class="rows__text">
+                <p>Screens people use every working day. We map the real task first, then draw the smallest interface that does it, and hand over components your engineers can read.</p>
+                <ul><li>Design systems</li><li>Dashboards and tools</li><li>Accessibility passes</li></ul>
+            </div>
+        </div>
+        <div>
+            <h3>Prototypes</h3>
+            <div class="rows__text">
+                <p>Two to three weeks, working code rather than slides. Enough of a product to put in front of ten customers and settle an argument with evidence.</p>
+                <ul><li>Clickable builds</li><li>Concept testing</li><li>Pitch material</li></ul>
+            </div>
+        </div>
+        <div>
+            <h3>Engineering</h3>
+            <div class="rows__text">
+                <p>We write the front end ourselves, so nothing is lost in translation. Typed components, tests where they earn their keep, and a build your team can take over.</p>
+                <ul><li>Front-end build</li><li>Performance work</li><li>Handover and pairing</li></ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="lane" id="process" data-block="process">
+    <h2>How a project runs</h2>
+    <div class="steps">
+        <div><span>1</span><div><h3>Scoping call</h3><p data-variants="An hour on the problem, the deadline and the budget.|One call to hear the problem and what it has to cost.|You talk, we ask questions, nobody opens a slide deck.">An hour on the problem, the deadline and the budget.</p></div></div>
+        <div><span>2</span><div><h3>Shaping week</h3><p>We sketch, cut the scope in half and agree what ships.</p></div></div>
+        <div><span>3</span><div><h3>Build sprints</h3><p>Two-week cycles, a demo at the end of each one.</p></div></div>
+        <div><span>4</span><div><h3>Handover</h3><p>Repo, components and a month of questions answered.</p></div></div>
+    </div>
+</section>
+</main>
+</div>
+
+<footer class="base" id="contact">
+    <div class="rig base__cols">
+        <div>
+            <h2>Tell us what you are building.</h2>
+            <p>We take on four or five projects a year. Send a paragraph about the product and a rough date, and you will hear back within two working days.</p>
+        </div>
+        <dl>
+            <dt>Email</dt>
+            <dd><a href="mailto:build@pixelforge.studio">build@pixelforge.studio</a></dd>
+            <dt>Studio</dt>
+            <dd>Unit 4, Bell Yard Works, Sheffield S1 2FN</dd>
+            <dt>Hours</dt>
+            <dd>Weekdays 9:30 to 18:00</dd>
+            <dt></dt>
+            <dd>&copy; 2026 PixelForge</dd>
+        </dl>
+    </div>
+    <div class="strip" aria-hidden="true"></div>
+</footer>
+
+</body>
+</html>

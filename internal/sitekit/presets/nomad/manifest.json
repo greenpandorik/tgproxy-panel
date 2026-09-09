@@ -1,0 +1,11 @@
+{
+  "name": "Nomad Field Notes",
+  "category": "editorial",
+  "variables": {
+    "company_name": "Nomad Field Notes",
+    "headline": "Notes from roads less hurried.",
+    "description": "Photographs and short stories from cities, coastlines and long train rides.",
+    "contact_email": "hello@nomadfieldnotes.com",
+    "footer_text": "Written on trains since 2019."
+  }
+}

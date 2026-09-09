@@ -1,0 +1,11 @@
+{
+  "name": "Orbit CDN",
+  "category": "saas",
+  "variables": {
+    "company_name": "Orbit CDN",
+    "headline": "Fast delivery. Everywhere.",
+    "description": "A lightweight edge platform for websites, APIs and static assets.",
+    "contact_email": "hello@orbitcdn.io",
+    "footer_text": "Orbit CDN Ltd, registered in Ireland."
+  }
+}

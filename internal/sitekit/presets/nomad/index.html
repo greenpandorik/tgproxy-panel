@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nomad Field Notes — travel journal</title>
+<meta name="description" content="Photographs and short stories from cities, coastlines and long train rides. A slow travel journal, written on trains since 2019.">
+<style>
+body { margin: 0; background: #f3efe6; color: #22302c; font: 17.5px/1.8 "Charter", "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif; }
+h1, h2, h3, nav, figcaption, time, small { font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+h1, h2, h3 { font-weight: 600; letter-spacing: .01em; line-height: 1.22; margin: 0; }
+p { margin: 0 0 1.1em; }
+a { color: inherit; }
+a:focus-visible { outline: 2px solid #7d8f5a; outline-offset: 3px; }
+img, svg { max-width: 100%; }
+
+header { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 22px 34px 40px; background: linear-gradient(180deg, rgba(15,47,54,.46), rgba(15,47,54,0)); }
+header b { font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-weight: 600; font-size: 16px; letter-spacing: .02em; color: #f3efe6; text-shadow: 0 1px 6px rgba(15,47,54,.65); }
+header nav a { color: #f3efe6; font-size: 14px; margin-left: 22px; text-decoration: none; text-shadow: 0 1px 6px rgba(15,47,54,.65); }
+header nav a:hover { text-decoration: underline; }
+
+.scene { position: relative; height: 78vh; min-height: 460px; overflow: hidden; background: linear-gradient(180deg, #cfe0e2 0%, #b6d0d1 26%, #d8cdb6 50%, #6d9497 68%, #29565c 100%); }
+.scene > div { position: absolute; left: -20%; width: 140%; }
+.sun { position: absolute; left: 62%; top: 40%; width: 190px; height: 190px; margin: -95px 0 0 -95px; border-radius: 50%; background: radial-gradient(circle, #f6ead0 0%, #e9d5ac 42%, rgba(223,211,189,0) 70%); }
+.r1 { bottom: 0; height: 42%; border-radius: 50% 50% 0 0 / 100% 100% 0 0; background: #3d6b6d; }
+.r2 { bottom: 0; height: 33%; border-radius: 46% 54% 0 0 / 100% 100% 0 0; background: #245054; left: -34%; width: 120%; }
+.r3 { bottom: 0; height: 25%; border-radius: 60% 40% 0 0 / 100% 100% 0 0; background: #1a474e; left: 4%; width: 130%; }
+.fg { bottom: 0; height: 14%; background: #0f2f36; }
+.scene article { position: absolute; z-index: 2; left: 0; bottom: 6%; padding: 0 34px; max-width: 40rem; color: #f3efe6; }
+.scene h1 { font-size: 15px; letter-spacing: .04em; color: #dfd3bd; margin-bottom: 12px; }
+.scene h2 { font-size: 2.6rem; letter-spacing: 0; margin-bottom: .3em; }
+.scene p { font-family: inherit; font-size: 17px; color: #e7e0d0; margin-bottom: .8em; }
+.scene small { display: block; font-size: 13px; letter-spacing: .05em; color: #b9c9bd; }
+
+main article { display: grid; grid-template-columns: 1fr 1fr; min-height: 62vh; }
+main article > figure { margin: 0; position: relative; overflow: hidden; }
+main article:nth-of-type(2) > figure { order: 2; }
+main article > section { background: #f3efe6; display: flex; flex-direction: column; justify-content: center; padding: 6vh 8% 6vh; }
+main article:nth-of-type(2) > section { background: #ece7db; }
+main article h3 { font-size: 1.65rem; margin: .35em 0 .3em; }
+main article > section > span { font-size: 13.5px; letter-spacing: .03em; font-weight: 600; color: #5f7040; font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+main article time { display: block; font-size: 13.5px; color: #5c6963; margin-bottom: 1.2em; }
+main article > section > a { font-size: 15px; color: #0f2f36; text-underline-offset: 4px; }
+
+.coast { background: linear-gradient(180deg, #cfe0e2 0%, #cfe0e2 44%, #dfd3bd 44%, #dfd3bd 47%, #4e7f83 47%, #234f56 100%); }
+.coast i { position: absolute; display: block; }
+.coast i:first-child { left: -8%; top: 20%; width: 58%; height: 27%; border-radius: 50% 50% 0 0 / 100% 100% 0 0; background: #7d8f5a; }
+.coast i:nth-child(2) { left: 29%; top: 28%; width: 40%; height: 19%; border-radius: 62% 38% 0 0 / 100% 100% 0 0; background: #46603f; }
+
+.coast b { position: absolute; left: -6%; right: -6%; bottom: 0; height: 16%; background: #dfd3bd; border-radius: 44% 56% 0 0 / 46% 26% 0 0; }
+.coast em { position: absolute; left: 14%; width: 30%; height: 3px; top: 58%; background: rgba(243,239,230,.4); box-shadow: 46px 22px 0 rgba(243,239,230,.3), -18px 46px 0 rgba(243,239,230,.22); }
+.city { background: linear-gradient(180deg, #14343b 0%, #1b444a 55%, #0f2f36 100%); }
+.city i { position: absolute; bottom: 0; display: block; background-color: #0b262c; background-image: repeating-linear-gradient(180deg, rgba(11,38,44,0) 0 6px, #0b262c 6px 15px), repeating-linear-gradient(90deg, rgba(11,38,44,0) 0 5px, rgba(233,213,172,.88) 5px 9px, rgba(11,38,44,0) 9px 16px); }
+.city i:nth-child(1) { left: 6%; width: 13%; height: 42%; }
+.city i:nth-child(2) { left: 21%; width: 10%; height: 62%; }
+.city i:nth-child(3) { left: 33%; width: 15%; height: 34%; }
+.city i:nth-child(4) { left: 50%; width: 11%; height: 55%; }
+.city i:nth-child(5) { left: 63%; width: 16%; height: 46%; }
+.city i:nth-child(6) { left: 81%; width: 12%; height: 68%; }
+.city b { position: absolute; left: 0; right: 0; bottom: 0; height: 9%; background: #071b20; }
+
+.train { background: repeating-linear-gradient(21deg, #dfd3bd 0 26px, #cfc2a6 26px 44px, #7d8f5a 44px 62px, #93a06d 62px 76px); }
+.train u { position: absolute; inset: 0; border: 34px solid #21332e; border-radius: 4px; }
+.train u::after { content: ""; position: absolute; inset: 0; border: 7px solid #33473f; }
+.train em { position: absolute; left: 41px; right: 41px; top: 30%; height: 9%; background: rgba(207,224,226,.45); }
+
+.recent { padding: 9vh 34px 8vh; max-width: 860px; margin: 0 auto; }
+.recent h2 { font-size: 1.15rem; letter-spacing: .02em; color: #45564f; margin-bottom: 18px; }
+.recent ul { list-style: none; margin: 0; padding: 0; }
+.recent li { display: grid; grid-template-columns: 150px 1fr; gap: 20px; align-items: baseline; padding: 16px 0; border-top: 1px solid #ded7c8; }
+.recent li:last-child { border-bottom: 1px solid #ded7c8; }
+.recent time { font-size: 13px; letter-spacing: .04em; color: #5f7040; }
+.recent a { text-decoration: none; }
+.recent a:hover { text-decoration: underline; }
+
+footer { background: #0f2f36; color: #dfd3bd; padding: 7vh 34px; }
+footer div { max-width: 640px; margin: 0 auto; }
+footer p { font-size: 16px; }
+footer a { color: #cfe0e2; }
+footer small { display: block; margin-top: 26px; font-size: 12.5px; color: #93a79c; letter-spacing: .04em; }
+
+@media (max-width: 820px) {
+  header { padding: 14px 20px 34px; gap: 10px; }
+  header b { font-size: 13.5px; white-space: nowrap; }
+  header nav { white-space: nowrap; }
+  header nav a { margin-left: 12px; font-size: 12px; }
+  .scene { height: auto; min-height: 0; padding-top: 44vh; }
+  .scene > div, .sun { position: absolute; }
+  .scene article { position: relative; bottom: auto; padding: 0 20px 34px; }
+  .scene h2 { font-size: 1.85rem; }
+  main article { grid-template-columns: 1fr; min-height: 0; }
+  main article > figure { height: 34vh; order: 0 !important; }
+  main article > section { padding: 34px 20px 40px; }
+  .train u { border-width: 20px; }
+  .train em { left: 27px; right: 27px; }
+  .recent { padding: 6vh 20px; }
+  .recent li { grid-template-columns: 1fr; gap: 4px; }
+  footer { padding: 44px 20px; }
+}
+</style>
+</head>
+<body>
+<header>
+<b>Nomad Field Notes</b>
+<nav aria-label="Sections"><a href="#journal">Journal</a><a href="#places">Places</a><a href="#fieldnotes">Field notes</a></nav>
+</header>
+
+<section class="scene">
+<div class="r1"></div>
+<span class="sun"></span>
+<div class="r2"></div>
+<div class="r3"></div>
+<div class="fg"></div>
+<article>
+<h1>Nomad Field Notes</h1>
+<h2 data-variants="Notes from roads less hurried.|The long way round, written down.|Everything worth seeing is slow.">Notes from roads less hurried.</h2>
+<p data-variants="Photographs and short stories from cities, coastlines and long train rides.|Pictures and short entries from harbours, hill roads and slow trains.|A picture and a few hundred words for each place I stop moving.">Photographs and short stories from cities, coastlines and long train rides.</p>
+<small data-variants="Currently in Porto|Writing from Trieste|In Split until May">Currently in Porto</small>
+</article>
+</section>
+
+<main>
+<article id="journal" data-block="journal">
+<figure class="coast" aria-label="Illustration of a headland above a calm sea at midday"><i></i><i></i><em></em><b></b></figure>
+<section>
+<span>Journal</span>
+<h3>Three days of walking the wrong way round a peninsula</h3>
+<time data-variants="Setúbal, March|Arrábida, April|Setúbal, October">Setúbal, March</time>
+<p>The bus drops you at a roundabout with a closed cafe and a sign that points inland, which is how I ended up doing the Arrábida ridge backwards. It cost me a morning and gave me the only empty beach I have found on that coast in four visits.</p>
+<p>You walk up through cork oak for an hour and then the whole bay opens at once, flat and absurdly green. There is a fisherman's track down to Portinho that no map marks properly. Take water. The last shop is in Vila Nogueira and it shuts at one.</p>
+<a href="#journal">Read the full entry</a>
+</section>
+</article>
+
+<article id="places" data-block="places">
+<figure class="city" aria-label="Illustration of lit windows across a city skyline at night"><i></i><i></i><i></i><i></i><i></i><i></i><b></b></figure>
+<section>
+<span>Places</span>
+<h3 data-variants="The hour after the last tram in Ljubljana|Ljubljana goes quiet at about half eleven|What Ljubljana sounds like after midnight">The hour after the last tram in Ljubljana</h3>
+<time>Ljubljana, November</time>
+<p>I like a city best at the point where it stops performing. Around half eleven the bars along Trubarjeva turn their outside lights off one at a time and the river goes completely black, and you can hear the weir from four streets away.</p>
+<p>I stayed at a guesthouse on Poljanska for thirty-eight euros with a window onto a courtyard full of bicycles. The woman at the desk drew me a map of where to eat that had one restaurant on it and a note saying "not Fridays".</p>
+<a href="#places">Read the full entry</a>
+</section>
+</article>
+
+<article id="fieldnotes" data-block="fieldnotes">
+<figure class="train" aria-label="Illustration of fields streaking past a train window"><u></u><em></em></figure>
+<section>
+<span>Field notes</span>
+<h3>Eleven hours from Zagreb, and what it costs</h3>
+<time>Somewhere past Vinkovci, June</time>
+<p>The slow train is 34 euros and the fast one does not exist. There is no buffet car, so buy bread and a litre of water at the kiosk on platform two, and sit on the left for the first four hours because that is the side the sun is not on.</p>
+<p>Everything between the towns is maize and sunflower and long straight ditches. Twice we stopped for eight minutes at stations with nobody on them. I filled two pages and then just watched, which I think is the better use of the ticket.</p>
+<a href="#fieldnotes">Read the full entry</a>
+</section>
+</article>
+
+<section class="recent" data-block="recent">
+<h2>Recent notes</h2>
+<ul>
+<li><time>28 August</time><a href="#journal">A ferry timetable that has not changed since 1994</a></li>
+<li><time>14 August</time><a href="#places">Six kiosks worth crossing Belgrade for</a></li>
+<li><time>2 August</time><a href="#fieldnotes">On carrying one bag for eleven weeks</a></li>
+<li><time>19 July</time><a href="#journal">The village in Alentejo with two names and one bar</a></li>
+<li><time>3 July</time><a href="#places">Trieste in the rain is the correct Trieste</a></li>
+<li><time>21 June</time><a href="#fieldnotes">How to sleep sitting up, badly, for nine hours</a></li>
+<li><time>9 June</time><a href="#journal">Notes on a coastline that keeps moving inland</a></li>
+</ul>
+</section>
+</main>
+
+<footer>
+<div>
+<p>Nomad Field Notes is a one-person journal about going slowly and paying attention. Entries land roughly every fortnight, sometimes late, usually from a station platform. Everything here is written and drawn by hand.</p>
+<p>Say hello at <a href="mailto:hello@nomadfieldnotes.com">hello@nomadfieldnotes.com</a></p>
+<small>Written on trains since 2019.<br>&copy; <span id="nfn-year-stamp"></span> Nomad Field Notes</small>
+</div>
+</footer>
+<script>document.getElementById('nfn-year-stamp').textContent=new Date().getFullYear();</script>
+</body>
+</html>

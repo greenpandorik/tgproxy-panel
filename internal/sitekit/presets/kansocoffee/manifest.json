@@ -1,0 +1,11 @@
+{
+  "name": "Kanso Coffee",
+  "category": "local",
+  "variables": {
+    "company_name": "Kanso Coffee",
+    "headline": "Coffee, without complication.",
+    "description": "Seasonal coffee, simple food and a quiet place to spend the morning.",
+    "contact_email": "hello@kansocoffee.uk",
+    "footer_text": "© 2026 Kanso Coffee. Closed Mondays."
+  }
+}

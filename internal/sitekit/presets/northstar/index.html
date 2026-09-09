@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northstar Studio — product and design</title>
+<meta name="description" content="Independent product and design studio working with ambitious teams. Product design, brand systems and web experiences.">
+<style>
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: #ffffff;
+    color: #000000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  .bounds { max-width: 1240px; margin: 0 auto; padding-inline: 32px; }
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible { outline: 2px solid #1f3ce0; outline-offset: 4px; }
+
+  .top { display: flex; justify-content: space-between; align-items: baseline; padding-top: 26px; font-size: 15px; }
+  .top .mark { font-weight: 600; letter-spacing: -0.01em; }
+  .top a { text-decoration: none; }
+  .top a:hover { color: #1f3ce0; }
+
+  .stage { min-height: 88vh; display: flex; flex-direction: column; justify-content: space-between; padding-block: 7vh 8vh; }
+  h1 {
+    margin: 0;
+    font-size: clamp(2.7rem, 7.4vw, 6.5rem);
+    font-weight: 700;
+    line-height: 0.94;
+    letter-spacing: -0.04em;
+  }
+  .base { display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-end; justify-content: space-between; margin-top: 9vh; }
+  .standfirst { color: #6a6a6a; max-width: 40rem; margin: 0; }
+  .avail { color: #6a6a6a; font-size: 15px; max-width: 17rem; margin: 0; }
+
+  h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 26px; letter-spacing: -0.01em; }
+
+  .work { padding-block: 44px 96px; }
+  .work ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid #dcdcdc; }
+  .work li { border-bottom: 1px solid #dcdcdc; }
+  .work a {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 24px;
+    align-items: baseline;
+    padding: 26px 0;
+    text-decoration: none;
+  }
+  .client { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; transition: color 140ms ease, transform 140ms ease; }
+  .work a:hover .client, .work a:focus-visible .client { color: #1f3ce0; transform: translateX(6px); }
+  .field, .yr { color: #6a6a6a; font-size: 15px; }
+  .yr { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .say { position: relative; overflow: hidden; padding: 120px 0; }
+  .star { position: absolute; left: -110px; top: 50%; transform: translateY(-50%); width: 480px; height: 480px; color: #f1f1f1; pointer-events: none; }
+  .say p {
+    position: relative;
+    margin: 0 0 0 auto;
+    max-width: 26rem;
+    font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+    line-height: 1.16;
+    letter-spacing: -0.03em;
+    font-weight: 500;
+  }
+
+  .able { padding-block: 30px 112px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; }
+  .able h2 { margin-bottom: 18px; }
+  .able p { margin: 0; color: #6a6a6a; font-size: 15px; }
+  .able p span { display: block; }
+
+  .end { border-top: 1px solid #dcdcdc; padding-top: 44px; }
+  .end dl { display: flex; flex-wrap: wrap; gap: 8px 64px; margin: 0 0 34px; font-size: 15px; }
+  .end dt { color: #6a6a6a; }
+  .end dd { margin: 0; }
+  .end a { text-decoration: none; border-bottom: 1px solid #dcdcdc; }
+  .end a:hover { color: #1f3ce0; border-color: #1f3ce0; }
+  .sign {
+    color: #ededed;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    font-size: clamp(3.6rem, 20.6vw, 17.4rem);
+    line-height: 0.82;
+    margin: 0;
+    padding-bottom: 22px;
+  }
+
+  @media (max-width: 900px) {
+    .able { grid-template-columns: 1fr; gap: 34px; }
+    .say { padding: 80px 0; }
+    .say p { margin-left: 0; }
+    .star { width: 300px; height: 300px; left: -80px; opacity: 0.75; }
+  }
+  @media (max-width: 620px) {
+    .bounds { padding-inline: 20px; }
+    .stage { min-height: 74vh; }
+    .end dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; }
+    .work a { grid-template-columns: 1fr auto; row-gap: 6px; padding: 20px 0; }
+    .client { grid-column: 1 / -1; font-size: 1.25rem; }
+    .base { gap: 26px; }
+    .end dl { gap: 6px 32px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .client { transition: none; }
+    .work a:hover .client, .work a:focus-visible .client { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bounds top">
+  <span class="mark">Northstar</span>
+  <a href="#contact">Contact</a>
+</header>
+
+<main>
+  <section class="bounds stage" data-block="opening">
+    <h1>We build digital<br>products people<br>remember.</h1>
+    <div class="base">
+      <p class="standfirst" data-variants="Independent product and design studio working with ambitious teams.|A small studio building software for teams that ship often.|Product design and front-end work for companies with real deadlines.">Independent product and design studio working with ambitious teams.</p>
+      <p class="avail" data-variants="Taking on two projects for the second half of 2026.|One slot open for a build starting in spring 2026.|Booked through March. Talking to teams about the summer.">Taking on two projects for the second half of 2026.</p>
+    </div>
+  </section>
+
+  <section class="bounds work" id="work" data-block="work">
+    <h2>Selected work</h2>
+    <ul>
+      <li><a href="#work"><span class="client">Halvorsen Freight</span><span class="field" data-variants="Booking platform, four releases|Freight booking, rebuilt in stages|Quoting and booking, end to end">Booking platform, four releases</span><span class="yr">2026</span></a></li>
+      <li><a href="#work"><span class="client">Merritt Health</span><span class="field">Identity and patient portal</span><span class="yr">2025</span></a></li>
+      <li><a href="#work"><span class="client">Northbank Capital</span><span class="field">Reporting tools for analysts</span><span class="yr">2025</span></a></li>
+      <li><a href="#work"><span class="client">Ostrom Instruments</span><span class="field">Hardware companion app</span><span class="yr">2024</span></a></li>
+      <li><a href="#work"><span class="client">Pell &amp; Rowe</span><span class="field">Brand system and site</span><span class="yr">2024</span></a></li>
+      <li><a href="#work"><span class="client">Cairn Logistics</span><span class="field">Dispatch console</span><span class="yr">2023</span></a></li>
+    </ul>
+  </section>
+
+  <section class="say" data-block="statement">
+    <svg class="star" viewBox="0 0 200 200" aria-hidden="true" focusable="false"><path fill="currentColor" d="M100 0c5 60 40 95 100 100-60 5-95 40-100 100-5-60-40-95-100-100C60 95 95 60 100 0Z"/></svg>
+    <div class="bounds">
+      <p data-variants="Most software ships, works, and is forgotten by Friday. We spend the extra fortnight on the parts a person actually returns to.|Anyone can ship something that works. The harder part is making it worth opening again on a Tuesday morning.|Teams arrive with a feature list. We usually leave with half of it and a product people keep coming back to.">Most software ships, works, and is forgotten by Friday. We spend the extra fortnight on the parts a person actually returns to.</p>
+    </div>
+  </section>
+
+  <section class="bounds able" data-block="capabilities">
+    <div>
+      <h2>Product design</h2>
+      <p><span data-variants="Research with real users|Discovery and user interviews|Concept testing before build">Research with real users</span><span>Interface and flow design</span><span>Design systems in code</span><span>Release-by-release support</span></p>
+    </div>
+    <div>
+      <h2>Brand systems</h2>
+      <p><span>Naming and positioning</span><span>Wordmarks and type scales</span><span>Photography direction</span><span>Guidelines teams follow</span></p>
+    </div>
+    <div>
+      <h2>Web experiences</h2>
+      <p><span>Marketing sites</span><span>Editorial and documentation</span><span>Front-end build</span><span>Performance and access audits</span></p>
+    </div>
+  </section>
+</main>
+
+<footer class="bounds end" id="contact">
+  <dl>
+    <dt>Write to us</dt>
+    <dd><a href="mailto:studio@northstar.works">studio@northstar.works</a></dd>
+    <dt>Studio</dt>
+    <dd>Portland, Oregon</dd>
+    <dt>Hours</dt>
+    <dd>Monday to Thursday, 9 to 5</dd>
+  </dl>
+  <p class="sign">Northstar</p>
+</footer>
+
+</body>
+</html>

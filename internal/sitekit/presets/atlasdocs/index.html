@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install the CLI — Atlas docs</title>
+<meta name="description" content="Guides, references and examples for the Atlas developer platform.">
+<style>
+:root{--page:#fff;--side:#f7f8fa;--rule:#e3e6ea;--ink:#1f2328;--dim:#656d76;--blue:#0b6bcb;--code:#f2f4f7;--codeline:#e0e4ea;--green:#1a7f5a;--amber:#9a6b00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15.5px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+code,pre,.tree kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:2px}
+
+.topbar{border-bottom:1px solid var(--rule);background:var(--page);position:sticky;top:0;z-index:5}
+.topbar .in{max-width:1440px;margin:0 auto;padding:0 20px;height:52px;display:flex;align-items:center;gap:18px}
+.mark{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:600;font-size:15px}
+.mark svg{display:block}
+.chip{font-size:11.5px;color:var(--dim);border:1px solid var(--rule);border-radius:10px;padding:1px 7px;font-weight:500;background:var(--side)}
+.find{flex:1;max-width:400px;position:relative}
+.find svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--dim)}
+.find input{width:100%;height:30px;border:1px solid var(--rule);border-radius:5px;background:var(--side);padding:0 10px 0 29px;font:13.5px/1 inherit;color:var(--dim)}
+.topbar nav{margin-left:auto;display:flex;gap:16px;font-size:13.5px}
+.topbar nav a{color:var(--dim)}
+
+.shell{max-width:1440px;margin:0 auto;display:grid;grid-template-columns:240px 1fr 200px;align-items:stretch}
+
+.tree{background:var(--side);border-right:1px solid var(--rule)}
+.tree > div{position:sticky;top:52px;padding:22px 0 34px;max-height:calc(100vh - 52px);overflow-y:auto}
+.tree h2{margin:20px 0 6px;padding:0 18px;font-size:11.5px;letter-spacing:.02em;font-weight:600;color:var(--ink)}
+.tree h2:first-child{margin-top:0}
+.tree ul{list-style:none;margin:0;padding:0}
+.tree li a{display:block;padding:3px 18px;font-size:13.5px;line-height:1.5;color:var(--dim);border-left:2px solid transparent}
+.tree li a:hover{color:var(--ink);text-decoration:none}
+.tree li a.here{color:var(--blue);border-left-color:var(--blue);background:#eaf3fc;font-weight:500}
+.treefoot{margin:26px 18px 0;padding-top:14px;border-top:1px solid var(--rule)}
+.treefoot em{display:block;font-size:13px;line-height:1.5;color:var(--ink)}
+.treefoot span{display:block;margin-top:6px;font-size:12px;line-height:1.5;color:var(--dim)}
+
+.chips{display:none}
+
+main{padding:30px 44px 60px;min-width:0}
+main>section{max-width:44rem}
+.crumbs{font-size:12.5px;color:var(--dim);margin:0 0 12px}
+.crumbs a{color:var(--dim)}
+.crumbs span{padding:0 6px;color:#a5adb8}
+h1{font-size:1.9rem;line-height:1.25;font-weight:600;margin:0 0 10px;letter-spacing:-.01em}
+h2{font-size:1.35rem;font-weight:600;margin:38px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--rule);scroll-margin-top:64px}
+h3{font-size:1.05rem;font-weight:600;margin:26px 0 8px}
+p{margin:0 0 14px}
+.lede{color:var(--dim);font-size:16.5px}
+main ul,main ol{margin:0 0 16px;padding-left:22px}
+main li{margin-bottom:6px}
+p code,li code,td code{background:var(--code);border:1px solid var(--codeline);border-radius:3px;padding:.5px 4px;font-size:.86em}
+
+.callout{border-left:3px solid;padding:11px 14px;margin:18px 0;font-size:14.5px;border-radius:0 4px 4px 0}
+.callout p{margin:0}
+.callout b{display:block;font-size:12.5px;letter-spacing:.02em;margin-bottom:2px}
+.note{border-color:var(--green);background:#eef7f3}
+.note b{color:var(--green)}
+.warn{border-color:var(--amber);background:#fdf6e6}
+.warn b{color:var(--amber)}
+
+.snippet{border:1px solid var(--codeline);border-radius:5px;margin:16px 0;overflow:hidden;background:var(--code)}
+.snippet .bar{font-size:12px;color:var(--dim);padding:6px 12px;border-bottom:1px solid var(--codeline);background:#eceff4;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.snippet pre{margin:0;padding:12px;overflow-x:auto;font-size:13px;line-height:1.65}
+
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px;display:block;overflow-x:auto}
+th{text-align:left;font-weight:600;background:var(--side);font-size:12.5px;color:var(--dim)}
+th,td{border-bottom:1px solid var(--rule);padding:8px 12px 8px 0;vertical-align:top}
+td:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;white-space:nowrap}
+td:nth-child(2),td:nth-child(3){color:var(--dim);font-size:12.5px;white-space:nowrap}
+
+.next{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0 30px}
+.next a{border:1px solid var(--rule);border-radius:6px;padding:12px 14px;display:block}
+.next a:hover{border-color:var(--blue);text-decoration:none}
+.next a small{display:block;color:var(--dim);font-size:12px;margin-bottom:3px}
+.next a strong{font-weight:600;font-size:14.5px}
+
+.pagefoot{border-top:1px solid var(--rule);margin-top:34px;padding-top:16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.pagefoot p{margin:0;font-size:12.5px;color:var(--dim)}
+.helpful{display:flex;gap:8px;align-items:center}
+.helpful span{font-size:12.5px;color:var(--dim)}
+.helpful button{border:1px solid var(--rule);background:var(--page);border-radius:4px;padding:3px 12px;font:13px/1.6 inherit;color:var(--ink);cursor:pointer}
+.helpful button:hover{border-color:var(--dim)}
+
+.toc{position:sticky;top:70px;padding:30px 18px 40px;font-size:12.5px}
+.toc h2{font-size:11.5px;font-weight:600;margin:0 0 8px;padding:0;border:0;color:var(--ink)}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li{margin-bottom:5px;line-height:1.45}
+.toc a{color:var(--dim)}
+.toc .sub{padding-left:12px}
+.toc a.here{color:var(--blue)}
+
+.sitefoot{border-top:1px solid var(--rule);background:var(--side)}
+.sitefoot .in{max-width:1440px;margin:0 auto;padding:22px 20px 30px;display:flex;flex-wrap:wrap;gap:44px}
+.sitefoot h2{font-size:11.5px;margin:0 0 7px;padding:0;border:0;font-weight:600}
+.sitefoot ul{list-style:none;margin:0;padding:0;font-size:13px}
+.sitefoot li{margin-bottom:4px}
+.sitefoot a{color:var(--dim)}
+.sitefoot .rel{margin-left:auto;align-self:flex-end;font-size:12.5px;color:var(--dim)}
+
+@media (max-width:980px){
+  .shell{display:block}
+  .tree{display:none}
+  .toc{display:none}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding:10px 18px;border-bottom:1px solid var(--rule);background:var(--side);-webkit-overflow-scrolling:touch}
+  .chips a{flex:0 0 auto;border:1px solid var(--rule);background:var(--page);border-radius:13px;padding:3px 11px;font-size:12.5px;color:var(--dim);white-space:nowrap}
+  .chips a.here{color:var(--blue);border-color:#b6d4f0;background:#eaf3fc}
+  main{padding:20px 18px 44px}
+  .topbar .in{padding:0 18px;gap:12px}
+  .topbar nav{display:none}
+  h1{font-size:1.6rem}
+  .next{grid-template-columns:1fr}
+  .sitefoot .in{gap:26px;padding:20px 18px 26px}
+  .sitefoot .rel{margin-left:0;flex-basis:100%}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="in">
+    <span class="mark">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 1.5 16.2 15H1.8L9 1.5Z" fill="none" stroke="#0b6bcb" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.6 10.4h6.8" stroke="#0b6bcb" stroke-width="1.4"/></svg>
+      Atlas
+    </span>
+    <span class="chip">v3.2</span>
+    <span class="find">
+      <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9.2 9.2 12.6 12.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <input type="text" value="Search the docs" readonly aria-label="Search the docs">
+    </span>
+    <nav aria-label="Site">
+      <a href="#changelog">Changelog</a>
+      <a href="#support">Support</a>
+      <a href="#status">Status</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chips" aria-label="Sections">
+  <a href="#install" class="here">Install the CLI</a>
+  <a href="#first">First service</a>
+  <a href="#auth">Authentication</a>
+  <a href="#envs">Environments</a>
+  <a href="#services">Services</a>
+  <a href="#deploys">Deployments</a>
+  <a href="#queues">Queues</a>
+  <a href="#node">Node worker</a>
+</div>
+
+<div class="shell">
+
+  <nav class="tree" aria-label="Documentation">
+   <div>
+    <h2>Quickstart</h2>
+    <ul>
+      <li><a href="#overview">Platform overview</a></li>
+      <li><a href="#install" class="here">Install the CLI</a></li>
+      <li><a href="#first">Create your first service</a></li>
+      <li><a href="#auth">Authentication</a></li>
+      <li><a href="#envs">Environments</a></li>
+      <li><a href="#local">Run things locally</a></li>
+    </ul>
+    <h2>API reference</h2>
+    <ul>
+      <li><a href="#services">Services</a></li>
+      <li><a href="#deploys">Deployments</a></li>
+      <li><a href="#secrets">Secrets</a></li>
+      <li><a href="#queues">Queues</a></li>
+      <li><a href="#logs">Log streams</a></li>
+      <li><a href="#errors">Error codes</a></li>
+    </ul>
+    <h2>Examples</h2>
+    <ul>
+      <li><a href="#node">Node worker</a></li>
+      <li><a href="#cron">Scheduled jobs</a></li>
+      <li><a href="#blue">Blue-green rollout</a></li>
+      <li><a href="#mono">Monorepo layout</a></li>
+      <li><a href="#ci">CI pipelines</a></li>
+    </ul>
+    <div class="treefoot">
+      <em data-variants="Documentation that stays out of your way.|Written for the terminal you already have open.|Every command, with the output you should expect.">Documentation that stays out of your way.</em>
+      <span>Guides, references and examples for the Atlas developer platform.</span>
+    </div>
+   </div>
+  </nav>
+
+  <main>
+
+    <section>
+      <p class="crumbs"><a href="#docs">Docs</a><span>/</span><a href="#quickstart">Quickstart</a><span>/</span>Install the CLI</p>
+      <h1>Install the CLI</h1>
+      <p class="lede">The <code>atlas</code> command is how you create services, push deployments and read logs. It runs on macOS, Linux and Windows, and needs Node 20.9 or newer.</p>
+
+      <h2 id="install">Install</h2>
+      <p>Install the package globally, then sign in. The sign-in step writes a token to <code>~/.atlas/credentials</code> and prints the workspace it resolved.</p>
+
+      <div class="snippet">
+        <div class="bar">shell</div>
+        <pre>npm install -g atlas-cli
+atlas login
+atlas init my-service</pre>
+      </div>
+
+      <p><code>atlas init</code> writes an <code>atlas.config.js</code> file into the current directory and adds a <code>.atlasignore</code> beside it. Neither file is overwritten if it already exists — pass <code>--force</code> when you want a clean one.</p>
+
+      <div class="callout note">
+        <b>Note</b>
+        <p>If your team installs tooling per project rather than globally, add <code>atlas-cli</code> as a dev dependency and call it through <code>npx atlas</code>. Every command below behaves identically.</p>
+      </div>
+    </section>
+
+    <section data-block="configure">
+      <h2 id="configure">Configure the project</h2>
+      <p data-variants="The generated config exports a plain object. Paths are resolved relative to the config file, so a monorepo can keep one config per package without absolute paths.|The config file exports a plain object. Every path in it is read relative to the file itself, which keeps monorepo packages free of absolute paths.|Paths in the generated config resolve from the config file's own location, so each package in a monorepo can carry its own copy.">The generated config exports a plain object. Paths are resolved relative to the config file, so a monorepo can keep one config per package without absolute paths.</p>
+
+      <div class="snippet">
+        <div class="bar">atlas.config.js</div>
+        <pre>const { defineService } = require('atlas-cli/config');
+const routes = require('./src/routes');
+
+module.exports = defineService({
+  name: 'my-service',
+  runtime: 'node20',
+  entry: './src/index.js',
+  region: 'eu-west',
+  routes,
+  build: { command: 'npm run build', output: './dist' },
+  env: { LOG_LEVEL: 'info', QUEUE_PREFIX: 'my-service' }
+});</pre>
+      </div>
+    </section>
+
+    <section data-block="options">
+      <h2 id="options">Command options</h2>
+      <p>These flags apply to <code>atlas init</code> and, with the exception of <code>--template</code>, to <code>atlas deploy</code> as well.</p>
+
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>--region</td><td>string</td><td>eu-west</td><td>Placement region for the service. Changing it after the first deployment recreates the service.</td></tr>
+          <tr><td>--runtime</td><td>string</td><td>node20</td><td>Runtime image. Accepts <code>node20</code>, <code>node22</code>, <code>python3.12</code> and <code>go1.23</code>.</td></tr>
+          <tr><td>--template</td><td>string</td><td>minimal</td><td>Starter to scaffold from. Run <code>atlas templates</code> for the current list.</td></tr>
+          <tr><td>--profile</td><td>string</td><td>default</td><td>Named credential profile to read from the local credentials file.</td></tr>
+          <tr><td>--dry-run</td><td>boolean</td><td>false</td><td data-variants="Print the plan and exit without writing files or contacting the workspace.|Show what would be created, then stop before anything is written.|Report the planned changes and exit without touching the workspace.">Print the plan and exit without writing files or contacting the workspace.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section data-block="scaffold">
+      <h2 id="first">Deploy the scaffold</h2>
+      <p data-variants="The scaffolded service is deployable as generated. Work through it once end to end before you change anything:|Nothing needs editing before the first deploy. Take the service through the whole flow once, then start changing it:|Deploy the scaffold unchanged first. The five steps below take a new service from an empty directory to live logs:">The scaffolded service is deployable as generated. Work through it once end to end before you change anything:</p>
+      <ol>
+        <li>Run <code>atlas init my-service</code> and pick a region when prompted.</li>
+        <li>Change into the new directory and run <code>npm install</code>.</li>
+        <li>Start it locally with <code>atlas dev</code> and confirm the health check passes.</li>
+        <li>Run <code>atlas deploy --env staging</code> and wait for the build to finish.</li>
+        <li>Tail the first requests with <code>atlas logs --follow</code>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Warning</b>
+        <p>Deleting a service also deletes its secrets and its queue bindings. There is no undo and no retention window — export anything you need with <code>atlas secrets export</code> first.</p>
+      </div>
+    </section>
+
+    <section data-block="troubleshoot">
+      <h2 id="troubleshoot">If the install fails</h2>
+      <p>A permissions error on the global install usually means npm's prefix points somewhere your user cannot write. Set a writable prefix rather than running the installer with elevated privileges. If <code>atlas login</code> hangs, run it with <code>--device-code</code> and paste the code shown in the terminal.</p>
+    </section>
+
+    <section>
+      <h3 data-variants="Next steps|Where to go next|Keep reading">Next steps</h3>
+      <div class="next">
+        <a href="#first"><small>Quickstart</small><strong>Create your first service</strong></a>
+        <a href="#services"><small>API reference</small><strong>Services endpoint</strong></a>
+      </div>
+
+      <div class="pagefoot">
+        <p>Last updated 6 March 2026</p>
+        <div class="helpful">
+          <span>Was this page helpful?</span>
+          <button type="button">Yes</button>
+          <button type="button">No</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="toc" aria-label="On this page">
+    <h2>On this page</h2>
+    <ul>
+      <li><a href="#install" class="here">Install</a></li>
+      <li><a href="#configure">Configure the project</a></li>
+      <li class="sub"><a href="#configure">Config file shape</a></li>
+      <li><a href="#options">Command options</a></li>
+      <li><a href="#first">Deploy the scaffold</a></li>
+      <li><a href="#troubleshoot">If the install fails</a></li>
+    </ul>
+  </aside>
+
+</div>
+
+<footer class="sitefoot">
+  <div class="in">
+    <div>
+      <h2>Quickstart</h2>
+      <ul><li><a href="#install">Install the CLI</a></li><li><a href="#auth">Authentication</a></li><li><a href="#envs">Environments</a></li></ul>
+    </div>
+    <div>
+      <h2>API reference</h2>
+      <ul><li><a href="#services">Services</a></li><li><a href="#queues">Queues</a></li><li><a href="#errors">Error codes</a></li></ul>
+    </div>
+    <div>
+      <h2>Examples</h2>
+      <ul><li><a href="#node">Node worker</a></li><li><a href="#cron">Scheduled jobs</a></li><li><a href="#ci">CI pipelines</a></li></ul>
+    </div>
+    <p class="rel">Atlas 3.2.1 — released 12 March 2026</p>
+  </div>
+</footer>
+
+</body>
+</html>

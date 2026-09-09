@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kanso Coffee &mdash; Stoke Newington</title>
+    <meta name="description" content="A small coffee shop on Ashfield Row in Stoke Newington. Seasonal filter, rice porridge and tamago sando, open from 7.30 Tuesday to Sunday.">
+    <style>
+        * { box-sizing: border-box }
+        body {
+            margin: 0;
+            background: #efeee9;
+            color: #241f1a;
+            font: 16px/1.75 "Helvetica Neue", Helvetica, Arial, "Hiragino Kaku Gothic ProN", sans-serif;
+            text-align: center;
+        }
+        .inner {
+            max-width: 62rem;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        h1, h2 {
+            font-family: "Hiragino Mincho ProN", "Yu Mincho", "Times New Roman", Times, serif;
+            font-weight: 400;
+        }
+        a { color: #241f1a }
+        a:focus-visible { outline: 2px solid #a8342a; outline-offset: 4px }
+
+        .nav {
+            padding: 2.6rem 0 3.4rem;
+            font-size: 12px;
+            letter-spacing: .16em;
+        }
+        .nav a {
+            margin: 0 .95rem;
+            color: #6d675e;
+            text-decoration: none;
+            padding-bottom: 3px;
+            border-bottom: 1px solid transparent;
+        }
+        .nav a:hover { color: #241f1a; border-bottom-color: #a8342a }
+
+        .enso { width: 220px; height: 220px; display: block; margin: 0 auto }
+        h1 {
+            font-size: 2.2rem;
+            letter-spacing: .02em;
+            margin: -.6rem 0 1.6rem;
+        }
+        .introline {
+            font-family: "Hiragino Mincho ProN", "Yu Mincho", "Times New Roman", Times, serif;
+            font-size: 1.3rem;
+            line-height: 1.5;
+            margin: 0 0 .8rem;
+        }
+        .sub {
+            max-width: 30rem;
+            margin: 0 auto;
+            color: #6d675e;
+        }
+        .facts {
+            display: flex;
+            justify-content: center;
+            gap: 3.2rem;
+            margin: 2.6rem 0 5.2rem;
+            font-size: 14px;
+        }
+        .facts b {
+            display: block;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: .06em;
+            color: #6d675e;
+            margin-bottom: .3rem;
+        }
+
+        h2 {
+            font-size: 1.45rem;
+            margin: 0 0 1.6rem;
+        }
+        .rule {
+            width: 34px;
+            height: 1px;
+            background: #a8342a;
+            border: 0;
+            margin: 0 auto 2.4rem;
+        }
+
+        .menu {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            text-align: left;
+            padding-bottom: 5rem;
+        }
+        .menu h2 { text-align: center }
+        .item {
+            display: flex;
+            align-items: baseline;
+            gap: .45rem;
+            padding: .28rem 0;
+            font-size: 15px;
+        }
+        .dots {
+            flex: 1 1 auto;
+            border-bottom: 1px dotted #b4ada1;
+            transform: translateY(-.3em);
+        }
+        .price {
+            font-variant-numeric: tabular-nums;
+            color: #6d675e;
+        }
+        .remark {
+            font-style: italic;
+            font-size: 13px;
+            color: #6d675e;
+            margin: 1.1rem 0 0;
+            line-height: 1.6;
+        }
+
+        #space { padding-bottom: 5rem }
+        .space {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3.5rem;
+            align-items: start;
+            text-align: left;
+        }
+        .space > p { margin: 0 0 1.6rem; color: #3a332c }
+        .plan {
+            position: relative;
+            width: 100%;
+            max-width: 330px;
+            height: 200px;
+            border: 2px solid #2b2724;
+        }
+        .plan i {
+            position: absolute;
+            display: block;
+            border: 1.5px solid #2b2724;
+        }
+        .plan .counter { left: 16px; top: 22px; width: 24px; height: 120px; background: #2b2724; border: 0 }
+        .plan .t { width: 26px; height: 26px }
+        .plan .t1 { left: 96px; top: 34px }
+        .plan .t2 { left: 96px; top: 104px }
+        .plan .t3 { left: 186px; top: 34px }
+        .plan .t4 { left: 186px; top: 104px }
+        .plan .win { left: 22%; bottom: -3px; width: 56%; height: 4px; background: #a8342a; border: 0 }
+        .plan small {
+            position: absolute;
+            font-size: 10px;
+            letter-spacing: .1em;
+            color: #6d675e;
+        }
+        .plan .lb1 { left: 14px; bottom: 12px }
+        .plan .lb2 { left: 50%; transform: translateX(-50%); bottom: 12px }
+
+        .hours { width: 100%; border-collapse: collapse; font-size: 15px }
+        .hours th { text-align: left; font-weight: 400; color: #6d675e; padding: .34rem 0 }
+        .hours td { text-align: right; font-variant-numeric: tabular-nums; padding: .34rem 0 }
+        .hours tr + tr th, .hours tr + tr td { border-top: 1px solid #ddd9d0 }
+
+        .find { padding-bottom: 4.5rem }
+        .find address { font-style: normal; line-height: 1.9; margin-bottom: 1.6rem }
+        .find a { text-decoration-color: #a8342a }
+        .streets { width: 260px; height: 150px }
+
+        footer {
+            background: #2b2724;
+            color: #e6e2d9;
+            padding: 2.8rem 24px;
+            font-size: 13.5px;
+            line-height: 2;
+        }
+        footer a { color: #e6e2d9 }
+        footer .end { color: #97907f; margin-top: .9rem; font-size: 12px }
+
+        @media (max-width: 720px) {
+            .facts { flex-direction: column; gap: 1.4rem; margin-bottom: 3.6rem }
+            .menu, .space { grid-template-columns: 1fr; gap: 3rem }
+            .enso { width: 176px; height: 176px }
+            h1 { font-size: 1.9rem }
+            .plan { margin: 0 auto }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="nav">
+    <a href="#coffee">coffee</a><a href="#breakfast">breakfast</a><a href="#space">our space</a>
+</nav>
+
+<div class="inner">
+
+<main>
+
+    <div>
+
+    <svg class="enso" viewBox="0 0 240 240" role="img" aria-label="An open brush circle">
+        <g transform="rotate(24 120 120)">
+            <path d="M168 36.86 A96 96 0 1 1 103.33 25.46 L102.28 34.92 A80 80 0 1 0 176.25 47.96 Z" fill="#a8342a"/>
+        </g>
+    </svg>
+
+    <h1>Kanso Coffee</h1>
+    <p class="introline" data-variants="Coffee, without complication.|Made simply, served slowly.|Mornings, taken at your pace.">Coffee, without complication.</p>
+    <p class="sub" data-variants="Seasonal coffee, simple food and a quiet place to spend the morning.|Filter brewed by the cup, breakfast until 11.30, and eighteen seats.|A short menu, coffee we change often, and room to sit for an hour.">Seasonal coffee, simple food and a quiet place to spend the morning.</p>
+
+    </div>
+
+    <div class="facts" data-block="facts">
+        <div><b>Open today</b>7.30 &ndash; 15.00</div>
+        <div><b>Where we are</b>14 Ashfield Row, London N16</div>
+    </div>
+
+    <div class="menu" data-block="menu">
+        <section id="coffee">
+            <h2>Coffee</h2>
+            <hr class="rule">
+            <div class="item"><span>Filter, brewed by the cup</span><span class="dots"></span><span class="price">3.60</span></div>
+            <div class="item"><span>Espresso</span><span class="dots"></span><span class="price">2.80</span></div>
+            <div class="item"><span>Flat white</span><span class="dots"></span><span class="price">3.40</span></div>
+            <div class="item"><span>Slow drip, served over ice</span><span class="dots"></span><span class="price">4.20</span></div>
+            <div class="item"><span>Hojicha latte</span><span class="dots"></span><span class="price">3.80</span></div>
+            <div class="item"><span>Matcha, whisked to order</span><span class="dots"></span><span class="price">4.00</span></div>
+            <div class="item"><span>Sencha, a pot for one</span><span class="dots"></span><span class="price">3.20</span></div>
+            <p class="remark" data-variants="The filter changes every other Tuesday. At the moment it is a washed Kenyan from Kirinyaga.|We change the filter every other Tuesday. Just now it is a natural Ethiopian from Guji.|The filter is a washed Colombian from Huila this fortnight. Ask us what it is doing.">The filter changes every other Tuesday. At the moment it is a washed Kenyan from Kirinyaga.</p>
+        </section>
+        <section id="breakfast">
+            <h2>Breakfast</h2>
+            <hr class="rule">
+            <div class="item"><span>Rice porridge, ginger, spring onion</span><span class="dots"></span><span class="price">6.50</span></div>
+            <div class="item"><span>Tamago sando</span><span class="dots"></span><span class="price">5.80</span></div>
+            <div class="item"><span>Miso soup and a soft egg</span><span class="dots"></span><span class="price">4.80</span></div>
+            <div class="item"><span>Toast, butter, yuzu marmalade</span><span class="dots"></span><span class="price">4.20</span></div>
+            <div class="item"><span>Sesame granola, yoghurt, plum</span><span class="dots"></span><span class="price">5.40</span></div>
+            <div class="item"><span>Onigiri, salted salmon</span><span class="dots"></span><span class="price">3.90</span></div>
+            <div class="item"><span>Banana bread, toasted</span><span class="dots"></span><span class="price">3.60</span></div>
+            <p class="remark">Breakfast is served until 11.30. Everything is made here the same morning, so some days we run out.</p>
+        </section>
+    </div>
+
+    <section id="space" data-block="space">
+        <h2>Our space</h2>
+        <hr class="rule">
+        <div class="space">
+        <div>
+            <p>Eighteen seats, four tables and a bench along the window. No music before nine. The back wall is plaster and the counter is a single piece of ash that our neighbour Toshi planed for us over a long weekend in 2021.</p>
+            <p>People work here, read here and meet here. We ask only that calls are taken outside, and we will happily bring your cup out to you.</p>
+            <div class="plan" role="img" aria-label="Floor plan: a counter along the left wall, four tables and a window at the front">
+                <i class="counter"></i>
+                <i class="t t1"></i><i class="t t2"></i><i class="t t3"></i><i class="t t4"></i>
+                <i class="win"></i>
+                <small class="lb1">counter</small>
+                <small class="lb2">window</small>
+            </div>
+        </div>
+        <div>
+            <table class="hours">
+                <tr><th scope="row">Monday</th><td>Closed</td></tr>
+                <tr><th scope="row">Tuesday</th><td>7.30 &ndash; 15.00</td></tr>
+                <tr><th scope="row">Wednesday</th><td>7.30 &ndash; 15.00</td></tr>
+                <tr><th scope="row">Thursday</th><td>7.30 &ndash; 15.00</td></tr>
+                <tr><th scope="row">Friday</th><td>7.30 &ndash; 15.00</td></tr>
+                <tr><th scope="row">Saturday</th><td>8.00 &ndash; 16.00</td></tr>
+                <tr><th scope="row">Sunday</th><td>8.00 &ndash; 14.00</td></tr>
+            </table>
+            <p class="remark">The kitchen stops half an hour before we close. Dogs are welcome; the bench by the window is theirs.</p>
+        </div>
+        </div>
+    </section>
+
+    <section class="find" data-block="location">
+        <h2>Find us</h2>
+        <hr class="rule">
+        <address>
+            14 Ashfield Row<br>
+            Stoke Newington, London N16 7QU<br>
+            <a href="tel:+442079460813">020 7946 0813</a>
+        </address>
+        <svg class="streets" viewBox="0 0 260 150" role="img" aria-label="Ashfield Row meets Cutler Street; the shop is on the corner">
+            <path d="M14 96 C 90 92, 160 88, 246 84" stroke="#241f1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M158 8 C 154 60, 152 100, 150 142" stroke="#241f1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <rect x="118" y="66" width="16" height="16" fill="#a8342a"/>
+            <text x="16" y="112" font-size="9" fill="#6d675e" letter-spacing="1.2" font-family="Helvetica, Arial, sans-serif">Ashfield Row</text>
+            <text x="166" y="30" font-size="9" fill="#6d675e" letter-spacing="1.2" font-family="Helvetica, Arial, sans-serif">Cutler St</text>
+        </svg>
+    </section>
+
+</main>
+
+</div>
+
+<footer>
+    14 Ashfield Row, Stoke Newington, London N16 7QU<br>
+    Tuesday to Friday 7.30 &ndash; 15.00 &nbsp; Saturday 8.00 &ndash; 16.00 &nbsp; Sunday 8.00 &ndash; 14.00<br>
+    <a href="mailto:hello@kansocoffee.uk">hello@kansocoffee.uk</a>
+    <div class="end" data-variants="&copy; 2026 Kanso Coffee. Closed Mondays.|&copy; 2026 Kanso Coffee. Here since 2019.|&copy; 2026 Kanso Coffee. Cash and card.">&copy; 2026 Kanso Coffee. Closed Mondays.</div>
+</footer>
+
+</body>
+</html>

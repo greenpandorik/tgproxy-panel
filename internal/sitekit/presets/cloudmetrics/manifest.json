@@ -1,0 +1,11 @@
+{
+  "name": "CloudMetrics",
+  "category": "saas",
+  "variables": {
+    "company_name": "CloudMetrics",
+    "headline": "Infrastructure visibility without the noise.",
+    "description": "Monitor services, latency and deployments from one clean workspace.",
+    "contact_email": "",
+    "footer_text": "© 2026 CloudMetrics, Inc."
+  }
+}

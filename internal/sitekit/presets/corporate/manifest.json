@@ -1,0 +1,11 @@
+{
+  "name": "Alder & Co.",
+  "category": "corporate",
+  "variables": {
+    "company_name": "Alder & Co.",
+    "headline": "Practical solutions for growing organizations.",
+    "description": "Independent advisory and technology services for modern businesses.",
+    "contact_email": "enquiries@alderandco.co.uk",
+    "footer_text": "© 2026 Alder & Co. Ltd"
+  }
+}

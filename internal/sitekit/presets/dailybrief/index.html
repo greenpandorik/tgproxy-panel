@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Daily Brief — Technology, business and ideas.</title>
+<meta name="description" content="A concise independent briefing for curious people. Technology, markets and culture, written in Edinburgh and sent every weekday morning.">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:#333;font:17px/1.7 Georgia,"Iowan Old Style","Times New Roman",serif}
+h1,h2,h3,h4{margin:0;color:#000;font-weight:700;line-height:1.16;letter-spacing:-.01em}
+p{margin:0 0 .85em}
+a{color:#000;text-decoration:none}
+a:hover{text-decoration:underline}
+a:focus-visible,button:focus-visible{outline:2px solid #c0281c;outline-offset:3px}
+.sheet{max-width:1240px;margin:0 auto;padding:0 24px}
+
+.masthead{padding:30px 0 0;text-align:center}
+.masthead h1{font-size:3.4rem;letter-spacing:-.02em}
+.strap{margin:.35em 0 .5em;font-size:1.05rem;font-style:italic;color:#555}
+.rule{border-top:4px solid #000}
+.dateline{display:flex;justify-content:space-between;gap:16px;align-items:baseline;
+  padding:7px 0;border-bottom:1px solid #d5d5d5;font-size:13px;color:#c0281c}
+.dateline em{font-style:normal;color:#666;font-size:12.5px}
+nav{border-bottom:1px solid #d5d5d5;padding:10px 0;text-align:center}
+nav a{font-size:15px;margin:0 14px}
+
+main.sheet{display:grid;grid-template-columns:repeat(12,1fr);margin-bottom:40px}
+main>*{padding:0 26px}
+main>:nth-child(1){grid-column:span 5}
+main>:nth-child(2){grid-column:span 4}
+main>:nth-child(3){grid-column:span 3}
+main>:nth-child(-n+3){margin-top:26px}
+main>:nth-child(n+4){grid-column:span 4;margin-top:34px;padding-top:18px;border-top:1px solid #d5d5d5}
+main>:nth-child(2),main>:nth-child(3),main>:nth-child(5),main>:nth-child(6){border-left:1px solid #d5d5d5}
+.kicker{color:#c0281c;font-size:15px;font-style:italic;margin:0 0 .3em}
+.lead h2{font-size:2.15rem;margin-bottom:.3em}
+.stand{font-size:18.5px;color:#4a4a4a;margin-bottom:.6em}
+.by{font-size:12.5px;letter-spacing:.02em;color:#777;text-transform:none;
+  border-top:1px solid #d5d5d5;padding-top:6px;margin-bottom:1em}
+.lead .body{max-width:66ch}
+.lead .body>p:first-of-type::first-letter{float:left;font-size:4.05rem;line-height:.82;
+  color:#000;font-weight:700;padding:5px 8px 0 0}
+
+.second+.second{margin-top:22px;padding-top:20px;border-top:1px solid #d5d5d5}
+.second h3{font-size:1.35rem;margin-bottom:.35em}
+.second p{font-size:16px;line-height:1.62}
+figure{margin:0 0 14px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12px;color:#6f6f6f;padding-top:5px;font-family:Helvetica,Arial,sans-serif}
+
+.digest{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.55}
+.digest h4{font-size:1rem;letter-spacing:.01em;border-bottom:2px solid #000;padding-bottom:5px}
+.digest ol{list-style:none;counter-reset:d;margin:12px 0 0;padding:0}
+.digest li{counter-increment:d;position:relative;padding:9px 0 9px 26px;border-bottom:1px solid #eee}
+.digest li::before{content:counter(d);position:absolute;left:0;top:9px;color:#c0281c;font-size:12px}
+.digest b{color:#000;font-weight:600}
+.digest span{color:#6a6a6a;display:block}
+.figurebox{margin-top:18px;border:1px solid #000;padding:14px}
+.figurebox strong{display:block;font:700 2.4rem/1 Georgia,serif;color:#000;letter-spacing:-.02em}
+.figurebox p{margin:8px 0 0;font-size:13.5px;color:#5a5a5a}
+
+.strip h2{color:#c0281c;font-size:1.05rem;font-style:italic;padding-bottom:6px;border-bottom:1px solid #d5d5d5}
+.strip ul{list-style:none;margin:10px 0 0;padding:0}
+.strip li{padding:7px 0;font-size:16px;line-height:1.4}
+
+footer{background:#000;color:#fff;padding:34px 0 30px}
+footer a{color:#fff}
+footer .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+footer h5{margin:0 0 8px;font-size:13px;letter-spacing:.06em;color:#9a9a9a;font-weight:400}
+footer ul{list-style:none;margin:0;padding:0;font-size:15px;line-height:1.9}
+footer .annot{margin:26px 0 0;padding-top:16px;border-top:1px solid #3a3a3a;font-size:14px;color:#b6b6b6;max-width:60ch}
+footer .annot a{text-decoration:underline}
+.copy{margin:10px 0 0;font-size:12.5px;color:#7d7d7d}
+
+@media(max-width:900px){
+  .masthead h1{font-size:2.2rem}
+  .dateline{font-size:12px;flex-wrap:wrap;justify-content:space-between}
+  .dateline em{flex:0 0 100%;order:3;text-align:center;padding-top:5px}
+  nav a{display:inline-block;margin:3px 9px;font-size:14px}
+  footer .cols{display:block}
+  main.sheet{display:flex;flex-direction:column}
+  main>*{padding:0}
+  main>:nth-child(1){order:1}
+  main>:nth-child(2){order:3}
+  main>:nth-child(3){order:2}
+  main>:nth-child(n+4){order:4}
+  main>:nth-child(2),main>:nth-child(3),main>:nth-child(5),main>:nth-child(6){border-left:0}
+  main>:nth-child(2),main>:nth-child(3){margin-top:24px;padding-top:22px;border-top:1px solid #d5d5d5}
+  .lead h2{font-size:1.8rem}
+  main>:nth-child(n+4){margin-top:20px;padding-top:16px}
+  main>:nth-child(4){margin-top:34px;padding-top:18px}
+  footer .cols>*+*{margin-top:20px}
+}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="sheet">
+    <h1>The Daily Brief</h1>
+    <p class="strap" data-variants="Technology, business and ideas.|Business, ideas and the week ahead.|What moved, and what it means.">Technology, business and ideas.</p>
+    <div class="rule"></div>
+    <div class="dateline">
+      <span>Thursday 9 April</span>
+      <em>A concise independent briefing for curious people.</em>
+      <span>Issue 412</span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#technology">Technology</a><a href="#markets">Markets</a><a href="#culture">Culture</a><a href="#policy">Policy</a><a href="#science">Science</a><a href="#archive">Archive</a>
+    </nav>
+  </div>
+</header>
+
+<main class="sheet">
+  <article class="lead" id="technology">
+    <p class="kicker">Semiconductors</p>
+    <h2>The quiet scramble to build the chips nobody photographs</h2>
+    <p class="stand" data-variants="Analogue foundries in Dresden, Albany and Hsinchu are unfashionable, badly understood and suddenly the tightest link in the chain.|Three carmakers, two forecasters and one German plant that makes a part worth eleven cents and holds up an assembly line.|The parts nobody lists in a press release are the ones the industry has spent fifteen years declining to build.">Analogue foundries in Dresden, Albany and Hsinchu are unfashionable, badly understood and suddenly the tightest link in the chain.</p>
+    <p class="by">By Amara Whitfield, technology editor</p>
+    <div class="body">
+      <p>Nothing about the Dresden plant suggests scarcity. It sits behind a supermarket car park, four storeys of grey cladding, and it makes parts that cost eleven cents each. Yet three carmakers have sent staff to sit in its lobby this quarter, because the eleven-cent part is the one they cannot get.</p>
+      <p>The industry calls these analogue and power devices. They convert voltages, read sensors and keep motors turning. They are built on process nodes that were considered old in 2009, and for fifteen years almost nobody invested in more of them. Demand did not behave: an electric hatchback carries roughly nine times as many of these devices as the petrol model it replaced.</p>
+      <p>Capacity is now being added, but slowly and in awkward places. Infineon and onsemi have both committed to expansions that will not produce revenue until 2028. A smaller German group, Silvanta, has taken the stranger route of buying two decommissioned 200mm lines outright and rebuilding them, which its chief executive Ruth Kleiner describes as "shopping in a scrapyard with a very good list".</p>
+      <p>The interesting question is what happens if the shortage clears. Analogue margins have been unusually good for four years, and a great deal of the capital arriving now is priced on the assumption that they stay there. Two industry forecasters we spoke to think the surplus arrives in late 2027. Neither would put a name to it.</p>
+    </div>
+  </article>
+
+  <div>
+    <article class="second">
+      <figure>
+        <svg viewBox="0 0 300 110" role="img" aria-label="Line chart of sterling against the dollar over six sessions">
+          <line x1="0" y1="100" x2="300" y2="100" stroke="#d5d5d5"/>
+          <line x1="0" y1="54" x2="300" y2="54" stroke="#eee" stroke-dasharray="3 4"/>
+          <polyline points="4,62 48,55 92,68 136,44 180,50 224,26 268,34 296,18" fill="none" stroke="#000" stroke-width="1.6"/>
+          <circle cx="296" cy="18" r="3" fill="#c0281c"/>
+        </svg>
+        <figcaption>Sterling against the dollar, last six sessions</figcaption>
+      </figure>
+      <h3>Sterling holds its nerve as the Bank waits one more month</h3>
+      <p>The Monetary Policy Committee split seven to two, with both dissenters arguing for a quarter point now rather than in June. Markets had priced a hold at eighty-one per cent by Wednesday evening.</p>
+      <p>The interest is in the language. The word "gradual" has been dropped from the guidance paragraph, which the rates desk at Meridian Bank read as an opening rather than a promise.</p>
+      <p class="by">By Tomas Enright</p>
+    </article>
+
+    <article class="second">
+      <figure>
+        <svg viewBox="0 0 300 110" role="img" aria-label="Diagram of goods moving between three warehouse zones">
+          <rect x="10" y="24" width="72" height="58" fill="none" stroke="#000"/>
+          <rect x="114" y="14" width="72" height="78" fill="none" stroke="#000"/>
+          <rect x="218" y="34" width="72" height="42" fill="none" stroke="#000"/>
+          <path d="M82 50 H114" stroke="#c0281c" stroke-width="1.4"/>
+          <path d="M186 55 H218" stroke="#c0281c" stroke-width="1.4"/>
+          <circle cx="46" cy="53" r="9" fill="none" stroke="#666"/>
+          <circle cx="150" cy="53" r="16" fill="none" stroke="#666"/>
+          <circle cx="254" cy="55" r="6" fill="none" stroke="#666"/>
+        </svg>
+        <figcaption>Pick, buffer, dispatch: where the extra hour goes</figcaption>
+      </figure>
+      <h3>What a warehouse actually learns in its first year</h3>
+      <p>A logistics operator in Daventry has published twelve months of floor data, unusually without a vendor's name on the cover. The headline is dull and useful: throughput rose eighteen per cent, and almost none of it came from the robots.</p>
+      <p>It came from moving the buffer zone forty metres and rewriting a shift pattern. The automation paid for itself only in the third quarter, and only on night shifts.</p>
+      <p class="by">By Priya Nandakumar</p>
+    </article>
+  </div>
+
+  <aside class="digest" data-block="digest">
+    <h4>Also today</h4>
+    <ol>
+      <li><b>Ofgem opens a review of network charges.</b><span>Consultation closes 22 May.</span></li>
+      <li><b>Rio Tinto lifts guidance on copper.</b><span>Oyu Tolgoi ramp is a quarter early.</span></li>
+      <li><b>Airbus wins 40 frames from Vietjet.</b><span data-variants="List price near $4.4bn before discounts.|Deliveries begin in the second half of 2028.|Order splits evenly between A321s and A330s.">List price near $4.4bn before discounts.</span></li>
+      <li><b>The V&amp;A buys a Bauhaus tea set.</b><span>Bought at auction in Cologne for £61,000.</span></li>
+      <li><b>Dutch court blocks a data centre.</b><span data-variants="Grid connection was the deciding point.|Province has six weeks to file an appeal.|Water use for cooling was not at issue.">Grid connection was the deciding point.</span></li>
+      <li><b>Argentine grain exports slow again.</b><span>Rosario port at eleven days of queue.</span></li>
+    </ol>
+    <div class="figurebox">
+      <strong>3.9%</strong>
+      <p data-variants="Share of British electricity that came from batteries discharging at the evening peak in March, up from 1.1% three years ago. Grid operators expect it to pass six per cent before winter.|Share of British electricity supplied by batteries between five and seven in the evening in March. The figure was 1.1% in the same month three years ago, and it has risen every quarter since.|Of the evening peak in March, this much came out of batteries rather than gas. Two years of build-out sits behind the number, and another 4GW is under construction.">Share of British electricity that came from batteries discharging at the evening peak in March, up from 1.1% three years ago. Grid operators expect it to pass six per cent before winter.</p>
+    </div>
+  </aside>
+
+  <section class="strip" data-block="technology">
+    <h2 id="technology-more">Technology</h2>
+    <ul>
+      <li><a href="#technology-more">A repair shop in Leeds is winning cases against three manufacturers</a></li>
+      <li><a href="#technology-more">Undersea cable insurers are quietly rewriting their maps</a></li>
+      <li><a href="#technology-more">Why the cheapest satellite terminal is still made in Kaohsiung</a></li>
+    </ul>
+  </section>
+
+  <section class="strip" data-block="markets">
+    <h2 id="markets">Markets</h2>
+    <ul>
+      <li><a href="#markets">Private credit funds are lending to each other again</a></li>
+      <li><a href="#markets">Cocoa steadies after the worst quarter since 2011</a></li>
+      <li><a href="#markets">The listed water companies nobody wants to own</a></li>
+    </ul>
+  </section>
+
+  <section class="strip" data-block="culture">
+    <h2 id="culture">Culture</h2>
+    <ul>
+      <li><a href="#culture">The Glasgow archive that found 900 hours of unlabelled tape</a></li>
+      <li><a href="#culture">A short history of the paperback that would not stay out of print</a></li>
+      <li><a href="#culture">Reviewed: three nights at the Usher Hall, and one that mattered</a></li>
+    </ul>
+  </section>
+</main>
+
+<footer id="archive">
+  <div class="sheet">
+    <div class="cols">
+      <div>
+        <h5>Sections</h5>
+        <ul>
+          <li><a href="#technology">Technology</a></li>
+          <li><a href="#markets">Markets</a></li>
+          <li><a href="#culture">Culture</a></li>
+          <li><a href="#policy">Policy</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>The paper</h5>
+        <ul>
+          <li><a href="#archive">Who writes it</a></li>
+          <li><a href="#archive">Corrections</a></li>
+          <li><a href="#archive">Back issues</a></li>
+          <li><a href="#archive">Reprints and rights</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Subscribe</h5>
+        <ul>
+          <li><a href="#archive">Weekday briefing, £6 a month</a></li>
+          <li><a href="#archive">Student rate, £2</a></li>
+          <li><a href="#archive">Gift a year</a></li>
+          <li><a href="mailto:editor@dailybrief.press">editor@dailybrief.press</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="annot">The Daily Brief is written in Edinburgh and sent every weekday morning at 7am. Newsroom line 0131 555 0148, open 9am to 6pm. Post to 12 Hill Street, Edinburgh EH2 3JZ, or write to <a href="mailto:editor@dailybrief.press">editor@dailybrief.press</a>.</p>
+    <p class="copy">© 2026 The Daily Brief Ltd, 12 Hill Street, Edinburgh EH2 3JZ.</p>
+  </div>
+</footer>
+</body>
+</html>

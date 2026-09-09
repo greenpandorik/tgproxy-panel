@@ -8,9 +8,15 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// SeedPresets ensures every built-in site preset has a row in site_templates, creating any that are missing.
+// SeedPresets makes the built-in catalogue authoritative: every shipped preset gets a row,
+// and preset rows for sites no longer shipped are removed so they stop being offered. A node
+// that was using a retired one keeps serving it - node_sites holds the node's own copy of the
+// bundle, and its template reference is dropped rather than its site. Custom templates are
+// never touched.
 func SeedPresets(ctx context.Context, s *Store, presets []sitekit.Preset) error {
+	names := make([]string, 0, len(presets))
 	for _, p := range presets {
+		names = append(names, p.Name)
 		if _, err := s.Q.GetPresetByName(ctx, p.Name); err == nil {
 			continue
 		}
@@ -19,5 +25,9 @@ func SeedPresets(ctx context.Context, s *Store, presets []sitekit.Preset) error 
 			return err
 		}
 	}
-	return nil
+	if len(names) == 0 {
+		return nil
+	}
+	_, err := s.Q.DeleteRetiredPresets(ctx, names)
+	return err
 }

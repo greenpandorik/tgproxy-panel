@@ -1,0 +1,11 @@
+{
+  "name": "Acorn",
+  "category": "saas",
+  "variables": {
+    "company_name": "Acorn",
+    "headline": "Projects move better when everyone can see the work.",
+    "description": "A focused workspace for small teams planning, shipping and learning.",
+    "contact_email": "",
+    "footer_text": "Acorn is made in Bristol by a team of nine."
+  }
+}

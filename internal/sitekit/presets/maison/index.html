@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Maison Journal</title>
+    <meta name="description" content="A small independent journal about interiors, craft and contemporary living. Issue nine, spring.">
+    <style>
+        html { box-sizing: border-box; -webkit-text-size-adjust: 100%; }
+        *, *::before, *::after { box-sizing: inherit; }
+
+        body {
+            margin: 0;
+            background: #e8e5df;
+            color: #1f1d1b;
+            font: 16px/1.8 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        p { margin: 0 0 1.35em; }
+        a { color: inherit; }
+        a:focus-visible { outline: 1px solid #6f7a5e; outline-offset: 4px; }
+        .spread { max-width: 1180px; margin: 0 auto; padding: 0 40px; }
+        .display {
+            font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+            font-style: italic;
+            font-weight: 400;
+            letter-spacing: -0.012em;
+        }
+
+        .banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 24px;
+            padding-top: 26px;
+        }
+        .masthead__brand { font-size: 13px; letter-spacing: 0.09em; }
+        .masthead__links a {
+            font-size: 13.5px;
+            margin-left: 22px;
+            text-decoration: none;
+            color: #6b675f;
+        }
+        .masthead__links a:hover { color: #1f1d1b; }
+
+        .plate { padding-top: 10vh; }
+        .hero__grid { display: grid; grid-template-columns: 2fr 8fr; }
+        .hero__label {
+            grid-column: 2;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            color: #5f6a4e;
+            margin: 0 0 0.7em;
+        }
+        .hero__title {
+            grid-column: 2;
+            margin: 0;
+            font-size: 4rem;
+            line-height: 1.08;
+            font-weight: 400;
+        }
+        .hero__sub {
+            grid-column: 2;
+            max-width: 34rem;
+            margin: 1.5em 0 0;
+            color: #6b675f;
+        }
+
+        .scene {
+            position: relative;
+            height: 40vh;
+            min-height: 280px;
+            margin: 9vh 0 0;
+            overflow: hidden;
+            background: #ded9d1;
+        }
+        .scene i { position: absolute; display: block; }
+        .scene__floor { left: 0; right: 0; bottom: 0; height: 33%; background: #cfc9bf; }
+        .scene__window { left: 64%; top: 7%; width: 17%; height: 60%; background: #f4f2ee; }
+        .scene__mullion { left: 72.4%; top: 7%; width: 2px; height: 60%; background: #ded9d1; }
+        .scene__light { left: 46%; bottom: 0; width: 30%; height: 33%; background: #f0eee8; transform: skewX(-34deg); }
+        .scene__table { left: 12%; bottom: 20%; width: 25%; height: 9px; background: #1f1d1b; }
+        .scene__leg-a { left: 14%; bottom: 8%; width: 5px; height: 12%; background: #1f1d1b; }
+        .scene__leg-b { left: 35.2%; bottom: 8%; width: 5px; height: 12%; background: #1f1d1b; }
+        .scene__lamp { left: 17%; bottom: 21.5%; width: 76px; height: 76px; border-radius: 50%; background: #6f7a5e; }
+        .scene__pot { left: 50%; bottom: 8%; width: 58px; height: 46px; background: #b9b2a6; }
+        .scene__leaf-a { left: 51.4%; bottom: 14%; width: 32px; height: 122px; border-radius: 60% 60% 40% 40% / 70% 70% 30% 30%; background: #6f7a5e; }
+        .scene__leaf-b { left: 55.4%; bottom: 14%; width: 24px; height: 86px; border-radius: 70% 70% 30% 30% / 60% 60% 40% 40%; background: #8b9478; }
+        .scene__skirting { left: 0; right: 0; bottom: 33%; height: 3px; background: #c4bdb2; }
+
+
+        .layout {
+            display: grid;
+            grid-template-columns: 7fr 3fr;
+            gap: 96px;
+            padding: 11vh 0 0;
+        }
+        .essay__title {
+            font-size: 1.7rem;
+            font-weight: 500;
+            line-height: 1.32;
+            letter-spacing: -0.01em;
+            margin: 0 0 0.5em;
+            max-width: 22ch;
+        }
+        .essay__byline { font-size: 13px; color: #6b675f; margin: 0 0 2.6em; }
+        .essay__quote {
+            margin: 2.2em 0;
+            font-size: 2.05rem;
+            line-height: 1.3;
+            color: #1f1d1b;
+        }
+        .essay__body { max-width: 40rem; }
+
+        .rail { margin: 0; }
+        .rail__item + .rail__item { margin-top: 52px; }
+        .rail__item svg { display: block; width: 108px; height: 108px; }
+        .rail__caption {
+            margin: 14px 0 0;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #6b675f;
+        }
+        .rail__caption b { display: block; font-weight: 500; color: #1f1d1b; }
+
+        .index {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            column-gap: 96px;
+        }
+        main > :first-child { padding-top: 11vh; }
+        .layout + .index, .index + .layout { padding-top: 12vh; }
+        main > :last-child { padding-bottom: 10vh; }
+        .index__entry {
+            display: grid;
+            grid-template-columns: 40px 1fr;
+            gap: 22px;
+            align-items: start;
+            padding: 30px 0;
+            border-bottom: 1px solid #d6d2ca;
+            text-decoration: none;
+        }
+        .index__entry:hover .index__title { color: #6f7a5e; }
+        .index__section {
+            font-size: 12px;
+            letter-spacing: 0.1em;
+            color: #5f6a4e;
+            margin: 0 0 0.5em;
+        }
+        .index__title {
+            font-size: 17px;
+            font-weight: 500;
+            line-height: 1.4;
+            margin: 0 0 0.35em;
+        }
+        .index__stand {
+            font-size: 14px;
+            color: #6b675f;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .colophon {
+            padding: 6vh 0 8vh;
+            font-size: 13.5px;
+            line-height: 2;
+            color: #6b675f;
+        }
+        .colophon__name {
+            font-size: 1.6rem;
+            color: #1f1d1b;
+            display: block;
+            margin-bottom: 0.6em;
+        }
+        .colophon a { color: #6b675f; }
+
+        @media (max-width: 860px) {
+            .spread { padding: 0 22px; }
+            .banner { gap: 12px; }
+            .masthead__brand { white-space: nowrap; letter-spacing: 0.05em; }
+            .masthead__links { white-space: nowrap; }
+            .masthead__links a { margin-left: 14px; font-size: 12.5px; }
+            .plate { padding-top: 6vh; }
+            .hero__grid { grid-template-columns: 1fr; }
+            .hero__label, .hero__title, .hero__sub { grid-column: 1; }
+            .hero__title { font-size: 2.35rem; }
+            .scene { height: 32vh; min-height: 210px; margin-top: 6vh; }
+            .scene__lamp { width: 50px; height: 50px; }
+            .scene__leaf-a { height: 78px; width: 21px; }
+            .scene__leaf-b { height: 54px; width: 16px; }
+            .scene__pot { width: 38px; height: 30px; }
+            .layout { grid-template-columns: 1fr; gap: 48px; }
+            main > :first-child { padding-top: 7vh; }
+            .layout + .index, .index + .layout { padding-top: 8vh; }
+            main > :last-child { padding-bottom: 6vh; }
+            .essay__quote { font-size: 1.5rem; }
+            .rail { display: flex; gap: 26px; overflow: hidden; }
+            .rail__item + .rail__item { margin-top: 0; }
+            .rail__item { flex: 1 1 0; }
+            .rail__item svg { width: 100%; height: auto; }
+            .rail__caption { font-size: 11.5px; line-height: 1.5; margin-top: 8px; }
+            .index { grid-template-columns: 1fr; }
+            .index__entry { padding: 22px 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="spread">
+    <header class="banner">
+        <span class="masthead__brand">Maison Journal</span>
+        <nav class="masthead__links" aria-label="Sections">
+            <a href="#interiors">interiors</a>
+            <a href="#objects">objects</a>
+            <a href="#stories">stories</a>
+        </nav>
+    </header>
+
+    <div class="plate">
+        <div class="hero__grid">
+            <p class="hero__label">Issue nine, spring</p>
+            <h1 class="hero__title display">Objects, spaces and quiet ideas.</h1>
+            <p class="hero__sub" data-variants="A small independent journal about interiors, craft and contemporary living.|About rooms, objects, and the people who live carefully among them.|A twice-yearly journal about interiors, making and the slow parts of home.">A small independent journal about interiors, craft and contemporary living.</p>
+        </div>
+    </div>
+</div>
+
+<div class="scene" role="img" aria-label="Illustration of a room with a tall window, a low table, a round lamp and a plant">
+    <i class="scene__window"></i>
+    <i class="scene__mullion"></i>
+    <i class="scene__floor"></i>
+    <i class="scene__skirting"></i>
+    <i class="scene__light"></i>
+    <i class="scene__lamp"></i>
+    <i class="scene__table"></i>
+    <i class="scene__leg-a"></i>
+    <i class="scene__leg-b"></i>
+    <i class="scene__leaf-a"></i>
+    <i class="scene__leaf-b"></i>
+    <i class="scene__pot"></i>
+</div>
+
+<main class="spread">
+    <div class="layout" data-block="essay">
+        <article class="essay" id="interiors">
+            <h2 class="essay__title">A ground-floor room in Ghent that took eleven years to finish</h2>
+            <p class="essay__byline" data-variants="Words by Elin Vandeputte. Photographed in March.|Words and photographs by Elin Vandeputte, in Ghent.|Elin Vandeputte visited the house twice in March.">Words by Elin Vandeputte. Photographed in March.</p>
+            <div class="essay__body">
+                <p>Marthe Dekeyser bought the house in 2014 for the plaster. Everything else was wrong — a partition wall through the middle of the front room, a boiler where the fireplace had been, and a floor laid over a floor laid over brick. But two metres of original cornice had survived above the window, and she decided that was enough to start from.</p>
+                <p>She worked backwards. The partition came out in the first month; the second floor covering took four years, because she lifted it a board at a time on weekends and kept the ones that were sound. What is down there now is roughly sixty per cent of the original pine, laid loose in the same direction, unsealed. It marks. She says that is the point of it.</p>
+                <p class="essay__quote display">"I stopped buying things for the room in the third year. After that it was mostly moving what was already here until it stopped bothering me."</p>
+                <p>The furniture is thin on the ground. A long oak table by a maker in Kortrijk, bought unfinished and oiled at home. Two chairs found in a barn near Ronse, reglued by a restorer who charged eighty euros and told her not to strip them. A wall lamp from a hospital in Bruges, rewired.</p>
+                <p>What holds the room together is not the objects but the amount of nothing between them. The far corner is empty. There is a stretch of wall three metres wide with a single nail in it, and she has hung nothing there since 2019. When we asked why, she said the light lands on it at four o'clock and she would rather look at that.</p>
+            </div>
+        </article>
+
+        <aside class="rail" aria-label="Objects in this issue">
+            <div class="rail__item">
+                <svg viewBox="0 0 100 100" role="img" aria-label="Line drawing of a chair in profile">
+  <g fill="none" stroke="#1f1d1b" stroke-width="1.2" stroke-linecap="round">
+    <path d="M26 54 H74"/>
+    <path d="M28 54 V88"/>
+    <path d="M72 54 V88"/>
+    <path d="M28 54 L26 18"/>
+    <path d="M26 18 Q40 12 52 20"/>
+    <path d="M27 34 Q40 29 52 36"/>
+    <path d="M52 20 V54"/>
+  </g>
+                </svg>
+                <p class="rail__caption"><b data-variants="Side chair, ash and rush|Ladder-back chair in ash|Country chair, seat rewoven">Side chair, ash and rush</b>Made by Joris Cattoor, Ronse, 1961.</p>
+            </div>
+            <div class="rail__item">
+                <svg viewBox="0 0 100 100" role="img" aria-label="Line drawing of a vase">
+  <g fill="none" stroke="#1f1d1b" stroke-width="1.2" stroke-linecap="round">
+    <path d="M40 18 Q38 34 30 46 Q22 60 30 76 Q40 90 56 88 Q72 84 74 68 Q76 50 66 40 Q58 30 58 18"/>
+    <path d="M40 18 H58"/>
+    <path d="M37 24 Q49 28 60 24"/>
+  </g>
+                </svg>
+                <p class="rail__caption"><b>Stoneware vessel, unglazed</b>Hanne Roelens, Ostend, 2023.</p>
+            </div>
+            <div class="rail__item">
+                <svg viewBox="0 0 100 100" role="img" aria-label="Line drawing of a pendant lamp">
+  <g fill="none" stroke="#1f1d1b" stroke-width="1.2" stroke-linecap="round">
+    <path d="M50 8 V38"/>
+    <path d="M50 38 L24 74 H76 Z"/>
+    <path d="M32 64 H68"/>
+  </g>
+                </svg>
+                <p class="rail__caption"><b>Enamelled pendant, 30cm</b>Workshop of A. Pauwels, Antwerp, 1948.</p>
+            </div>
+        </aside>
+    </div>
+
+    <section class="index" data-block="issue-interiors">
+        <a class="index__entry" href="#interiors">
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#d8d3ca"/><rect x="8" y="10" width="14" height="24" fill="#6f7a5e"/></svg>
+            <div>
+                <p class="index__section">Interiors</p>
+                <h3 class="index__title">Four rooms that were emptied rather than decorated</h3>
+                <p class="index__stand" data-variants="In Ghent, Trieste, Hove and Lisbon, with plans.|Four rooms, four floor plans, nothing styled.|Photographed over eighteen months in four cities.">In Ghent, Trieste, Hove and Lisbon, with plans.</p>
+            </div>
+        </a>
+        <a class="index__entry" href="#objects">
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#d8d3ca"/><circle cx="20" cy="20" r="11" fill="#b9b2a6"/></svg>
+            <div>
+                <p class="index__section">Objects</p>
+                <h3 class="index__title">The hundred-year-old moulds still in use in Vallauris</h3>
+                <p class="index__stand">Six potters, one kiln, and an argument about clay.</p>
+            </div>
+        </a>
+    </section>
+
+    <section class="index" data-block="issue-stories">
+        <a class="index__entry" href="#stories">
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#d8d3ca"/><path d="M0 40 L20 12 L40 40 Z" fill="#6f7a5e"/></svg>
+            <div>
+                <p class="index__section">Stories</p>
+                <h3 class="index__title">My grandmother's kitchen, measured and drawn from memory</h3>
+                <p class="index__stand">An architect returns to a house sold in 1998.</p>
+            </div>
+        </a>
+        <a class="index__entry" href="#interiors">
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#cfc9bf"/><rect x="6" y="18" width="28" height="6" fill="#1f1d1b"/></svg>
+            <div>
+                <p class="index__section">Interiors</p>
+                <h3 class="index__title">Living with one long table and very little else</h3>
+                <p class="index__stand">A family of four in 54 square metres, Rotterdam.</p>
+            </div>
+        </a>
+    </section>
+
+    <section class="index" data-block="issue-objects">
+        <a class="index__entry" href="#objects">
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#cfc9bf"/><circle cx="14" cy="26" r="8" fill="#6f7a5e"/><circle cx="27" cy="15" r="5" fill="#b9b2a6"/></svg>
+            <div>
+                <p class="index__section">Objects</p>
+                <h3 class="index__title">Why the good broom costs forty-two euros</h3>
+                <p class="index__stand" data-variants="Broomcorn, wire, and eleven minutes of binding.|A workshop in Sundern that has not changed hands.|Sorghum, wire and a jig older than the maker.">Broomcorn, wire, and eleven minutes of binding.</p>
+            </div>
+        </a>
+        <a class="index__entry" href="#stories">
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#d8d3ca"/><rect x="0" y="24" width="40" height="16" fill="#8b9478"/></svg>
+            <div>
+                <p class="index__section">Stories</p>
+                <h3 class="index__title">A winter spent repairing a boat that will not float</h3>
+                <p class="index__stand">Notes from a yard on the Scheldt, November to March.</p>
+            </div>
+        </a>
+    </section>
+</main>
+
+<div class="spread">
+    <footer class="colophon">
+        <span class="colophon__name display">Maison Journal</span>
+        Stocked at Copyright Bookshop, Antwerp; Athenaeum, Amsterdam; and Papercut, Stockholm.<br>
+        Write to <a href="mailto:post@maisonjournal.co">post@maisonjournal.co</a><br>
+        Printed twice a year in Antwerp.
+    </footer>
+</div>
+</body>
+</html>

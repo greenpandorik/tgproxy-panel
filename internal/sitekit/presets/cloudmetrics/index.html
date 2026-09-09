@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudMetrics — infrastructure visibility for engineering teams</title>
+<meta name="description" content="CloudMetrics monitors services, latency and deployments from one clean workspace, with realtime metrics, incident timelines and global checks.">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101a2b;color:#dfe7f2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.02em}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+a:focus-visible,button:focus-visible{outline:2px solid #4d9fff;outline-offset:3px}
+.num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+
+.topbar{border-bottom:1px solid #24374f;background:#101a2b}
+.topbar .wrap{display:flex;align-items:center;gap:28px;height:60px}
+.mark{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;font-size:16px}
+.topbar nav{margin-left:auto;display:flex;gap:24px;font-size:14px;color:#8a9dba}
+.topbar nav a:hover{color:#dfe7f2}
+.signin{border:1px solid #4d9fff;color:#4d9fff;border-radius:999px;padding:6px 16px;font-size:13.5px}
+.strip{border-bottom:1px solid #24374f;font-size:12.5px;color:#8a9dba}
+.strip .wrap{display:flex;align-items:center;gap:26px;height:34px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.strip .wrap::-webkit-scrollbar{display:none}
+.strip b{font-weight:500;color:#dfe7f2}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;vertical-align:1px;margin-right:7px}
+.ok{background:#3ecf8e}.am{background:#f0b429}.ac{background:#4d9fff}
+
+.stage{overflow:hidden}
+.hero{display:grid;grid-template-columns:5fr 7fr;gap:52px;align-items:center;padding:66px 0 74px}
+.hero h1{font-size:2.6rem;line-height:1.12}
+.subcopy{color:#8a9dba;font-size:16.5px;margin-top:18px;max-width:30rem}
+.acts{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
+.acts a{border-radius:6px;padding:10px 18px;font-size:14.5px;font-weight:500}
+.fill{background:#4d9fff;color:#0c1524}
+.ghost{border:1px solid #24374f;color:#dfe7f2}
+.ghost:hover{border-color:#4d9fff}
+
+.board{background:#17253c;border:1px solid #24374f;border-radius:8px;margin-right:-170px;padding:18px 86px 14px 20px}
+.board header{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+.board h2{font-size:14px}
+.board header span{margin-left:auto;font-size:12px;color:#8a9dba}
+.chart{display:block;width:100%;height:auto;margin-right:-70px}
+.legend{display:flex;gap:20px;font-size:11.5px;color:#8a9dba;margin:8px 2px 0}
+.svcs{margin-top:16px;border-top:1px solid #24374f}
+.svc{display:grid;grid-template-columns:1fr auto 74px 60px;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid #24374f;font-size:13.5px}
+.svc:last-child{border-bottom:0}
+.svc .lat{text-align:right;font-size:12.5px;color:#dfe7f2}
+.svc svg{display:block}
+
+.pillars{width:calc(100% - 56px);max-width:1144px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:22px;padding:18px 0 8px}
+.pillar{background:#17253c;border:1px solid #24374f;border-top:2px solid #4d9fff;padding:20px 20px 18px}
+.pillar.g{border-top-color:#3ecf8e}
+.pillar.a{border-top-color:#f0b429}
+.pillar h3{font-size:16px;margin-bottom:9px}
+.pillar p{color:#8a9dba;font-size:14.5px}
+.pillar .num{display:block;margin-top:14px;font-size:12px;color:#dfe7f2}
+
+.regions{width:calc(100% - 56px);max-width:1144px;margin:0 auto;padding:56px 0 12px}
+.regions h2{font-size:18px}
+.regions>p{color:#8a9dba;font-size:14.5px;margin-top:8px;max-width:38rem}
+table{width:100%;border-collapse:collapse;margin-top:22px;font-size:14px}
+th{text-align:left;font-weight:500;font-size:12px;color:#8a9dba;padding:0 0 10px;border-bottom:1px solid #24374f}
+td{padding:11px 0;border-bottom:1px solid #24374f}
+th+th,td+td{padding-left:16px}
+td.r,th.r{text-align:right}
+
+.cta{margin:56px 0 0;border-top:1px solid #24374f;border-bottom:1px solid #24374f}
+.cta .wrap{display:flex;align-items:center;gap:24px;padding:30px 28px;flex-wrap:wrap}
+.cta h2{font-size:18px}
+.cta p{color:#8a9dba;font-size:14.5px;margin-top:6px}
+.cta a{margin-left:auto;background:#4d9fff;color:#0c1524;border-radius:6px;padding:10px 18px;font-size:14.5px;font-weight:500}
+
+footer{padding:46px 0 30px;font-size:13.5px}
+.site{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+.site h3{font-size:12px;color:#dfe7f2;margin-bottom:12px;font-weight:600}
+.site ul{list-style:none;margin:0;padding:0}
+.site li{margin-bottom:8px}
+.site a{color:#8a9dba}
+.site a:hover{color:#dfe7f2}
+.rule{border-top:1px solid #24374f;margin-top:34px;padding-top:18px;color:#8a9dba;font-size:12.5px;display:flex;gap:20px;flex-wrap:wrap}
+
+@media (max-width:900px){
+.hero{grid-template-columns:1fr;gap:34px;padding:42px 0 48px}
+.hero h1{font-size:2rem}
+.board{margin-right:0;padding:16px 16px 12px}
+.chart{margin-right:0}
+.pillars{grid-template-columns:1fr}
+.site{grid-template-columns:1fr 1fr;gap:22px}
+.topbar nav{display:none}
+.cta a{margin-left:0}
+.regions{overflow-x:auto}
+table{min-width:520px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="mark" href="#top"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="0" y="9" width="3.4" height="7" fill="#4d9fff"/><rect x="4.9" y="5" width="3.4" height="11" fill="#3ecf8e"/><rect x="9.8" y="0" width="3.4" height="16" fill="#24374f"/></svg>CloudMetrics</a>
+    <nav>
+      <a href="#metrics">Product</a>
+      <a href="#regions">Regions</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#docs">Docs</a>
+    </nav>
+    <a class="signin" href="#signin">Sign in</a>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="wrap">
+    <span><i class="dot ok"></i>All systems normal</span>
+    <span>us-east-1 &nbsp; <b class="num">41 ms</b></span>
+    <span>eu-west-2 &nbsp; <b class="num">58 ms</b></span>
+    <span>ap-south-1 &nbsp; <b class="num">112 ms</b></span>
+    <span>Last sweep &nbsp; <b class="num">14:02 UTC</b></span>
+  </div>
+</div>
+
+<main id="top">
+<div class="stage" data-block="overview">
+  <div class="wrap hero">
+    <div>
+      <h1 data-variants="Infrastructure visibility without the noise.|Every signal that matters, on one board.|Watch the whole stack from one workspace.">Infrastructure visibility without the noise.</h1>
+      <p class="subcopy" data-variants="Monitor services, latency and deployments from one clean workspace.|Agents report every thirty seconds and the graphs keep up.|Trace a slow request from the edge to the service behind it.">Monitor services, latency and deployments from one clean workspace.</p>
+      <div class="acts">
+        <a class="fill" href="#trial">Start a trial</a>
+        <a class="ghost" href="#board">See a live board</a>
+      </div>
+    </div>
+
+    <div class="board">
+      <header>
+        <h2>Edge latency, last 6 hours</h2>
+        <span>p99 across 22 probes</span>
+      </header>
+      <svg class="chart" viewBox="0 0 540 190" role="img" aria-label="Line chart of p99 edge latency over the last six hours">
+        <defs><linearGradient id="cmFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4d9fff" stop-opacity=".34"/><stop offset="1" stop-color="#4d9fff" stop-opacity="0"/></linearGradient></defs>
+        <g stroke="#24374f" stroke-width="1">
+          <line x1="0" y1="24" x2="540" y2="24"/><line x1="0" y1="66" x2="540" y2="66"/>
+          <line x1="0" y1="108" x2="540" y2="108"/><line x1="0" y1="150" x2="540" y2="150"/>
+        </g>
+        <path d="M0 132 L45 118 L90 126 L135 96 L180 104 L225 78 L270 88 L315 60 L360 72 L405 46 L450 58 L495 40 L540 52 L540 190 L0 190 Z" fill="url(#cmFade)"/>
+        <polyline points="0,132 45,118 90,126 135,96 180,104 225,78 270,88 315,60 360,72 405,46 450,58 495,40 540,52" fill="none" stroke="#4d9fff" stroke-width="2" stroke-linejoin="round"/>
+        <polyline points="0,158 45,152 90,156 135,146 180,150 225,140 270,146 315,136 360,142 405,132 450,138 495,128 540,134" fill="none" stroke="#3ecf8e" stroke-width="1.5" stroke-dasharray="4 4"/>
+      </svg>
+      <div class="legend">
+        <span><i class="dot ac"></i>p99</span>
+        <span><i class="dot ok"></i>p50</span>
+        <span>Bucket <b class="num">30 s</b></span>
+      </div>
+      <div class="svcs">
+        <div class="svc"><span>checkout-api</span><i class="dot ok"></i><span class="lat num">38 ms</span>
+          <svg width="60" height="16" aria-hidden="true"><polyline points="0,12 10,9 20,11 30,6 40,8 50,4 60,5" fill="none" stroke="#3ecf8e" stroke-width="1.5"/></svg></div>
+        <div class="svc"><span>ledger-worker</span><i class="dot ok"></i><span class="lat num">64 ms</span>
+          <svg width="60" height="16" aria-hidden="true"><polyline points="0,8 10,10 20,7 30,9 40,6 50,8 60,6" fill="none" stroke="#3ecf8e" stroke-width="1.5"/></svg></div>
+        <div class="svc"><span>media-transcode</span><i class="dot am"></i><span class="lat num">417 ms</span>
+          <svg width="60" height="16" aria-hidden="true"><polyline points="0,11 10,8 20,10 30,5 40,3 50,6 60,2" fill="none" stroke="#f0b429" stroke-width="1.5"/></svg></div>
+        <div class="svc"><span>search-index</span><i class="dot ok"></i><span class="lat num">91 ms</span>
+          <svg width="60" height="16" aria-hidden="true"><polyline points="0,7 10,9 20,8 30,10 40,7 50,9 60,7" fill="none" stroke="#3ecf8e" stroke-width="1.5"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="pillars" id="metrics" data-block="capabilities">
+    <article class="pillar">
+      <h3>Realtime metrics</h3>
+      <p>Counters, histograms and gauges arrive over a single agent and render while they land. Pin the graphs a team argues about to a board and everyone reads the same numbers.</p>
+      <span class="num">ingest lag 1.4 s</span>
+    </article>
+    <article class="pillar g">
+      <h3>Incident timelines</h3>
+      <p>Every alert opens a timeline that collects deploys, config changes and acknowledgements in order. Nothing has to be reconstructed from chat afterwards.</p>
+      <span class="num">median ack 4 m 12 s</span>
+    </article>
+    <article class="pillar a">
+      <h3>Global checks</h3>
+      <p>HTTP, TCP and DNS probes run from twenty-two cities on a fixed interval. A check has to fail in two locations before it pages anyone.</p>
+      <span class="num">22 cities, 60 s interval</span>
+    </article>
+</section>
+
+<section class="regions" id="regions" data-block="regions">
+    <h2>Where the probes run</h2>
+    <p data-variants="Figures below are the trailing seven-day window for the shared plan. Dedicated regions report separately in the workspace.|Probes run from every region listed on a fixed sixty-second interval. Dedicated capacity is reported inside the workspace.|A region leaves this table after two consecutive failed sweeps. Longer histories stay available in the workspace.">Figures below are the trailing seven-day window for the shared plan. Dedicated regions report separately in the workspace.</p>
+    <table>
+      <thead><tr><th>Region</th><th class="r">Checks/min</th><th class="r">p50</th><th class="r">p99</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>us-east-1</td><td class="r num">1 840</td><td class="r num">28 ms</td><td class="r num">41 ms</td><td><i class="dot ok"></i>Normal</td></tr>
+        <tr><td>us-west-2</td><td class="r num">1 220</td><td class="r num">33 ms</td><td class="r num">57 ms</td><td><i class="dot ok"></i>Normal</td></tr>
+        <tr><td>eu-west-2</td><td class="r num">1 465</td><td class="r num">36 ms</td><td class="r num">58 ms</td><td><i class="dot ok"></i>Normal</td></tr>
+        <tr><td>eu-central-1</td><td class="r num">980</td><td class="r num">39 ms</td><td class="r num">74 ms</td><td><i class="dot am"></i>Elevated</td></tr>
+        <tr><td>ap-south-1</td><td class="r num">610</td><td class="r num">71 ms</td><td class="r num">112 ms</td><td><i class="dot ok"></i>Normal</td></tr>
+      </tbody>
+    </table>
+</section>
+
+<section class="cta" id="trial" data-block="trial">
+  <div class="wrap">
+    <div>
+      <h2 data-variants="Fourteen days, no card|Start with one service|Free while you evaluate">Fourteen days, no card</h2>
+      <p data-variants="Install the agent, point it at one service, and keep the workspace if the graphs earn their place.|One command installs the agent, and the first board is drawing within a minute of the first sample.|Bring one service across and see whether the timelines hold up under a real incident.">Install the agent, point it at one service, and keep the workspace if the graphs earn their place.</p>
+    </div>
+    <a href="#signup">Create a workspace</a>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="site">
+      <div><h3>Product</h3><ul><li><a href="#metrics">Metrics</a></li><li><a href="#alerts">Alerting</a></li><li><a href="#board">Boards</a></li><li><a href="#regions">Synthetic checks</a></li></ul></div>
+      <div><h3>Platform</h3><ul><li><a href="#agents">Agents</a></li><li><a href="#docs">API reference</a></li><li><a href="#retention">Retention</a></li><li><a href="#status">Service status</a></li></ul></div>
+      <div><h3>Company</h3><ul><li><a href="#about">About</a></li><li><a href="#jobs">Open roles</a></li><li><a href="#writing">Engineering notes</a></li><li><a href="#contact">Contact</a></li></ul></div>
+      <div><h3>Legal</h3><ul><li><a href="#terms">Terms</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#dpa">Data processing</a></li><li><a href="#sub">Subprocessors</a></li></ul></div>
+    </div>
+    <div class="rule">
+      <span>&copy; 2026 CloudMetrics, Inc.</span>
+      <span>417 Ashford Street, Suite 6, Denver CO 80204</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

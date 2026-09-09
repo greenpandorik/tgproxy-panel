@@ -1,0 +1,11 @@
+{
+  "name": "Northstar Studio",
+  "category": "studio",
+  "variables": {
+    "company_name": "Northstar Studio",
+    "headline": "We build digital products people remember.",
+    "description": "Independent product and design studio working with ambitious teams.",
+    "contact_email": "studio@northstar.works",
+    "footer_text": "Monday to Thursday, 9 to 5"
+  }
+}

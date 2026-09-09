@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
+	"tgwebproxy/internal/sitekit"
 )
 
 const goodHTML = `<!doctype html><html><head><title>t</title><style>p{color:#333}</style></head><body><p>hello</p></body></html>`
@@ -22,12 +24,12 @@ func TestSiteTemplateCRUDAndValidate(t *testing.T) {
 		} `json:"items"`
 	}
 	c.JSON(c.Get("/api/v1/site-templates"), &list)
-	wantPresets := []string{"blog", "docs", "portfolio", "product", "studio"}
+	wantPresets := sitekit.PresetNames()
 	if len(list.Items) != len(wantPresets) {
 		t.Fatalf("presets not seeded: %+v", list.Items)
 	}
-	for i, name := range wantPresets {
-		if !list.Items[i].IsPreset || list.Items[i].Name != name {
+	for _, it := range list.Items {
+		if !it.IsPreset || !wantPresets[it.Name] {
 			t.Fatalf("presets not seeded: %+v", list.Items)
 		}
 	}

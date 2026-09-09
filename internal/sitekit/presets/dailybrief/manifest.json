@@ -1,0 +1,11 @@
+{
+  "name": "The Daily Brief",
+  "category": "editorial",
+  "variables": {
+    "company_name": "The Daily Brief",
+    "headline": "Technology, business and ideas.",
+    "description": "A concise independent briefing for curious people.",
+    "contact_email": "editor@dailybrief.press",
+    "footer_text": "© 2026 The Daily Brief Ltd, 12 Hill Street, Edinburgh EH2 3JZ."
+  }
+}

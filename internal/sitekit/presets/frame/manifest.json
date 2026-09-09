@@ -1,0 +1,11 @@
+{
+  "name": "Frame Studio",
+  "category": "portfolio",
+  "variables": {
+    "company_name": "Frame Studio",
+    "headline": "Portraits, places, honest light.",
+    "description": "Independent photography studio for editorial and commercial work.",
+    "contact_email": "studio@framestudio.dk",
+    "footer_text": ""
+  }
+}

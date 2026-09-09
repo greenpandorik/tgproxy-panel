@@ -35,7 +35,7 @@ func assetsOf(b Bundle) map[string][]byte {
 }
 
 func TestUniquifyDeterministicAndSeedSensitive(t *testing.T) {
-	p := presetByName(t, "product")
+	p := presetByName(t, "cloudmetrics")
 	b, rep, _ := Normalize(p.HTML, p.Assets)
 	if len(rep.Errors) > 0 {
 		t.Fatal(rep.Errors)
@@ -115,8 +115,8 @@ func TestAllPresetsNormalizeAndUniquify(t *testing.T) {
 			t.Fatalf("%s: expected at least 3 data-variants attributes, got %d", p.Name, n)
 		}
 	}
-	if len(Presets()) != 5 {
-		t.Fatalf("expected 5 presets, got %d", len(Presets()))
+	if len(Presets()) != 15 {
+		t.Fatalf("expected 15 presets, got %d", len(Presets()))
 	}
 }
 
@@ -186,11 +186,11 @@ func TestUniquifyKeepsNonBlockChildrenInPlace(t *testing.T) {
 	}
 }
 
-// goldenProductHash pins Uniquify's output for (product preset, seed "golden-seed").
-const goldenProductHash = "e82647f80d5659e529f6103e3291fd970b67196580a123aa61439200abf45448"
+// goldenCloudmetricsHash pins Uniquify's output for (cloudmetrics preset, seed "golden-seed").
+const goldenCloudmetricsHash = "096e397c9fa1f4eb1d854f934e553ee8bab7955ff65d6bf848832c5cc1b9481b"
 
 func TestUniquifyGoldenHashForFixedBundleAndSeed(t *testing.T) {
-	p := presetByName(t, "product")
+	p := presetByName(t, "cloudmetrics")
 	b, rep, err := Normalize(p.HTML, p.Assets)
 	if err != nil || len(rep.Errors) > 0 {
 		t.Fatalf("normalize: %v %v", err, rep.Errors)
@@ -199,11 +199,11 @@ func TestUniquifyGoldenHashForFixedBundleAndSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := u.Hash(); got != goldenProductHash {
+	if got := u.Hash(); got != goldenCloudmetricsHash {
 		t.Fatalf("Uniquify(product, %q).Hash() = %s, want %s\n"+
 			"Output changed: every node running this preset would be re-deployed and its relay "+
-			"restarted on the next assign. Confirm the change is intended, then update goldenProductHash.",
-			"golden-seed", got, goldenProductHash)
+			"restarted on the next assign. Confirm the change is intended, then update goldenCloudmetricsHash.",
+			"golden-seed", got, goldenCloudmetricsHash)
 	}
 }
 

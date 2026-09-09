@@ -1,0 +1,11 @@
+{
+  "name": "Luma Notes",
+  "category": "saas",
+  "variables": {
+    "company_name": "Luma Notes",
+    "headline": "A calmer place for your ideas.",
+    "description": "Capture notes, organize projects and keep your thinking close at hand.",
+    "contact_email": "",
+    "footer_text": ""
+  }
+}

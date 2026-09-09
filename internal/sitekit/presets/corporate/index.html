@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <title>Alder &amp; Co. | Advisory, technology and operations</title>
+   <meta name="description" content="Alder &amp; Co. is an independent advisory and technology firm working with manufacturers, health providers and public bodies from offices in Leeds, Dublin and Rotterdam.">
+   <style>
+      html { box-sizing: border-box }
+      *, *::before, *::after { box-sizing: inherit }
+      body { margin: 0; background: #fff; color: #1c2530;
+             font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif }
+      h1, h2, h3, .serif { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-weight: 700 }
+      a { color: #12263f }
+      a:focus-visible { outline: 2px solid #9a7b3f; outline-offset: 2px }
+      p { margin: 0 0 1.1rem }
+      .outer { max-width: 1200px; margin: 0 auto; padding: 0 28px }
+
+      .bar { background: #12263f; color: #c3cedb; font-size: 12.5px }
+      .bar .outer { display: flex; justify-content: space-between; align-items: center; height: 38px }
+      .bar a { color: #c3cedb; text-decoration: none; margin-left: 1.6rem }
+      .bar a:hover { color: #fff; text-decoration: underline }
+
+      .head { border-bottom: 1px solid #dde3e9; background: #fff }
+      .head .outer { display: flex; justify-content: space-between; align-items: center; height: 74px; gap: 1.5rem }
+      .head__mark { display: flex; align-items: center; gap: .6rem; font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+                    font-size: 1.3rem; font-weight: 700; color: #12263f; text-decoration: none; letter-spacing: -.005em }
+      .head__mark i { width: 12px; height: 12px; background: #9a7b3f; display: block }
+      .head__nav { display: flex; align-items: center; gap: 1.55rem; font-size: 14px }
+      .head__nav a { color: #1c2530; text-decoration: none }
+      .head__nav a:hover { color: #9a7b3f }
+      .head__nav .login { border: 1px solid #12263f; padding: .42rem .9rem; color: #12263f }
+      .head__nav .login:hover { background: #12263f; color: #fff }
+
+      .opening { padding: 4.6rem 0 4.4rem }
+      .opening .outer { display: grid; grid-template-columns: 7fr 5fr; gap: 4.5rem; align-items: start }
+      h1 { font-size: 2.6rem; line-height: 1.16; letter-spacing: -.01em; color: #12263f; margin: 0 0 1.1rem }
+      .hero__sub { font-size: 1.2rem; line-height: 1.55; color: #1c2530; max-width: 34rem; margin: 0 0 1.6rem }
+      .opening p { color: #5a6572; max-width: 34rem }
+      .hero__act { margin-top: 1.9rem; display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap }
+      .hero__act .primary { background: #12263f; color: #fff; text-decoration: none; padding: .78rem 1.5rem; font-size: 15px; border-radius: 2px; display: inline-block }
+      .hero__act .primary:hover { background: #0c1b2e }
+      .hero__act .plain { font-size: 15px; color: #12263f }
+
+      .keyfacts { border: 1px solid #dde3e9; border-top: 3px solid #9a7b3f; background: #f4f6f8; padding: 1.5rem 1.6rem }
+      .keyfacts__row { display: flex; justify-content: space-between; align-items: baseline; gap: 1.2rem; padding: .82rem 0; border-bottom: 1px solid #dde3e9 }
+      .keyfacts__row:last-child { border-bottom: 0; padding-bottom: .2rem }
+      .keyfacts__k { font-size: 12.5px; color: #5a6572; letter-spacing: .01em; flex: none }
+      .keyfacts__v { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; color: #12263f; font-size: 1.02rem; text-align: right }
+
+      .svc { background: #f4f6f8; border-top: 1px solid #dde3e9; border-bottom: 1px solid #dde3e9; padding: 4.2rem 0 4.4rem }
+      .svc__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3rem }
+      .svc__col { border-top: 2px solid #12263f; padding-top: 1.3rem }
+      .svc__col h2 { font-size: 1.35rem; color: #12263f; margin: 0 0 .8rem }
+      .svc__col p { color: #5a6572; font-size: 15px }
+      .svc__cap { list-style: none; margin: 1.3rem 0 0; padding: 0; font-size: 14.5px }
+      .svc__cap li { padding: .6rem 0; border-top: 1px solid #dde3e9 }
+
+      .casenote { background: linear-gradient(180deg, #162c48 0%, #12263f 100%); color: #fff; padding: 4.4rem 0 }
+      .note__body { max-width: 46rem; font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-size: 1.24rem; line-height: 1.62; margin: 0 }
+      .note__fig { color: #d3b371; font-size: 1.6rem; white-space: nowrap }
+      .note__by { margin: 1.8rem 0 0; font-size: 13.5px; color: #9fb0c4; letter-spacing: .01em }
+
+      .team { padding: 4.4rem 0 1.2rem }
+      .team h2, .offices h2 { font-size: 1.5rem; color: #12263f; margin: 0 0 2.2rem; padding-bottom: .8rem; border-bottom: 1px solid #dde3e9 }
+      .team__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4rem }
+      .team__mono { width: 72px; height: 72px; border-radius: 2px; background: #12263f; color: #fff;
+                    display: flex; align-items: center; justify-content: center;
+                    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-size: 1.5rem; letter-spacing: .02em; margin-bottom: 1rem }
+      .team__grid h3 { font-size: 1.05rem; margin: 0 0 .15rem; color: #12263f }
+      .team__grid .role { font-size: 13px; color: #9a7b3f; margin: 0 0 .5rem }
+      .team__grid .spec { font-size: 14px; color: #5a6572; margin: 0 }
+
+      .offices { padding: 3.4rem 0 4.6rem }
+      .offices__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3rem }
+      .offices h3 { font-size: 1.1rem; color: #12263f; margin: 0 0 .7rem }
+      .offices address { font-style: normal; font-size: 15px; color: #5a6572; line-height: 1.85 }
+      .offices address a { color: #12263f }
+
+      .foot { background: #12263f; color: #b9c6d6; padding: 3.6rem 0 2.4rem; font-size: 14px }
+      .foot__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4rem; padding-bottom: 2.6rem }
+      .foot h2 { font-size: 12.5px; font-family: inherit; font-weight: 600; color: #fff; margin: 0 0 .9rem; letter-spacing: .02em }
+      .foot ul { list-style: none; margin: 0; padding: 0; line-height: 2 }
+      .foot a { color: #b9c6d6; text-decoration: none }
+      .foot a:hover { color: #fff; text-decoration: underline }
+      .foot__legal { border-top: 1px solid #2a3d57; padding-top: 1.6rem; font-size: 12.5px; color: #8296ad; line-height: 1.8 }
+
+      @media (max-width: 900px) {
+         .opening .outer { grid-template-columns: 1fr; gap: 2.8rem }
+         .svc__grid, .offices__grid { grid-template-columns: 1fr; gap: 2.4rem }
+         .team__grid { grid-template-columns: repeat(2, 1fr); gap: 2rem }
+         .foot__grid { grid-template-columns: repeat(2, 1fr) }
+      }
+      @media (max-width: 640px) {
+         .outer { padding: 0 20px }
+         .bar .outer { font-size: 11.5px }
+         .bar a { margin-left: 1rem }
+         .head .outer { height: auto; flex-direction: column; align-items: flex-start; padding-top: 1rem; padding-bottom: 1rem; gap: .9rem }
+         .head__nav { flex-wrap: wrap; gap: .5rem 1.1rem; font-size: 13.5px }
+         .opening { padding: 2.8rem 0 3rem }
+         h1 { font-size: 1.95rem }
+         .hero__sub { font-size: 1.08rem }
+         .note__body { font-size: 1.08rem }
+         .note__fig { font-size: 1.3rem }
+         .team__grid { grid-template-columns: 1fr }
+      }
+   </style>
+</head>
+<body>
+
+<div class="bar">
+   <div class="outer">
+      <span>+44 113 496 0220</span>
+      <span><a href="#offices">Offices</a><a href="#">Careers</a></span>
+   </div>
+</div>
+
+<header class="head">
+   <div class="outer">
+      <a class="head__mark" href="#"><i></i>Alder &amp; Co.</a>
+      <nav class="head__nav">
+         <a href="#advisory">Advisory</a>
+         <a href="#technology">Technology</a>
+         <a href="#operations">Operations</a>
+         <a href="#note">Sectors</a>
+         <a href="#team">People</a>
+         <a href="#offices">Contact</a>
+         <a class="login" href="#">Client login</a>
+      </nav>
+   </div>
+</header>
+
+<main>
+
+<section class="opening">
+   <div class="outer">
+      <div>
+         <h1 data-variants="Practical solutions for growing organizations.|Clear answers when a decision cannot wait.|Considered advice for organizations under change.">Practical solutions for growing organizations.</h1>
+         <p class="hero__sub" data-variants="Independent advisory and technology services for modern businesses.|Partner-led advisory, technology and operations for established firms.|Independent advice on strategy, systems and day-to-day operations.">Independent advisory and technology services for modern businesses.</p>
+         <p>We are a partner-led firm of seventy-four people. We are engaged when a decision matters more than a report: a plant that has outgrown its planning, a finance function that cannot close in under three weeks, a board that needs a defensible answer before it commits capital.</p>
+         <p>We take a small number of engagements at a time and staff them with the people who sold the work. No panels, no offshore delivery centre, and no recommendation we would not implement ourselves.</p>
+         <div class="hero__act">
+            <a class="primary" href="#offices">Talk to the team</a>
+            <a class="plain" href="#note">Read a recent engagement</a>
+         </div>
+      </div>
+      <div class="keyfacts">
+         <div class="keyfacts__row"><span class="keyfacts__k">Founded</span><span class="keyfacts__v">2004</span></div>
+         <div class="keyfacts__row"><span class="keyfacts__k">Offices</span><span class="keyfacts__v">Leeds, Dublin, Rotterdam</span></div>
+         <div class="keyfacts__row"><span class="keyfacts__k">Team</span><span class="keyfacts__v">74</span></div>
+         <div class="keyfacts__row"><span class="keyfacts__k">Sectors</span><span class="keyfacts__v">Manufacturing, health, public</span></div>
+         <div class="keyfacts__row"><span class="keyfacts__k">Engagements</span><span class="keyfacts__v">300+ since 2004</span></div>
+      </div>
+   </div>
+</section>
+
+<section class="svc" data-block="services">
+   <div class="outer svc__grid">
+      <div class="svc__col" id="advisory">
+         <h2>Advisory</h2>
+         <p data-variants="Board-level work on strategy, capital and succession, delivered as a written position a director can act on rather than a deck.|Work for boards and owners on the decisions that set a firm's direction for the next five years, put in writing.|Strategy, capital and succession questions answered in writing, with the reasoning and the numbers behind them.">Board-level work on strategy, capital and succession, delivered as a written position a director can act on rather than a deck.</p>
+         <ul class="svc__cap">
+            <li>Financial and commercial due diligence</li>
+            <li>Succession and ownership transition</li>
+            <li>Business planning and capital cases</li>
+            <li>Governance and risk reviews</li>
+         </ul>
+      </div>
+      <div class="svc__col" id="technology">
+         <h2>Technology</h2>
+         <p data-variants="Selection, replacement and integration of the systems a business actually runs on, including the ones nobody wants to touch.|Choosing, replacing and joining up the systems a business depends on, from the finance ledger to the shop floor.|Work on core systems: what to buy, how to move the data, and how to keep the old one running until the switch.">Selection, replacement and integration of the systems a business actually runs on, including the ones nobody wants to touch.</p>
+         <ul class="svc__cap">
+            <li>Core system selection and tendering</li>
+            <li>Data migration and reconciliation</li>
+            <li>Integration and reporting platforms</li>
+            <li>Security and continuity assessment</li>
+         </ul>
+      </div>
+      <div class="svc__col" id="operations">
+         <h2>Operations</h2>
+         <p>Throughput, cost and service work on the factory floor, in the depot and in the back office, measured before and after.</p>
+         <ul class="svc__cap">
+            <li>Production planning and scheduling</li>
+            <li>Supply chain and inventory review</li>
+            <li>Shared service design</li>
+            <li>Cost base and procurement analysis</li>
+         </ul>
+      </div>
+   </div>
+</section>
+
+<section class="casenote" id="note" data-block="casenote">
+   <div class="outer">
+      <p class="note__body">A rail components manufacturer in West Yorkshire came to us with a quoting cycle that had grown to eleven days. In <span class="note__fig">18 weeks</span> we rebuilt the pricing model, retrained the estimating team and retired two spreadsheets. Quotes now leave within a day, and the firm has since won <span class="note__fig">£2.4m</span> of work it would previously have declined.</p>
+      <p class="note__by" data-variants="Helen Brackley, Finance Director, Wendover Rail Products|Alan Sedgwick, Managing Director, Wendover Rail Products|Priya Raval, Commercial Director, Wendover Rail Products">Helen Brackley, Finance Director, Wendover Rail Products</p>
+   </div>
+</section>
+
+<section class="team" id="team" data-block="people">
+   <div class="outer">
+      <h2>People</h2>
+      <div class="team__grid">
+         <div>
+            <div class="team__mono" aria-hidden="true">MA</div>
+            <h3>Margaret Alder</h3>
+            <p class="role">Senior Partner</p>
+            <p class="spec">Ownership transition and capital structure in family-held firms.</p>
+         </div>
+         <div>
+            <div class="team__mono" aria-hidden="true">RD</div>
+            <h3>Ruairi Doyle</h3>
+            <p class="role">Partner, Technology</p>
+            <p class="spec">System replacement in regulated and clinical environments.</p>
+         </div>
+         <div>
+            <div class="team__mono" aria-hidden="true">FB</div>
+            <h3>Femke Boersma</h3>
+            <p class="role">Partner, Operations</p>
+            <p class="spec">Throughput and supply chain for mid-sized manufacturers.</p>
+         </div>
+         <div>
+            <div class="team__mono" aria-hidden="true">JO</div>
+            <h3>James Okonkwo</h3>
+            <p class="role">Director, Advisory</p>
+            <p class="spec">Public procurement, governance reviews and business cases.</p>
+         </div>
+      </div>
+   </div>
+</section>
+
+<section class="offices" id="offices" data-block="offices">
+   <div class="outer">
+      <h2>Offices</h2>
+      <div class="offices__grid">
+         <div>
+            <h3>Leeds</h3>
+            <address>
+               14 Park Row<br>Leeds LS1 5HD<br>
+               +44 113 496 0220<br>
+               <a href="mailto:enquiries@alderandco.co.uk">enquiries@alderandco.co.uk</a>
+            </address>
+         </div>
+         <div>
+            <h3>Dublin</h3>
+            <address>
+               26 Fitzwilliam Square<br>Dublin 2, D02 XW58<br>
+               +353 1 566 4180<br>
+               <a href="mailto:dublin@alderandco.co.uk">dublin@alderandco.co.uk</a>
+            </address>
+         </div>
+         <div>
+            <h3>Rotterdam</h3>
+            <address>
+               Weena 214<br>3012 NJ Rotterdam<br>
+               +31 10 808 2140<br>
+               <a href="mailto:rotterdam@alderandco.co.uk">rotterdam@alderandco.co.uk</a>
+            </address>
+         </div>
+      </div>
+   </div>
+</section>
+
+</main>
+
+<footer class="foot">
+   <div class="outer">
+      <div class="foot__grid">
+         <div>
+            <h2>Services</h2>
+            <ul>
+               <li><a href="#advisory">Advisory</a></li>
+               <li><a href="#technology">Technology</a></li>
+               <li><a href="#operations">Operations</a></li>
+               <li><a href="#">Due diligence</a></li>
+            </ul>
+         </div>
+         <div>
+            <h2>Sectors</h2>
+            <ul>
+               <li><a href="#">Manufacturing</a></li>
+               <li><a href="#">Health and care</a></li>
+               <li><a href="#">Public bodies</a></li>
+               <li><a href="#">Transport</a></li>
+            </ul>
+         </div>
+         <div>
+            <h2>Firm</h2>
+            <ul>
+               <li><a href="#team">People</a></li>
+               <li><a href="#offices">Offices</a></li>
+               <li><a href="#">Careers</a></li>
+               <li><a href="mailto:enquiries@alderandco.co.uk">enquiries@alderandco.co.uk</a></li>
+            </ul>
+         </div>
+         <div>
+            <h2>Legal</h2>
+            <ul>
+               <li><a href="#">Terms of business</a></li>
+               <li><a href="#">Privacy notice</a></li>
+               <li><a href="#">Modern slavery statement</a></li>
+               <li><a href="#">Complaints</a></li>
+            </ul>
+         </div>
+      </div>
+      <div class="foot__legal">
+         Alder &amp; Co. Ltd, registered in England and Wales, company number 05128744. Registered office: 14 Park Row, Leeds LS1 5HD.<br>
+         &copy; 2026 Alder &amp; Co. Ltd
+      </div>
+   </div>
+</footer>
+
+</body>
+</html>

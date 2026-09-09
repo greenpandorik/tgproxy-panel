@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acorn — a workspace for small teams</title>
+<meta name="description" content="Acorn is a focused project workspace for small teams: shared plans, weekly updates and simple insights, made in Bristol.">
+<style>
+body{margin:0;background:#fff;color:#14231b;font-family:system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:16.5px;line-height:1.65}
+h1,h2,h3,p,ul,figure,blockquote{margin:0}
+img,svg{display:block}
+a{color:inherit;text-decoration:none}
+a:focus-visible,button:focus-visible{outline:3px solid #c9a227;outline-offset:2px}
+.w{max-width:1200px;margin:0 auto;padding:0 24px}
+
+header{position:sticky;top:0;z-index:5;background:#23573c;color:#fff}
+header .w{display:flex;align-items:center;gap:26px;height:62px}
+header a.brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;letter-spacing:-.01em}
+header nav{margin-left:auto;display:flex;gap:24px;font-size:15px}
+header nav a{color:#d6e4da}
+header nav a:hover{color:#fff}
+header .btn{background:#c9a227;color:#14231b;border-radius:4px;padding:8px 16px;font-size:15px;font-weight:600}
+
+.launch{padding:66px 0 0}
+.launch div.col{max-width:40rem}
+.launch h1{font-size:2.4rem;font-weight:700;letter-spacing:-.01em;line-height:1.18}
+.launch p{margin-top:18px;color:#55665c;font-size:17.5px}
+.launch .row{margin-top:28px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.launch .row a:first-child{background:#23573c;color:#fff;border-radius:4px;padding:11px 22px;font-weight:600;font-size:15.5px}
+.launch .row a+a{color:#23573c;font-weight:600;font-size:15.5px;border-bottom:2px solid #c9a227;padding-bottom:2px}
+
+.weekstrip{padding:0 0 10px}
+.week{margin:46px 0 8px;overflow-x:auto;padding-bottom:4px}
+.week>div{min-width:700px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);font-size:12.5px;color:#55665c;letter-spacing:.04em;text-transform:uppercase}
+.days span{padding:0 0 8px 10px;border-right:1px solid #e3e9e2}
+.days span:last-child{border-right:0}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:36px;row-gap:9px;padding:12px 0 14px;border-top:1px solid #dfe6dc;background-image:linear-gradient(90deg,#eef2ec 1px,transparent 1px);background-size:calc(100% / 7) 100%}
+.bars b{display:flex;align-items:center;border-radius:4px;padding:0 12px;font-size:13.5px;font-weight:600;overflow:hidden;white-space:nowrap}
+.t1{grid-column:1 / 4;background:#23573c;color:#fff}
+.t2{grid-column:2 / 6;background:#dbe7dc;color:#23573c}
+.t3{grid-column:4 / 8;background:#c9a227;color:#14231b}
+.t4{grid-column:5 / 7;background:#dbe7dc;color:#23573c}
+
+.band{background:#eef2ec;margin-top:54px;padding:62px 0}
+.band h2{font-size:1.5rem;letter-spacing:-.01em}
+.band>.w>p{margin-top:10px;color:#55665c;max-width:44rem}
+.list{margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:30px 44px}
+.list li{list-style:none;display:flex;gap:16px;border-left:2px solid #23573c;padding-left:18px}
+.list h3{font-size:17.5px;font-weight:700}
+.list p{margin-top:6px;color:#55665c;font-size:15.5px}
+.list svg{flex:0 0 auto;margin-top:3px}
+
+.uses{padding:66px 0}
+.uses h2{font-size:1.5rem;letter-spacing:-.01em}
+.quotes{margin-top:30px;display:grid;grid-template-columns:repeat(3,1fr);gap:34px}
+.quotes blockquote{font-size:16px}
+.quotes figcaption{margin-top:12px;font-size:14px;color:#55665c}
+.quotes strong{display:block;color:#14231b;font-weight:600}
+
+.cta{background:#faf3dd;border-top:1px solid #ecdfae;border-bottom:1px solid #ecdfae;padding:44px 0}
+.cta .w{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.cta h2{font-size:1.3rem;letter-spacing:-.01em}
+.cta p{margin-top:6px;color:#55665c;font-size:15.5px}
+.cta a{margin-left:auto;background:#23573c;color:#fff;border-radius:4px;padding:11px 22px;font-weight:600;font-size:15.5px}
+
+footer{background:#23573c;color:#d6e4da;padding:56px 0 40px;font-size:15px}
+footer .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:30px}
+footer h3{color:#fff;font-size:13px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:12px}
+footer ul{list-style:none;padding:0}
+footer li{margin-bottom:8px}
+footer a:hover{color:#fff}
+footer .end{margin-top:40px;padding-top:20px;border-top:1px solid #35674b;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:14px}
+
+@media (max-width:820px){
+.launch{padding-top:40px}
+.launch h1{font-size:1.85rem}
+header nav{display:none}
+.list{grid-template-columns:1fr;gap:24px}
+.quotes{grid-template-columns:1fr;gap:26px}
+.cta a{margin-left:0}
+footer .cols{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+<div class="w">
+<a class="brand" href="#top"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M4 7c0-3 2.6-5 6-5s6 2 6 5c0 .8-.7 1.2-1.6 1.2H5.6C4.7 8.2 4 7.8 4 7Z" fill="#c9a227"/><path d="M5 9h10c0 5.4-2.2 11-5 11S5 14.4 5 9Z" fill="#fff"/><path d="M10 2V0" stroke="#c9a227" stroke-width="1.6"/></svg>Acorn</a>
+<nav>
+<a href="#projects">Projects</a>
+<a href="#updates">Updates</a>
+<a href="#uses">Customers</a>
+<a href="#pricing">Pricing</a>
+</nav>
+<a class="btn" href="#trial">Try Acorn free</a>
+</div>
+</header>
+
+<main id="top">
+
+<section class="launch">
+<div class="w">
+<div class="col">
+<h1 data-variants="Projects move better when everyone can see the work.|Keep the plan where the whole team can read it.|A week of work, laid out so nobody has to ask.">Projects move better when everyone can see the work.</h1>
+<p data-variants="A focused workspace for small teams planning, shipping and learning.|Shared plans, weekly updates and numbers you can actually trust.|Built for teams of three to thirty who plan their own work.">A focused workspace for small teams planning, shipping and learning.</p>
+<div class="row"><a href="#trial">Start a 30-day trial</a><a href="#tour">See how a week looks</a></div>
+</div>
+</div>
+</section>
+
+<section class="weekstrip" data-block="week">
+<div class="w">
+<div class="week">
+<div>
+<div class="days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+<div class="bars">
+<b class="t1">Rewrite onboarding emails</b>
+<b class="t2">Design review, cart flow</b>
+<b class="t3">Ship 2.4 to beta</b>
+<b class="t4">Write release notes</b>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="band" id="projects" data-block="projects">
+<div class="w">
+<h2>Three things a team looks at every day</h2>
+<p data-variants="Acorn keeps the plan, the week's news and the numbers in one place, so nobody has to ask where the work stands.|Open Acorn on a Monday and the state of every project is on one screen, without a meeting to get there.|The three questions that come up in every stand-up have an answer here before anyone asks them.">Acorn keeps the plan, the week's news and the numbers in one place, so nobody has to ask where the work stands.</p>
+<ul class="list">
+<li>
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#23573c" stroke-width="1.6" aria-hidden="true"><rect x="5" y="8" width="30" height="24" rx="2"/><path d="M5 15h30M14 15v17M22 20h9M22 25h6"/></svg>
+<div><h3>Projects</h3><p>Each project holds its plan, its files and the people doing the work. Anyone on the team can open it and read the last three weeks without asking permission first.</p></div>
+</li>
+<li>
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#23573c" stroke-width="1.6" aria-hidden="true"><path d="M7 10h26M7 18h26M7 26h17"/><circle cx="31" cy="29" r="5"/><path d="M31 27v2.4l1.6 1.1"/></svg>
+<div><h3>Updates</h3><p>Every Friday Acorn asks each project for two lines and posts them together on Monday morning. Nobody writes a status report twice, and the archive keeps four years of them.</p></div>
+</li>
+<li>
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#23573c" stroke-width="1.6" aria-hidden="true"><path d="M6 32V13M14 32V20M22 32V9M30 32V17M4 34h32"/></svg>
+<div><h3>Insights</h3><p>Cycle time, carry-over and where the week actually went, drawn from work that was already logged. There is no separate timesheet to fill in on a Friday afternoon.</p></div>
+</li>
+</ul>
+</div>
+</section>
+
+<section class="uses" id="uses" data-block="voices">
+<div class="w">
+<h2>How teams use Acorn</h2>
+<div class="quotes">
+<figure>
+<blockquote>We run a studio of eleven and we had four planning tools. Acorn replaced three of them in a fortnight and the fourth by Easter.</blockquote>
+<figcaption><strong>Priya Raman</strong>Operations, Marram Studio, Leeds</figcaption>
+</figure>
+<figure>
+<blockquote>The Monday digest is the part that stuck. Our engineers read it, which is more than anyone did with the old wiki page.</blockquote>
+<figcaption><strong>Tomas Lindqvist</strong>Head of product, Brightkiln, Malmö</figcaption>
+</figure>
+<figure>
+<blockquote>I can see which projects are quietly slipping before a client does. That alone has been worth the subscription.</blockquote>
+<figcaption><strong>Georgia Ainsworth</strong>Founder, Two Rivers Consulting, Bath</figcaption>
+</figure>
+</div>
+</div>
+</section>
+
+<section class="cta" id="trial" data-block="trial">
+<div class="w">
+<div>
+<h2>Bring a project across this week</h2>
+<p data-variants="Thirty days free, then £7 per person a month. Teams under five people pay nothing.|Move one project in, keep the trial for thirty days, and pay £7 a person only if it sticks.|The first thirty days cost nothing, and so does every team of four or fewer.">Thirty days free, then £7 per person a month. Teams under five people pay nothing.</p>
+</div>
+<a href="#signup">Create a workspace</a>
+</div>
+</section>
+
+</main>
+
+<footer>
+<div class="w">
+<div class="cols">
+<div><h3>Product</h3><ul><li><a href="#projects">Projects</a></li><li><a href="#updates">Weekly updates</a></li><li><a href="#insights">Insights</a></li><li><a href="#pricing">Pricing</a></li></ul></div>
+<div><h3>Company</h3><ul><li><a href="#about">About us</a></li><li><a href="#jobs">Working here</a></li><li><a href="#journal">Journal</a></li><li><a href="#contact">Contact</a></li></ul></div>
+<div><h3>Support</h3><ul><li><a href="#help">Help guides</a></li><li><a href="#import">Importing work</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#terms">Terms</a></li></ul></div>
+</div>
+<div class="end">
+<svg width="14" height="16" viewBox="0 0 20 22" aria-hidden="true"><path d="M4 7c0-3 2.6-5 6-5s6 2 6 5c0 .8-.7 1.2-1.6 1.2H5.6C4.7 8.2 4 7.8 4 7Z" fill="#c9a227"/><path d="M5 9h10c0 5.4-2.2 11-5 11S5 14.4 5 9Z" fill="#fff"/></svg>
+<span data-variants="Acorn is made in Bristol by a team of nine.|Made in Bristol, above an old bakery on Park Row.|Nine people build Acorn from an office in Bristol.">Acorn is made in Bristol by a team of nine.</span>
+<span>&copy; 2026 Acorn Software Ltd</span>
+</div>
+</div>
+</footer>
+
+</body>
+</html>
