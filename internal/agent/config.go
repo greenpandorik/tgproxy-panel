@@ -11,11 +11,7 @@ import (
 	"tgwebproxy/internal/telemt"
 )
 
-// Version is the agent's own version, overridable at link time like internal/version.Version.
-// A release build stamps both from the same tag (see deploy/Dockerfile.panel and
-// .github/workflows/release.yml), so the panel's upgrade manifest (internal/api/upgrade.go),
-// this binary's own `tgwp-agent version`, and the panel's `GET /api/v1/status/public` version
-// all agree on what a given release actually is.
+// Version is stamped from the release tag at link time.
 var Version = "0.1.0"
 
 // DefaultReloadWait is the budget telemtReload polls a reload for: the whole drain window plus

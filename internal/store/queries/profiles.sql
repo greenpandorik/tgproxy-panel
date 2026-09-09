@@ -5,9 +5,6 @@ VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
 -- name: ListNodeProfiles :many
 SELECT * FROM profiles WHERE node_id = $1 ORDER BY created_at;
 
--- GetNodeProfileByName reads one node's own profile by name - the "default" profile every
--- node is created with, whose secret is what the node itself answers with on any listener
--- (classic/Fake-TLS included), independent of whether any access key has been bound yet.
 -- name: GetNodeProfileByName :one
 SELECT * FROM profiles WHERE node_id = $1 AND name = $2;
 

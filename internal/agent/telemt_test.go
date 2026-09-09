@@ -1365,8 +1365,6 @@ func TestTelemtApplyRestoresListenersWhenTheRestartFails(t *testing.T) {
 
 const sponsorTag = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-// Setting AdTag turns on general.use_middle_proxy and gives every profile the same
-// per-user tag; the fake control API never asks for a restart, so this is a hot change.
 func TestTelemtApplySetsSponsorChannelAdTag(t *testing.T) {
 	ex := &fakeExec{}
 	h, _, ft := telemtHandler(t, ex)
@@ -1422,8 +1420,6 @@ func TestTelemtApplySetsSponsorChannelAdTag(t *testing.T) {
 	}
 }
 
-// An empty AdTag is authoritative, not "no opinion": it turns the sponsor channel back off
-// and clears the per-user tag telemt already holds.
 func TestTelemtApplyClearsSponsorChannelAdTag(t *testing.T) {
 	h, _, ft := telemtHandler(t, &fakeExec{})
 	res := h.Apply(context.Background(), &agentv1.ApplyRequest{

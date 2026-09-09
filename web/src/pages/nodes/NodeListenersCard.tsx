@@ -22,7 +22,6 @@ import type { Node } from '@/api/types';
 const HOSTNAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 // Four dotted decimal octets, each 0..255 - what validatePublicIP on the server accepts.
 const IPV4_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
-// The proxy tag @MTProxybot issues, mirroring validateAdTag on the server.
 const AD_TAG_RE = /^[0-9a-f]{32}$/;
 
 const schema = z
@@ -43,7 +42,6 @@ const schema = z
     if (val.public_ip !== '' && !IPV4_RE.test(val.public_ip)) {
       ctx.addIssue({ code: 'custom', path: ['public_ip'], message: 'ipv4' });
     }
-    // Empty stays allowed (no sponsor channel); anything else must be the bot's tag shape.
     if (val.ad_tag !== '' && !AD_TAG_RE.test(val.ad_tag)) {
       ctx.addIssue({ code: 'custom', path: ['ad_tag'], message: 'ad_tag' });
     }

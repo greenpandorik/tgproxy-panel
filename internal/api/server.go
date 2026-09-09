@@ -234,29 +234,13 @@ func denyFraming(next http.Handler) http.Handler {
 	})
 }
 
-// spaCSP is the baseline for every response: the SPA is entirely self-hosted (no CDN
-// fonts/scripts, see web/index.html) and calls the API same-origin, so 'self' covers every
-// real load the app makes. style-src keeps 'unsafe-inline' because Tailwind's utilities and a
-// few components (load bars, chart tooltips) set width/color through the style attribute, not
-// a stylesheet - a much narrower concession than allowing it for script-src, which stays
-// script-src 'self' with no unsafe-inline/unsafe-eval. img-src and font-src add data: because
-// Vite inlines small assets (icons, some @fontsource-variable woff2 subsets) as data: URIs
-// rather than separate files below its size threshold; nothing here fetches a blob: image or
-// font. frame-src stays 'self' rather than 'none' for
-// the site template editor's live preview (TemplateEditorPage): a fully sandboxed (sandbox="")
-// srcdoc iframe, whose script execution is already blocked by the sandbox attribute regardless
-// of CSP - Chrome checks a srcdoc frame's own origin against the embedder's frame-src rather
-// than treating "no source" as automatically allowed. Routes that already carry their own
-// Content-Security-Policy (branding assets, site previews, the subscription page) overwrite
-// this with Header().Set, so this is only ever the browser's answer for everything else -
-// the authenticated SPA above all.
+// spaCSP is the baseline policy. The SPA is self-hosted and same-origin throughout; data: is
+// there because Vite inlines small icons and font subsets, and frame-src allows the site
+// template editor's sandboxed srcdoc preview. Routes with their own CSP overwrite this.
 const spaCSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
 	"img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; " +
 	"frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
 
-// securityHeaders sets the headers every response should carry unless a handler knows better
-// and overwrites them: a CSP baseline (see spaCSP) and the MIME-sniffing guard that already
-// existed on a couple of individual routes, generalised so no route can forget it.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", spaCSP)

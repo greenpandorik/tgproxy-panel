@@ -41,10 +41,7 @@ type telemtPolicy struct {
 	MaxTCPConns      uint64 `json:"max_tcp_conns"`
 	Expiration       string `json:"expiration_rfc3339"`
 	Enabled          bool   `json:"enabled"`
-	// AdTag is not part of the panel's per-profile policy: it is the node-level sponsor-channel
-	// tag (ApplyRequest.AdTag), copied onto every profile's policy identically because telemt
-	// expresses it per user. Empty means "no sponsor channel", not "no opinion".
-	AdTag string `json:"ad_tag"`
+	AdTag            string `json:"ad_tag"`
 }
 
 func telemtPolicyFrom(p *agentv1.Profile) telemtPolicy {
@@ -307,10 +304,8 @@ type telemtRollback struct {
 	// publicAddrChanged records that web.vhosts[0].public_addr was rewritten; the vhost array
 	// itself goes back through prevVhosts, but a restart is needed for it to take effect.
 	publicAddrChanged bool
-	// prevMiddleProxy is general.use_middle_proxy as it was before this apply touched it
-	// (nil = not touched).
-	prevMiddleProxy *bool
-	irreversible    []string // mutations telemt cannot undo from the information we hold
+	prevMiddleProxy   *bool    // nil = untouched
+	irreversible      []string // mutations telemt cannot undo from the information we hold
 }
 
 // telemtFakeTLSListener returns the index of the Fake-TLS listener inside `server.listeners`.
@@ -530,17 +525,8 @@ func (h *Handler) reconcileTelemtPublicAddr(ctx context.Context, lg *applyLog, r
 	return true, nil
 }
 
-// reconcileTelemtMiddleProxy turns telemt's middle-proxy mode on or off to match whether the
-// panel wants a sponsor channel on this node. Unlike the listener/address reconcilers, empty is
-// authoritative here ("no sponsor channel"), not "no opinion" - so this always compares against
-// the node's current setting, on a tproxy node included (which will simply never differ, since
-// the panel never sets AdTag for one).
-//
-// `general` is unlike `censorship`/`server.listeners`/`web.vhosts`: nothing here says it is
-// process-owned, so this asks for an immediate draining reload and then trusts telemt's own
-// answer (restart_required / process_restart_required / deferred_process_fields) rather than
-// assuming either way. If telemt does defer it, the caller restarts the same way a listener
-// move would.
+// reconcileTelemtMiddleProxy turns telemt's middle-proxy mode on or off to match the node's
+// sponsor tag, and reports whether telemt deferred the change to a restart.
 func (h *Handler) reconcileTelemtMiddleProxy(ctx context.Context, lg *applyLog, req *agentv1.ApplyRequest, rb *telemtRollback) (changed, restart bool, err error) {
 	want := req.GetAdTag() != ""
 	cfg, _, err := h.tm.GetConfig(ctx)
@@ -711,8 +697,6 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	if err != nil {
 		return rollback(err)
 	}
-	// The sponsor channel toggle is not process-owned, but telemt's own answer decides whether
-	// this apply still needs the restart the other two might already be asking for.
 	mpChanged, mpRestart, err := h.reconcileTelemtMiddleProxy(ctx, lg, req, rb)
 	if err != nil {
 		return rollback(err)

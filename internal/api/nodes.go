@@ -164,13 +164,9 @@ func validateClassicPort(port int) string {
 	return ""
 }
 
-// adTagRe matches the 32 lowercase hex characters a proxy tag from @MTProxybot always is - the
-// same shape as a telemt user secret, which is where the format comes from.
 var adTagRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
-// validateAdTag accepts an empty value (no sponsor channel on this node) or exactly 32
-// lowercase hex characters, the tag format @MTProxybot issues when a server is registered
-// for a sponsored/promoted channel.
+// validateAdTag accepts an empty value or the 32 hex characters @MTProxybot issues.
 func validateAdTag(tag string) string {
 	if tag == "" || adTagRe.MatchString(tag) {
 		return ""
@@ -367,9 +363,6 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 		listeners.ClassicPort = pgtype.Int4{Int32: int32(*req.ClassicPort), Valid: true}
 		dirty = dirty || int32(*req.ClassicPort) != n.ClassicPort
 	}
-	// ad_tag is the sponsor-channel tag telemt's middle-proxy mode advertises to Telegram; like
-	// tls_domain/classic_port it is desired state the agent applies on the next apply, so
-	// toggling it marks the node dirty rather than taking effect immediately.
 	if req.AdTag != nil {
 		tag := strings.ToLower(strings.TrimSpace(*req.AdTag))
 		if msg := validateAdTag(tag); msg != "" {
@@ -411,13 +404,8 @@ func (s *Server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
-// handleNodeRegistrationSecret answers the one question the sponsor-channel field can't:
-// which secret to hand @MTProxybot. It reveals the node's own "default" profile's secret -
-// the plain 32-hex value every listener on the node (WEB and, on a telemt node, classic/
-// Fake-TLS) answers with, the same one FakeTLSSecret wraps for a Fake-TLS link - so it exists
-// for every node regardless of whether any access key is bound yet, and is exactly what
-// @MTProxybot's own verification connects with. Writer-gated like install-command: whoever
-// can read this can connect to the proxy as this node's own identity.
+// handleNodeRegistrationSecret reveals the node's own default profile secret, which is what
+// @MTProxybot asks for when registering the server.
 func (s *Server) handleNodeRegistrationSecret(w http.ResponseWriter, r *http.Request) {
 	n, ok := s.loadNode(w, r)
 	if !ok {

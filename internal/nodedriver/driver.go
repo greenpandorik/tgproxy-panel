@@ -75,11 +75,7 @@ type ApplyRequest struct {
 	// points at). The telemt agent rewrites the WEB vhost's public_addr when it differs,
 	// which costs a telemt restart; the tproxy agent ignores it. Empty means "no opinion".
 	PublicIP string
-	// AdTag is the sponsor-channel tag telemt's middle-proxy mode advertises to Telegram
-	// (registered per server with @MTProxybot). The telemt agent applies it to every profile
-	// and turns `[general] use_middle_proxy` on when set, off when empty; the tproxy agent
-	// ignores it. Unlike TLSDomain/ClassicPort/PublicIP, empty here is authoritative ("no
-	// sponsor channel"), not "no opinion" - that is also what an old panel always sends.
+	// AdTag is the sponsor-channel tag; empty means no sponsor channel, not "no opinion".
 	AdTag string
 }
 

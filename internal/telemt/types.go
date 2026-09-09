@@ -44,9 +44,7 @@ type User struct {
 	CurrentConnections uint64 `json:"current_connections,omitempty"`
 	ActiveUniqueIPs    uint64 `json:"active_unique_ips,omitempty"`
 	TotalOctets        uint64 `json:"total_octets,omitempty"`
-	// UserAdTag is the per-user sponsor-channel tag telemt's middle-proxy mode advertises to
-	// Telegram for this user, or empty when the user has none.
-	UserAdTag string `json:"user_ad_tag,omitempty"`
+	UserAdTag          string `json:"user_ad_tag,omitempty"`
 }
 
 // CreateUserRequest is POST /v1/users. Optional fields are pointers because telemt reads a
@@ -61,9 +59,7 @@ type CreateUserRequest struct {
 	RateLimitDownBps  *uint64 `json:"rate_limit_down_bps,omitempty"`
 	MaxUniqueIPs      *uint64 `json:"max_unique_ips,omitempty"`
 	Enabled           *bool   `json:"enabled,omitempty"`
-	// UserAdTag is the per-user sponsor-channel tag (exactly 32 hex chars), or nil to leave the
-	// user with none.
-	UserAdTag *string `json:"user_ad_tag,omitempty"`
+	UserAdTag         *string `json:"user_ad_tag,omitempty"`
 }
 
 // PatchUserRequest is PATCH /v1/users/{name} with JSON Merge Patch semantics: an omitted field

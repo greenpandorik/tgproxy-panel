@@ -134,11 +134,8 @@ message ApplyRequest {
   // it differs and restarts telemt like a listener move; the tproxy agent ignores it. Empty
   // means "the panel has no opinion", so an old panel never touches it.
   string public_ip = 7;
-  // Field 8 is the sponsor-channel tag telemt's middle-proxy mode advertises to Telegram
-  // (registered per server with @MTProxybot), applied identically to every profile this apply
-  // pushes. The tproxy agent ignores it. Empty means "no sponsor channel": the telemt agent
-  // turns `[general] use_middle_proxy` off and clears the tag from every user, which is also
-  // the correct behaviour for an old panel that has never heard of this field.
+  // Field 8 is the sponsor-channel tag, applied to every profile. Empty means no sponsor
+  // channel, which is also what an old panel sends.
   string ad_tag = 8;
 }
 message GetSiteRequest {}

@@ -74,10 +74,6 @@ export const useInstallCommand = (id: string) =>
     mutationFn: () => api.get<InstallCommandResult>(`/api/v1/nodes/${id}/install-command`),
   });
 
-// The node's own "default" profile secret - what @MTProxybot's own verification connects
-// with when registering the node for a sponsor channel. Unlike install-command this is a
-// plain read with no side effect, so it is a query, not a mutation; it never changes on its
-// own, so there is nothing to refetch it for.
 export const useNodeRegistrationSecret = (id: string, enabled = true) =>
   useQuery({
     queryKey: [...nodeKeys.one(id), 'registration-secret'],

@@ -214,8 +214,6 @@ describe('NodesPage Telegram column', () => {
   });
 });
 
-// A row is a click target as a whole, not just its name: this renders NodesPage next to a
-// stand-in detail route so a click can be told apart from "nothing happened".
 function wrapWithDetailRoute(nodeEl: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return (
@@ -242,7 +240,6 @@ describe('NodesPage row click', () => {
 
     render(wrapWithDetailRoute(<NodesPage />));
 
-    // A cell with no link or button of its own - the CPU load bar.
     await userEvent.click(within(rowOf('n1')).getAllByTestId('load-bar')[0]);
     expect(await screen.findByText('node detail page')).toBeInTheDocument();
   });

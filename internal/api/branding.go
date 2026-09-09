@@ -17,7 +17,8 @@ import (
 )
 
 // maxBrandingAssetSize is the upload limit for logo/favicon/login background files.
-const maxBrandingAssetSize = 512 << 10
+// BrandingForm's MAX_ASSET_BYTES mirrors it.
+const maxBrandingAssetSize = 3 << 19 // 1.5 MiB
 
 // brandingAssetKinds are the upload slots a branding profile exposes.
 var brandingAssetKinds = map[string]bool{"logo": true, "logo_dark": true, "favicon": true, "login_bg": true}
@@ -353,7 +354,7 @@ func (s *Server) handleUploadBrandingAsset(w http.ResponseWriter, r *http.Reques
 	}
 	defer file.Close() //nolint:errcheck
 	if header.Size > maxBrandingAssetSize {
-		validation(w, map[string]string{"file": "must be 512KB or smaller"})
+		validation(w, map[string]string{"file": "must be 1.5MB or smaller"})
 		return
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maxBrandingAssetSize+1))
@@ -362,7 +363,7 @@ func (s *Server) handleUploadBrandingAsset(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if len(data) > maxBrandingAssetSize {
-		validation(w, map[string]string{"file": "must be 512KB or smaller"})
+		validation(w, map[string]string{"file": "must be 1.5MB or smaller"})
 		return
 	}
 	ext, ok := detectBrandingExt(header.Filename, data)

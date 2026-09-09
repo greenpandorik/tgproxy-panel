@@ -214,9 +214,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-// interactiveSelector matches anything inside a row/card that already handles its own click -
-// the name link, the hostname's copy button, the actions menu's trigger and its (portalled)
-// items - so the row's own click-to-open only fires when none of those did.
+// Anything inside a row that handles its own click, so opening the node does not fire too.
 const interactiveSelector = 'a, button, [role="menuitem"], [role="menu"]';
 
 function NodeCard({ node, actions }: { node: Node; actions: ReactNode }) {

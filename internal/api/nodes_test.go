@@ -96,8 +96,6 @@ func TestNodeListGetPatchDelete(t *testing.T) {
 	}
 }
 
-// The sponsor-channel tag is desired state like tls_domain/classic_port: a valid change is
-// stored and dirties the node for the agent's next apply; an invalid one is rejected untouched.
 func TestNodePatchAdTag(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -126,8 +124,6 @@ func TestNodePatchAdTag(t *testing.T) {
 	}
 }
 
-// The sponsor-channel field needs a secret to hand @MTProxybot, and the node's own "default"
-// profile - created with the node, before any access key exists - is where it comes from.
 func TestNodeRegistrationSecret(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")

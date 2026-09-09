@@ -31,11 +31,6 @@ func TestEveryResponseRefusesToBeFramed(t *testing.T) {
 	}
 }
 
-// TestEveryResponseCarriesABaselineCSP covers the SPA and every plain API route: none of
-// them set their own Content-Security-Policy, so without the global default they would ship
-// none at all. Routes that need something different (branding assets, site previews, the
-// subscription page) are covered separately below and must still show their own, narrower
-// policy rather than this baseline.
 func TestEveryResponseCarriesABaselineCSP(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")

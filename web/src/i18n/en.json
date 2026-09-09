@@ -602,7 +602,11 @@
     "branding_logo": "Logo",
     "branding_favicon": "Favicon",
     "branding_login_bg": "Login background",
-    "branding_upload_hint": "PNG, JPEG, ICO or SVG, up to 512KB",
+    "branding_upload_hint": "PNG, JPEG, ICO or SVG, up to 1.5 MB — or drop a file here",
+    "branding_upload_drop": "Drop to upload",
+    "branding_upload_busy": "Uploading…",
+    "branding_upload_too_large": "That file is over 1.5 MB — shrink it and try again",
+    "branding_upload_bad_type": "Only PNG, JPEG, ICO and SVG work here",
     "branding_upload_success": "File uploaded",
     "branding_primary_color": "Primary color",
     "branding_accent_color": "Accent color",
@@ -740,7 +744,7 @@
     "admins_add": "Add",
     "panel_section_intervals": "Intervals",
     "branding_logo_dark": "Dark theme logo",
-    "branding_logo_dark_hint": "Optional. Uses the main logo when no dark variant is uploaded.",
+    "branding_logo_dark_hint": "Optional — the main logo is used instead. PNG, JPEG, ICO or SVG, up to 1.5 MB.",
     "branding_assets_immediate": "Images are saved immediately after upload. Use Save for name, color and text changes.",
     "branding_advanced": "Advanced: custom CSS",
     "branding_preview": "Preview",
@@ -1652,7 +1656,7 @@
           },
           "logo": {
             "name": "Logo",
-            "what": "PNG, JPEG, ICO or SVG up to 512 KB. SVG is stripped of scripts. Shown in the sidebar and on the login page. Empty - the built-in mark."
+            "what": "PNG, JPEG, ICO or SVG up to 1.5 MB. SVG is stripped of scripts. Shown in the sidebar and on the login page. Empty - the built-in mark."
           },
           "favicon": {
             "name": "Favicon",

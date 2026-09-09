@@ -17,6 +17,7 @@ import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
+import { cn } from '@/lib/utils';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import { Arriving, FormFooter } from './formShell';
@@ -54,11 +55,24 @@ function valuesFromProfile(p: BrandingProfile): FormValues {
 
 const ASSET_ACCEPT = 'image/png,image/jpeg,image/x-icon,image/svg+xml,.ico,.svg';
 
+/** Mirrors maxBrandingAssetSize in internal/api/branding.go. */
+const MAX_ASSET_BYTES = 1.5 * 1024 * 1024;
+
+const ASSET_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.ico', '.svg'];
+
+function assetRejection(file: File): 'size' | 'type' | null {
+  if (file.size > MAX_ASSET_BYTES) return 'size';
+  const name = file.name.toLowerCase();
+  if (!ASSET_EXTENSIONS.some((ext) => name.endsWith(ext))) return 'type';
+  return null;
+}
+
 /**
  * One uploadable asset as a hairline row: the thumbnail the operator is about
  * to replace, what the slot is for, and the button that replaces it. The
  * thumbnail keeps a white ground - a logo drawn for a light page must not be
  * judged against the panel's near-black one.
+ * The row is also a drop target for the slot it names.
  */
 function AssetUpload({
   label,
@@ -75,10 +89,43 @@ function AssetUpload({
 }) {
   const { t } = useTranslation();
   const fileInput = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
   const previewUrl = currentUrl;
 
+  // dragenter/dragleave fire per child, so count depth to keep the highlight steady.
+  const depth = useRef(0);
+
+  const take = (files: FileList | null) => {
+    const file = files?.[0];
+    if (file) onUpload(file);
+  };
+
   return (
-    <div className="grid grid-cols-[36px_minmax(0,1fr)] items-center gap-3 rounded-control border border-hairline bg-background p-3 sm:flex">
+    <div
+      onDragEnter={(e) => {
+        e.preventDefault();
+        depth.current += 1;
+        if (!uploading) setDragging(true);
+      }}
+      onDragOver={(e) => e.preventDefault()}
+      onDragLeave={() => {
+        depth.current -= 1;
+        if (depth.current <= 0) {
+          depth.current = 0;
+          setDragging(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        depth.current = 0;
+        setDragging(false);
+        if (!uploading) take(e.dataTransfer.files);
+      }}
+      className={cn(
+        'grid grid-cols-[36px_minmax(0,1fr)] items-center gap-3 rounded-control border bg-background p-3 transition-colors sm:flex',
+        dragging ? 'border-dashed border-brand-primary bg-brand-primary/5' : 'border-hairline',
+      )}
+    >
       <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-control border border-hairline bg-white">
         {previewUrl ? (
           <img src={previewUrl} alt={label} className="max-h-full max-w-full object-contain" />
@@ -88,7 +135,7 @@ function AssetUpload({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-body text-foreground">{label}</p>
-        <p className="text-label text-mute">{hint}</p>
+        <p className="text-label text-mute">{dragging ? t('settings.branding_upload_drop') : hint}</p>
       </div>
       <Button
         type="button"
@@ -100,7 +147,7 @@ function AssetUpload({
         onClick={() => fileInput.current?.click()}
       >
         <Upload />
-        {uploading ? t('common.loading') : t('settings.branding_upload_action')}
+        {uploading ? t('settings.branding_upload_busy') : t('settings.branding_upload_action')}
       </Button>
       <input
         ref={fileInput}
@@ -110,10 +157,7 @@ function AssetUpload({
         accept={ASSET_ACCEPT}
         className="sr-only"
         onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            onUpload(file);
-          }
+          take(e.target.files);
           e.target.value = '';
         }}
       />
@@ -268,6 +312,14 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
   };
 
   const handleUpload = async (kind: BrandingAssetKind, file: File) => {
+    const rejection = assetRejection(file);
+    if (rejection) {
+      toast.add({
+        description: t(rejection === 'size' ? 'settings.branding_upload_too_large' : 'settings.branding_upload_bad_type'),
+        type: 'error',
+      });
+      return;
+    }
     setUploadingKind(kind);
     try {
       await uploadAsset.mutateAsync({ kind, file });
