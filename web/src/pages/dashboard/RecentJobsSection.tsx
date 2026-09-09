@@ -30,7 +30,6 @@ export function RecentJobsSection({ jobs }: { jobs: ApplyJob[] }) {
         icon={History}
         title={t('dashboard.jobs_title')}
         meta={jobs.length > 0 ? String(jobs.length) : undefined}
-        className="border-t border-hairline"
       />
 
       {jobs.length === 0 ? (

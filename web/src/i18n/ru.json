@@ -160,7 +160,22 @@
     "alert_node_offline": "Сервер не выходит на связь",
     "alert_node_degraded": "Не все службы работают",
     "alert_apply_failed": "Не удалось применить настройки",
-    "alert_unknown": "Проверьте состояние сервера"
+    "alert_unknown": "Проверьте состояние сервера",
+    "alert_config_deferred": "Настройки сохранены, но заработают только после перезапуска",
+    "verdict_ok": "Всё работает",
+    "verdict_attention": "Есть проблемы, требующие внимания",
+    "verdict_nodes_down": "Часть серверов не отвечает",
+    "verdict_all_down": "Ни один сервер не отвечает",
+    "verdict_nodes_degraded": "На серверах работают не все службы",
+    "verdict_unknown": "Не удалось узнать состояние серверов",
+    "verdict_partial": "Серверы на связи, но список проблем не загрузился",
+    "verdict_fleet": "На связи:",
+    "verdict_problems": "Проблем:",
+    "attention_none": "Сейчас ничего не требует внимания",
+    "attention_unavailable": "Не удалось загрузить список проблем",
+    "attention_action_open": "Открыть сервер",
+    "attention_action_apply": "Применить ещё раз",
+    "attention_action_restart": "Перезапустить прокси"
   },
   "nodes": {
     "title": "Серверы",

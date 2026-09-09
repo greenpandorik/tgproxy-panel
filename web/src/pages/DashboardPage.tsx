@@ -1,10 +1,10 @@
-import { Activity, ArrowDownUp, KeyRound, Radio, Server } from 'lucide-react';
+import { Activity, KeyRound, Server } from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useBranding } from '@/api/branding';
-import { useDashboardSummary, useNodesSeries24h } from '@/api/dashboard';
+import { useAlerts, useDashboardSummary, useNodesSeries24h } from '@/api/dashboard';
 import { useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 import { ChartLegend } from '@/components/common/ChartLegend';
@@ -12,22 +12,20 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Panel, PanelHeader } from '@/components/common/Panel';
-import { StatGrid } from '@/components/common/StatGrid';
-import { statTone } from '@/components/common/statTone';
 import { Button } from '@/components/ui/button';
 import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
-import { formatCompactAge, formatCompactDuration, formatNumber, splitBytes } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { formatCompactAge, formatCompactDuration } from '@/lib/format';
 
-import { AlertsSection } from './dashboard/AlertsSection';
+import { AttentionSection } from './dashboard/AttentionSection';
+import { DashboardMetrics } from './dashboard/DashboardMetrics';
 import { NodesTable, NodesTableSkeleton } from './dashboard/NodesTable';
 import { RecentJobsSection } from './dashboard/RecentJobsSection';
+import { VerdictLine } from './dashboard/VerdictLine';
 
-import type { StatGridTile } from '@/components/common/StatGrid';
 import type { SessionsSeriesConfig } from './dashboard/SessionsChart';
 import type { Node, SeriesPoint } from '@/api/types';
 
@@ -38,9 +36,6 @@ const DEFAULT_BRAND_PRIMARY = '#3b82f6';
 const DEFAULT_BRAND_ACCENT = '#22c55e';
 
 const RECENT_JOBS_LIMIT = 6;
-const DELTA_WINDOW_MS = 60 * 60 * 1000;
-// A point more than 15 min away from "an hour ago" is not an hour-ago reading.
-const DELTA_TOLERANCE_MS = 15 * 60 * 1000;
 
 /** The chart's bucket for every node past the palette. Not a node id. */
 const OTHER_SERIES_KEY = '__other';
@@ -58,32 +53,6 @@ function trafficDeltas(points: SeriesPoint[]): { up: number; down: number } {
     up: Math.max(0, last.bytes_up - first.bytes_up),
     down: Math.max(0, last.bytes_down - first.bytes_down),
   };
-}
-
-function sessionsHourChange(seriesByNode: Record<string, SeriesPoint[]>): number | null {
-  const totals = new Map<string, number>();
-  for (const points of Object.values(seriesByNode)) {
-    for (const p of points) totals.set(p.t, (totals.get(p.t) ?? 0) + p.sessions_live);
-  }
-  const rows = [...totals.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  if (rows.length < 2) return null;
-
-  const lastTime = new Date(rows[rows.length - 1][0]).getTime();
-  if (Number.isNaN(lastTime)) return null;
-  const target = lastTime - DELTA_WINDOW_MS;
-
-  let closest: [string, number] | null = null;
-  let closestDiff = Number.POSITIVE_INFINITY;
-  for (const row of rows) {
-    const diff = Math.abs(new Date(row[0]).getTime() - target);
-    if (diff < closestDiff) {
-      closestDiff = diff;
-      closest = row;
-    }
-  }
-  if (!closest || closestDiff > DELTA_TOLERANCE_MS || closest[1] <= 0) return null;
-
-  return Math.round(((rows[rows.length - 1][1] - closest[1]) / closest[1]) * 100);
 }
 
 function buildChartData(
@@ -147,18 +116,13 @@ export function DashboardPage() {
 
   const summaryQuery = useDashboardSummary();
   const nodesQuery = useNodes();
+  const alertsQuery = useAlerts();
   const { data: branding } = useBranding();
   const nodes = useMemo(() => nodesQuery.data?.items ?? [], [nodesQuery.data]);
   const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
   const seriesResults = useNodesSeries24h(nodeIds);
 
   const summary = summaryQuery.data;
-  const nodesOnline = summary?.nodes.online ?? 0;
-  const nodesTotal = summary?.nodes.total ?? 0;
-
-  const keysActive = summary?.keys.active ?? 0;
-
-  const keysTotal = summary?.keys.total ?? 0;
 
   const seriesByNode = useMemo(() => {
     const out: Record<string, SeriesPoint[]> = {};
@@ -175,15 +139,15 @@ export function DashboardPage() {
     [branding?.primary_color, branding?.accent_color],
   );
 
-  const traffic = useMemo(() => {
-    let up = 0;
-    let down = 0;
+  // Absent, not zero, while no node has two samples to subtract.
+  const traffic = useMemo((): number | undefined => {
+    let total: number | undefined;
     for (const points of Object.values(seriesByNode)) {
+      if (points.length < 2) continue;
       const d = trafficDeltas(points);
-      up += d.up;
-      down += d.down;
+      total = (total ?? 0) + d.up + d.down;
     }
-    return { up, down };
+    return total;
   }, [seriesByNode]);
 
   const chart = useMemo(
@@ -200,15 +164,6 @@ export function DashboardPage() {
     return out;
   }, [nodes, seriesByNode]);
 
-  const sessionsChange = useMemo(() => sessionsHourChange(seriesByNode), [seriesByNode]);
-
-  // The hour's movement, as one mono line.
-  const sessionsDelta = useMemo((): string | undefined => {
-    if (sessionsChange === null) return undefined;
-    const arrow = sessionsChange > 0 ? '▲' : sessionsChange < 0 ? '▼' : '·';
-    return t('dashboard.delta_per_hour', { value: `${arrow} ${Math.abs(sessionsChange)}%` });
-  }, [sessionsChange, t]);
-
   const chartStep = useMemo(() => {
     if (chart.data.length < 2) return null;
     const ms = new Date(String(chart.data[1].t)).getTime() - new Date(String(chart.data[0].t)).getTime();
@@ -222,52 +177,8 @@ export function DashboardPage() {
   }, [chart.series]);
 
   const recentJobs = (summary?.recent_jobs ?? []).slice(0, RECENT_JOBS_LIMIT);
-  const totalTraffic = splitBytes(traffic.up + traffic.down);
   const loading = summaryQuery.isLoading || nodesQuery.isLoading;
   const failed = summaryQuery.isError || nodesQuery.isError;
-
-  const tiles: StatGridTile[] = [
-    {
-      id: 'nodes-online',
-      icon: Server,
-      tone: statTone({ kind: 'nodes_online', online: nodesOnline, total: nodesTotal }),
-      label: t('dashboard.nodes_online'),
-      value: formatNumber(nodesOnline, i18n.language),
-      unit: `/ ${formatNumber(nodesTotal, i18n.language)}`,
-      context: t('dashboard.fleet_hint'),
-      to: '/nodes',
-      loading,
-    },
-    {
-      id: 'keys-active',
-      icon: KeyRound,
-      label: t('dashboard.keys_active'),
-      value: formatNumber(keysActive, i18n.language),
-      context: t('dashboard.tile_keys_total', { count: keysTotal }),
-      to: '/keys',
-      loading,
-    },
-    {
-      id: 'sessions',
-      icon: Radio,
-      label: t('dashboard.sessions_live'),
-      value: formatNumber(summary?.sessions_live ?? 0, i18n.language),
-      delta: sessionsDelta,
-      context: sessionsDelta ? undefined : t('dashboard.tile_sessions_context'),
-      to: '/monitoring',
-      loading,
-    },
-    {
-      id: 'traffic',
-      icon: ArrowDownUp,
-      label: t('dashboard.total_traffic'),
-      value: totalTraffic.value,
-      unit: totalTraffic.unit,
-      context: t('dashboard.traffic_both'),
-      to: '/monitoring',
-      loading: loading || seriesLoading,
-    },
-  ];
 
   // The error branch comes before the empty one on purpose.
   if (!loading && failed) {
@@ -327,14 +238,31 @@ export function DashboardPage() {
         }
       />
 
-      <StatGrid tiles={tiles} />
-      <Panel>
-        <AlertsSection />
-      </Panel>
+      <VerdictLine
+        loading={loading}
+        facts={{
+          online: summary?.nodes.online,
+          total: summary?.nodes.total,
+          offline: summary?.nodes.offline,
+          degraded: summary?.nodes.degraded,
+          attention: alertsQuery.isError ? undefined : alertsQuery.data?.items.length,
+        }}
+      />
+
+      <DashboardMetrics
+        loading={loading}
+        nodesOnline={summary?.nodes.online}
+        nodesTotal={summary?.nodes.total}
+        keysActive={summary?.keys.active}
+        sessions={summary?.sessions_live}
+        traffic={seriesLoading ? undefined : traffic}
+      />
+
+      <AttentionSection />
 
       {/* Wrapped rather than classed directly: Panel takes a className but no
           style, and the entrance needs its index on the element. */}
-      <div className={ENTER_CLASS} style={enterDelay(2)}>
+      <div className={ENTER_CLASS} style={enterDelay(1)}>
         <Panel>
           <PanelHeader
             icon={Server}
@@ -354,8 +282,8 @@ export function DashboardPage() {
         </Panel>
       </div>
 
-      <div className={cn(ENTER_CLASS, 'grid grid-cols-1 gap-4 lg:grid-cols-12')} style={enterDelay(1)}>
-        <Panel className="flex flex-col lg:col-span-8">
+      <div className={ENTER_CLASS} style={enterDelay(2)}>
+        <Panel className="flex flex-col">
           {/* No range control and no expand button here, unlike the mockup:
               the series behind this chart is a fixed 24h fetch and there is
               no full-screen view to open, so either affordance would be a
@@ -385,8 +313,10 @@ export function DashboardPage() {
           </div>
           <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-3" />
         </Panel>
+      </div>
 
-        <Panel className="lg:col-span-4">
+      <div className={ENTER_CLASS} style={enterDelay(3)}>
+        <Panel>
           <RecentJobsSection jobs={recentJobs} />
         </Panel>
       </div>

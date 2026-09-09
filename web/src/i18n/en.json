@@ -160,7 +160,22 @@
     "alert_node_offline": "Server is not responding",
     "alert_node_degraded": "Some services are unavailable",
     "alert_apply_failed": "Could not apply settings",
-    "alert_unknown": "Check the server status"
+    "alert_unknown": "Check the server status",
+    "alert_config_deferred": "Settings are saved but will not take effect until a restart",
+    "verdict_ok": "All systems operational",
+    "verdict_attention": "Something needs your attention",
+    "verdict_nodes_down": "Some servers are not responding",
+    "verdict_all_down": "No server is responding",
+    "verdict_nodes_degraded": "Some services are not running",
+    "verdict_unknown": "The panel could not read the state of the fleet",
+    "verdict_partial": "Servers are reporting, but the problem list did not load",
+    "verdict_fleet": "Online:",
+    "verdict_problems": "Issues:",
+    "attention_none": "Nothing needs attention right now",
+    "attention_unavailable": "The problem list could not be loaded",
+    "attention_action_open": "Open server",
+    "attention_action_apply": "Apply again",
+    "attention_action_restart": "Restart the proxy"
   },
   "nodes": {
     "title": "Servers",
