@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Network } from 'lucide-react';
+import { ExternalLink, Network } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { usePatchNode } from '@/api/nodes';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { CopyButton } from '@/components/common/CopyButton';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,6 +180,25 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
             />
             {errors.ad_tag && <p className="text-label text-destructive">{t('nodes.validation_ad_tag')}</p>}
             <p className="text-label text-mute">{t('nodes.field_ad_tag_hint')}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href="https://t.me/MTProxybot"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-label text-brand-ink underline-offset-3 hover:underline"
+              >
+                {t('nodes.field_ad_tag_open_bot')}
+                <ExternalLink className="size-3" aria-hidden="true" />
+              </a>
+              {node.public_ip && (
+                <CopyButton
+                  value={`${node.public_ip}:${node.classic_port}`}
+                  showLabel
+                  label={t('nodes.field_ad_tag_copy_address', { address: `${node.public_ip}:${node.classic_port}` })}
+                  className="h-6 px-2 text-label"
+                />
+              )}
+            </div>
           </div>
 
           <p className="flex items-start gap-2 text-label text-warn">

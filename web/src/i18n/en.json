@@ -334,6 +334,8 @@
     "field_ad_tag": "Sponsor channel tag",
     "field_ad_tag_placeholder": "32 hex characters",
     "field_ad_tag_hint": "Register this server with @MTProxybot on Telegram to get a tag — it is what turns on the sponsor channel for clients connected through this node. Empty means no sponsor channel.",
+    "field_ad_tag_open_bot": "Open @MTProxybot",
+    "field_ad_tag_copy_address": "Copy {{address}} for the bot",
     "validation_ad_tag": "32 lowercase characters (0-9, a-f), or empty"
   },
   "keys": {
