@@ -3,18 +3,11 @@ import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
+import { TONE_VAR } from './statTone';
+
 import type { StatTone } from './statTone';
 import type { LucideIcon } from 'lucide-react';
 import type { CSSProperties } from 'react';
-
-// The tone tokens, as the custom property `.tgwp-tone-tint` reads.
-const TONE_VAR: Record<StatTone, string> = {
-  neutral: 'var(--mute)',
-  ok: 'var(--status-ok)',
-  warn: 'var(--status-warn)',
-  err: 'var(--status-err)',
-  info: 'var(--status-info)',
-};
 
 export interface StatTileProps {
   /** The glyph on the tinted plate. 16px, from lucide. */

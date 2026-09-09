@@ -3,19 +3,27 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
+import { TONE_VAR } from './statTone';
+
+import type { StatTone } from './statTone';
+
 interface EmptyStateProps {
   /** The subject's own glyph, on a tinted plate above the text. */
   icon?: LucideIcon;
   title: string;
   description?: string;
   action?: ReactNode;
+  /** The plate's tone. Empty stays neutral; the states built on top of this carry their own. */
+  tone?: StatTone;
+  role?: 'status' | 'alert';
   className?: string;
 }
 
 // Empty is not an error and not a mood: one muted line saying what is not here, and the button that fixes it.
-export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, description, action, tone = 'neutral', role, className }: EmptyStateProps) {
   return (
     <div
+      role={role}
       className={cn(
         'flex flex-col items-center justify-center gap-3 rounded-surface border border-hairline-strong py-14 text-center',
         className,
@@ -24,7 +32,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
       {Icon && (
         <span
           className="tgwp-tone-tint flex size-9 items-center justify-center rounded-control border"
-          style={{ '--tone': 'var(--mute)' } as CSSProperties}
+          style={{ '--tone': TONE_VAR[tone] } as CSSProperties}
           aria-hidden="true"
         >
           <Icon size={18} strokeWidth={1.8} />

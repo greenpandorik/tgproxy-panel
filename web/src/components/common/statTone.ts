@@ -2,6 +2,15 @@ import { dcTone } from '@/pages/nodes/dcDisplay';
 
 export type StatTone = 'neutral' | 'ok' | 'warn' | 'err' | 'info';
 
+/** The tone tokens, as the custom property `.tgwp-tone-tint` reads. */
+export const TONE_VAR: Record<StatTone, string> = {
+  neutral: 'var(--mute)',
+  ok: 'var(--status-ok)',
+  warn: 'var(--status-warn)',
+  err: 'var(--status-err)',
+  info: 'var(--status-info)',
+};
+
 // Where average CPU load stops being quiet.
 export const LOAD_WARN_PERCENT = 80;
 export const LOAD_ERR_PERCENT = 95;

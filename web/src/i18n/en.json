@@ -44,7 +44,26 @@
     "required": "Required field",
     "reset": "Reset",
     "ago": "{{value}} ago",
-    "ms": "ms"
+    "ms": "ms",
+    "status": {
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "offline": "Offline",
+      "installing": "Installing",
+      "updating": "Updating",
+      "draining": "Draining",
+      "unknown": "Unknown"
+    },
+    "not_available": "Not available",
+    "state": {
+      "loading": "Loading…",
+      "degraded_title": "Partial data",
+      "degraded_description": "Some sources did not answer. Only what could be collected is shown.",
+      "not_available_title": "Not available",
+      "not_available_description": "The panel could not obtain this: the source is unreachable, or this version does not report it."
+    },
+    "advanced_show": "Show advanced settings",
+    "advanced_hide": "Hide advanced settings"
   },
   "auth": {
     "login_title": "Sign in",
