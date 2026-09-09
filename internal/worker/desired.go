@@ -15,6 +15,7 @@ import (
 	"tgwebproxy/internal/crypto"
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodedriver"
+	"tgwebproxy/internal/nodesvc"
 	"tgwebproxy/internal/store"
 	"tgwebproxy/internal/store/db"
 )
@@ -53,6 +54,8 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 	if node.Engine == db.NodeEngineTelemt {
 		req.TLSDomain, req.ClassicPort, req.PublicIP = node.TlsDomain, uint32(node.ClassicPort), node.PublicIp
 		req.AdTag = node.AdTag
+		policy := nodesvc.WebPolicyOf(node.TelemtWebPolicy)
+		req.WebPolicy = &policy
 	}
 	seen := map[string]bool{}
 	for _, p := range rows {

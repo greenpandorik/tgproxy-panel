@@ -156,6 +156,8 @@ func (s *Server) mountProtected(r chi.Router) {
 		r.Get("/jobs", s.handleNodeJobs)
 		r.With(RequireRole(writers...)).Post("/restart", s.handleNodeRestart)
 		r.With(RequireRole(writers...)).Post("/apply", s.handleNodeApply)
+		r.Get("/web-policy", s.handleGetNodeWebPolicy)
+		r.With(RequireRole(writers...)).Put("/web-policy", s.handlePutNodeWebPolicy)
 		r.With(RequireRole(writers...)).Post("/check", s.handleNodeCheck)
 		r.With(RequireRole(writers...)).Post("/site", s.handleAssignSite)
 		r.Get("/site", s.handleGetNodeSite)

@@ -87,6 +87,27 @@ message Profile {
 
 message ProfilesFile { repeated Profile profiles = 1; }
 
+// WebTimeouts mirrors telemt's [web.timeouts]. Every value is required: the message only
+// travels inside a WebPolicy, and a WebPolicy present at all means the panel has an opinion
+// on every one of these.
+message WebTimeouts {
+  repeated int32 negotiation_deadlines_secs = 1;
+  int32 carrier_health_secs = 2;
+  int32 carrier_learning_secs = 3;
+  int32 bridge_request_secs = 4;
+  int32 bridge_retry_secs = 5;
+  int32 probe_coalesce_ms = 6;
+}
+
+// WebPolicy is telemt's carrier negotiation and learning policy as the panel owns it.
+message WebPolicy {
+  string carrier = 1;
+  repeated string carriers = 2;
+  bool carrier_learning = 3;
+  string aggressiveness = 4;
+  WebTimeouts timeouts = 5;
+}
+
 message SiteFile { string path = 1; bytes content = 2; }
 message SiteBundle { repeated SiteFile files = 1; }
 
@@ -114,6 +135,7 @@ message ApplyRequest {
   uint32 classic_port = 6;
   string public_ip = 7;
   string ad_tag = 8;
+  WebPolicy web_policy = 9;   // nil = leave the node's WEB policy untouched
 }
 message GetSiteRequest {}
 message MetricsRequest {}
@@ -139,6 +161,11 @@ message ApplyResult {
   bool restarted_mtproxy = 3;
   bool rolled_back = 4;
   string log = 5;
+  // deferred_fields are config keys telemt persisted but did not activate; restart_required
+  // says telemt wants a process restart before they take effect. Both are reported rather
+  // than acted on: a proxy node is not restarted behind the operator's back.
+  repeated string deferred_fields = 6;
+  bool restart_required = 7;
 }
 message MetricsText { string text = 1; }
 message StatsMap { map<string, string> values = 1; }

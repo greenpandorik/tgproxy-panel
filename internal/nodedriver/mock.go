@@ -22,6 +22,7 @@ type mockNode struct {
 	tlsDomain   string
 	classicPort uint32
 	publicIP    string
+	deferred    []string
 }
 
 // Mock is an in-memory Driver for tests and NODE_DRIVER=mock.
@@ -63,6 +64,13 @@ func (m *Mock) SetStats(id uuid.UUID, s map[string]string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.node(id).stats = s
+}
+
+// DeferNextApply makes the next apply report these config keys as persisted but not activated.
+func (m *Mock) DeferNextApply(id uuid.UUID, fields ...string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.node(id).deferred = fields
 }
 
 func (m *Mock) FailNextApply(id uuid.UUID, msg string) {
@@ -142,6 +150,10 @@ func (m *Mock) Apply(_ context.Context, id uuid.UUID, req ApplyRequest) (ApplyRe
 		return ApplyResult{OK: false, RolledBack: true, Log: msg}, errors.New(msg)
 	}
 	res := ApplyResult{OK: true, Log: "mock apply ok"}
+	if len(n.deferred) > 0 {
+		res.DeferredFields, res.RestartRequired = n.deferred, true
+		n.deferred = nil
+	}
 	if req.ApplyProfiles {
 		n.profiles = append([]Profile(nil), req.Profiles...)
 		res.RestartedRelay, res.RestartedMTProxy = true, true

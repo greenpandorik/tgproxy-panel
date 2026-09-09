@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"tgwebproxy/internal/domain"
 )
 
 func telemtParams(t *testing.T) TelemtInitParams {
@@ -283,5 +285,61 @@ func TestRenderTelemtConfigQuotesTheAccessUserKey(t *testing.T) {
 	}
 	if strings.Contains(toml, "\nk1.2 = ") {
 		t.Fatalf("bare dotted key rendered:\n%s", toml)
+	}
+}
+
+func TestRenderTelemtConfigCarriesTheWebPolicy(t *testing.T) {
+	p := telemtParams(t)
+	cfg, err := RenderTelemtConfig(p, "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"carrier = \"https\"",
+		"carriers = [\"websocket-lanes\", \"websocket\", \"https-lanes\"]",
+		"carrier_learning = true",
+		"carrier_negotiation_aggressiveness = \"conservative\"",
+		"[web.limits]\nmax_http_handlers = 4",
+		"[web.timeouts]",
+		"carrier_negotiation_deadlines_secs = [3, 5, 8, 12]",
+		"carrier_health_secs = 30",
+		"carrier_learning_secs = 600",
+		"bridge_request_secs = 10",
+		"bridge_retry_secs = 90",
+		"carrier_probe_coalesce_ms = 0",
+	} {
+		if !strings.Contains(string(cfg), want) {
+			t.Fatalf("config is missing %q:\n%s", want, cfg)
+		}
+	}
+	// The negotiation order ships https-lanes, which telemt refuses below four HTTP handlers.
+	if !strings.Contains(string(cfg), "max_http_handlers = 4") {
+		t.Fatalf("https-lanes needs max_http_handlers >= 4:\n%s", cfg)
+	}
+}
+
+func TestRenderTelemtConfigTakesTheOperatorsWebPolicy(t *testing.T) {
+	p := telemtParams(t)
+	p.WebPolicy = domain.DefaultWebPolicy()
+	p.WebPolicy.Carriers = []domain.Carrier{domain.CarrierWebSocket}
+	p.WebPolicy.CarrierLearning = false
+	p.WebPolicy.Timeouts.CarrierHealthSecs = 45
+	cfg, err := RenderTelemtConfig(p, "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"carriers = [\"websocket\"]", "carrier_learning = false", "carrier_health_secs = 45"} {
+		if !strings.Contains(string(cfg), want) {
+			t.Fatalf("config is missing %q:\n%s", want, cfg)
+		}
+	}
+}
+
+func TestRenderTelemtConfigRefusesAPolicyTelemtWouldRefuse(t *testing.T) {
+	p := telemtParams(t)
+	p.WebPolicy = domain.DefaultWebPolicy()
+	p.WebPolicy.Timeouts.NegotiationDeadlinesSecs = []int{3, 5, 8}
+	if _, err := RenderTelemtConfig(p, "tok"); err == nil {
+		t.Fatal("a config telemt refuses must not be written to the node")
 	}
 }

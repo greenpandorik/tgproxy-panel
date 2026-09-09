@@ -568,3 +568,40 @@ func TestStopWaitsForRunToReturn(t *testing.T) {
 		t.Fatalf("Stop after cancelling Run: %v", err)
 	}
 }
+
+func TestApplyNodeRaisesAnAlertForDeferredConfig(t *testing.T) {
+	f := newTelemtFixture(t)
+	ctx := context.Background()
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	_ = f.st.Q.SetNodeStatus(ctx, db.SetNodeStatusParams{ID: f.node.ID, Status: db.NodeStatusOnline})
+	mock.DeferNextApply(f.node.ID, "web.carrier_learning")
+
+	a := worker.NewApply(f.st, f.box, mock, time.Hour, slog.New(slog.DiscardHandler))
+	if err := a.ApplyNode(ctx, f.node.ID); err != nil {
+		t.Fatal(err)
+	}
+	openAlerts, _ := f.st.Q.ListOpenAlerts(ctx)
+	var found bool
+	for _, al := range openAlerts {
+		if al.Kind == "config_deferred" {
+			found = true
+			if !strings.Contains(al.Message, "web.carrier_learning") {
+				t.Fatalf("alert message = %q", al.Message)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("a deferred patch must reach the operator: %+v", openAlerts)
+	}
+
+	if err := a.ApplyNode(ctx, f.node.ID); err != nil {
+		t.Fatal(err)
+	}
+	openAlerts, _ = f.st.Q.ListOpenAlerts(ctx)
+	for _, al := range openAlerts {
+		if al.Kind == "config_deferred" {
+			t.Fatalf("an apply with nothing deferred must resolve the alert: %+v", al)
+		}
+	}
+}

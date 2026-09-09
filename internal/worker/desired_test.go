@@ -183,3 +183,45 @@ func TestDesiredStateCarriesPublicIPForTelemt(t *testing.T) {
 		t.Fatalf("public ip = %q", des.Req.PublicIP)
 	}
 }
+
+func TestDesiredStateCarriesTheWebPolicyForTelemtOnly(t *testing.T) {
+	ctx := context.Background()
+	tel := newTelemtFixture(t)
+	des, err := worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if des.Req.WebPolicy == nil {
+		t.Fatal("a telemt node with no stored policy must still carry the default")
+	}
+	want := domain.DefaultWebPolicy()
+	if des.Req.WebPolicy.Carrier != want.Carrier || len(des.Req.WebPolicy.Carriers) != len(want.Carriers) ||
+		!des.Req.WebPolicy.CarrierLearning {
+		t.Fatalf("policy %+v", des.Req.WebPolicy)
+	}
+
+	if _, err := tel.st.Q.SetNodeWebPolicy(ctx, db.SetNodeWebPolicyParams{
+		ID: tel.node.ID, TelemtWebPolicy: []byte(`{"carriers":["https"],"timeouts":{"carrier_health_secs":45}}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	des, err = worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(des.Req.WebPolicy.Carriers) != 1 || des.Req.WebPolicy.Timeouts.CarrierHealthSecs != 45 {
+		t.Fatalf("stored override lost: %+v", des.Req.WebPolicy)
+	}
+	if des.Req.WebPolicy.Timeouts.BridgeRetrySecs != want.Timeouts.BridgeRetrySecs {
+		t.Fatalf("untouched timeout must keep the default: %+v", des.Req.WebPolicy.Timeouts)
+	}
+
+	tp := newFixture(t)
+	tpDes, err := worker.DesiredState(ctx, tp.st, tp.box, tp.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tpDes.Req.WebPolicy != nil {
+		t.Fatalf("a tproxy node has no WEB policy: %+v", tpDes.Req.WebPolicy)
+	}
+}

@@ -53,7 +53,7 @@ func (g *Gateway) Apply(ctx context.Context, id uuid.UUID, req ApplyRequest) (Ap
 	pr := &agentv1.ApplyRequest{
 		ApplyProfiles: req.ApplyProfiles, MtproxySecrets: req.MTProxySecrets,
 		TlsDomain: req.TLSDomain, ClassicPort: req.ClassicPort, PublicIp: req.PublicIP,
-		AdTag: req.AdTag,
+		AdTag: req.AdTag, WebPolicy: WebPolicyToProto(req.WebPolicy),
 	}
 	for _, p := range req.Profiles {
 		pr.Profiles = append(pr.Profiles, ProfileToProto(p))
@@ -69,7 +69,10 @@ func (g *Gateway) Apply(ctx context.Context, id uuid.UUID, req ApplyRequest) (Ap
 // applyResultFrom maps an agent reply onto an ApplyResult.
 func applyResultFrom(resp *agentv1.Response, err error) (ApplyResult, error) {
 	if a := resp.GetApply(); a != nil {
-		res := ApplyResult{OK: a.Ok, RestartedRelay: a.RestartedRelay, RestartedMTProxy: a.RestartedMtproxy, RolledBack: a.RolledBack, Log: a.Log}
+		res := ApplyResult{
+			OK: a.Ok, RestartedRelay: a.RestartedRelay, RestartedMTProxy: a.RestartedMtproxy, RolledBack: a.RolledBack,
+			Log: a.Log, DeferredFields: a.DeferredFields, RestartRequired: a.RestartRequired,
+		}
 		switch {
 		case err != nil:
 			return res, err

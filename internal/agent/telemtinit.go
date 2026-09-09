@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"tgwebproxy/internal/domain"
 )
 
 // Fixed loopback endpoints of a telemt node (spec §5).
@@ -24,6 +26,9 @@ const (
 	telemtLoopbackCIDR  = "127.0.0.1/32"
 	// telemtSynlimitBackend is the per-listener SYN rate limiter telemt installs itself (spec §5, the MEKO fix).
 	telemtSynlimitBackend = "nftables"
+	// telemtMaxHTTPHandlers is set explicitly because telemt refuses the https carrier below 2
+	// and https-lanes below 4, and [web.limits] cannot be raised without a restart.
+	telemtMaxHTTPHandlers = 4
 )
 
 // Default node paths, overridable for tests.
@@ -52,6 +57,9 @@ type TelemtInitParams struct {
 	SiteSrc        string // optional directory whose contents become the decoy site
 	NoSynlimit     bool
 	NoTLSEmulation bool
+	// WebPolicy is the carrier policy the node starts with; the zero value means the
+	// panel default, which is what a node with no operator override runs.
+	WebPolicy domain.WebPolicy
 
 	ConfigPath string
 	TokenPath  string
@@ -87,6 +95,9 @@ func (p *TelemtInitParams) withDefaults() {
 	if p.TLSDomain == "" {
 		p.TLSDomain = p.Hostname
 	}
+	if len(p.WebPolicy.Carriers) == 0 {
+		p.WebPolicy = domain.DefaultWebPolicy()
+	}
 }
 
 var (
@@ -121,7 +132,7 @@ func (p TelemtInitParams) validate() error {
 	if !hexRe.MatchString(p.WebSecret) {
 		return errors.New("web secret must be 32 lowercase hex characters")
 	}
-	return nil
+	return p.WebPolicy.Validate()
 }
 
 // publicAddr is the vhost's public socket address; IPv6 needs brackets.
@@ -174,8 +185,19 @@ unknown_sni_action = "mask"
 {{q .WebUser}} = {{q .WebSecret}}
 [web]
 enabled = true
-carrier = "https"
-carriers = ["websocket-lanes", "websocket", "https-lanes"]
+carrier = {{q .Carrier}}
+carriers = [{{range $i, $c := .Carriers}}{{if $i}}, {{end}}{{q $c}}{{end}}]
+carrier_learning = {{.CarrierLearning}}
+carrier_negotiation_aggressiveness = {{q .Aggressiveness}}
+[web.limits]
+max_http_handlers = {{.MaxHTTPHandlers}}
+[web.timeouts]
+carrier_negotiation_deadlines_secs = [{{range $i, $d := .NegotiationDeadlines}}{{if $i}}, {{end}}{{$d}}{{end}}]
+carrier_health_secs = {{.CarrierHealthSecs}}
+carrier_learning_secs = {{.CarrierLearningSecs}}
+bridge_request_secs = {{.BridgeRequestSecs}}
+bridge_retry_secs = {{.BridgeRetrySecs}}
+carrier_probe_coalesce_ms = {{.ProbeCoalesceMs}}
 [[web.vhosts]]
 host = {{q .Hostname}}
 public_addr = {{q .PublicAddr}}
@@ -240,6 +262,10 @@ func RenderTelemtConfig(p TelemtInitParams, apiToken string) ([]byte, error) {
 		"MetricsListen": telemtMetricsListen, "APIListen": telemtAPIListen,
 		"LoopbackCIDR": telemtLoopbackCIDR,
 		"WebListenIP":  telemtWebListenIP, "WebListenPort": telemtWebListenPort,
+		"MaxHTTPHandlers": telemtMaxHTTPHandlers,
+	}
+	for k, v := range telemtWebPolicyTemplateData(p.WebPolicy) {
+		data[k] = v
 	}
 	var b strings.Builder
 	if err := telemtConfigTmpl.Execute(&b, data); err != nil {
@@ -353,4 +379,22 @@ func installTelemtSite(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(index, []byte(telemtPlaceholderIndex), 0o644)
+}
+
+// telemtWebPolicyTemplateData flattens a WEB policy into the values telemt.toml renders.
+func telemtWebPolicyTemplateData(p domain.WebPolicy) map[string]any {
+	carriers := make([]string, 0, len(p.Carriers))
+	for _, c := range p.Carriers {
+		carriers = append(carriers, string(c))
+	}
+	return map[string]any{
+		"Carrier": string(p.Carrier), "Carriers": carriers,
+		"CarrierLearning": p.CarrierLearning, "Aggressiveness": string(p.Aggressiveness),
+		"NegotiationDeadlines": p.Timeouts.NegotiationDeadlinesSecs,
+		"CarrierHealthSecs":    p.Timeouts.CarrierHealthSecs,
+		"CarrierLearningSecs":  p.Timeouts.CarrierLearningSecs,
+		"BridgeRequestSecs":    p.Timeouts.BridgeRequestSecs,
+		"BridgeRetrySecs":      p.Timeouts.BridgeRetrySecs,
+		"ProbeCoalesceMs":      p.Timeouts.ProbeCoalesceMs,
+	}
 }

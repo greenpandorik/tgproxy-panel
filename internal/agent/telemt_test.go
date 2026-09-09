@@ -27,6 +27,7 @@ type fakeTelemt struct {
 	patches      []string // raw bodies of PATCH /v1/config
 	reloads      int
 	reloadStates []string
+	deferFields  []string // deferred_process_fields the next PATCH /v1/config reports
 	ready        bool
 	failOn       string // "METHOD path" prefix that must answer 500
 	upstreams    map[string]any
@@ -205,7 +206,12 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 			changed = append(changed, section)
 		}
 		reloadRequired, _ := f.config["__force_runtime_reload"].(bool)
-		f.ok(w, map[string]any{"revision": "rev2", "changed": changed, "runtime_reload_required": reloadRequired})
+		out := map[string]any{"revision": "rev2", "changed": changed, "runtime_reload_required": reloadRequired}
+		if len(f.deferFields) > 0 {
+			out["deferred_process_fields"] = f.deferFields
+			out["process_restart_required"] = true
+		}
+		f.ok(w, out)
 	case route == "POST /v1/system/reload":
 		f.reloads++
 		w.WriteHeader(http.StatusAccepted)

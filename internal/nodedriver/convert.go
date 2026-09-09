@@ -108,3 +108,58 @@ func HealthToProto(h HealthReport) *agentv1.HealthReport {
 func logLineFromProto(l *agentv1.LogLine) LogLine {
 	return LogLine{Service: l.GetService(), Line: l.GetLine(), Time: time.UnixMilli(l.GetUnixMs())}
 }
+
+// WebPolicyToProto carries the panel's carrier policy to the agent. A nil policy stays nil:
+// an agent that receives no policy leaves the node's WEB config alone.
+func WebPolicyToProto(p *domain.WebPolicy) *agentv1.WebPolicy {
+	if p == nil {
+		return nil
+	}
+	out := &agentv1.WebPolicy{
+		Carrier:         string(p.Carrier),
+		CarrierLearning: p.CarrierLearning,
+		Aggressiveness:  string(p.Aggressiveness),
+		Timeouts: &agentv1.WebTimeouts{
+			CarrierHealthSecs:   int32(p.Timeouts.CarrierHealthSecs),
+			CarrierLearningSecs: int32(p.Timeouts.CarrierLearningSecs),
+			BridgeRequestSecs:   int32(p.Timeouts.BridgeRequestSecs),
+			BridgeRetrySecs:     int32(p.Timeouts.BridgeRetrySecs),
+			ProbeCoalesceMs:     int32(p.Timeouts.ProbeCoalesceMs),
+		},
+	}
+	for _, c := range p.Carriers {
+		out.Carriers = append(out.Carriers, string(c))
+	}
+	for _, d := range p.Timeouts.NegotiationDeadlinesSecs {
+		out.Timeouts.NegotiationDeadlinesSecs = append(out.Timeouts.NegotiationDeadlinesSecs, int32(d))
+	}
+	return out
+}
+
+// WebPolicyFromProto is the agent-side inverse of WebPolicyToProto.
+func WebPolicyFromProto(p *agentv1.WebPolicy) *domain.WebPolicy {
+	if p == nil {
+		return nil
+	}
+	t := p.GetTimeouts()
+	out := &domain.WebPolicy{
+		Preset:          domain.PresetCustom,
+		Carrier:         domain.Carrier(p.GetCarrier()),
+		CarrierLearning: p.GetCarrierLearning(),
+		Aggressiveness:  domain.Aggressiveness(p.GetAggressiveness()),
+		Timeouts: domain.WebTimeouts{
+			CarrierHealthSecs:   int(t.GetCarrierHealthSecs()),
+			CarrierLearningSecs: int(t.GetCarrierLearningSecs()),
+			BridgeRequestSecs:   int(t.GetBridgeRequestSecs()),
+			BridgeRetrySecs:     int(t.GetBridgeRetrySecs()),
+			ProbeCoalesceMs:     int(t.GetProbeCoalesceMs()),
+		},
+	}
+	for _, c := range p.GetCarriers() {
+		out.Carriers = append(out.Carriers, domain.Carrier(c))
+	}
+	for _, d := range t.GetNegotiationDeadlinesSecs() {
+		out.Timeouts.NegotiationDeadlinesSecs = append(out.Timeouts.NegotiationDeadlinesSecs, int(d))
+	}
+	return out
+}

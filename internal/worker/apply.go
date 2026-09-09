@@ -211,6 +211,24 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		if _, err := q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(nodeID), Kind: "apply_failed"}); err != nil {
 			return err
 		}
+		if err := recordDeferred(ctx, q, nodeID, res); err != nil {
+			return err
+		}
 		return q.ActivatePendingKeysForNode(ctx)
 	})
+}
+
+// recordDeferred raises an alert for config the node persisted without activating. The apply
+// itself succeeded, so nothing retries it: only a restart the operator chooses makes those
+// keys live, and an apply log nobody reads is not a way to say so.
+func recordDeferred(ctx context.Context, q *db.Queries, nodeID uuid.UUID, res nodedriver.ApplyResult) error {
+	if len(res.DeferredFields) == 0 {
+		if _, err := q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(nodeID), Kind: "config_deferred"}); err != nil {
+			return err
+		}
+		return nil
+	}
+	msg := "telemt persisted but did not activate " + strings.Join(res.DeferredFields, ", ") + "; a restart is required"
+	_, err := q.InsertAlert(ctx, db.InsertAlertParams{NodeID: nullUUID(nodeID), Kind: "config_deferred", Message: msg})
+	return err
 }

@@ -676,6 +676,54 @@ func (q *Queries) SetNodeTelemtVersion(ctx context.Context, arg SetNodeTelemtVer
 	return err
 }
 
+const setNodeWebPolicy = `-- name: SetNodeWebPolicy :one
+UPDATE nodes SET telemt_web_policy = $2 WHERE id = $1 RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy
+`
+
+type SetNodeWebPolicyParams struct {
+	ID              uuid.UUID `json:"id"`
+	TelemtWebPolicy []byte    `json:"telemt_web_policy"`
+}
+
+// SetNodeWebPolicy stores only what the operator set differently from the panel default,
+// so an untouched node keeps an empty object and follows the default as it moves.
+func (q *Queries) SetNodeWebPolicy(ctx context.Context, arg SetNodeWebPolicyParams) (Node, error) {
+	row := q.db.QueryRow(ctx, setNodeWebPolicy, arg.ID, arg.TelemtWebPolicy)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Hostname,
+		&i.PublicIp,
+		&i.AcmeEmail,
+		&i.Status,
+		&i.AgentTokenHash,
+		&i.InstallTokenHash,
+		&i.InstallTokenExpires,
+		&i.TproxyVersion,
+		&i.AgentVersion,
+		&i.MaxProfiles,
+		&i.Dirty,
+		&i.LastSeenAt,
+		&i.LastApplyAt,
+		&i.LastHealth,
+		&i.CreatedAt,
+		&i.DirtySeq,
+		&i.LastCheck,
+		&i.Engine,
+		&i.TlsDomain,
+		&i.ClassicPort,
+		&i.TelemtVersion,
+		&i.AdTag,
+		&i.TelemtBuild,
+		&i.TelemtCapabilities,
+		&i.TelemtCapabilitiesCheckedAt,
+		&i.TelemtUpdateAvailable,
+		&i.TelemtWebPolicy,
+	)
+	return i, err
+}
+
 const updateNode = `-- name: UpdateNode :one
 UPDATE nodes SET name = $2, public_ip = $3, max_profiles = $4, acme_email = $5,
   tls_domain = COALESCE($6::text, tls_domain),

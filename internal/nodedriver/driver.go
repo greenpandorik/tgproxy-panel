@@ -61,11 +61,18 @@ type ApplyRequest struct {
 	PublicIP    string
 	// AdTag is the sponsor-channel tag; empty means no sponsor channel, not "no opinion".
 	AdTag string
+	// WebPolicy is telemt's carrier policy; nil means the panel has no opinion and the
+	// node's WEB config is left alone.
+	WebPolicy *domain.WebPolicy
 }
 
 type ApplyResult struct {
 	OK, RestartedRelay, RestartedMTProxy, RolledBack bool
 	Log                                              string
+	// DeferredFields are config keys the node persisted without activating, and
+	// RestartRequired says it wants a process restart before they take effect.
+	DeferredFields  []string
+	RestartRequired bool
 }
 
 type LogLine struct {

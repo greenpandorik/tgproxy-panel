@@ -1,6 +1,7 @@
 package nodedriver
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -92,5 +93,28 @@ func TestHealthDcFieldsRoundTrip(t *testing.T) {
 	}
 	if empty := HealthFromProto(HealthToProto(HealthReport{})); empty.DcDataAvailable || len(empty.DCs) != 0 {
 		t.Fatalf("a report without DC data must stay unavailable: %+v", empty)
+	}
+}
+
+func TestWebPolicyProtoRoundTrip(t *testing.T) {
+	if got := WebPolicyToProto(nil); got != nil {
+		t.Fatalf("no policy must stay no policy: %+v", got)
+	}
+	if got := WebPolicyFromProto(nil); got != nil {
+		t.Fatalf("no policy must stay no policy: %+v", got)
+	}
+	want := domain.DefaultWebPolicy()
+	want.Carriers = []domain.Carrier{domain.CarrierWebSocket, domain.CarrierHTTPSLanes}
+	want.CarrierLearning = false
+	want.Timeouts.ProbeCoalesceMs = 7
+	got := WebPolicyFromProto(WebPolicyToProto(&want))
+	if got == nil {
+		t.Fatal("nil round trip")
+	}
+	if got.Carrier != want.Carrier || got.CarrierLearning || got.Aggressiveness != want.Aggressiveness {
+		t.Fatalf("policy %+v", got)
+	}
+	if !reflect.DeepEqual(got.Carriers, want.Carriers) || !reflect.DeepEqual(got.Timeouts, want.Timeouts) {
+		t.Fatalf("carriers %+v timeouts %+v", got.Carriers, got.Timeouts)
 	}
 }

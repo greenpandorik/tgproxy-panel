@@ -32,6 +32,11 @@ UPDATE nodes SET name = $2, public_ip = $3, max_profiles = $4, acme_email = $5,
   ad_tag = COALESCE(sqlc.narg('ad_tag')::text, ad_tag)
 WHERE id = $1 RETURNING *;
 
+-- SetNodeWebPolicy stores only what the operator set differently from the panel default,
+-- so an untouched node keeps an empty object and follows the default as it moves.
+-- name: SetNodeWebPolicy :one
+UPDATE nodes SET telemt_web_policy = $2 WHERE id = $1 RETURNING *;
+
 -- name: SetNodeInstallToken :exec
 UPDATE nodes SET install_token_hash = $2, install_token_expires = $3 WHERE id = $1;
 

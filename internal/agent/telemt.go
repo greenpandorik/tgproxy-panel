@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/telemt"
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
@@ -277,7 +278,8 @@ type telemtRollback struct {
 	siteBackup        string   // directory holding the previous decoy site ("" = site untouched)
 	prevListeners     map[string]any
 	publicAddrChanged bool
-	prevMiddleProxy   *bool    // nil = untouched
+	prevMiddleProxy   *bool // nil = untouched
+	prevWebPolicy     map[string]any
 	irreversible      []string // mutations telemt cannot undo from the information we hold
 }
 
@@ -555,6 +557,11 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 				step("restore general.use_middle_proxy", err)
 			}
 		}
+		if rb.prevWebPolicy != nil {
+			if _, err := h.tm.PatchConfig(ctx, map[string]any{"web": rb.prevWebPolicy}, false); err != nil {
+				step("restore web policy", err)
+			}
+		}
 		for _, name := range rb.created {
 			// telemt answers 409 last_user_forbidden when a delete would empty [access.users].
 			step("delete user "+name, h.tm.DeleteUser(ctx, name))
@@ -577,6 +584,7 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 			step("restart telemt after listener restore", h.restartTelemt(ctx))
 		}
 		res.Ok, res.RolledBack = false, restored
+		res.DeferredFields, res.RestartRequired = nil, false
 		if !restored {
 			lg.f("rollback incomplete; the panel must re-apply the desired state")
 		}
@@ -623,8 +631,14 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	if err != nil {
 		return rollback(err)
 	}
+	webChanged, webReload, deferred, err := h.reconcileTelemtWebPolicy(ctx, lg, req, rb)
+	if err != nil {
+		return rollback(err)
+	}
+	res.DeferredFields, res.RestartRequired = deferred, len(deferred) > 0
+	reloadNeeded = reloadNeeded || webReload
 	restartNeeded := listenersChanged || addrChanged || mpRestart
-	changed = changed || restartNeeded || mpChanged
+	changed = changed || restartNeeded || mpChanged || webChanged
 
 	if !changed {
 		lg.f("nothing changed (no restart)")
@@ -978,4 +992,236 @@ func (h *Handler) telemtStats(ctx context.Context) (map[string]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// webPolicyFromProto reads the panel's carrier policy off the apply request; nil means the
+// panel expressed no opinion and the node's WEB config is left alone.
+func webPolicyFromProto(p *agentv1.WebPolicy) *domain.WebPolicy {
+	if p == nil {
+		return nil
+	}
+	t := p.GetTimeouts()
+	out := &domain.WebPolicy{
+		Carrier:         domain.Carrier(p.GetCarrier()),
+		CarrierLearning: p.GetCarrierLearning(),
+		Aggressiveness:  domain.Aggressiveness(p.GetAggressiveness()),
+		Timeouts: domain.WebTimeouts{
+			CarrierHealthSecs:   int(t.GetCarrierHealthSecs()),
+			CarrierLearningSecs: int(t.GetCarrierLearningSecs()),
+			BridgeRequestSecs:   int(t.GetBridgeRequestSecs()),
+			BridgeRetrySecs:     int(t.GetBridgeRetrySecs()),
+			ProbeCoalesceMs:     int(t.GetProbeCoalesceMs()),
+		},
+	}
+	for _, c := range p.GetCarriers() {
+		out.Carriers = append(out.Carriers, domain.Carrier(c))
+	}
+	for _, d := range t.GetNegotiationDeadlinesSecs() {
+		out.Timeouts.NegotiationDeadlinesSecs = append(out.Timeouts.NegotiationDeadlinesSecs, int(d))
+	}
+	return out
+}
+
+func carrierStrings(cs []domain.Carrier) []string {
+	out := make([]string, 0, len(cs))
+	for _, c := range cs {
+		out = append(out, string(c))
+	}
+	return out
+}
+
+func anyStrings(v any) ([]string, bool) {
+	list, ok := v.([]any)
+	if !ok {
+		return nil, false
+	}
+	out := make([]string, 0, len(list))
+	for _, e := range list {
+		s, ok := e.(string)
+		if !ok {
+			return nil, false
+		}
+		out = append(out, s)
+	}
+	return out, true
+}
+
+func anyInts(v any) ([]int, bool) {
+	list, ok := v.([]any)
+	if !ok {
+		return nil, false
+	}
+	out := make([]int, 0, len(list))
+	for _, e := range list {
+		n, ok := jsonInt(e)
+		if !ok {
+			return nil, false
+		}
+		out = append(out, n)
+	}
+	return out, true
+}
+
+func jsonInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case float64:
+		return int(n), n == float64(int(n))
+	case json.Number:
+		i, err := n.Int64()
+		return int(i), err == nil
+	}
+	return 0, false
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sameInts(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// carriersSatisfied accepts the negotiation order telemt reports, which may already carry the
+// fallback carrier appended to the end; re-patching that back out would never converge.
+func carriersSatisfied(cur, want []string, fallback string) bool {
+	if sameStrings(cur, want) {
+		return true
+	}
+	for _, c := range want {
+		if c == fallback {
+			return false
+		}
+	}
+	return sameStrings(cur, append(append([]string(nil), want...), fallback))
+}
+
+// telemtWebPolicyPatch is the sparse [web] patch that turns the node's current config into
+// the policy, plus one log line per key it moves. It returns nil when nothing differs.
+func telemtWebPolicyPatch(web map[string]any, p domain.WebPolicy) (map[string]any, []string) {
+	patch := map[string]any{}
+	var changes []string
+	if cur, _ := web["carrier"].(string); cur != string(p.Carrier) {
+		patch["carrier"] = string(p.Carrier)
+		changes = append(changes, fmt.Sprintf("web.carrier %q -> %q", cur, p.Carrier))
+	}
+	want := carrierStrings(p.Carriers)
+	cur, ok := anyStrings(web["carriers"])
+	if !ok || !carriersSatisfied(cur, want, string(p.Carrier)) {
+		patch["carriers"] = want
+		changes = append(changes, fmt.Sprintf("web.carriers %v -> %v", cur, want))
+	}
+	learning, have := web["carrier_learning"].(bool)
+	if !have || learning != p.CarrierLearning {
+		patch["carrier_learning"] = p.CarrierLearning
+		changes = append(changes, fmt.Sprintf("web.carrier_learning %v -> %v", learning, p.CarrierLearning))
+	}
+	if agg, _ := web["carrier_negotiation_aggressiveness"].(string); agg != string(p.Aggressiveness) {
+		patch["carrier_negotiation_aggressiveness"] = string(p.Aggressiveness)
+		changes = append(changes, fmt.Sprintf("web.carrier_negotiation_aggressiveness %q -> %q", agg, p.Aggressiveness))
+	}
+	timeouts, _ := web["timeouts"].(map[string]any)
+	next := map[string]any{}
+	deadlines, ok := anyInts(timeouts["carrier_negotiation_deadlines_secs"])
+	if !ok || !sameInts(deadlines, p.Timeouts.NegotiationDeadlinesSecs) {
+		next["carrier_negotiation_deadlines_secs"] = p.Timeouts.NegotiationDeadlinesSecs
+		changes = append(changes, fmt.Sprintf("web.timeouts.carrier_negotiation_deadlines_secs %v -> %v", deadlines, p.Timeouts.NegotiationDeadlinesSecs))
+	}
+	for _, f := range []struct {
+		name string
+		want int
+	}{
+		{"carrier_health_secs", p.Timeouts.CarrierHealthSecs},
+		{"carrier_learning_secs", p.Timeouts.CarrierLearningSecs},
+		{"bridge_request_secs", p.Timeouts.BridgeRequestSecs},
+		{"bridge_retry_secs", p.Timeouts.BridgeRetrySecs},
+		{"carrier_probe_coalesce_ms", p.Timeouts.ProbeCoalesceMs},
+	} {
+		got, ok := jsonInt(timeouts[f.name])
+		if ok && got == f.want {
+			continue
+		}
+		next[f.name] = f.want
+		changes = append(changes, fmt.Sprintf("web.timeouts.%s %d -> %d", f.name, got, f.want))
+	}
+	if len(next) > 0 {
+		patch["timeouts"] = next
+	}
+	if len(patch) == 0 {
+		return nil, nil
+	}
+	return patch, changes
+}
+
+// reconcileTelemtWebPolicy puts the panel's carrier negotiation and learning policy on the
+// node. Every key it touches is hot-reloadable, so a change here never restarts telemt; if
+// telemt says otherwise the deferral is reported instead of being acted on.
+func (h *Handler) reconcileTelemtWebPolicy(ctx context.Context, lg *applyLog, req *agentv1.ApplyRequest, rb *telemtRollback) (changed, reload bool, deferred []string, err error) {
+	policy := webPolicyFromProto(req.GetWebPolicy())
+	if policy == nil {
+		return false, false, nil, nil
+	}
+	if err := policy.Validate(); err != nil {
+		return false, false, nil, fmt.Errorf("web policy: %w", err)
+	}
+	cfg, _, err := h.tm.GetConfig(ctx)
+	if err != nil {
+		return false, false, nil, err
+	}
+	web, _ := cfg["web"].(map[string]any)
+	if web == nil {
+		return false, false, nil, errors.New("telemt config has no [web] section; run init-node --engine telemt")
+	}
+	patch, changes := telemtWebPolicyPatch(web, *policy)
+	if patch == nil {
+		return false, false, nil, nil
+	}
+	undo := map[string]any{}
+	for key := range patch {
+		if key == "timeouts" {
+			prev, _ := web["timeouts"].(map[string]any)
+			sub := map[string]any{}
+			for name := range patch["timeouts"].(map[string]any) {
+				sub[name] = prev[name]
+			}
+			undo["timeouts"] = sub
+			continue
+		}
+		undo[key] = web[key]
+	}
+	prev, err := cloneJSON(undo)
+	if err != nil {
+		return false, false, nil, err
+	}
+	out, err := h.tm.PatchConfig(ctx, map[string]any{"web": patch}, false)
+	if err != nil {
+		return false, false, nil, fmt.Errorf("patch web policy: %w", err)
+	}
+	rb.prevWebPolicy = prev
+	for _, c := range changes {
+		lg.f("%s", c)
+	}
+	if len(out.DeferredProcessFields) > 0 || out.ProcessRestartRequired {
+		deferred = out.DeferredProcessFields
+		if len(deferred) == 0 {
+			deferred = []string{"web policy"}
+		}
+		lg.f("warning: telemt persisted but did not activate %s; a process restart is required", strings.Join(deferred, ", "))
+	}
+	return true, out.RuntimeReloadRequired, deferred, nil
 }
