@@ -6,6 +6,9 @@ deploy/.env
 # Build artifacts / local data
 data/
 web/node_modules/
+# Vite's root-level cache, and the typescript symlink the TS language server
+# resolves from the repo root (the SPA's own packages live in web/).
+/node_modules/
 web/dist/
 /panel
 tgwp-agent*
@@ -13,6 +16,7 @@ tgwp-agent*
 # Editor/tooling scratch
 .superpowers/
 .claude/
+.playwright-mcp/
 # Installed agent skills are third-party content fetched by `npx skills add`;
 # skills-lock.json records which ones this project uses.
 .agents/
