@@ -192,6 +192,8 @@
     "install_regenerate_note": "The old install command stops working.",
     "install_show": "Show install command",
     "detail_apply_now": "Apply now",
+    "detail_apply_hint": "Push the accumulated changes to the node right now, instead of waiting for the next scheduled apply.",
+    "detail_apply_up_to_date": "Nothing to apply — the node already matches what the panel has configured.",
     "detail_restart_relay": "Restart relay",
     "detail_restart_telemt": "Restart telemt",
     "detail_delete": "Delete node",

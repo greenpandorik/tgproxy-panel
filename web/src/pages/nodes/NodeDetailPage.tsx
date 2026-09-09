@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/toast';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 
@@ -157,9 +158,20 @@ export function NodeDetailPage() {
 
             {isWriter && (
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <Button type="button" size="sm" onClick={() => void handleApply()} disabled={applyNode.isPending}>
-                  {t('nodes.detail_apply_now')}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex" />}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void handleApply()}
+                      disabled={applyNode.isPending || !node.dirty}
+                    >
+                      <RefreshCw className={applyNode.isPending ? 'animate-spin' : undefined} />
+                      {t('nodes.detail_apply_now')}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t(node.dirty ? 'nodes.detail_apply_hint' : 'nodes.detail_apply_up_to_date')}</TooltipContent>
+                </Tooltip>
                 <Button type="button" variant="outline" size="sm" onClick={() => setRestartOpen(true)}>
                   {restartLabel}
                 </Button>

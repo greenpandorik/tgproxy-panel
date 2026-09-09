@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/i18n';
@@ -210,5 +211,53 @@ describe('NodesPage Telegram column', () => {
       // Name, host, relay, profiles, CPU, RAM, Telegram, heartbeat, changes.
       expect(cells[6]).toHaveTextContent('—');
     }
+  });
+});
+
+// A row is a click target as a whole, not just its name: this renders NodesPage next to a
+// stand-in detail route so a click can be told apart from "nothing happened".
+function wrapWithDetailRoute(nodeEl: ReactNode) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return (
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/nodes']}>
+        <Routes>
+          <Route path="/nodes" element={nodeEl} />
+          <Route path="/nodes/:id" element={<div>node detail page</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+}
+
+describe('NodesPage row click', () => {
+  beforeEach(() => setLang('en'));
+
+  it('opens the node from anywhere in its row, not just the name', async () => {
+    vi.mocked(useAuth).mockReturnValue({ isWriter: false } as unknown as ReturnType<typeof useAuth>);
+    vi.mocked(useNodes).mockReturnValue({
+      data: { items: [node('n1', 'online', health(42, 85))], total: 1 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrapWithDetailRoute(<NodesPage />));
+
+    // A cell with no link or button of its own - the CPU load bar.
+    await userEvent.click(within(rowOf('n1')).getAllByTestId('load-bar')[0]);
+    expect(await screen.findByText('node detail page')).toBeInTheDocument();
+  });
+
+  it('does not navigate when the row actions menu is used', async () => {
+    vi.mocked(useAuth).mockReturnValue({ isWriter: true } as unknown as ReturnType<typeof useAuth>);
+    vi.mocked(useNodes).mockReturnValue({
+      data: { items: [node('n1', 'online', health(42, 85))], total: 1 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrapWithDetailRoute(<NodesPage />));
+
+    await userEvent.click(within(rowOf('n1')).getByRole('button', { name: 'Actions' }));
+    expect(await screen.findByRole('menuitem', { name: 'Apply now' })).toBeInTheDocument();
+    expect(screen.queryByText('node detail page')).toBeNull();
   });
 });

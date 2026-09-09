@@ -1,7 +1,7 @@
 import { MoreHorizontal, Plus, Server } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useApplyNode, useDeleteNode, useInstallCommand, useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
@@ -29,7 +29,7 @@ import { EngineTag } from './EngineTag';
 import { InstallCommandDialog } from './InstallCommandDialog';
 import { capacityText, DASH, engineVersion, LOAD_TONE_CLASS, loadTone, nodeLoad, nodeStatus, shortVersion } from './nodeDisplay';
 
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import type { CreateNodeResult, Node } from '@/api/types';
 
 /**
@@ -214,12 +214,23 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+// interactiveSelector matches anything inside a row/card that already handles its own click -
+// the name link, the hostname's copy button, the actions menu's trigger and its (portalled)
+// items - so the row's own click-to-open only fires when none of those did.
+const interactiveSelector = 'a, button, [role="menuitem"], [role="menu"]';
+
 function NodeCard({ node, actions }: { node: Node; actions: ReactNode }) {
   const { t } = useTranslation();
   const row = useNodeRow(node);
+  const navigate = useNavigate();
+
+  const openNode = (e: MouseEvent<HTMLLIElement>) => {
+    if ((e.target as HTMLElement).closest(interactiveSelector)) return;
+    navigate(`/nodes/${node.id}`);
+  };
 
   return (
-    <li className="px-4 py-3">
+    <li className="cursor-pointer px-4 py-3" onClick={openNode}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link
@@ -260,9 +271,15 @@ function NodeCard({ node, actions }: { node: Node; actions: ReactNode }) {
 
 function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
   const row = useNodeRow(node);
+  const navigate = useNavigate();
+
+  const openNode = (e: MouseEvent<HTMLTableRowElement>) => {
+    if ((e.target as HTMLElement).closest(interactiveSelector)) return;
+    navigate(`/nodes/${node.id}`);
+  };
 
   return (
-    <TableRow className="group/row">
+    <TableRow className="group/row cursor-pointer" onClick={openNode}>
       <TableCell className="font-medium text-foreground">
         <Link to={`/nodes/${node.id}`} className="inline-flex items-center gap-2 hover:underline">
           <StatusBadge status={nodeStatus(node)} hideLabel />
