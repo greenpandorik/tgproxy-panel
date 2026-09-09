@@ -10,15 +10,15 @@ RUN npm run build
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG TARGETOS
 ARG TARGETARCH
-# VERSION overrides internal/version.Version (release builds pass the git tag);
-# empty keeps the version written in source.
+# VERSION overrides internal/version.Version and internal/agent.Version (release builds
+# pass the git tag); empty keeps the versions written in source.
 ARG VERSION=
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=web /src/web/dist ./web/dist
-RUN v="${VERSION#v}"; ld="-s -w"; [ -n "$v" ] && ld="$ld -X tgwebproxy/internal/version.Version=$v"; \
+RUN v="${VERSION#v}"; ld="-s -w"; [ -n "$v" ] && ld="$ld -X tgwebproxy/internal/version.Version=$v -X tgwebproxy/internal/agent.Version=$v"; \
     CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-$(go env GOARCH)}" go build -trimpath -ldflags "$ld" -o /out/panel ./cmd/panel \
  && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$ld" -o /out/tgwp-agent-linux-amd64 ./cmd/agent \
  && sha256sum /out/tgwp-agent-linux-amd64 | awk '{print $1}' > /out/tgwp-agent-linux-amd64.sha256

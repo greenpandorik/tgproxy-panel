@@ -1,10 +1,10 @@
 GOBIN := $(shell go env GOPATH)/bin
 export PATH := $(GOBIN):$(PATH)
 
-# VERSION overrides internal/version.Version at link time (release builds pass
-# the git tag). Empty keeps the version written in source.
+# VERSION overrides internal/version.Version and internal/agent.Version at link time
+# (release builds pass the git tag). Empty keeps the versions written in source.
 VERSION ?=
-LDFLAGS := -s -w $(if $(VERSION),-X tgwebproxy/internal/version.Version=$(patsubst v%,%,$(VERSION)),)
+LDFLAGS := -s -w $(if $(VERSION),-X tgwebproxy/internal/version.Version=$(patsubst v%,%,$(VERSION)) -X tgwebproxy/internal/agent.Version=$(patsubst v%,%,$(VERSION)),)
 
 .PHONY: tools test lint fmt sqlc proto web run build agent-linux e2e e2e-telemt test-install test-node-preflight test-agent-upgrade
 

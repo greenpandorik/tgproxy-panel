@@ -47,7 +47,7 @@ jobs:
           set -eu
           ver="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          ld="-s -w -X tgwebproxy/internal/version.Version=${ver}"
+          ld="-s -w -X tgwebproxy/internal/version.Version=${ver} -X tgwebproxy/internal/agent.Version=${ver}"
           for os_arch in linux/amd64 linux/arm64; do
             os="${os_arch%/*}"; arch="${os_arch#*/}"
             CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "$ld" -o "dist/panel-${os}-${arch}" ./cmd/panel
