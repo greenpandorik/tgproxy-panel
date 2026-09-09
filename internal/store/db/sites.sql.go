@@ -43,6 +43,21 @@ func (q *Queries) CreateSiteTemplate(ctx context.Context, arg CreateSiteTemplate
 	return i, err
 }
 
+const deleteRetiredPresets = `-- name: DeleteRetiredPresets :execrows
+DELETE FROM site_templates WHERE is_preset = true AND name <> ALL($1::text[])
+`
+
+// DeleteRetiredPresets removes built-in templates the panel no longer ships. A node that had
+// one keeps its deployed bundle: node_sites.template_id is ON DELETE SET NULL and the bundle
+// is the node's own copy. Custom templates are never touched.
+func (q *Queries) DeleteRetiredPresets(ctx context.Context, dollar_1 []string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRetiredPresets, dollar_1)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSiteTemplate = `-- name: DeleteSiteTemplate :exec
 DELETE FROM site_templates WHERE id = $1 AND is_preset = false
 `

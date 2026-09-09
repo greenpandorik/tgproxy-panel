@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -64,6 +65,9 @@ type Server struct {
 	metricsHandler http.Handler
 	backups        *backup.Runner
 	backupSlot     chan struct{}
+	diagMu         sync.Mutex
+	diagRuns       map[uuid.UUID]struct{}
+	diagSlots      chan struct{}
 	publicStatus   publicStatusCache
 	// updates is nil when the update check is disabled.
 	updates *updates.Checker
@@ -78,6 +82,8 @@ func New(d Deps) *Server {
 		driver:        d.Driver, presence: d.Presence, keys: d.Keys, applyNow: d.ApplyNow, siteProvider: d.SiteProvider,
 		tg: d.Notifier, nodeChecker: d.NodeChecker, backups: d.Backups,
 		backupSlot: make(chan struct{}, 1),
+		diagRuns:   map[uuid.UUID]struct{}{},
+		diagSlots:  make(chan struct{}, diagPanelConcurrency),
 	}
 	if s.backups == nil {
 		s.backups = &backup.Runner{DatabaseURL: d.Cfg.DatabaseURL, Dir: backup.DirFor(d.Cfg.DataDir)}
@@ -159,6 +165,8 @@ func (s *Server) mountProtected(r chi.Router) {
 		r.Get("/web-policy", s.handleGetNodeWebPolicy)
 		r.With(RequireRole(writers...)).Put("/web-policy", s.handlePutNodeWebPolicy)
 		r.With(RequireRole(writers...)).Post("/check", s.handleNodeCheck)
+		r.Get("/diagnostics", s.handleListNodeDiagnostics)
+		r.With(RequireRole(writers...)).Post("/diagnostics/web", s.handleNodeWebDiagnostics)
 		r.With(RequireRole(writers...)).Post("/site", s.handleAssignSite)
 		r.Get("/site", s.handleGetNodeSite)
 		r.Get("/site/preview", s.handleSitePreview)

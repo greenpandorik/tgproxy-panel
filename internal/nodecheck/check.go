@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -147,9 +146,7 @@ func (c *Checker) RunTelemt(ctx context.Context, hostname, expectedIP, tlsDomain
 }
 
 func (c *Checker) checkDNS(ctx context.Context, timeout time.Duration, hostname, expectedIP string) Result {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	addrs, err := c.resolver().LookupIPAddr(ctx, hostname)
+	addrs, err := c.LookupIPs(ctx, timeout, hostname)
 	if err != nil {
 		return Result{Name: "dns_a", OK: false, Detail: err.Error()}
 	}
@@ -176,54 +173,22 @@ func (c *Checker) checkDNS(ctx context.Context, timeout time.Duration, hostname,
 }
 
 func (c *Checker) checkTCP(ctx context.Context, timeout time.Duration, hostname, port, name string) Result {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	conn, err := c.dial(ctx, "tcp", net.JoinHostPort(hostname, port))
-	if err != nil {
+	if err := c.DialTCP(ctx, timeout, hostname, port); err != nil {
 		return Result{Name: name, OK: false, Detail: err.Error()}
 	}
-	_ = conn.Close()
 	return Result{Name: name, OK: true, Detail: "connected"}
 }
 
 func (c *Checker) checkTLS(ctx context.Context, timeout time.Duration, hostname string) Result {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	conn, err := c.dial(ctx, "tcp", net.JoinHostPort(hostname, "443"))
+	probe, err := c.ProbeTLS(ctx, timeout, hostname, "443", hostname, nil)
 	if err != nil {
 		return Result{Name: "tls_cert", OK: false, Detail: err.Error()}
 	}
-	defer func() { _ = conn.Close() }()
-
-	cfg := &tls.Config{}
-	if c.TLSConfig != nil {
-		cfg = c.TLSConfig.Clone()
+	if probe.HostnameErr != nil {
+		return Result{Name: "tls_cert", OK: false, Detail: probe.HostnameErr.Error()}
 	}
-	cfg.ServerName = hostname
-
-	tlsConn := tls.Client(conn, cfg)
-	defer func() { _ = tlsConn.Close() }()
-	if err := tlsConn.HandshakeContext(ctx); err != nil {
-		return Result{Name: "tls_cert", OK: false, Detail: err.Error()}
-	}
-	state := tlsConn.ConnectionState()
-	if len(state.PeerCertificates) == 0 {
-		return Result{Name: "tls_cert", OK: false, Detail: "no certificate presented"}
-	}
-	cert := state.PeerCertificates[0]
-	if err := cert.VerifyHostname(hostname); err != nil {
-		return Result{Name: "tls_cert", OK: false, Detail: err.Error()}
-	}
-	cn := cert.Subject.CommonName
-	if cn == "" && len(cert.DNSNames) > 0 {
-		cn = strings.Join(cert.DNSNames, ",")
-	}
-	issuer := cert.Issuer.CommonName
-	if issuer == "" && len(cert.Issuer.Organization) > 0 {
-		issuer = strings.Join(cert.Issuer.Organization, ",")
-	}
-	detail := fmt.Sprintf("CN=%s issuer=%s notAfter=%s", cn, issuer, cert.NotAfter.Format(time.RFC3339))
-	if time.Until(cert.NotAfter) < expiryWarnWindow {
+	detail := probe.Summary()
+	if time.Until(probe.NotAfter) < expiryWarnWindow {
 		return Result{Name: "tls_cert", OK: false, Detail: detail + " (expiring soon)"}
 	}
 	return Result{Name: "tls_cert", OK: true, Detail: detail}
@@ -263,54 +228,28 @@ func (c *Checker) checkPQKex(ctx context.Context, timeout time.Duration, hostnam
 }
 
 func (c *Checker) checkHTTP(ctx context.Context, timeout time.Duration, hostname string) Result {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://"+hostname+"/", nil)
+	probe, err := c.ProbeHTTP(ctx, timeout, hostname)
 	if err != nil {
 		return Result{Name: "http_root", OK: false, Detail: err.Error()}
 	}
-	resp, err := c.httpClient().Do(req)
-	if err != nil {
-		return Result{Name: "http_root", OK: false, Detail: err.Error()}
+	if probe.Status >= 300 && probe.Status < 400 {
+		return Result{Name: "http_root", OK: false, Detail: fmt.Sprintf("redirect to %s not followed", probe.Location)}
 	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		return Result{Name: "http_root", OK: false, Detail: fmt.Sprintf("redirect to %s not followed", resp.Header.Get("Location"))}
-	}
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	detail := fmt.Sprintf("status=%d bytes=%d", resp.StatusCode, len(body))
-	if resp.StatusCode != http.StatusOK || len(body) == 0 {
+	detail := fmt.Sprintf("status=%d bytes=%d", probe.Status, probe.Bytes)
+	if probe.Status != http.StatusOK || probe.Bytes == 0 {
 		return Result{Name: "http_root", OK: false, Detail: detail}
 	}
 	return Result{Name: "http_root", OK: true, Detail: detail}
 }
 
 func (c *Checker) checkMask(ctx context.Context, timeout time.Duration, hostname, tlsDomain string, classicPort int) Result {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 	addr := net.JoinHostPort(hostname, strconv.Itoa(classicPort))
-	conn, err := c.dial(ctx, "tcp", addr)
+	probe, err := c.ProbeTLS(ctx, timeout, hostname, strconv.Itoa(classicPort), tlsDomain, nil)
 	if err != nil {
-		return Result{Name: "mask", OK: false, Detail: err.Error()}
-	}
-	defer func() { _ = conn.Close() }()
-
-	cfg := &tls.Config{}
-	if c.TLSConfig != nil {
-		cfg = c.TLSConfig.Clone()
-	}
-	cfg.ServerName = tlsDomain
-	tlsConn := tls.Client(conn, cfg)
-	defer func() { _ = tlsConn.Close() }()
-	if err := tlsConn.HandshakeContext(ctx); err != nil {
 		return Result{Name: "mask", OK: false, Detail: fmt.Sprintf("%s (SNI %s): %v", addr, tlsDomain, err)}
 	}
-	state := tlsConn.ConnectionState()
-	if len(state.PeerCertificates) == 0 {
-		return Result{Name: "mask", OK: false, Detail: "no certificate presented"}
-	}
-	if err := state.PeerCertificates[0].VerifyHostname(tlsDomain); err != nil {
-		return Result{Name: "mask", OK: false, Detail: err.Error()}
+	if probe.HostnameErr != nil {
+		return Result{Name: "mask", OK: false, Detail: probe.HostnameErr.Error()}
 	}
 	return Result{Name: "mask", OK: true, Detail: fmt.Sprintf("%s masks to %s:443", addr, tlsDomain)}
 }
