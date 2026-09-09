@@ -31,6 +31,29 @@ func TestEveryResponseRefusesToBeFramed(t *testing.T) {
 	}
 }
 
+// TestEveryResponseCarriesABaselineCSP covers the SPA and every plain API route: none of
+// them set their own Content-Security-Policy, so without the global default they would ship
+// none at all. Routes that need something different (branding assets, site previews, the
+// subscription page) are covered separately below and must still show their own, narrower
+// policy rather than this baseline.
+func TestEveryResponseCarriesABaselineCSP(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+
+	for _, path := range []string{"/", "/healthz", "/api/v1/auth/me", "/api/v1/nodes"} {
+		resp := c.Get(path)
+		resp.Body.Close() //nolint:errcheck
+		csp := resp.Header.Get("Content-Security-Policy")
+		if !strings.Contains(csp, "default-src 'self'") || !strings.Contains(csp, "script-src 'self'") {
+			t.Errorf("%s: CSP = %q, want the SPA baseline", path, csp)
+		}
+		if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+			t.Errorf("%s: X-Content-Type-Options = %q, want nosniff", path, got)
+		}
+	}
+}
+
 // TestSitePreviewIsFramableBySameOriginOnly is the one exemption from the rule
 // above, and it exists because the node Site tab renders the preview in a
 // same-origin sandboxed <iframe> (web/src/pages/nodes/NodeSiteTab.tsx): a blanket
