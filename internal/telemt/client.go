@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,6 +28,9 @@ type Client struct {
 	// MetricsURL is the Prometheus endpoint used by Metrics; it is not part of the /v1 API.
 	MetricsURL string
 	HTTP       *http.Client
+
+	mu              sync.Mutex
+	runtimeInstance string
 }
 
 // New returns a client for baseURL (e.g.

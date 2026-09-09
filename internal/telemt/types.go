@@ -2,7 +2,10 @@ package telemt
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 )
 
 // APIError is a telemt error envelope ({"ok":false,"error":{code,message}}) or a non-envelope HTTP failure.
@@ -216,4 +219,195 @@ type UpstreamsStats struct {
 		ConnectFailTotal    int64 `json:"connect_fail_total"`
 	} `json:"zero"`
 	Upstreams []Upstream `json:"upstreams"`
+}
+
+// Error codes telemt returns for the WEB runtime endpoints.
+const (
+	ErrCodeRuntimeMismatch     = "web_runtime_mismatch"
+	ErrCodeLifecycleInProgress = "web_lifecycle_in_progress"
+)
+
+// IsCode reports whether err is an APIError carrying code.
+func IsCode(err error, code string) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.Code == code
+}
+
+// IsNotFound reports whether err is an APIError with HTTP 404, i.e. the endpoint is absent.
+func IsNotFound(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound
+}
+
+// Carriers telemt accepts for a WEB session.
+const (
+	CarrierHTTPS          = "https"
+	CarrierHTTPSLanes     = "https-lanes"
+	CarrierWebsocket      = "websocket"
+	CarrierWebsocketLanes = "websocket-lanes"
+)
+
+// Carriers lists every carrier value telemt accepts.
+var Carriers = []string{CarrierHTTPS, CarrierHTTPSLanes, CarrierWebsocket, CarrierWebsocketLanes}
+
+// ValidCarrier reports whether name is a carrier telemt knows.
+func ValidCarrier(name string) bool {
+	for _, c := range Carriers {
+		if c == name {
+			return true
+		}
+	}
+	return false
+}
+
+// WEB operator lifecycle states.
+const (
+	WebLifecycleRunning      = "running"
+	WebLifecyclePaused       = "paused"
+	WebLifecycleDraining     = "draining"
+	WebLifecycleForceClosing = "force_closing"
+	WebLifecycleDrained      = "drained"
+)
+
+// FlexID is an identifier telemt reports either as a JSON number or as a string.
+type FlexID string
+
+func (f *FlexID) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	if s == "null" {
+		*f = ""
+		return nil
+	}
+	if strings.HasPrefix(s, `"`) {
+		var v string
+		if err := json.Unmarshal(b, &v); err != nil {
+			return err
+		}
+		*f = FlexID(v)
+		return nil
+	}
+	*f = FlexID(s)
+	return nil
+}
+
+func (f FlexID) String() string { return string(f) }
+
+// WebStatus is GET /v1/runtime/web/status.
+type WebStatus struct {
+	RuntimeInstance   string        `json:"runtime_instance"`
+	OperatorLifecycle *WebLifecycle `json:"operator_lifecycle"`
+	Runtime           WebRuntime    `json:"runtime"`
+	// CarrierNegotiation stays raw: its selection and failure matrices are telemt's own shape.
+	CarrierNegotiation json.RawMessage `json:"carrier_negotiation"`
+}
+
+// HasCarrierNegotiation reports whether the payload carried a carrier negotiation section.
+func (s WebStatus) HasCarrierNegotiation() bool {
+	return len(s.CarrierNegotiation) > 0 && string(s.CarrierNegotiation) != "null"
+}
+
+type WebRuntime struct {
+	Learning *WebLearning `json:"learning"`
+}
+
+type WebLearning struct {
+	Enabled          bool   `json:"enabled"`
+	PolicyGeneration uint64 `json:"policy_generation"`
+	Epoch            uint64 `json:"epoch"`
+	Entries          int    `json:"entries"`
+	Capacity         int    `json:"capacity"`
+	LifetimeSecs     int64  `json:"lifetime_secs"`
+	HealthSecs       int64  `json:"health_secs"`
+	AgeMs            int64  `json:"age_ms"`
+}
+
+type WebLifecycle struct {
+	State                     string           `json:"state"`
+	Epoch                     uint64           `json:"epoch"`
+	AgeMs                     int64            `json:"age_ms"`
+	AdmissionOpen             bool             `json:"admission_open"`
+	EffectiveNewWorkAdmission bool             `json:"effective_new_work_admission"`
+	Drain                     *WebDrainProcess `json:"drain"`
+}
+
+// WebDrainProcess is operator_lifecycle.drain, the progress of a running or finished drain.
+type WebDrainProcess struct {
+	OperationID          FlexID `json:"operation_id"`
+	State                string `json:"state"`
+	Outcome              string `json:"outcome,omitempty"`
+	TimeoutSecs          int    `json:"timeout_secs"`
+	StartedEpochMillis   int64  `json:"started_epoch_millis"`
+	DeadlineEpochMillis  int64  `json:"deadline_epoch_millis"`
+	CompletedEpochMillis *int64 `json:"completed_epoch_millis"`
+	RemainingSessions    uint64 `json:"remaining_sessions"`
+	RemainingStreams     uint64 `json:"remaining_streams"`
+	RemainingWebsockets  uint64 `json:"remaining_websockets"`
+	ForceCloseSignalled  bool   `json:"force_close_signalled"`
+}
+
+// Done reports whether the drain operation reached a terminal state.
+func (d WebDrainProcess) Done() bool {
+	return d.State == "completed" || d.State == "cancelled"
+}
+
+// WebDrainAccepted is the 202 body of POST /v1/runtime/web/lifecycle/drain.
+type WebDrainAccepted struct {
+	OperationID         FlexID `json:"operation_id"`
+	State               string `json:"state"`
+	TimeoutSecs         int    `json:"timeout_secs"`
+	StartedEpochMillis  int64  `json:"started_epoch_millis"`
+	DeadlineEpochMillis int64  `json:"deadline_epoch_millis"`
+}
+
+// CarrierLearningReset is POST /v1/runtime/web/carrier-learning/reset.
+type CarrierLearningReset struct {
+	EntriesCleared int    `json:"entries_cleared"`
+	Epoch          uint64 `json:"epoch"`
+}
+
+// WebSession is one row of GET /v1/runtime/web/sessions; Raw keeps the untyped remainder.
+type WebSession struct {
+	Carrier string
+	State   string
+	Raw     json.RawMessage
+}
+
+func (s *WebSession) UnmarshalJSON(b []byte) error {
+	var head struct {
+		Carrier string `json:"carrier"`
+		State   string `json:"state"`
+	}
+	if err := json.Unmarshal(b, &head); err != nil {
+		return err
+	}
+	s.Carrier, s.State = head.Carrier, head.State
+	s.Raw = append(json.RawMessage(nil), b...)
+	return nil
+}
+
+// WebSessionsPage is one page of GET /v1/runtime/web/sessions.
+type WebSessionsPage struct {
+	Sessions        []WebSession `json:"sessions"`
+	NextCursor      string       `json:"next_cursor"`
+	Scanned         int          `json:"scanned"`
+	ScanTruncated   bool         `json:"scan_truncated"`
+	PartialSessions int          `json:"partial_sessions"`
+	Partial         []WebSession `json:"partial"`
+}
+
+// WebSessionsQuery filters GET /v1/runtime/web/sessions.
+type WebSessionsQuery struct {
+	Carrier string
+	State   string
+	Limit   int
+	Cursor  string
+}
+
+type webInstanceRequest struct {
+	RuntimeInstance string `json:"runtime_instance"`
+}
+
+type webDrainRequest struct {
+	RuntimeInstance string `json:"runtime_instance"`
+	TimeoutSecs     int    `json:"timeout_secs"`
 }
