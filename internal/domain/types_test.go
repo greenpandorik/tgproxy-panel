@@ -135,3 +135,40 @@ func TestTelemtLimitsJSONOmitsZeroFields(t *testing.T) {
 		t.Fatalf("round trip %+v", back)
 	}
 }
+
+func TestDiagnosticsTallyExcludesChecksThatDidNotRun(t *testing.T) {
+	s := "x"
+	run := DiagnosticsRun{Groups: []DiagnosticGroup{{Key: GroupDNS, Checks: []DiagnosticCheck{
+		{Key: "a", Status: CheckOK},
+		{Key: "b", Status: CheckOK},
+		{Key: "c", Status: CheckNotAvailable, Detail: &s},
+	}}}}
+	run.Tally()
+	if run.Passed != 2 || run.Total != 2 || run.NotRun != 1 {
+		t.Fatalf("passed=%d total=%d notrun=%d, want 2/2/1", run.Passed, run.Total, run.NotRun)
+	}
+	if run.Status != DiagnosticsHealthy {
+		t.Fatalf("status %q: a check we could not run is not evidence of a fault", run.Status)
+	}
+}
+
+func TestDiagnosticsTallyDegradesOnFailure(t *testing.T) {
+	run := DiagnosticsRun{Groups: []DiagnosticGroup{{Key: GroupTelemt, Checks: []DiagnosticCheck{
+		{Key: "a", Status: CheckOK},
+		{Key: "b", Status: CheckFail},
+	}}}}
+	run.Tally()
+	if run.Status != DiagnosticsDegraded || run.Passed != 1 || run.Total != 2 {
+		t.Fatalf("run %+v", run)
+	}
+}
+
+func TestDiagnosticsTallyIsUnknownWhenNothingRan(t *testing.T) {
+	run := DiagnosticsRun{Groups: []DiagnosticGroup{{Key: GroupDNS, Checks: []DiagnosticCheck{
+		{Key: "a", Status: CheckNotAvailable},
+	}}}}
+	run.Tally()
+	if run.Status != DiagnosticsUnknown {
+		t.Fatalf("status %q, want unknown when no check could run", run.Status)
+	}
+}
