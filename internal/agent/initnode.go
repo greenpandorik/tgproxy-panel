@@ -12,8 +12,6 @@ ExecStart=
 ExecStart=/opt/MTProxy/objs/bin/mtproto-proxy -u mtproxy -p 8888 -H 2398 $MTPROXY_SECRETS --aes-pwd /etc/mtproxy/proxy-secret /etc/mtproxy/proxy-multi.conf -M ${MTPROXY_WORKERS} -C ${MTPROXY_MAX_CONNECTIONS}
 `
 
-// InitNode raises max_profiles in config.json, adds MTPROXY_SECRETS to mtproxy.env and installs the
-// systemd drop-in that passes several -S flags. Run once by the installer after the official install.sh.
 func InitNode(configPath, envPath, dropinPath string, maxProfiles int) error {
 	raw, err := os.ReadFile(configPath)
 	if err != nil {

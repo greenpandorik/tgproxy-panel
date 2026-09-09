@@ -10,18 +10,15 @@ import (
 )
 
 type mockNode struct {
-	online   bool
-	health   HealthReport
-	profiles []Profile
-	site     SiteBundle
-	metrics  string
-	stats    map[string]string
-	applied  []ApplyRequest
-	failMsg  string
-	restarts int
-	// tlsDomain/classicPort stand in for the node's Fake-TLS listener: an apply that
-	// carries different values rewrites them and reports a relay restart, the same way
-	// the telemt agent does.
+	online      bool
+	health      HealthReport
+	profiles    []Profile
+	site        SiteBundle
+	metrics     string
+	stats       map[string]string
+	applied     []ApplyRequest
+	failMsg     string
+	restarts    int
 	tlsDomain   string
 	classicPort uint32
 	publicIP    string
@@ -153,8 +150,6 @@ func (m *Mock) Apply(_ context.Context, id uuid.UUID, req ApplyRequest) (ApplyRe
 		n.site = *req.Site
 		res.RestartedRelay = true
 	}
-	// An empty domain / zero port mean "the panel has no opinion", so they never overwrite
-	// what the node already holds - that is how a tproxy node's apply looks.
 	if (req.TLSDomain != "" && req.TLSDomain != n.tlsDomain) || (req.ClassicPort != 0 && req.ClassicPort != n.classicPort) {
 		if req.TLSDomain != "" {
 			n.tlsDomain = req.TLSDomain

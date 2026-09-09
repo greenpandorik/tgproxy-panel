@@ -1,5 +1,3 @@
-// Mirrors the JSON shapes produced by internal/api/*.go. Keep field names in
-// snake_case exactly as the backend serializes them - no client-side renaming.
 
 export interface Paginated<T> {
   items: T[];
@@ -20,9 +18,6 @@ export interface Me {
   features: { totp: boolean };
 }
 
-// POST /auth/login answers with one of two shapes: a session (Me) when the password
-// is the only factor, or a challenge when the account has TOTP enrolled. The caller
-// discriminates on `totp_required`.
 export interface TotpChallenge {
   totp_required: true;
   challenge: string;
@@ -60,18 +55,10 @@ export interface Admin {
 
 export type NodeStatus = 'pending' | 'online' | 'offline' | 'degraded';
 
-/**
- * Which proxy a node runs. `telemt` is one process serving both the WEB
- * transport and a Fake-TLS listener; `tproxy` is the original relay + MTProxy
- * pair, which only ever offers a WEB link.
- */
+// Which proxy a node runs.
 export type NodeEngine = 'tproxy' | 'telemt';
 
-/**
- * One Telegram datacenter as telemt sees it. `latency_ms` is telemt's own
- * moving average over its health checks; `known` is false (and the latency
- * meaningless) for a DC it has not measured yet.
- */
+// One Telegram datacenter as telemt sees it.
 export interface DcLatency {
   dc: number;
   latency_ms: number;
@@ -93,9 +80,6 @@ export interface NodeHealth {
   mem_used_percent: number;
   disk_used_percent: number;
   profile_count: number;
-  // The node's link to Telegram's datacenters, from telemt's /v1/stats/upstreams.
-  // Every field is optional: a tproxy node has none of them, and a panel older
-  // than the DC connectivity phase omits them entirely.
   dcs?: DcLatency[];
   upstream_healthy?: boolean;
   upstream_fails?: number;
@@ -254,11 +238,7 @@ export interface ProfileLimits {
   max_pending_per_session?: number;
 }
 
-/**
- * Per-key limits telemt enforces on the node. Every field is optional and 0/absent
- * means "no limit" - the backend omits zero fields entirely (omitempty), so a key
- * with no limits arrives as `{}`.
- */
+// Per-key limits telemt enforces on the node.
 export interface TelemtLimits {
   data_quota_bytes?: number;
   rate_limit_up_bps?: number;
@@ -274,10 +254,6 @@ export interface KeyNode {
   profile_sync: SyncState;
 }
 
-/**
- * A link kind: `web` is the WEB-transport link every node offers, `tls` the
- * Fake-TLS (classic MTProto) link only telemt nodes listen for.
- */
 export type LinkKind = 'web' | 'tls';
 
 export interface Link {
@@ -386,11 +362,7 @@ export interface BulkKeysResult {
   failed: Record<string, string>;
 }
 
-/**
- * One sample of a key on one node. `total_octets` is telemt's cumulative counter,
- * so what a reader wants - traffic in an interval - is the difference between two
- * samples, and a restart of telemt resets it to zero.
- */
+// One sample of a key on one node.
 export interface KeyStatsPoint {
   t: string;
   connections: number;
@@ -431,8 +403,7 @@ export interface TemplateInput {
 }
 
 export interface ValidateReport {
-  // The backend serializes a nil Go slice as JSON null when there are no
-  // errors/warnings (not []) - callers must normalize before using .length/.map.
+  // The backend serializes a nil Go slice as JSON null when there are no errors/warnings (not []).
   errors: string[] | null;
   warnings: string[] | null;
 }

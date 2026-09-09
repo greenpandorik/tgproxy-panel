@@ -132,14 +132,7 @@ function ToastClose({
   )
 }
 
-/*
- * A toast says one of five things, and the panel already has a vocabulary for
- * all five: the 7px status dot. So the toast carries a dot, not an icon and
- * not a coloured panel - the surface stays --bg-2 with a hairline like every
- * other floating thing, and the single spot of colour is the dot itself.
- * "loading" is the exception: a spinner, because it is about time passing
- * rather than about an outcome.
- */
+// A toast says one of five things, and the panel already has a vocabulary for all five: the 7px status dot.
 const TOAST_DOT: Record<string, string> = {
   success: "bg-ok",
   info: "bg-info",

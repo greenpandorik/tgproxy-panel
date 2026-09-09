@@ -14,9 +14,6 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// enrol drives the real setup+confirm HTTP flow so the test resets a genuine
-// enrolment (encrypted secret, eight hashed recovery codes) rather than columns a
-// test poked into the table by hand.
 func enrol(t *testing.T, c *apitest.Client, password string) {
 	t.Helper()
 	var setup struct {
@@ -51,8 +48,6 @@ func TestResetTOTPClearsEnrolmentAndAudits(t *testing.T) {
 	uid := h.CreateAdmin("root", "pass-123456", "owner")
 	enrol(t, h.Login("root", "pass-123456"), "pass-123456")
 
-	// Guard the guard: without a real enrolment first, the assertions below would
-	// pass against an account that never had a second factor.
 	before, err := h.Store.Q.GetAdminTOTP(ctx, uid)
 	if err != nil {
 		t.Fatal(err)

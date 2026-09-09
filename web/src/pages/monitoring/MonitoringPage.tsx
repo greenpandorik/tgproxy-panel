@@ -38,10 +38,6 @@ const METRICS_SNIPPET = `scrape_configs:
     authorization: { credentials_file: /etc/prometheus/tgwp-token }
     static_configs: [{ targets: ['<panel host>'] }]`;
 
-/**
- * Cards arrive staggered. `Panel` takes only a className, so the per-element
- * delay rides a wrapper rather than the section itself.
- */
 function Arriving({ index, children }: { index: number; children: ReactNode }) {
   return (
     <div className={ENTER_CLASS} style={enterDelay(index)}>
@@ -125,8 +121,6 @@ export function MonitoringPage() {
   const [range, setRange] = useState<MonitoringRange>('24h');
   const overviewQuery = useMonitoringOverview(range);
   const { data: branding } = useBranding();
-  // The monitoring payload carries no engine, and the engine decides how many
-  // series a node's readings are; the node list already in cache supplies it.
   const nodesQuery = useNodes();
   const engineById = new Map((nodesQuery.data?.items ?? []).map((n) => [n.id, n.engine]));
 
@@ -134,10 +128,6 @@ export function MonitoringPage() {
   const series = overviewQuery.data?.series ?? {};
   const loading = overviewQuery.isLoading;
 
-  // Every card uses the same three colours: within a card the legend says which
-  // line is which, and across cards a shared set means the reader learns the
-  // shape once instead of re-reading a legend per node. The third colour only
-  // ever appears on the load chart, whose three lines need one each.
   const colors = useMemo((): [string, string, string] => {
     const [first, second, third] = seriesPalette(
       branding?.primary_color || DEFAULT_BRAND_PRIMARY,

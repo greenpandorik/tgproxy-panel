@@ -19,28 +19,14 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// Desired is one snapshot of a node's desired state together with the bookkeeping the
-// apply worker needs to write the outcome back safely: the ids of the profiles actually
-// contained in Req, and the node's dirty_seq as of the snapshot.
 type Desired struct {
-	Req nodedriver.ApplyRequest
-	// ProfileIDs are exactly the profiles present in Req.Profiles. Only these may be
-	// marked synced/failed when the apply finishes.
+	Req        nodedriver.ApplyRequest
 	ProfileIDs []uuid.UUID
-	// DirtySeq is the node's dirty_seq at snapshot time. SetNodeApplied only clears
-	// `dirty` when the counter has not moved since.
-	DirtySeq int64
-	// SiteHash is the bundle_hash of the site carried in Req.Site, empty when this
-	// snapshot pushes no site. The apply writes exactly this value to
-	// node_sites.deployed_hash; re-reading the row after the apply would record a
-	// bundle that was assigned mid-apply and never actually pushed.
-	SiteHash string
+	DirtySeq   int64
+	SiteHash   string
 }
 
-// desiredQuerier is the slice of the store that DesiredState reads. Narrowing the
-// dependency lets a test substitute a querier whose GetNodeSite fails with a real
-// DB error (not pgx.ErrNoRows) and prove the error propagates instead of being
-// read as "no site assigned".
+// desiredQuerier is the slice of the store that DesiredState reads.
 type desiredQuerier interface {
 	GetNode(ctx context.Context, id uuid.UUID) (db.Node, error)
 	ListNodeProfilesWithKey(ctx context.Context, nodeID uuid.UUID) ([]db.ListNodeProfilesWithKeyRow, error)
@@ -48,11 +34,6 @@ type desiredQuerier interface {
 }
 
 // DesiredState builds the full ApplyRequest for a node from the database.
-//
-// Read order matters and is deliberate: dirty_seq is read *before* the profile list. A
-// mutation that commits between the two reads therefore leaves us with a stale dirty_seq
-// (so the node stays dirty and is re-applied), never with a stale profile list paired with
-// a fresh dirty_seq — which is the combination that would silently drop state.
 func DesiredState(ctx context.Context, st *store.Store, box *crypto.Box, nodeID uuid.UUID) (Desired, error) {
 	return desiredState(ctx, st.Q, box, nodeID)
 }
@@ -69,13 +50,6 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 	}
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].Name == "default" && rows[j].Name != "default" })
 	req := nodedriver.ApplyRequest{ApplyProfiles: true}
-	// The Fake-TLS listener travels with every apply on a telemt node, so an operator's edit
-	// of tls_domain/classic_port actually reaches the node instead of only moving the panel's
-	// idea of it. A tproxy node sends neither: it has no such listener and its agent would
-	// ignore them anyway.
-	// The public IP rides along for the same reason: telemt's WEB vhost names it in
-	// public_addr, and the panel is where an operator corrects it after a NAT host detected
-	// the wrong side.
 	if node.Engine == db.NodeEngineTelemt {
 		req.TLSDomain, req.ClassicPort, req.PublicIP = node.TlsDomain, uint32(node.ClassicPort), node.PublicIp
 		req.AdTag = node.AdTag
@@ -88,10 +62,6 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 			return out, fmt.Errorf("decrypt profile %s: %w", p.Name, err)
 		}
 		out.ProfileIDs = append(out.ProfileIDs, p.ID)
-		// Enabled is written literally for both engines: every profile the panel still lists
-		// is one it wants served, and a key that was revoked between the two reads below is
-		// pushed as a disabled user rather than silently left running until its profile row
-		// disappears. The tproxy agent ignores the field.
 		prof := nodedriver.Profile{
 			Name: p.Name, Secret: secret, Backend: p.Backend, CarrierMode: p.CarrierMode,
 			ExpiresAt: p.KeyExpiresAt,
@@ -123,8 +93,6 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 	case errors.Is(err, pgx.ErrNoRows):
 		// No site assigned to this node: nothing to deploy.
 	case err != nil:
-		// A transient DB error must never be silently read as "site unchanged" — that would
-		// let an apply report success while the node keeps serving the old site.
 		return out, fmt.Errorf("node site: %w", err)
 	case site.DeployedHash == nil || *site.DeployedHash != site.BundleHash:
 		files := map[string]string{}

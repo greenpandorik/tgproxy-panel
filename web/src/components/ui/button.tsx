@@ -14,20 +14,9 @@ const buttonVariants = cva(
         secondary: 'bg-elevated text-foreground hover:bg-elevated/70 aria-expanded:bg-elevated',
         ghost:
           'text-muted-foreground hover:bg-elevated hover:text-foreground aria-expanded:bg-elevated aria-expanded:text-foreground',
-        /*
-         * Red text on a hairline. The hover is the neutral --bg-3 the other
-         * outline buttons use, not a red wash: a 10% red tint under this label
-         * takes it to 4.33:1 on a light surface, and the border is already
-         * saying "destructive" without spending contrast to do it.
-         */
+        // Red text on a hairline.
         destructive:
           'border-hairline-strong bg-transparent text-destructive hover:border-destructive/40 hover:bg-elevated focus-visible:ring-destructive/60',
-        /**
-         * Filled red. Reserved for the confirming button inside a destructive
-         * dialog. The fill is --destructive-solid rather than --destructive:
-         * the status red is picked to *read* on a surface, and white on it is
-         * only 3.76:1, where white on the solid red is 5.14:1 in both themes.
-         */
         'destructive-solid':
           'bg-destructive-solid text-destructive-foreground hover:bg-destructive-solid-hover focus-visible:ring-destructive/60',
         /** A link is prose, so it takes the brand hue at text weight (see --brand-ink). */

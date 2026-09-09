@@ -31,10 +31,4 @@ export const useDeleteBackup = () => {
   });
 };
 
-/**
- * The download is a plain navigation rather than a fetch: the file is the whole
- * database and can be hundreds of megabytes, so it goes straight to disk through
- * the browser's own downloader (which sends the session cookie) instead of
- * through memory as a blob.
- */
 export const backupDownloadURL = (id: string) => `/api/v1/backups/${id}/download`;

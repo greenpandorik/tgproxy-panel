@@ -31,8 +31,6 @@ func ProfileToProto(p Profile) *agentv1.Profile {
 
 func ProfileFromProto(p *agentv1.Profile) Profile {
 	out := Profile{Name: p.GetName(), Secret: p.GetSecret(), Backend: p.GetBackend(), CarrierMode: p.GetCarrierMode(), Enabled: p.GetEnabled()}
-	// An all-zero telemt block stays nil: proto3 cannot tell "no limits" from "limits, all
-	// unset", and the two mean the same thing to telemt, so the smaller representation wins.
 	tl := domain.TelemtLimits{
 		DataQuotaBytes: int64(p.GetDataQuotaBytes()), RateLimitUpBps: int64(p.GetRateLimitUpBps()),
 		RateLimitDownBps: int64(p.GetRateLimitDownBps()), MaxUniqueIPs: int(p.GetMaxUniqueIps()),

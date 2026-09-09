@@ -2,12 +2,7 @@ package api
 
 import "testing"
 
-// TestSampleKeepsFirstAndLast guards against a stride loop that lands short
-// of the last index (e.g. 1000 items strided by 2 stops at index 998,
-// silently dropping the most recent point) - capSamples backs both
-// /monitoring/nodes/{id}/series and /monitoring/overview's downsampling, and
-// callers (charts) care about the newest point at least as much as the
-// count cap.
+// TestSampleKeepsFirstAndLast guards against a stride loop that lands short of the last index (e.g.
 func TestSampleKeepsFirstAndLast(t *testing.T) {
 	for _, n := range []int{1000, 1799} {
 		const maxPoints = 600
@@ -31,8 +26,7 @@ func TestSampleKeepsFirstAndLast(t *testing.T) {
 	}
 }
 
-// TestSampleUnderCapIsUnchanged confirms capSamples is a no-op when the
-// input already fits within maxPoints.
+// TestSampleUnderCapIsUnchanged confirms capSamples is a no-op when the input already fits within maxPoints.
 func TestSampleUnderCapIsUnchanged(t *testing.T) {
 	items := []int{1, 2, 3}
 	out := capSamples(items, 600)

@@ -2,14 +2,7 @@ import { matchPath } from 'react-router-dom';
 
 import type { HelpTopic } from './content';
 
-/**
- * Which help topic the `?` shortcut and the palette's "Help for this page"
- * open on a given route. Patterns are react-router's; the first match wins, so
- * the more specific `/sites/new` sits above `/sites/:id`.
- *
- * Settings is one route with tabs; `?` there opens the default tab's topic.
- * The header button on that page follows the selected tab instead.
- */
+// Which help topic the `?` shortcut and the palette's "Help for this page" open on a given route.
 export const HELP_ROUTES: readonly { pattern: string; topic: HelpTopic }[] = [
   { pattern: '/', topic: 'dashboard' },
   { pattern: '/nodes', topic: 'nodes.list' },

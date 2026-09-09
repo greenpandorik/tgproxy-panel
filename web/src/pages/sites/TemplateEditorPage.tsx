@@ -43,11 +43,6 @@ const DEFAULT_HTML = `<!DOCTYPE html>
 
 const PREVIEW_DEBOUNCE_MS = 300;
 
-// Client-side guardrails: the backend's JSON body decoder caps requests at 4MB
-// (internal/api/respond.go decodeJSON), but that surfaces as an opaque "invalid
-// JSON body" once the base64-inflated assets payload (~1.33x the raw bytes) plus
-// the HTML pushes the request over that limit. Reject oversized uploads here
-// instead, with a message that names the actual limit.
 const MAX_ASSET_BYTES = 512 * 1024;
 const MAX_ASSETS_TOTAL_BYTES = 2 * 1024 * 1024;
 
@@ -69,11 +64,6 @@ export function TemplateEditorPage() {
   return <TemplateEditorInner key={id ?? 'new'} id={id} />;
 }
 
-/**
- * One finding from the validator. The dot carries the severity - the same 7px
- * dot the whole panel uses for state - and the text stays in the mono face
- * because it is the parser talking, not the interface.
- */
 function Finding({ tone, children }: { tone: 'err' | 'warn'; children: string }) {
   return (
     <li className="flex items-start gap-2">
@@ -85,10 +75,6 @@ function Finding({ tone, children }: { tone: 'err' | 'warn'; children: string })
   );
 }
 
-/**
- * Panels arrive staggered. `Panel` takes only a className, so the per-element
- * delay rides a wrapper rather than the section itself.
- */
 function Arriving({ index, children }: { index: number; children: ReactNode }) {
   return (
     <div className={ENTER_CLASS} style={enterDelay(index)}>
@@ -127,18 +113,12 @@ function TemplateEditorInner({ id }: { id?: string }) {
   const [lastValidation, setLastValidation] = useState<{ errors: string[]; warnings: string[] } | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState(html);
-  // Whether the last save landed. It is cleared by the next edit, so the "saved"
-  // stamp beside the title always describes what is on screen right now and
-  // never outlives the state it is vouching for.
+  // Whether the last save landed.
   const [saved, setSaved] = useState(false);
 
   const loaded = templateQuery.data;
   const isPreset = !!loaded?.is_preset;
 
-  // Adjust local editable state when the template finishes loading, following
-  // React's "adjust state during render" pattern (see ThemeProvider's
-  // appliedDefault) instead of a setState-in-effect cascade. `syncedId` guards
-  // this to run exactly once per (remounted-per-id) editor instance.
   const [syncedId, setSyncedId] = useState<string | undefined>(undefined);
   if (loaded && loaded.id !== syncedId) {
     setSyncedId(loaded.id);
@@ -147,8 +127,6 @@ function TemplateEditorInner({ id }: { id?: string }) {
     setAssets(loaded.assets ?? {});
   }
 
-  // The draft waits for an existing template to load, so the empty editor is
-  // never mistaken for edits; a new template starts from the boilerplate.
   const draft = useDraft<TemplateDraft>(
     `site-template-${id ?? 'new'}`,
     { name, html, assets },
@@ -160,8 +138,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
 
   const resumeDraft = () => {
     if (!draft.draft) return;
-    // Named for what it is - the stored draft - so it stops shadowing the
-    // `saved` state flag two scopes up, which means something else entirely.
+    // Named for what it is.
     const draftValue = draft.draft.value;
     setName(draftValue.name);
     setHtml(draftValue.html);
@@ -181,8 +158,6 @@ function TemplateEditorInner({ id }: { id?: string }) {
   const handleValidate = async () => {
     try {
       const result = await validateTemplate.mutateAsync({ name, html, assets });
-      // The backend serializes a nil Go slice as JSON null (not []) when there are no
-      // errors/warnings, so normalize before storing - callers rely on .length/.map.
       const errors = result.report.errors ?? [];
       const warnings = result.report.warnings ?? [];
       setLastValidation({ errors, warnings });
@@ -288,9 +263,6 @@ function TemplateEditorInner({ id }: { id?: string }) {
         <PageHeader
           title={isNew ? t('sites.editor_title_new') : t('sites.editor_title_edit', { name: loaded?.name ?? name })}
           description={
-            // The save state lives beside the title rather than only in a toast:
-            // a toast is gone in four seconds, and "is my work on the server?" is
-            // a question the editor is asked all the way through a session.
             saved && !saving ? (
               <span className="flex items-center gap-1.5">
                 <span className="size-[7px] shrink-0 rounded-pill bg-ok" aria-hidden="true" />

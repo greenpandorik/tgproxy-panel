@@ -17,9 +17,6 @@ type publicStatusResp struct {
 	RelayCommit string `json:"relay_commit"`
 }
 
-// TestPublicStatusIsAnonymous covers the one deliberately unauthenticated read
-// the panel grew for the login screen: no session, 200, and the shape the SPA
-// expects.
 func TestPublicStatusIsAnonymous(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -50,9 +47,6 @@ func TestPublicStatusIsAnonymous(t *testing.T) {
 	}
 }
 
-// TestPublicStatusLeaksNoHostnames is the reason this route is allowed to be
-// public at all: an anonymous caller learns counts, never identities. If a
-// future field carries a node's name, hostname or IP, this fails.
 func TestPublicStatusLeaksNoHostnames(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")

@@ -79,9 +79,6 @@ export function NodeDetailPage() {
   }
 
   const node = nodeQuery.data;
-  // The restart button acts on whatever proxy the node runs: tproxy-server on a
-  // tproxy node, telemt on a telemt one. Naming the wrong daemon in a destructive
-  // confirmation is how an operator restarts the wrong thing.
   const restartLabel = t(node.engine === 'telemt' ? 'nodes.detail_restart_telemt' : 'nodes.detail_restart_relay');
 
   const handleApply = async () => {

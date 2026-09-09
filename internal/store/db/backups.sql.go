@@ -60,7 +60,6 @@ func (q *Queries) GetBackup(ctx context.Context, id uuid.UUID) (Backup, error) {
 }
 
 const insertBackup = `-- name: InsertBackup :one
-
 INSERT INTO backups (path, size, kind) VALUES ($1, $2, $3) RETURNING id, path, size, kind, created_at
 `
 
@@ -70,11 +69,6 @@ type InsertBackupParams struct {
 	Kind BackupKind `json:"kind"`
 }
 
-// backups.path holds the dump's file name, not an absolute path: the directory
-// is DATA_DIR/backups, which moves with the deployment (a bind mount today, a
-// different volume tomorrow), and every consumer resolves the name against the
-// runner's Dir anyway - which is also what keeps a row from ever naming a file
-// outside it.
 func (q *Queries) InsertBackup(ctx context.Context, arg InsertBackupParams) (Backup, error) {
 	row := q.db.QueryRow(ctx, insertBackup, arg.Path, arg.Size, arg.Kind)
 	var i Backup

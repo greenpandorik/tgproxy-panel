@@ -23,8 +23,6 @@ func presetByName(t *testing.T, name string) Preset {
 	return Preset{}
 }
 
-// assetsOf returns every bundle file except index.html, keyed the same way Normalize expects
-// its assets argument (no leading slash).
 func assetsOf(b Bundle) map[string][]byte {
 	out := map[string][]byte{}
 	for p, c := range b.Files {
@@ -91,8 +89,6 @@ func TestUniquifyRenamesClassesConsistently(t *testing.T) {
 	}
 }
 
-// reDataBlockAttr matches a data-block attribute on an actual element (as opposed to the
-// substring appearing inside a CSS attribute selector such as section[data-block="hero"]).
 var reDataBlockAttr = regexp.MustCompile(`<[a-zA-Z][^>]*\sdata-block=`)
 
 // reDataVariantsAttr matches a data-variants attribute on an element.
@@ -107,12 +103,6 @@ func TestAllPresetsNormalizeAndUniquify(t *testing.T) {
 		if _, err := Uniquify(b, "x"); err != nil {
 			t.Fatalf("%s: %v", p.Name, err)
 		}
-		// Every preset must carry 4-6 data-block sections inside <main> and at least 3
-		// data-variants texts, so shuffling and variant selection have real material to work
-		// with. studio predated the data-variants half of that requirement and used to be
-		// exempted here, which left the oldest preset uniquified by shuffle and class-rename
-		// only — the weakest of the five against exactly the fingerprinting the feature
-		// targets. The exemption is gone; no preset gets one.
 		mainStart := strings.Index(p.HTML, "<main")
 		mainEnd := strings.Index(p.HTML, "</main>")
 		if mainStart < 0 || mainEnd < 0 || mainEnd < mainStart {
@@ -130,8 +120,6 @@ func TestAllPresetsNormalizeAndUniquify(t *testing.T) {
 	}
 }
 
-// mainElementIDs returns the id attribute of every element child of <main>, in document
-// order, for an already-rendered document.
 func mainElementIDs(t *testing.T, doc []byte) []string {
 	t.Helper()
 	root, err := html.Parse(bytes.NewReader(doc))
@@ -152,11 +140,6 @@ func mainElementIDs(t *testing.T, doc []byte) []string {
 	return ids
 }
 
-// TestUniquifyKeepsNonBlockChildrenInPlace pins the property shuffleMainBlocks exists to
-// preserve: only data-block children move, and they only ever move into slots another
-// data-block child occupied. A "shuffle all of <main>'s children" implementation passes the
-// determinism tests but would reorder headings, footers and any wrapper the template author
-// deliberately placed between blocks.
 func TestUniquifyKeepsNonBlockChildrenInPlace(t *testing.T) {
 	b := Bundle{Files: map[string][]byte{
 		"index.html": []byte(`<html><body><main>` +
@@ -204,14 +187,6 @@ func TestUniquifyKeepsNonBlockChildrenInPlace(t *testing.T) {
 }
 
 // goldenProductHash pins Uniquify's output for (product preset, seed "golden-seed").
-//
-// The whole no-needless-redeploy guarantee rests on byte-stable output for a fixed
-// (bundle, seed): re-assigning a template a node already runs must reproduce the identical
-// bundle so the site is not pushed again and the relay is not restarted, dropping every
-// carrier session. Nothing else pins that across a Go/math-rand change, a change to the
-// traversal or mapping order, or an edit to the preset. If this test fails, the change is
-// not necessarily wrong — but it forces a redeploy of every node running this preset, and
-// that has to be a decision rather than an accident. Update the constant deliberately.
 const goldenProductHash = "e82647f80d5659e529f6103e3291fd970b67196580a123aa61439200abf45448"
 
 func TestUniquifyGoldenHashForFixedBundleAndSeed(t *testing.T) {
@@ -232,11 +207,6 @@ func TestUniquifyGoldenHashForFixedBundleAndSeed(t *testing.T) {
 	}
 }
 
-// TestUniquifyLeavesCSSURLsAlone covers I1: the class-rename regex matches any dot followed
-// by an identifier, so `url(/logo.png)` used to register `png` as a class and get rewritten
-// to `url(/logo.<token>)`. buildAssetMapping only renames .css/.js, so the file kept its
-// name and the site silently lost its imagery — invisible to the preset tests because no
-// built-in preset uses url().
 func TestUniquifyLeavesCSSURLsAlone(t *testing.T) {
 	css := `.hero{background:url(/logo.png)}` +
 		`@font-face{font-family:x;src:url("/inter.woff2") format("woff2")}` +

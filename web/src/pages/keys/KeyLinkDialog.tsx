@@ -26,14 +26,6 @@ interface KeyLinkDialogProps {
   keyId: string | null;
 }
 
-/**
- * A link, ready to be handed over: the scheme it uses, the URL in mono, and copy.
- *
- * Copying is the job this dialog exists for, so the copy button is not a ghost
- * here: it carries the same hairline and surface every other real action in the
- * panel has, which makes it the one thing on the row that looks pressable next
- * to a read-only field.
- */
 function LinkRow({ scheme, value, copyLabel }: { scheme: string; value: string; copyLabel: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -48,11 +40,6 @@ function LinkRow({ scheme, value, copyLabel }: { scheme: string; value: string; 
   );
 }
 
-/**
- * The shape a node's links arrive in: the hostname line, the QR tile, the two
- * URL rows and the download. Loading looks like the answer so nothing moves
- * under the pointer when the answer lands.
- */
 function LinksSkeleton() {
   return (
     <div className="space-y-4">
@@ -85,14 +72,6 @@ interface LinkPanelProps {
   onDownload: (link: KindLink) => void;
 }
 
-/**
- * One link of one kind: the QR to scan and the two URLs to paste.
- *
- * The QR sits on a white tile with its quiet zone intact - it is the one
- * deliberately non-neutral surface in the panel, because a code printed on a
- * near-black ground is a code that will not scan. Framing it as a tile rather
- * than a bordered image also says what it is: the thing being handed over.
- */
 function LinkPanel({ keyId, group, link, onDownload }: LinkPanelProps) {
   const { t } = useTranslation();
 
@@ -119,16 +98,6 @@ function LinkPanel({ keyId, group, link, onDownload }: LinkPanelProps) {
   );
 }
 
-/**
- * Every link one node offers for this key.
- *
- * A telemt node serves two, and they are not variants of one thing: WEB rides
- * inside HTTPS to the node's own site, Fake-TLS is classic MTProto on its own
- * port. Which one a person needs depends on their client and their network, so
- * they get a tab each rather than being stacked - a node's panel stays one screen
- * tall and the QR does not move when you switch. A tproxy node has only the WEB
- * link and says why, in the engine's own word, instead of showing a dead tab.
- */
 function NodeLinksCard({
   keyId,
   group,
@@ -142,9 +111,7 @@ function NodeLinksCard({
 }) {
   const { t } = useTranslation();
   const multi = group.links.length > 1;
-  // A telemt node with a single link has not been given a Fake-TLS domain yet -
-  // that is a gap in its configuration, not a property of its engine, so only a
-  // tproxy node gets the "this is all there is" note.
+  // A telemt node with a single link has not been given a Fake-TLS domain yet.
   const webOnly = !multi && group.engine === 'tproxy';
   const arrival = enter(index);
 
@@ -186,13 +153,7 @@ function NodeLinksCard({
   );
 }
 
-/**
- * Per-node links + QR for a key.
- *
- * The key itself comes from GET /keys/{id} (status, client support, subscription)
- * and the links from GET /keys/{id}/links, which is writer-only - so a viewer
- * lands on the "no permission" line instead of a 403 in the console.
- */
+// Per-node links + QR for a key.
 export function KeyLinkDialog({ open, onOpenChange, keyId }: KeyLinkDialogProps) {
   const { t } = useTranslation();
   const { isWriter } = useAuth();

@@ -28,9 +28,6 @@ func TestPNGAndDataURI(t *testing.T) {
 	}
 }
 
-// The Fake-TLS secret is the "ee" marker, the 16-byte hex secret and the SNI
-// domain hex-encoded, exactly as Telegram clients parse it. "example.com" has a
-// stable encoding, so it doubles as the regression vector for the hex step.
 func TestFakeTLSSecret(t *testing.T) {
 	const secret = "000102030405060708090a0b0c0d0e0f"
 	got := FakeTLSSecret(secret, "example.com")

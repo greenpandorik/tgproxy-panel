@@ -133,15 +133,6 @@ function valuesFromKey(key: AccessKey): FormValues {
   };
 }
 
-/**
- * A titled block inside the drawer, separated from the one above it by a
- * hairline.
- *
- * Its title is the micro role rather than a bolder body line: the sheet's own
- * title is the only heading here that names a thing, and everything under it is
- * a group of controls. Chrome-sized uppercase says "this is a group" without
- * competing with the field labels inside it.
- */
 function Section({
   title,
   actions,
@@ -172,12 +163,6 @@ interface KeyDetailDrawerProps {
   keyId: string | null;
 }
 
-/**
- * Everything about one key, in the order an operator works through it: what it
- * is at the top, what it can be changed to next, where it is bound, how it is
- * handed out - and, last and behind a confirmation, the two things that cannot
- * be undone.
- */
 export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerProps) {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
@@ -217,8 +202,6 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
   const carrierMode = values.carrier_mode;
 
   const revoked = key?.status === 'revoked';
-  // A viewer may open this drawer from the key list but cannot mutate anything: every
-  // control below would return 403. Lock the form and hide the write-only affordances.
   const locked = revoked || !isWriter;
 
   // One draft per key; nothing is offered or kept while the form is locked.
@@ -236,8 +219,6 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
   const boundNodeIds = new Set((key?.nodes ?? []).map((n) => n.node_id));
   const allNodes = nodesQuery.data?.items ?? [];
   const addableNodes = allNodes.filter((n) => !boundNodeIds.has(n.id));
-  // telemt enforces the limits and reports the traffic; a key bound only to tproxy
-  // nodes has neither, and both blocks say so rather than showing empty controls.
   const hasTelemtNode = allNodes.some((n) => n.engine === 'telemt' && boundNodeIds.has(n.id));
 
   const limitsError = (name: LimitFieldName): string | undefined => {
@@ -344,8 +325,6 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
         </SheetHeader>
 
         {keyQuery.isLoading || !key ? (
-          // The silhouette of the form underneath: four label-over-field pairs
-          // and the note box, so the drawer does not reflow when the key lands.
           <div className="space-y-4 px-4 pb-4">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="space-y-2">

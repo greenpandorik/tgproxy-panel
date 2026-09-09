@@ -16,15 +16,7 @@ interface InstallCommandDialogProps {
 
 const STEPS = ['nodes.install_step1', 'nodes.install_step2', 'nodes.install_step3'] as const;
 
-/**
- * The one line that turns a bare server into a node.
- *
- * The command is the whole dialog, so it gets the only recessed surface here -
- * a mono block on the page ground with copy sitting inside it - and everything
- * else recedes: the expiry as a dim mono stamp, and the three things the target
- * server must already be true about, numbered because the operator works
- * through them in order before pasting anything.
- */
+// The one line that turns a bare server into a node.
 export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, regenerated }: InstallCommandDialogProps) {
   const { t, i18n } = useTranslation();
 

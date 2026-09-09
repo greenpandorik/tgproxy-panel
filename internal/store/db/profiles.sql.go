@@ -91,9 +91,6 @@ type GetNodeProfileByNameParams struct {
 	Name   string    `json:"name"`
 }
 
-// GetNodeProfileByName reads one node's own profile by name - the "default" profile every
-// node is created with, whose secret is what the node itself answers with on any listener
-// (classic/Fake-TLS included), independent of whether any access key has been bound yet.
 func (q *Queries) GetNodeProfileByName(ctx context.Context, arg GetNodeProfileByNameParams) (Profile, error) {
 	row := q.db.QueryRow(ctx, getNodeProfileByName, arg.NodeID, arg.Name)
 	var i Profile

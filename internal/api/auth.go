@@ -43,10 +43,6 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 401, "invalid_credentials", "wrong username or password", nil)
 		return
 	}
-	// The password alone is not a session when a second factor is enrolled: the
-	// caller gets a short-lived signed challenge and must come back through
-	// POST /auth/totp/verify. failed_logins is deliberately left untouched here so
-	// that wrong codes keep accumulating toward the same lock as wrong passwords.
 	if s.cfg.FeatureTOTP && u.TotpEnabled {
 		writeJSON(w, 200, map[string]any{"totp_required": true, "challenge": s.newTOTPChallenge(u.ID, time.Now())})
 		return
@@ -62,9 +58,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, s.meJSON(u.ID, u.Username, string(u.Role), u.TotpEnabled))
 }
 
-// meJSON is the identity payload. Login, the TOTP verify step and GET /auth/me all
-// return it, so the SPA can seed its `me` cache from whichever call it made instead
-// of the shape depending on the route.
+// meJSON is the identity payload.
 func (s *Server) meJSON(id uuid.UUID, username, role string, totpEnabled bool) map[string]any {
 	return map[string]any{
 		"id": id, "username": username, "role": role, "totp_enabled": totpEnabled,
@@ -74,9 +68,6 @@ func (s *Server) meJSON(id uuid.UUID, username, role string, totpEnabled bool) m
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	p, _ := PrincipalFrom(r.Context())
-	// The principal comes from the session row and carries no TOTP state, so the
-	// enrolment flag is read fresh - the Security tab must reflect an enable or
-	// disable that happened in another tab without a re-login.
 	u, err := s.store.Q.GetAdmin(r.Context(), p.UserID)
 	if err != nil {
 		internal(w)
@@ -200,11 +191,6 @@ func (s *Server) handleDeleteAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, _ := PrincipalFrom(r.Context())
-	// The last-owner guard runs before the self-delete guard so that the one owner left
-	// gets the message that actually explains why: losing the last owner permanently locks
-	// the installation out of /admins and PUT /settings, with no recovery path in the
-	// product. The count is taken inside the same transaction as the delete and locks the
-	// owner rows, so two concurrent deletes cannot both see two owners and both proceed.
 	if target.Role == db.AdminRoleOwner {
 		lastOwner := false
 		err := s.store.Tx(r.Context(), func(q *db.Queries) error {

@@ -11,21 +11,6 @@ import { ENTER_CLASS } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-/*
- * The left half of the login screen (variant A, see
- * docs/superpowers/specs/2026-09-05-ui-redesign.md).
- *
- * Everything on this panel is public by construction: it renders only what
- * `GET /api/v1/status/public` returns - a version, node counts and the relay
- * commit - and never a hostname or a node name, because it is shown to whoever
- * loads the page. The mockup's per-node rows and sparklines are deliberately
- * not reproduced: there is no honest data behind them before sign-in, and a
- * decorative fake chart on a control panel is worse than an empty column.
- *
- * The panel is the machine talking - monospace, dim, hairlines - so that the
- * single solid element on the screen is the sign-in button opposite it.
- */
-
 /** `--line` grid, 48px, faded out by a radial mask so it never reaches an edge. */
 const GRID_PATTERN: CSSProperties = {
   backgroundImage: 'linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px)',
@@ -104,10 +89,7 @@ function StatusCard() {
   );
 }
 
-/**
- * `v1.0.0  api ok  3 нод` - the same three facts as the panel footer, reused
- * under the form on narrow screens where there is no panel.
- */
+// `v1.0.0 api ok 3 нод`.
 export function LoginStatusLine({ className }: { className?: string }) {
   const { t } = useTranslation();
   const { data, isError } = usePublicStatus();
@@ -127,11 +109,7 @@ export function LoginStatusLine({ className }: { className?: string }) {
   );
 }
 
-/**
- * The operator's mark: their uploaded logo, or the brand mark and the panel name.
- * Top-left of the panel on a wide screen; above the heading on a phone, where
- * there is no panel and the form would otherwise be unbranded.
- */
+// The operator's mark: their uploaded logo, or the brand mark and the panel name.
 export function LoginWordmark({ className }: { className?: string }) {
   const { branding, theme } = useBrandingIdentity();
   const logoUrl = theme === 'dark' ? branding?.logo_dark_url || branding?.logo_url : branding?.logo_url;

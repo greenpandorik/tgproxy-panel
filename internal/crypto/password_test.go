@@ -21,9 +21,6 @@ func TestPasswordHashAndVerify(t *testing.T) {
 	}
 }
 
-// TestVerifyPasswordRejectsAbsurdParams covers the PHC-parameter caps: the
-// hash string drives argon2's memory and time cost, so an attacker who can
-// rewrite a row must not be able to turn one login into a CPU/memory DoS.
 func TestVerifyPasswordRejectsAbsurdParams(t *testing.T) {
 	good, err := HashPassword("pass-123456")
 	if err != nil {

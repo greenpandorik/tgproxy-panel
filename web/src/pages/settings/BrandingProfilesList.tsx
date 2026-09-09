@@ -125,17 +125,6 @@ function CreateProfileDialog({
   );
 }
 
-/**
- * One profile in the rail: the name, a mark and tag when it is the one the
- * panel is actually serving, and the mono stamp of its last change. The
- * selected row carries the same brand-coloured 2px tab the sidebar uses for
- * the current section - it is the same idea (you are here), so it is the same
- * mark. Activate/Delete stay out of the way until the row is pointed at.
- *
- * The row is a card and not a table row - two lines of text and its own
- * controls - so "this is the live one" is a check on a tinted plate in the ok
- * tone rather than a 7px dot, the treatment every card in the panel now uses.
- */
 function ProfileRow({
   profile,
   selected,
@@ -192,9 +181,7 @@ function ProfileRow({
   );
 }
 
-/** Branding tab: a list of branding profiles on the left, the editor for the selected one
- * on the right. Below 1024px the columns stack. Writers only - the list endpoint itself
- * is writers-only, so viewers get a short no-access state instead. */
+// Branding tab: a list of branding profiles on the left, the editor for the selected one on the right.
 export function BrandingProfilesList() {
   const { t } = useTranslation();
   const { isWriter } = useAuth();

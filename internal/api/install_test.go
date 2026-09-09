@@ -73,8 +73,6 @@ func TestInstallUnknownToken(t *testing.T) {
 	}
 }
 
-// TestInstallScriptWithEmptyChecksumFile guards the agentSHA256 index panic: os.ReadFile
-// succeeds on an empty file and strings.Fields then returns an empty slice.
 func TestInstallScriptWithEmptyChecksumFile(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -94,8 +92,6 @@ func TestInstallScriptWithEmptyChecksumFile(t *testing.T) {
 	}
 }
 
-// TestInstallScriptPerEngine: nodes.engine picks the script branch, and the telemt branch
-// carries the release pin from the panel configuration rather than anything the node chooses.
 func TestInstallScriptPerEngine(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -170,9 +166,6 @@ func (c *logCapture) String() string {
 	return c.buf.String()
 }
 
-// TestInstallScriptUnpinnedTelemtIsLogged: with no TELEMT_SHA256_X86_64 the panel refuses to
-// hand out a script that would make root run an unverified download. That refusal must not be
-// a silent 500 - the operator's only clue is the panel log.
 func TestInstallScriptUnpinnedTelemtIsLogged(t *testing.T) {
 	logs := &logCapture{}
 	h := apitest.New(t, func(d *api.Deps) {

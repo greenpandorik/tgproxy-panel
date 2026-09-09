@@ -27,11 +27,6 @@ const RANGES: KeyStatsRange[] = ['24h', '7d'];
 const DEFAULT_BRAND_PRIMARY = '#3b82f6';
 const DEFAULT_BRAND_ACCENT = '#22c55e';
 
-/**
- * telemt's octet counter is cumulative and resets when the process restarts, so
- * the traffic in an interval is the rise between two samples and a fall is a
- * restart, not negative traffic. The backend takes the same view for its totals.
- */
 export function trafficDeltas(points: KeyStatsNode['points']): TrafficPoint[] {
   const out: TrafficPoint[] = [];
   for (let i = 1; i < points.length; i++) {
@@ -46,15 +41,7 @@ function connectionsNow(node: KeyStatsNode): number {
   return node.points.length > 0 ? node.points[node.points.length - 1].connections : 0;
 }
 
-/**
- * The pair of figures above the charts, as the panel's stat tiles.
- *
- * Neither number can be good or bad on its own - a key holding forty
- * connections is not a fault, and neither is one holding none - so both plates
- * stay neutral and only the glyph carries colour, which is the same bargain
- * every tile in the panel makes. Two columns at every width: the drawer is
- * narrow, and a third column would leave a hole where a tile is not.
- */
+// The pair of figures above the charts, as the panel's stat tiles.
 const TOTALS_GRID = 'sm:grid-cols-2 lg:grid-cols-2';
 
 function totalsTiles({
@@ -91,12 +78,6 @@ function totalsTiles({
   ];
 }
 
-/**
- * The silhouette of what is loading: the two totals tiles with their labels
- * already in place, then one node's caption and plot. A generic bar would tell
- * the operator something is coming; this tells them what, so nothing jumps
- * when it lands.
- */
 function StatsSkeleton({ range }: { range: KeyStatsRange }) {
   const { t } = useTranslation();
   return (
@@ -125,15 +106,6 @@ interface KeyStatsSectionProps {
   hasTelemtNode: boolean;
 }
 
-/**
- * What the key actually did: how much traffic it moved and how many connections
- * it is holding open, per node, over the last day or week.
- *
- * The two totals come first because they answer the question that opened the
- * drawer ("is this key being used, and how hard"); the per-node charts under them
- * answer "when". Only telemt reports any of this, so a key on tproxy nodes gets
- * one sentence saying why the block is empty rather than an empty chart.
- */
 export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) {
   const { t, i18n } = useTranslation();
   const [range, setRange] = useState<KeyStatsRange>('24h');
@@ -143,12 +115,7 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
   const nodes = statsQuery.data?.nodes ?? [];
   const totals = statsQuery.data?.totals;
 
-  /*
-   * One colour for every node's chart. These are small multiples, not series in
-   * one plot: identity is carried by the node's name above each chart, so giving
-   * each its own hue would spend colour on a distinction nothing has to make -
-   * and would run out on the sixth node.
-   */
+  // One colour for every node's chart.
   const color = useMemo(
     () => seriesPalette(branding?.primary_color || DEFAULT_BRAND_PRIMARY, branding?.accent_color || DEFAULT_BRAND_ACCENT, 1)[0],
     [branding?.primary_color, branding?.accent_color],

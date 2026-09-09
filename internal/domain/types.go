@@ -90,11 +90,7 @@ func ValidateSecretHex(s string) error {
 	return nil
 }
 
-// labelRe is the per-label DNS rule: 1..63 characters, alphanumeric at both
-// ends, hyphens only in between. Applied label by label so that "a..b" (empty
-// label) and "a.-b.c" (label starting with a hyphen) are rejected — the old
-// whole-string charset check let both through, and they only surface later as
-// a failed ACME issuance on the node.
+// labelRe is the per-label DNS rule: 1..63 characters, alphanumeric at both ends, hyphens only in between.
 var labelRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 
 const errHostname = "hostname must be a lowercase DNS name with a dot, labels of 1-63 chars starting and ending alphanumeric, no scheme or path"
@@ -116,9 +112,6 @@ func ProfileName(keyID uuid.UUID) string {
 	return "k" + strings.ReplaceAll(keyID.String(), "-", "")[:12]
 }
 
-// Engine selects the proxy stack a node runs: the original tproxy-server +
-// MTProxy pair, or a single telemt process. It is fixed when the node is
-// created, because the two stacks have different on-node layouts.
 type Engine string
 
 const (
@@ -128,22 +121,12 @@ const (
 
 func (e Engine) Valid() bool { return e == EngineTProxy || e == EngineTelemt }
 
-// MaxTelemtQuotaBytes caps a per-key traffic quota at 100 TB. The cap is not a
-// product limit so much as a typo guard: telemt stores the quota as a byte
-// count, so an operator who means "100 GB" and pastes an extra three zeros gets
-// a rejection here instead of a key that is effectively unmetered.
 const MaxTelemtQuotaBytes int64 = 100 * 1024 * 1024 * 1024 * 1024
 
-// MaxTelemtCounter caps max_unique_ips and max_tcp_conns at one million. Both cross the wire
-// to the agent as proto3 uint32 and are stored by telemt as 32-bit counters, so a value above
-// 4 294 967 295 wraps - 4 294 967 297 becomes 1, turning "effectively unlimited" into "one IP"
-// and locking the key out. A million is far past any real per-key ceiling and well inside the
-// range, so the wrap can no longer be reached. Zero still means "no limit of this kind".
+// MaxTelemtCounter caps max_unique_ips and max_tcp_conns at one million.
 const MaxTelemtCounter = 1_000_000
 
-// TelemtLimits mirrors telemt's per-user limits. Zero means "unset", which
-// telemt reads as "no limit of this kind", so the zero value is a valid,
-// unrestricted key.
+// TelemtLimits mirrors telemt's per-user limits.
 type TelemtLimits struct {
 	DataQuotaBytes   int64 `json:"data_quota_bytes,omitempty"`
 	RateLimitUpBps   int64 `json:"rate_limit_up_bps,omitempty"`

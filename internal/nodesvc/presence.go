@@ -35,10 +35,7 @@ func (p *Presence) NodeByToken(ctx context.Context, token string) (uuid.UUID, er
 	return n.ID, nil
 }
 
-// telemtVersion turns the version string a telemt agent reports ("telemt 3.5.5" - the field
-// is shared with the tproxy engine, so the agent labels it) into the bare version the panel
-// stores in nodes.telemt_version. Anything else is passed through unchanged; an empty string
-// means "unknown", and the query treats it as "keep what we had".
+// telemtVersion turns the version string a telemt agent reports ("telemt 3.5.5".
 func telemtVersion(v string) string {
 	return strings.TrimSpace(strings.TrimPrefix(v, "telemt "))
 }

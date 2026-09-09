@@ -35,8 +35,6 @@ func NewHandler(cfg Config, ex Exec, log *slog.Logger) *Handler {
 	return h
 }
 
-// siteDir is where the node's decoy/stub site lives: telemt serves it itself from the vhost
-// decoy directory, the tproxy stack serves it through Caddy.
 func (h *Handler) siteDir() string {
 	if h.cfg.Engine == EngineTelemt {
 		return h.cfg.TelemtSiteDir
@@ -111,8 +109,7 @@ func (h *Handler) metricsText(ctx context.Context) (string, error) {
 	return h.get(ctx, h.cfg.RelayAdminURL+"/metrics")
 }
 
-// restartRelay restarts the engine's proxy unit. For telemt this is the only restart the agent
-// ever performs (listener or web.limits changes); ordinary applies never reach it.
+// restartRelay restarts the engine's proxy unit.
 func (h *Handler) restartRelay(ctx context.Context) *agentv1.Response {
 	unit, wait := "tproxy-server", h.waitHealthy
 	if h.cfg.Engine == EngineTelemt {

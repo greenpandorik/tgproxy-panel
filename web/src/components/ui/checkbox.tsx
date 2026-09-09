@@ -5,12 +5,6 @@ import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
 import { cn } from "@/lib/utils"
 import { CheckIcon } from "lucide-react"
 
-/*
- * The one documented exception to the shape lock: --r-control is 8px and the
- * box is 16px, so a control radius here would draw a circle and the checkbox
- * would read as a radio. It keeps the 4px scale radius instead. Nothing else
- * in the panel is small enough to hit this.
- */
 function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
   return (
     <CheckboxPrimitive.Root

@@ -43,13 +43,8 @@ type Harness struct {
 // Option lets later parts inject a NodeDriver or other deps into the harness.
 type Option func(*api.Deps)
 
-// WithTOTP turns on FEATURE_TOTP, so the /auth/totp/* routes answer instead of
-// returning 404 feature_disabled. Off by default, matching a stock install.
 func WithTOTP() Option { return func(d *api.Deps) { d.Cfg.FeatureTOTP = true } }
 
-// WithUpdates turns on the GitHub update check and serves it through c, whose
-// BaseURL the test points at an httptest stub. Off by default so no test ever
-// reaches api.github.com.
 func WithUpdates(c *updates.Checker) Option {
 	return func(d *api.Deps) {
 		d.Cfg.UpdateCheck = true
@@ -87,8 +82,6 @@ func New(t *testing.T, opts ...Option) *Harness {
 	return &Harness{T: t, Server: srv, Store: st, Box: box, Deps: deps, Mock: mock, Presence: presence, router: router}
 }
 
-// Router exposes the chi router the harness serves, so tests can walk the
-// route table (see TestEveryMutatingRouteIsProtected).
 func (h *Harness) Router() chi.Router { return h.router }
 
 func (h *Harness) CreateAdmin(username, password, role string) uuid.UUID {
@@ -108,9 +101,7 @@ type Client struct {
 	h        *Harness
 	http     *http.Client
 	SendCSRF bool
-	// Headers are added to every request this client sends. Tests that need to
-	// exercise proxy-supplied headers (X-Forwarded-For, say) set them here.
-	Headers http.Header
+	Headers  http.Header
 }
 
 func (h *Harness) Anonymous() *Client {
@@ -118,8 +109,6 @@ func (h *Harness) Anonymous() *Client {
 	return &Client{h: h, http: &http.Client{Jar: jar}, SendCSRF: true, Headers: http.Header{}}
 }
 
-// SetHeader adds a header sent with every subsequent request and returns the
-// client, so a header can be attached inline where the client is created.
 func (c *Client) SetHeader(key, value string) *Client {
 	if c.Headers == nil {
 		c.Headers = http.Header{}

@@ -11,8 +11,6 @@ import (
 	"tgwebproxy/internal/store"
 )
 
-// seedExpiredKeyStats inserts n key_stats_snapshots rows well past the retention window and
-// returns the key they belong to.
 func seedExpiredKeyStats(t *testing.T, st *store.Store, n int) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
@@ -44,8 +42,6 @@ func countKeyStats(t *testing.T, st *store.Store) int {
 	return n
 }
 
-// I3: the retention sweep deletes in bounded batches and loops until the tail is gone, instead
-// of taking one unbounded DELETE over the largest table in the database.
 func TestSweepKeyStatsDeletesInBatches(t *testing.T) {
 	st := store.OpenTest(t)
 	// More rows than one batch holds, so the loop has to run more than once.
@@ -57,8 +53,7 @@ func TestSweepKeyStatsDeletesInBatches(t *testing.T) {
 	}
 }
 
-// I3: the sweep runs on its own schedule, not on every 60s tick - nothing depends on it being
-// prompt, and a full pass over the table's dead tail every minute is pure cost.
+// I3: the sweep runs on its own schedule, not on every 60s tick.
 func TestSweepKeyStatsRunsAtMostEveryTenMinutes(t *testing.T) {
 	st := store.OpenTest(t)
 	seedExpiredKeyStats(t, st, 10)

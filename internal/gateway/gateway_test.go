@@ -158,10 +158,6 @@ func TestOfflineNode(t *testing.T) {
 
 func TestBadTokenRejected(t *testing.T) {
 	e := setup(t)
-	// Unlike fakeAgent, this connects and sends Hello without spawning a
-	// background reader goroutine: gRPC client streams forbid concurrent
-	// Recv calls from multiple goroutines, so the test must own the single
-	// Recv call itself to check the rejection deterministically.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer bad")
@@ -218,9 +214,6 @@ func TestDisconnectMarksOffline(t *testing.T) {
 	}
 }
 
-// floodAgent connects and, on a TailLogs request, sends chunks log chunks for that request
-// id (never a Done marker) and then a heartbeat. The heartbeat is therefore queued behind a
-// flood the panel-side consumer is not reading.
 func floodAgent(t *testing.T, e *env, chunks int) context.CancelFunc {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -256,16 +249,8 @@ func floodAgent(t *testing.T, e *env, chunks int) context.CancelFunc {
 	return cancel
 }
 
-// TestLogFloodDoesNotDelayHeartbeat covers I2. The per-session Recv pump dispatches every
-// envelope inline, so when deliver blocked up to deliverTimeout (2s) on a full log channel,
-// a sustained log flood behind a slow SSE consumer stalled the pump for seconds per chunk.
-// ~45 consecutive full deliveries push past the default 90s offline_after and the stats
-// worker marks a perfectly healthy node offline, inserting an alert and firing Telegram.
-// A heartbeat queued behind a flood must therefore arrive promptly.
 func TestLogFloodDoesNotDelayHeartbeat(t *testing.T) {
 	e := setup(t)
-	// 200 chunks overflows both the per-request channel (32) and Stream's out channel (32)
-	// many times over, so most deliveries hit a full channel.
 	cancel := floodAgent(t, e, 200)
 	defer cancel()
 	waitOnline(t, e)
@@ -277,8 +262,6 @@ func TestLogFloodDoesNotDelayHeartbeat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// With the old inline 2s back-pressure the heartbeat sits behind ~130 blocked
-	// deliveries; with the drop-on-full path it is dispatched within milliseconds.
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		e.hooks.mu.Lock()

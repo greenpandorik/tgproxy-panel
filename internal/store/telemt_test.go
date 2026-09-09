@@ -13,9 +13,6 @@ import (
 
 func ptrStr(s string) *string { return &s }
 
-// TestNodeEngineDefaultsAndOverrides pins migration 00005's contract: a node
-// created without an explicit engine is a telemt node with the default Fake-TLS
-// port, and the tproxy engine stays selectable.
 func TestNodeEngineDefaultsAndOverrides(t *testing.T) {
 	st := store.OpenTest(t)
 	ctx := context.Background()

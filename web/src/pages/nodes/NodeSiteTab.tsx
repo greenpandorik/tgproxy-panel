@@ -18,15 +18,6 @@ import { ApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-/**
- * The cover site: which template this node serves, whether the bundle the node
- * is actually running matches the one the panel holds, and what that bundle
- * contains - then the page itself, rendered.
- *
- * The hash comparison is the only thing here that can be wrong, so it is the
- * only thing that carries colour: a green word when the two hashes agree, an
- * amber one while the node is still serving the previous bundle.
- */
 export function NodeSiteTab({ nodeId }: { nodeId: string }) {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
@@ -62,11 +53,6 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
     );
   }
 
-  /*
-   * "We could not ask" is a different fact from "no template assigned", and
-   * without this branch the failed request renders the second one - which
-   * would send a writer off to assign a template that is already there.
-   */
   if (siteQuery.isError) {
     return (
       <Panel>

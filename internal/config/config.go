@@ -22,22 +22,15 @@ type Config struct {
 	NodeDriver       string // gateway | mock
 	MetricsToken     string
 	TProxyCommit     string
-	// TelemtVersion and TelemtSHA256 pin the telemt release that telemt nodes download in
-	// their install script. The checksum is the only thing standing between a compromised
-	// release host and a root shell on every new node, so it is not optional in production.
-	TelemtVersion string
-	TelemtSHA256  string
-	FeatureTOTP   bool
-	LogLevel      string
-	ApplyInterval int // seconds
-	OfflineAfter  int // seconds
-	// GitHubRepo is the "owner/name" slug the update check reads release and
-	// star metadata from; GitHubToken (optional) raises the API rate limit and
-	// is sent as a bearer token, never logged. UpdateCheck=false disables the
-	// outbound call entirely.
-	GitHubRepo  string
-	GitHubToken string
-	UpdateCheck bool
+	TelemtVersion    string
+	TelemtSHA256     string
+	FeatureTOTP      bool
+	LogLevel         string
+	ApplyInterval    int // seconds
+	OfflineAfter     int // seconds
+	GitHubRepo       string
+	GitHubToken      string
+	UpdateCheck      bool
 }
 
 const (
@@ -68,9 +61,7 @@ func Load(getenv func(string) string) (Config, error) {
 		OldMasterKeys: map[int][]byte{},
 		GitHubRepo:    get("GITHUB_REPO", DefaultGitHubRepo),
 		GitHubToken:   get("GITHUB_TOKEN", ""),
-		// Opt-out is the literal word: anything else (including a typo) keeps the
-		// default on, which is the safe direction for a feature that only reads.
-		UpdateCheck: get("UPDATE_CHECK", "true") != "false",
+		UpdateCheck:   get("UPDATE_CHECK", "true") != "false",
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("DATABASE_URL is required")
@@ -103,9 +94,6 @@ func Load(getenv func(string) string) (Config, error) {
 	if cfg.NodeDriver != "gateway" && cfg.NodeDriver != "mock" {
 		return cfg, errors.New("NODE_DRIVER must be gateway or mock")
 	}
-	// /metrics is mounted at the panel root, outside the auth group, and the reverse proxy
-	// publishes it on the operator's domain. Fail closed rather than exposing node UUIDs and
-	// key counts to anyone who can reach the panel. NODE_DRIVER=mock is test/dev only.
 	if cfg.NodeDriver == "gateway" && cfg.MetricsToken == "" {
 		return cfg, errors.New("METRICS_TOKEN is required when NODE_DRIVER=gateway (set it to a random secret; /metrics is served on the public domain)")
 	}
@@ -121,28 +109,19 @@ func Load(getenv func(string) string) (Config, error) {
 	if cfg.TelemtSHA256 != "" && !reSHA256.MatchString(cfg.TelemtSHA256) {
 		return cfg, errors.New("TELEMT_SHA256_X86_64 must be the 64 hex characters of the sha256 of telemt-x86_64-linux-gnu.tar.gz")
 	}
-	// Same reasoning as METRICS_TOKEN: a real deployment installs real nodes, and an
-	// unverified download running as root on each of them is not something to discover later.
 	if cfg.NodeDriver == "gateway" && cfg.TelemtSHA256 == "" {
 		return cfg, errors.New("TELEMT_SHA256_X86_64 is required when NODE_DRIVER=gateway (sha256 of the telemt " + cfg.TelemtVersion + " release asset telemt-x86_64-linux-gnu.tar.gz; the node install script verifies the download against it)")
 	}
 	return cfg, nil
 }
 
-// reCommit constrains TPROXY_COMMIT: it is interpolated into the root-run installer script,
-// so nothing but a hex commit id may ever reach it.
 var reCommit = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
 
-// reSemver and reSHA256 constrain the telemt pin, which is interpolated into the same
-// root-run installer script.
 var (
 	reSemver = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 	reSHA256 = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
-// reRepo constrains GITHUB_REPO, which is interpolated into the URL the update
-// check requests: one owner and one name, nothing that could add a path
-// segment or a query.
 var reRepo = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`)
 
 func key32(b64 string) ([]byte, error) {

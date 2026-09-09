@@ -17,10 +17,6 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// TestAdminCmdValidatesRoleBeforeDB passes a nil store: a valid-looking command
-// would dereference it, so reaching the assertion proves the role check runs
-// first and the operator sees a usage error rather than a Postgres enum cast
-// failure.
 func TestAdminCmdValidatesRoleBeforeDB(t *testing.T) {
 	for _, bad := range []string{"Owner", "root", "", "admin ", "viewers"} {
 		err := adminCmd(context.Background(), nil, []string{"create", "u", "pass-123456", bad})
@@ -42,8 +38,6 @@ func TestAdminCmdUsage(t *testing.T) {
 	}
 }
 
-// TestDBRestoreRefusesWithoutYes: the restore drops every table before it loads
-// the dump, so it must never be one typo away.
 func TestDBRestoreRefusesWithoutYes(t *testing.T) {
 	cfg := config.Config{DataDir: t.TempDir(), DatabaseURL: "postgres://u:p@localhost/db"}
 	err := dbCmd(context.Background(), cfg, nil, []string{"restore", "some.dump"})
@@ -61,17 +55,10 @@ func TestDBUsage(t *testing.T) {
 	}
 }
 
-// A restore into a database the panel is still writing to would race the panel's
-// own connections and leave it holding stale, half-dropped state. The guard is a
-// Postgres advisory lock rather than a pid file precisely because the documented
-// recovery path runs in a second container, where pids say nothing (see
-// panelAdvisoryLockID).
 func TestDBRestoreRefusesWhileThePanelHoldsTheDatabaseLock(t *testing.T) {
 	holder := store.OpenTest(t)
 	ctx := context.Background()
 
-	// Exactly what `panel serve` does at startup: the lock on its own connection,
-	// held for the life of the process.
 	lock, ok, err := holder.TryAdvisoryLock(ctx, panelAdvisoryLockID)
 	if err != nil {
 		t.Fatal(err)
@@ -82,9 +69,6 @@ func TestDBRestoreRefusesWhileThePanelHoldsTheDatabaseLock(t *testing.T) {
 	// Released before any t.Cleanup runs: pgxpool.Close blocks on an acquired conn.
 	defer lock.Release()
 
-	// A second store stands in for the `docker compose run --rm panel` container:
-	// a different connection to the same database, and under the old pid file it
-	// would have seen its own pid 1 in the lock and happily proceeded.
 	caller := store.OpenTest(t)
 	ran := false
 	runner := &backup.Runner{
@@ -102,9 +86,7 @@ func TestDBRestoreRefusesWhileThePanelHoldsTheDatabaseLock(t *testing.T) {
 	}
 }
 
-// The other half: with nothing holding the lock - a stopped panel, or one that
-// was killed, since Postgres drops the lock with the connection - the restore
-// goes through to pg_restore.
+// The other half: with nothing holding the lock.
 func TestDBRestoreProceedsWhenNoPanelHoldsTheDatabaseLock(t *testing.T) {
 	st := store.OpenTest(t)
 	ctx := context.Background()
@@ -137,8 +119,6 @@ func TestKeysUsage(t *testing.T) {
 	}
 }
 
-// Rotating under a live panel would race its own connections and could hand a
-// request a row rewritten mid-transaction; refuse it the same way db restore does.
 func TestKeysRotateRefusesWhileThePanelHoldsTheDatabaseLock(t *testing.T) {
 	holder := store.OpenTest(t)
 	ctx := context.Background()
@@ -153,8 +133,6 @@ func TestKeysRotateRefusesWhileThePanelHoldsTheDatabaseLock(t *testing.T) {
 
 	caller := store.OpenTest(t)
 	cfg := config.Config{DataDir: t.TempDir(), MasterKeyVersion: 1, MasterKey: bytes.Repeat([]byte{0x44}, 32)}
-	// A valid MASTER_KEY_NEW, so the only thing that can stop the command is the
-	// lock: a refusal here cannot be the environment check in disguise.
 	t.Setenv("MASTER_KEY_NEW", base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{0x55}, 32)))
 
 	err = keysCmd(ctx, cfg, caller, []string{"rotate"})
@@ -188,9 +166,6 @@ func TestKeysRotateValidatesMasterKeyNew(t *testing.T) {
 	}
 }
 
-// keysRotate never reaches the store, and never prints key material, for a
-// request whose current MASTER_KEY is itself malformed (config.Load would
-// normally have caught this, but keysRotate rebuilds the Box independently).
 func TestKeysRotateRejectsBadCurrentMasterKey(t *testing.T) {
 	cfg := config.Config{DataDir: t.TempDir(), MasterKeyVersion: 1, MasterKey: []byte("too short")}
 	t.Setenv("MASTER_KEY_NEW", base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{9}, 32)))
@@ -199,10 +174,7 @@ func TestKeysRotateRejectsBadCurrentMasterKey(t *testing.T) {
 	}
 }
 
-// captureStdout redirects os.Stdout for the duration of fn and returns
-// everything written to it. keysRotate reports via fmt.Println/Printf
-// directly to os.Stdout, so this is the only way to inspect what an operator
-// running `panel keys rotate` would actually see on their terminal.
+// captureStdout redirects os.Stdout for the duration of fn and returns everything written to it.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	r, w, err := os.Pipe()
@@ -225,14 +197,6 @@ func captureStdout(t *testing.T, fn func()) string {
 	return string(out)
 }
 
-// TestKeysRotateDryRunAndHappyPathPrintNoKeyBytes is the CLI-level DB-backed
-// test deferred from Task 31: it seeds one encrypted row under the current
-// MASTER_KEY, runs `keys rotate --dry-run` (nothing written, a row-count
-// preview) and then the real rotation, and checks both the outcome (row
-// re-encrypted under the new key version, decrypts back to the same
-// plaintext) and that neither command ever printed the current or new key's
-// base64 form - keysRotate documents that it prints placeholders instead of
-// key material, so this pins that behavior with a test.
 func TestKeysRotateDryRunAndHappyPathPrintNoKeyBytes(t *testing.T) {
 	st := store.OpenTest(t)
 	ctx := context.Background()
@@ -330,8 +294,7 @@ func TestKeysRotateDryRunAndHappyPathPrintNoKeyBytes(t *testing.T) {
 		t.Fatalf("rotated secret decrypts to %q, want %q", got, plaintext)
 	}
 
-	// Running rotate again is a documented no-op: every row is already at the
-	// target version.
+	// Running rotate again is a documented no-op: every row is already at the target version.
 	noopOut := captureStdout(t, func() {
 		rotateErr = keysCmd(ctx, cfg, st, []string{"rotate", "--dry-run"})
 	})
@@ -341,10 +304,6 @@ func TestKeysRotateDryRunAndHappyPathPrintNoKeyBytes(t *testing.T) {
 	assertNoKeyBytes(t, noopOut)
 }
 
-// TestKeysRotateRefusesWhenNewKeyEqualsCurrent covers Task 33 item 3(b): a
-// MASTER_KEY_NEW that decodes to the exact same bytes as the current
-// MASTER_KEY is almost certainly the wrong environment variable, and rotating
-// onto it would burn a whole key version for nothing.
 func TestKeysRotateRefusesWhenNewKeyEqualsCurrent(t *testing.T) {
 	key := bytes.Repeat([]byte{0x33}, 32)
 	cfg := config.Config{DataDir: t.TempDir(), MasterKeyVersion: 1, MasterKey: key}

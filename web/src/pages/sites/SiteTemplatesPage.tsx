@@ -26,15 +26,6 @@ import type { SiteTemplate } from '@/api/types';
 /** The grid the list lays its cards out on - shared by the cards, their skeletons and nothing else. */
 const CARD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
 
-/**
- * The mark that says what kind of thing this card is.
- *
- * A card is not a table row, so its identity is a glyph on a tinted plate
- * rather than a 7px dot - the same plate a stat tile draws, in the neutral
- * tone, because which template a card holds is a fact and not a state. It is
- * what lets the eye find the template it wants in a grid of nine cards whose
- * names are all one line of the same weight.
- */
 function TemplatePlate() {
   return (
     <span
@@ -126,10 +117,6 @@ export function SiteTemplatesPage() {
           ))}
         </ul>
       ) : templatesQuery.isError ? (
-        /*
-         * The list failed rather than came back empty, so it says so where the
-         * cards would have been and offers the one useful move: ask again.
-         */
         <ErrorState
           message={templatesQuery.error instanceof ApiError ? templatesQuery.error.message : t('common.error_generic')}
           retryLabel={t('common.refresh')}
@@ -152,12 +139,6 @@ export function SiteTemplatesPage() {
       ) : (
         <ul className={CARD_GRID}>
           {templates.map((tpl, i) => (
-            /*
-             * A template is a file, so its card is the panel the rest of the
-             * app uses for a box of machine facts: hairline, no shadow, name in
-             * the sans face and everything the machine wrote (preset origin,
-             * last change) in mono underneath.
-             */
             <li
               key={tpl.id}
               style={enterDelay(i)}

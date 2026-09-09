@@ -49,10 +49,6 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-/**
- * A save waiting for its confirmation: the values as the schema parsed them (trimmed,
- * lowercased), and which confirmation they need - reissuing links, or "just" a restart.
- */
 type Pending = { kind: 'fake_tls' | 'public_ip'; values: FormValues } | null;
 
 const valuesOf = (node: Node): FormValues => ({
@@ -62,25 +58,7 @@ const valuesOf = (node: Node): FormValues => ({
   ad_tag: node.ad_tag,
 });
 
-/**
- * The telemt node's addresses: the public IP it is reachable at, and the Fake-TLS
- * listener - the domain it masks behind and the port it answers on.
- *
- * The domain and port are baked into every Fake-TLS link the panel has already
- * handed out - the secret encodes the domain - so changing one is not a settings
- * tweak, it is reissuing the links. The note says so before the button, and the
- * save itself goes through a confirmation: this is the one control on the tab that
- * can break links people are already using.
- *
- * The public IP is the address the A record points at; telemt names it in its WEB
- * vhost and the readiness check compares DNS against it. The installer detects it,
- * and on a NAT host it can detect the wrong side - this is where the operator
- * corrects it. Changing it restarts telemt on the next apply but leaves every link
- * alone, so it gets a lighter confirmation of its own.
- *
- * Read-only for viewers: the values still matter to whoever is reading the tab,
- * the controls do not.
- */
+// The telemt node's addresses: the public IP it is reachable at, and the Fake-TLS listener.
 export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: boolean }) {
   const { t } = useTranslation();
   const patchNode = usePatchNode(node.id);
@@ -101,10 +79,6 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
     reset({ tls_domain: node.tls_domain, classic_port: node.classic_port, public_ip: node.public_ip, ad_tag: node.ad_tag });
   }, [node.tls_domain, node.classic_port, node.public_ip, node.ad_tag, reset]);
 
-  // The form validates on submit and the confirmation opens only if it passed, so
-  // the operator is never asked to confirm a change that cannot be saved. Which
-  // confirmation depends on what changed: the Fake-TLS fields invalidate links,
-  // the public IP and the sponsor tag only cost telemt reapplying its config.
   const askToSave = (values: FormValues) => {
     const fakeTLS = values.tls_domain !== node.tls_domain || values.classic_port !== node.classic_port;
     setPending({ kind: fakeTLS ? 'fake_tls' : 'public_ip', values });
@@ -112,9 +86,6 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
 
   const onSubmit = async (values: FormValues) => {
     try {
-      // All fields always travel together: the API takes each as an optional patch,
-      // and sending only the one that changed makes the two forms of this card
-      // behave differently for no reason the operator can see.
       await patchNode.mutateAsync({
         tls_domain: values.tls_domain,
         classic_port: values.classic_port,

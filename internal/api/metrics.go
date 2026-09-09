@@ -20,14 +20,11 @@ var (
 	descSessions = prometheus.NewDesc("tgwp_node_sessions_live", "live relay sessions", []string{"node"}, nil)
 	descStreams  = prometheus.NewDesc("tgwp_node_streams_live", "live relay streams", []string{"node"}, nil)
 
-	// nodeStatuses and keyStatuses are emitted even when their count is 0 so
-	// scrapers always see the full label set.
 	nodeStatuses = []string{"pending", "online", "offline", "degraded"}
 	keyStatuses  = []string{"pending", "active", "revoked"}
 )
 
-// dbCollector refreshes nodes/keys/live-session gauges from the database on
-// every scrape.
+// dbCollector refreshes nodes/keys/live-session gauges from the database on every scrape.
 type dbCollector struct{ st *store.Store }
 
 func (c dbCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -76,9 +73,6 @@ func (c dbCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-// newMetricsHandler builds a dedicated registry (Go + process collectors
-// plus dbCollector) so panel metrics never mix with a default global
-// registry.
 func newMetricsHandler(st *store.Store) http.Handler {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(collectors.NewGoCollector())
@@ -87,8 +81,7 @@ func newMetricsHandler(st *store.Store) http.Handler {
 	return promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 }
 
-// handleMetrics serves /metrics at the root, public unless MetricsToken is
-// configured.
+// handleMetrics serves /metrics at the root, public unless MetricsToken is configured.
 func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.MetricsToken != "" {
 		auth := r.Header.Get("Authorization")

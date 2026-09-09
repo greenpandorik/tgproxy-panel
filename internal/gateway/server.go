@@ -101,12 +101,6 @@ func (s *Server) Session(stream agentv1.AgentGateway_SessionServer) error {
 				recvErr <- err
 				return
 			}
-			// Nothing in this switch may block for long: it is the session's
-			// only Recv pump, so a slow dispatch delays every later envelope -
-			// heartbeats included - and a stalled heartbeat is what the stats
-			// worker reads as "node offline". LogChunks therefore drop on a full
-			// channel instead of waiting; only Response, which is one-per-call,
-			// gets the deliverTimeout grace.
 			switch b := env.Body.(type) {
 			case *agentv1.Envelope_Heartbeat:
 				s.hooks.OnHeartbeat(ctx, nodeID, b.Heartbeat.GetHealth())

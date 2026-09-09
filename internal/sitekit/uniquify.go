@@ -16,24 +16,8 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-// reCSSSelectorClass matches a class selector token inside a stylesheet: a leading dot
-// followed by a CSS identifier. Only classes that actually appear in a stylesheet this way
-// are candidates for renaming — a class used purely as a JS/behavioural hook (never styled)
-// is left alone so external semantics never break.
 var reCSSSelectorClass = regexp.MustCompile(`\.([A-Za-z_][\w-]*)`)
 
-// maskedSpans reports the byte ranges of a stylesheet that must never be scanned for class
-// selectors: url(...) bodies, quoted strings and /* comments */.
-//
-// The regex above matches any dot followed by a CSS identifier, so without this
-// `background: url(/logo.png)` registers `png` as a class and the rename rewrites the
-// reference to `url(/logo.c1a2b3c4)`. buildAssetMapping only ever renames .css/.js, so the
-// file is still logo.png and the reference now points at nothing — silently, since the
-// bundle stays valid. Anchoring on the preceding character instead is not an option:
-// `ol.steps` and `a.link` are legitimate class selectors with an identifier right before
-// the dot.
-//
-// Spans are returned in ascending order and never overlap.
 func maskedSpans(css []byte) [][2]int {
 	var spans [][2]int
 	isIdent := func(b byte) bool {
@@ -89,8 +73,7 @@ func maskedSpans(css []byte) [][2]int {
 	return spans
 }
 
-// inSpans reports whether byte offset i falls inside one of the (ascending, non-overlapping)
-// masked ranges.
+// inSpans reports whether byte offset i falls inside one of the (ascending, non-overlapping) masked ranges.
 func inSpans(spans [][2]int, i int) bool {
 	for _, s := range spans {
 		if i < s[0] {
@@ -103,22 +86,6 @@ func inSpans(spans [][2]int, i int) bool {
 	return false
 }
 
-// Uniquify rewrites a normalized Bundle so that the same template produces a byte-different,
-// but equally valid, site per seed. This defeats fingerprinting of proxy sites by exact byte
-// signature (identical markup/asset hashes across every node running the same template) while
-// keeping the transformation fully deterministic for a given (bundle, seed) pair — re-running
-// it for a node that already has this exact bundle assigned must reproduce the same bytes, or
-// every re-assign would look like a change and force a needless relay restart.
-//
-// Transformations, in order:
-//  1. Shuffle the direct children of <main> that carry data-block (elements without the
-//     attribute keep their position).
-//  2. Rename every CSS class that appears in both the HTML and a bundle stylesheet to a short
-//     generated name, consistently across the HTML and every stylesheet.
-//  3. For elements with data-variants="a|b|c", replace their text content with one variant.
-//  4. Rename .css/.js asset files to <prefix>-<8 hex>.<ext> and rewrite <link href>/<script
-//     src> references.
-//  5. Strip the now-unneeded data-block and data-variants attributes.
 func Uniquify(b Bundle, seed string) (Bundle, error) {
 	idxSrc, ok := b.Files["index.html"]
 	if !ok {
@@ -161,9 +128,6 @@ func Uniquify(b Bundle, seed string) (Bundle, error) {
 	return Bundle{Files: files}, nil
 }
 
-// shuffleMainBlocks permutes which movable (data-block) node occupies each movable slot among
-// <main>'s direct children, leaving every other child (including whitespace text nodes and
-// elements without data-block) exactly where it was.
 func shuffleMainBlocks(doc *html.Node, rng *rand.Rand) {
 	main := findElement(doc, atom.Main)
 	if main == nil {
@@ -207,9 +171,7 @@ func findElement(n *html.Node, a atom.Atom) *html.Node {
 	return nil
 }
 
-// buildClassMapping assigns every class name that appears in any bundle stylesheet a short
-// generated name. Names are assigned in sorted order of the original class name so the mapping
-// is deterministic for a given (bundle, seed) regardless of Go's randomised map iteration order.
+// buildClassMapping assigns every class name that appears in any bundle stylesheet a short generated name.
 func buildClassMapping(files map[string][]byte, rng *rand.Rand) map[string]string {
 	var cssPaths []string
 	for p := range files {
@@ -244,8 +206,6 @@ func buildClassMapping(files map[string][]byte, rng *rand.Rand) map[string]strin
 	return mapping
 }
 
-// buildAssetMapping renames every .css/.js file (other than index.html) to a random name that
-// carries no information about the original template.
 func buildAssetMapping(files map[string][]byte, rng *rand.Rand) map[string]string {
 	var paths []string
 	for p := range files {
@@ -279,8 +239,6 @@ func buildAssetMapping(files map[string][]byte, rng *rand.Rand) map[string]strin
 	return mapping
 }
 
-// nextToken draws nBytes random bytes from rng and returns them hex-encoded with the given
-// prefix, redrawing on collision against used (used may be nil to skip collision checking).
 func nextToken(rng *rand.Rand, used map[string]bool, prefix string, nBytes int) string {
 	buf := make([]byte, nBytes)
 	for {
@@ -295,9 +253,6 @@ func nextToken(rng *rand.Rand, used map[string]bool, prefix string, nBytes int) 
 	}
 }
 
-// renameClassesInCSS applies mapping to every class selector token in css, skipping the
-// url()/string/comment spans maskedSpans reports so a filename extension is never mistaken
-// for a class name.
 func renameClassesInCSS(css []byte, mapping map[string]string) []byte {
 	spans := maskedSpans(css)
 	var out bytes.Buffer
@@ -331,8 +286,6 @@ func renameClassAttr(val string, mapping map[string]string) string {
 	return strings.Join(fields, " ")
 }
 
-// applyDocTransforms walks the whole document once, renaming classes, resolving
-// data-variants, rewriting asset references, and stripping the now-unneeded attributes.
 func applyDocTransforms(doc *html.Node, classMapping, assetMapping map[string]string, rng *rand.Rand) {
 	var walk func(n *html.Node)
 	walk = func(n *html.Node) {

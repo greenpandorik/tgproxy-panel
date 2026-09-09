@@ -34,16 +34,6 @@ function helpButtonInOpenDialog(): HTMLElement | null {
   return null;
 }
 
-/**
- * Mounts the page-level help sheet once, exposes `open(topic)` to the palette,
- * and owns the `?` shortcut: with nothing editable focused, `?` opens the help
- * for the current route - or, when a dialog is open, presses that dialog's own
- * help button, so the sheet that opens is the one about the form in front of
- * the operator rather than the page behind it.
- *
- * The sheet remembers the route it was opened on and counts as open only while
- * the operator is still there: navigating away closes it without an effect.
- */
 export function HelpProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const [sheet, setSheet] = useState<SheetState | null>(null);

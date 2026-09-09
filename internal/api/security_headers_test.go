@@ -12,11 +12,6 @@ import (
 	"tgwebproxy/internal/api/apitest"
 )
 
-// TestEveryResponseRefusesToBeFramed covers final-review M6. The panel is a
-// session-authenticated admin UI with destructive buttons on it and the public
-// subscription page is a page of connection details; neither has any reason to
-// be embedded in someone else's document, and clickjacking is the cheapest
-// attack to close.
 func TestEveryResponseRefusesToBeFramed(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -49,11 +44,6 @@ func TestEveryResponseCarriesABaselineCSP(t *testing.T) {
 	}
 }
 
-// TestSitePreviewIsFramableBySameOriginOnly is the one exemption from the rule
-// above, and it exists because the node Site tab renders the preview in a
-// same-origin sandboxed <iframe> (web/src/pages/nodes/NodeSiteTab.tsx): a blanket
-// DENY blanks it, since DENY refuses same-origin framing too. The narrowing is
-// SAMEORIGIN plus frame-ancestors 'self', which still refuses every other site.
 func TestSitePreviewIsFramableBySameOriginOnly(t *testing.T) {
 	_, c, n := ownerWithNode(t)
 	var tpl struct {
@@ -70,8 +60,6 @@ func TestSitePreviewIsFramableBySameOriginOnly(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Fatalf("preview: %d %s", resp.StatusCode, body)
 	}
-	// The regression this guards: a blank Site tab, with a rendered preview body
-	// that the browser refuses to display.
 	if len(body) == 0 {
 		t.Fatal("preview returned an empty body")
 	}
@@ -82,8 +70,6 @@ func TestSitePreviewIsFramableBySameOriginOnly(t *testing.T) {
 	if !strings.Contains(csp, "frame-ancestors 'self'") {
 		t.Errorf("preview CSP %q is missing frame-ancestors 'self'", csp)
 	}
-	// The rest of the lockdown is untouched: the preview still loads nothing of
-	// its own, so the exemption is about who may frame it and nothing else.
 	for _, want := range []string{"default-src 'none'", "style-src 'unsafe-inline'", "img-src data:"} {
 		if !strings.Contains(csp, want) {
 			t.Errorf("preview CSP %q lost %q", csp, want)
@@ -103,15 +89,11 @@ func TestSitePreviewIsFramableBySameOriginOnly(t *testing.T) {
 	}
 }
 
-// The subscription page carries the modern spelling of the same rule in its own
-// CSP, where the rest of its lockdown already lives.
 func TestSubscriptionPageCSPForbidsFraming(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
 	c := h.Login("root", "pass-123456")
 
-	// The 404 page goes through the same header helper as a real page, so an
-	// unknown token is enough to assert the policy.
 	resp := c.Get("/s/nope")
 	resp.Body.Close() //nolint:errcheck
 	csp := resp.Header.Get("Content-Security-Policy")
@@ -123,16 +105,10 @@ func TestSubscriptionPageCSPForbidsFraming(t *testing.T) {
 	}
 }
 
-// TestViewerRedactionFailsClosedOnAnUnparsableReport covers final-review M5. The
-// panel is the only writer of nodes.last_check today, so this is defensive - but
-// a redaction path that passes a value through when it cannot understand it
-// leaks in precisely the one case it did not anticipate.
 func TestViewerRedactionFailsClosedOnAnUnparsableReport(t *testing.T) {
 	h, _, n := ownerWithNode(t)
 	ctx := context.Background()
 
-	// Valid JSON (the column is jsonb) but not a Report: the detail text is
-	// there in the raw bytes, and the old code returned those bytes verbatim.
 	const junk = `{"results": "resolved 10.1.2.3, TLS handshake failed for internal.example"}`
 	if _, err := h.Store.Pool.Exec(ctx, `UPDATE nodes SET last_check = $1 WHERE id = $2`, junk, n.ID); err != nil {
 		t.Fatal(err)
@@ -150,8 +126,7 @@ func TestViewerRedactionFailsClosedOnAnUnparsableReport(t *testing.T) {
 		t.Fatalf("last_check = %v, want null: an unparsable report must not reach a viewer", v)
 	}
 
-	// A writer still gets the raw value - redaction is the only thing that has
-	// to fail closed, and hiding it from the operator would hide the corruption.
+	// A writer still gets the raw value.
 	owner := h.Login("root", "pass-123456")
 	var ownerGot map[string]any
 	owner.JSON(owner.Get("/api/v1/nodes/"+n.ID.String()), &ownerGot)

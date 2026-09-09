@@ -11,8 +11,6 @@ import (
 	"testing"
 )
 
-// recorder captures what the client actually put on the wire so the tests assert the
-// contract (path, method, auth header, JSON body) rather than the client's own view.
 type recorder struct {
 	method, path, auth, body string
 }
@@ -79,8 +77,6 @@ func TestCreateUserBodyAndSecret(t *testing.T) {
 	if body["username"] != "k1" || body["secret"] != "aa11bb22cc33dd44ee55ff6600778899" {
 		t.Fatalf("body: %s", got.body)
 	}
-	// Absent optional fields must not be sent at all: telemt treats an explicit null as
-	// "remove this override", so an omitempty slip would silently wipe limits.
 	if _, present := body["max_tcp_conns"]; present {
 		t.Fatalf("unset optional field sent: %s", got.body)
 	}
@@ -320,8 +316,7 @@ func TestMetricsReturnsRawTextWithoutTheAPIToken(t *testing.T) {
 	if !strings.Contains(text, "telemt_connections_total 5") {
 		t.Fatalf("metrics: %q", text)
 	}
-	// The metrics listener is a separate, whitelist-guarded port: the control API token
-	// must never be sent there.
+	// The metrics listener is a separate, whitelist-guarded port: the control API token must never be sent there.
 	if (*calls)[0].auth != "" {
 		t.Fatalf("auth header leaked to metrics: %q", (*calls)[0].auth)
 	}
@@ -338,8 +333,6 @@ func TestAPIErrorNeverEchoesTheToken(t *testing.T) {
 	}
 }
 
-// upstreamsBody is the shape a production telemt 3.5.7 node answers on GET /v1/stats/upstreams,
-// trimmed to the fields the panel reads plus a few it must ignore. DC 4 has no EMA yet (null).
 const upstreamsBody = `{
   "enabled": true,
   "zero": {"connect_success_total": 58, "connect_fail_total": 0, "unrelated": 1},

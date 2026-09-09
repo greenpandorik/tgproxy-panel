@@ -33,8 +33,7 @@ function node(over: Record<string, unknown>) {
   };
 }
 
-// One clean node and two with unapplied changes, so "Применить всё" has
-// something to confirm.
+// One clean node and two with unapplied changes, so "Применить всё" has something to confirm.
 const NODES = {
   items: [
     node({}),

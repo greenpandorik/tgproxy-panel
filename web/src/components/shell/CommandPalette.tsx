@@ -32,15 +32,6 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/**
- * ⌘K / Ctrl+K palette: the fastest path to any section, any node, any key,
- * and the four actions an operator repeats all day. It is the only global
- * search in the panel - the topbar "field" is a button that opens this.
- *
- * Node and key lookups reuse the list hooks the pages already use, so an
- * open palette costs at most one extra keys query (debounced) and nothing
- * for nodes, which are already cached by the shell.
- */
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -62,9 +53,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return () => window.clearTimeout(id);
   }, [query]);
 
-  // Closing always clears what was typed, so the palette never reopens
-  // mid-search. Done here rather than in an effect on `open`, which would be a
-  // render cascade for something a single event already knows about.
+  // Closing always clears what was typed, so the palette never reopens mid-search.
   const setOpen = useCallback(
     (next: boolean) => {
       if (!next) setQuery('');
@@ -102,10 +91,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     fn();
   };
 
-  // "Apply everywhere" restarts relays and drops live sessions, so it asks
-  // first - and it asks *after* the palette has closed, in the same
-  // ConfirmDialog every other impactful action in the panel uses. Nothing is
-  // sent until the operator confirms.
+  // "Apply everywhere" restarts relays and drops live sessions, so it asks first.
   const requestApplyEverywhere = () => {
     if (dirtyNodeIds.length === 0) {
       toast.add({ description: t('command.apply_all_nothing'), type: 'success' });

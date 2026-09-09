@@ -97,14 +97,12 @@ func TestTelemtLimitsValidate(t *testing.T) {
 		t.Fatalf("zero limits must be valid (inherit global): %v", err)
 	}
 	for name, l := range map[string]TelemtLimits{
-		"quota":     {DataQuotaBytes: -1},
-		"up":        {RateLimitUpBps: -1},
-		"down":      {RateLimitDownBps: -1},
-		"ips":       {MaxUniqueIPs: -1},
-		"conns":     {MaxTCPConns: -1},
-		"too large": {DataQuotaBytes: MaxTelemtQuotaBytes + 1},
-		// M5: both counters reach the agent as proto3 uint32, so a value above 2^32-1 wraps
-		// - 4294967297 becomes 1 and "effectively unlimited" turns into "one IP".
+		"quota":           {DataQuotaBytes: -1},
+		"up":              {RateLimitUpBps: -1},
+		"down":            {RateLimitDownBps: -1},
+		"ips":             {MaxUniqueIPs: -1},
+		"conns":           {MaxTCPConns: -1},
+		"too large":       {DataQuotaBytes: MaxTelemtQuotaBytes + 1},
 		"ips too large":   {MaxUniqueIPs: MaxTelemtCounter + 1},
 		"conns too large": {MaxTCPConns: MaxTelemtCounter + 1},
 		"ips wrap":        {MaxUniqueIPs: 4294967297},

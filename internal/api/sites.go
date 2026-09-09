@@ -71,11 +71,7 @@ func (s *Server) handleListTemplates(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"items": rows, "total": len(rows)})
 }
 
-// maxBundleBytes caps a site template's total decoded size (HTML plus every asset). The
-// bundle is shipped to nodes inside a single gRPC ApplyRequest; an oversized template would
-// make *every* apply for *every* node it is assigned to fail with an opaque
-// ResourceExhausted, including applies that were only meant to push a key. Rejecting at
-// upload time tells the operator immediately, at the one moment they can still fix it.
+// maxBundleBytes caps a site template's total decoded size (HTML plus every asset).
 const maxBundleBytes = 2 << 20
 
 func bundleSize(html string, assets map[string][]byte) int {
@@ -99,8 +95,6 @@ func checkBundleSize(w http.ResponseWriter, html string, assets map[string][]byt
 	return false
 }
 
-// validateInput decodes assets and normalises html, writing an error response and returning
-// ok=false when the input is malformed, too large, or violates relay restrictions.
 func (s *Server) validateInput(w http.ResponseWriter, in templateInput) (assets map[string][]byte, bundle sitekit.Bundle, ok bool) {
 	assets, err := decodeAssets(in.Assets)
 	if err != nil {
@@ -278,11 +272,6 @@ func (s *Server) handleAssignSite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 422, "site_invalid", err.Error(), nil)
 		return
 	}
-	// Uniquify makes this node's copy of the template byte-different (markup, class names,
-	// asset file names) from every other node running the same template, so the site can't be
-	// blocklisted by a single static fingerprint. It is deterministic per node ID: re-assigning
-	// the same template to a node that already runs it reproduces the identical bundle, so it
-	// never looks like a change and never forces a needless relay restart.
 	bundle, err = sitekit.Uniquify(bundle, n.ID.String())
 	if err != nil {
 		internal(w)
@@ -340,13 +329,6 @@ func (s *Server) handleSitePreview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// The one route that is *meant* to be framed: the node Site tab renders it in
-	// a same-origin, fully sandboxed <iframe> (web/src/pages/nodes/NodeSiteTab.tsx).
-	// The router sets X-Frame-Options: DENY on everything (server.go, denyFraming),
-	// which would blank the preview, so both framing rules are narrowed here to
-	// "our own origin and nobody else's" - written after the middleware ran, which
-	// is what makes this a narrowing rather than a hole. The rest of the CSP keeps
-	// the preview unable to load or run anything of its own.
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'")
 	_, _ = w.Write([]byte(page))

@@ -32,17 +32,6 @@ import { capacityText, DASH, engineVersion, LOAD_TONE_CLASS, loadTone, nodeLoad,
 import type { MouseEvent, ReactNode } from 'react';
 import type { CreateNodeResult, Node } from '@/api/types';
 
-/**
- * Profile capacity: the figure, and a 3px rule under it filled to the same
- * proportion.
- *
- * The number alone answers "how many"; the rule answers "how close to full",
- * which is the question that decides whether the next key can be bound here.
- * Stacked in a fixed-width column, the rules read as one shape down the table -
- * you see the node under pressure before you have read a single figure. The
- * fill is the operator's brand hue while there is room and turns red at 90%,
- * which is the only colour this column ever spends.
- */
 function CapacityBar({ count, max }: { count: number; max: number }) {
   const capped = max > 0;
   const pct = capped ? Math.min(100, Math.round((count / max) * 100)) : 0;
@@ -62,13 +51,6 @@ function CapacityBar({ count, max }: { count: number; max: number }) {
   );
 }
 
-/**
- * Server load from the last heartbeat: the percentage, and a 3px rule under
- * it filled to match, the same shape as CapacityBar so the two columns read
- * as one family. The rule turns amber at 80% and red at 95% - the two points
- * at which an operator would start looking, and then start acting. No figure
- * (never reported, or offline) prints as a dash rather than a hollow rule.
- */
 function LoadBar({ percent }: { percent: number | undefined }) {
   if (percent === undefined) return <span className="mono text-mono text-dim">{DASH}</span>;
   const tone = loadTone(percent);
@@ -89,13 +71,6 @@ function LoadText({ percent }: { percent: number | undefined }) {
   return <span className={cn('mono', LOAD_TONE_CLASS[loadTone(percent)].text)}>{Math.round(percent)}%</span>;
 }
 
-/**
- * The node's latency to Telegram from its last heartbeat: telemt's one
- * figure across every datacenter, in mono, amber from 150 ms and red from
- * 400, the thresholds `dcDisplay` fixes for the DC panel too. No figure - a
- * tproxy node, an offline one, or an agent that has not measured yet -
- * prints as a dash rather than as a number that reads as current.
- */
 function DcLatencyText({ ms }: { ms: number | undefined }) {
   const { t, i18n } = useTranslation();
   if (ms === undefined) return <span className="mono text-mono text-dim">{DASH}</span>;
@@ -122,11 +97,6 @@ function useNodeRow(node: Node) {
   };
 }
 
-/**
- * What the node runs, and which build of it: the engine name first because it
- * decides what the rest of the row means - a build string is only comparable
- * against nodes running the same proxy.
- */
 function EngineCell({ node }: { node: Node }) {
   const row = useNodeRow(node);
   return (
@@ -311,18 +281,7 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
   );
 }
 
-/**
- * The fleet.
- *
- * Wide: one dense table where every machine value - host, relay build, profile
- * use, CPU and memory load, heartbeat - is mono, so a column can be scanned for
- * the row that does not match its neighbours. A node that has stopped reporting says so in red
- * on its heartbeat, the field that actually went wrong, and nowhere else.
- *
- * Narrow: the same fields stacked per node, each carrying its own label,
- * because a table scrolled sideways hides exactly the columns this page exists
- * to show.
- */
+// The fleet.
 export function NodesPage() {
   const { t } = useTranslation();
   const { isWriter } = useAuth();

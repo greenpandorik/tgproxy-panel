@@ -6,16 +6,8 @@ import ru from '@/i18n/ru.json';
 import { HELP_TOPIC_IDS, HELP_TOPICS, docsUrl, isHelpTopic } from './content';
 import { HELP_ROUTES, topicForPath } from './routes';
 
-// Every component source file as text, so the test can see which topics the
-// HelpButtons name without a Node fs dependency in the browser tsconfig.
 const SOURCES = import.meta.glob<string>('/src/**/*.tsx', { query: '?raw', import: 'default', eager: true });
 
-/**
- * Every topic id named by a `<HelpButton topic=…>`: literal attributes as-is,
- * and, inside a `{…}` expression, the quoted strings that look like a topic id
- * (they contain a dot, or are a registered single-word id), so `mode === 'batch'`
- * in a ternary is not mistaken for one while `'keys.creat'` still is caught.
- */
 function topicsUsedInSource(): { file: string; topic: string }[] {
   const found: { file: string; topic: string }[] = [];
   for (const [file, text] of Object.entries(SOURCES)) {

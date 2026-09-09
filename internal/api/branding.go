@@ -17,7 +17,6 @@ import (
 )
 
 // maxBrandingAssetSize is the upload limit for logo/favicon/login background files.
-// BrandingForm's MAX_ASSET_BYTES mirrors it.
 const maxBrandingAssetSize = 3 << 19 // 1.5 MiB
 
 // brandingAssetKinds are the upload slots a branding profile exposes.
@@ -40,16 +39,10 @@ func brandingAssetURL(id uuid.UUID, path string) string {
 	return "/api/v1/branding/assets/" + id.String() + "/" + filepath.Base(path)
 }
 
-// copyBrandingAssetFile copies an asset file from the source profile's directory into the
-// destination profile's directory, returning the same relative path on success or "" when
-// the source file is missing (or the copy otherwise fails), so callers can clear the path
-// rather than leave a dangling reference.
 func (s *Server) copyBrandingAssetFile(ctx context.Context, srcID, dstID uuid.UUID, kind, path string) string {
 	if path == "" {
 		return ""
 	}
-	// Clearing the path is a deliberate degradation (better than a dangling
-	// reference), but it is invisible in the UI, so it is audited with the kind.
 	fail := func(err error) string {
 		s.Audit(ctx, "branding.asset_copy_failed", "branding_profile", dstID.String(),
 			map[string]any{"kind": kind, "source_profile_id": srcID.String(), "error": err.Error()})
@@ -71,8 +64,6 @@ func (s *Server) copyBrandingAssetFile(ctx context.Context, srcID, dstID uuid.UU
 
 // publicBrandingJSON is the shape served by the unauthenticated GET /branding endpoint.
 func publicBrandingJSON(b db.BrandingProfile) map[string]any {
-	// Replacing a logo keeps its filename; version the URL so browsers show
-	// the new upload immediately despite the public asset cache.
 	assetURL := func(path string) string {
 		url := brandingAssetURL(b.ID, path)
 		if url == "" {
@@ -177,9 +168,6 @@ func (s *Server) handleCreateBrandingProfile(w http.ResponseWriter, r *http.Requ
 		internal(w)
 		return
 	}
-	// CreateBranding copied the active profile's asset *paths*, but the files themselves
-	// live under the active profile's own directory. Copy each file into the new profile's
-	// directory, or clear the path when the source file is missing.
 	for _, kv := range []struct{ kind, path string }{
 		{"logo", active.LogoPath},
 		{"logo_dark", active.LogoDarkPath},
@@ -314,8 +302,6 @@ func (s *Server) handleDeleteBrandingProfile(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(204)
 }
 
-// detectBrandingExt sniffs the upload's content type and returns the extension to store it
-// under, or ok=false when the type is not one of the allowed image formats.
 func detectBrandingExt(filename string, data []byte) (ext string, ok bool) {
 	ct := http.DetectContentType(data)
 	switch {
@@ -384,8 +370,6 @@ func (s *Server) handleUploadBrandingAsset(w http.ResponseWriter, r *http.Reques
 		internal(w)
 		return
 	}
-	// A previous upload for this kind may have used a different extension (e.g. logo.svg
-	// replaced by logo.png); remove any stale sibling files so they stop being served.
 	if stale, err := filepath.Glob(filepath.Join(dir, kind+".*")); err == nil {
 		for _, f := range stale {
 			_ = os.Remove(f)
@@ -417,8 +401,7 @@ var brandingAssetContentTypes = map[string]string{
 	".ico":  "image/x-icon",
 }
 
-// handleBrandingAsset serves an uploaded branding file publicly. filepath.Base defuses path
-// traversal in the file segment and uuid.Parse rejects any non-UUID id segment outright.
+// handleBrandingAsset serves an uploaded branding file publicly.
 func (s *Server) handleBrandingAsset(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -441,11 +424,6 @@ func (s *Server) handleBrandingAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Cache-Control", "public, max-age=3600")
-	// Branding assets are operator uploads served publicly from the panel's own origin, and
-	// the login page renders them before authentication. These two headers neutralise the
-	// whole SVG-XSS class regardless of how good the sanitiser is: the CSP denies the
-	// document every capability (no scripts, no fetches, no framing) and sandboxes it into a
-	// unique opaque origin, and nosniff stops a mislabelled upload being re-interpreted.
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(data)

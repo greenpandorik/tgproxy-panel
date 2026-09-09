@@ -1,15 +1,5 @@
 import { cn } from '@/lib/utils';
 
-/*
- * The TGProxy Panel mark: a rotated square outline with an axis-aligned
- * square inside - the wrapper around the payload, which is what a proxy
- * that hides MTProto inside WEB/Fake-TLS traffic does. Two shapes, so it
- * still reads at 16px; the outline follows `currentColor`, the core takes
- * the operator's brand hue so it agrees with the active-nav marker next to
- * it. The same geometry is in web/public/favicon.svg, web/public/logo.svg
- * and the subscription page template; keep them in step.
- */
-
 /** The outline, on a 24-unit grid. Shared with the SVG files above. */
 export const MARK_PATH = 'M12 1.75L22.25 12 12 22.25 1.75 12Z';
 
@@ -19,10 +9,6 @@ interface LogoProps {
   /** 16 in the sidebar rail, 24 on the login wordmark, 40 for standalone use. */
   size?: LogoSize;
   className?: string;
-  /**
-   * Accessible name. Omit when the mark sits next to the panel name (the
-   * common case) - the SVG is then hidden from assistive tech as decoration.
-   */
   title?: string;
   /** Fill of the core. Defaults to the runtime brand hue. */
   accent?: string;

@@ -15,17 +15,14 @@ import (
 	"text/template"
 )
 
-// Fixed loopback endpoints of a telemt node (spec §5). They are not configurable per node:
-// Caddy, the firewall rules and the agent all assume these ports.
+// Fixed loopback endpoints of a telemt node (spec §5).
 const (
 	telemtWebListenIP   = "127.0.0.1"
 	telemtWebListenPort = 18080
 	telemtAPIListen     = "127.0.0.1:9091"
 	telemtMetricsListen = "127.0.0.1:9090"
 	telemtLoopbackCIDR  = "127.0.0.1/32"
-	// telemtSynlimitBackend is the per-listener SYN rate limiter telemt installs itself
-	// (spec §5, the MEKO fix). Only the Fake-TLS listener carries it: telemt rejects the
-	// option on a WEB listener.
+	// telemtSynlimitBackend is the per-listener SYN rate limiter telemt installs itself (spec §5, the MEKO fix).
 	telemtSynlimitBackend = "nftables"
 )
 
@@ -41,51 +38,28 @@ const (
 	DefaultStateDir         = "/var/lib/tgwp-agent"
 )
 
-// TelemtServiceAccount is the unprivileged account the telemt unit runs as. The installer
-// (Task 41) must create it before `init-node --engine telemt` runs:
-//
-//	useradd --system --home /var/lib/telemt --shell /usr/sbin/nologin telemt
-//
-// init-node chowns /etc/telemt and /var/lib/telemt to it and fails loudly if it is missing,
-// because a telemt that cannot read its own config or write its config back (the control API
-// mutates telemt.toml) would only fail later and less clearly.
+// TelemtServiceAccount is the unprivileged account the telemt unit runs as.
 const TelemtServiceAccount = "telemt"
 
 // TelemtInitParams describes one telemt node as `agent init-node --engine telemt` sees it.
 type TelemtInitParams struct {
-	Hostname    string // public FQDN served by Caddy and used as the WEB vhost
-	PublicIP    string // concrete public IP; telemt needs it for web.vhosts.public_addr
-	TLSDomain   string // Fake-TLS SNI, normally the node's own hostname
-	ClassicPort int    // Fake-TLS listener port
-	WebUser     string // initial telemt user (the node's own service key)
-	WebSecret   string // 32 hex chars
-	SiteSrc     string // optional directory whose contents become the decoy site
-	// NoSynlimit omits the Fake-TLS listener's `synlimit = "nftables"` line. The synlimit
-	// rules are installed by telemt itself at startup and need CAP_NET_ADMIN plus a writable
-	// netfilter namespace; where that is unavailable (an unprivileged container such as the
-	// e2e fakenode) telemt refuses to start at all rather than degrade. Real nodes never set
-	// this: the installer runs telemt with CAP_NET_ADMIN and the MEKO fix depends on it.
-	NoSynlimit bool
-	// NoTLSEmulation sets `censorship.tls_emulation = false`. telemt normally learns the
-	// TLS fingerprint of the real tls_domain by connecting to it on 443, and a runtime
-	// reload refuses to activate a generation whose TLS-front profiles are still the
-	// built-in fallback ("TLS-front profiles are not ready for domains: ..."). On a test
-	// bench the domain is fictional and resolves nowhere, so every apply would roll back.
-	// Real nodes never set this: the emulation is what makes the Fake-TLS listener look
-	// like the site it masks behind.
+	Hostname       string // public FQDN served by Caddy and used as the WEB vhost
+	PublicIP       string // concrete public IP; telemt needs it for web.vhosts.public_addr
+	TLSDomain      string // Fake-TLS SNI, normally the node's own hostname
+	ClassicPort    int    // Fake-TLS listener port
+	WebUser        string // initial telemt user (the node's own service key)
+	WebSecret      string // 32 hex chars
+	SiteSrc        string // optional directory whose contents become the decoy site
+	NoSynlimit     bool
 	NoTLSEmulation bool
 
 	ConfigPath string
 	TokenPath  string
 	UnitPath   string
 	SiteDir    string
-	// DataDir is telemt's state directory (the unit's WorkingDirectory); SiteDir normally
-	// lives inside it.
-	DataDir string
-	Binary  string
-	// StateDir is the agent's state directory. init-node seeds the user fingerprint file
-	// there so the first apply recognises the node's own user as already up to date.
-	StateDir string
+	DataDir    string
+	Binary     string
+	StateDir   string
 }
 
 func (p *TelemtInitParams) withDefaults() {
@@ -113,8 +87,6 @@ func (p *TelemtInitParams) withDefaults() {
 	if p.TLSDomain == "" {
 		p.TLSDomain = p.Hostname
 	}
-	// ClassicPort is deliberately not defaulted: the CLI flag carries the default, so a zero
-	// here means the caller passed one and must be told rather than silently corrected.
 }
 
 var (
@@ -127,8 +99,6 @@ func validHostname(h string) bool {
 	return len(h) <= 253 && hostnameRe.MatchString(strings.ToLower(h)) && h == strings.ToLower(h)
 }
 
-// validate rejects anything that could break out of a TOML string or produce a config telemt
-// would refuse at startup. Everything that reaches the template is checked here.
 func (p TelemtInitParams) validate() error {
 	if !validHostname(p.Hostname) {
 		return fmt.Errorf("invalid hostname %q", p.Hostname)
@@ -163,8 +133,6 @@ func (p TelemtInitParams) publicAddr() string {
 	return p.PublicIP + ":443"
 }
 
-// telemtConfigTemplate mirrors spec §5. Every interpolated string goes through `q`
-// (strconv.Quote), so the rendered file is valid TOML even if validation is ever loosened.
 const telemtConfigTemplate = `[general]
 use_middle_proxy = false
 log_level = "normal"
@@ -223,10 +191,7 @@ secret_mode = "plain"
 var telemtConfigTmpl = template.Must(template.New("telemt.toml").
 	Funcs(template.FuncMap{"q": strconv.Quote}).Parse(telemtConfigTemplate))
 
-// telemtUnitTemplate runs telemt unprivileged. The capability lines are what make that
-// possible: CAP_NET_ADMIN for the nftables synlimit, CAP_NET_BIND_SERVICE so a node may use a
-// privileged classic port. They are only meaningful because the service is not root — an
-// ambient capability set on a root service is inert.
+// telemtUnitTemplate runs telemt unprivileged.
 const telemtUnitTemplate = `[Unit]
 Description=telemt proxy
 Wants=network-online.target
@@ -283,10 +248,6 @@ func RenderTelemtConfig(p TelemtInitParams, apiToken string) ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
-// InitTelemtNode renders telemt.toml, ensures the API token file, installs the systemd unit and
-// materialises the decoy site. It is idempotent: an existing token is reused so a re-run does
-// not lock the agent out of the API. It returns the token file path; the token itself is never
-// printed or logged.
 func InitTelemtNode(ctx context.Context, ex Exec, p TelemtInitParams) (string, error) {
 	p.withDefaults()
 	if err := p.validate(); err != nil {
@@ -325,8 +286,7 @@ func InitTelemtNode(ctx context.Context, ex Exec, p TelemtInitParams) (string, e
 	if err := chownTelemtPaths(ctx, ex, p); err != nil {
 		return "", err
 	}
-	// Record the secret we just wrote into telemt.toml. Without it the first apply would
-	// re-PATCH this user's secret for no reason, because the API never reveals secrets.
+	// Record the secret we just wrote into telemt.toml.
 	state := readTelemtState(p.StateDir)
 	state.SecretHashes[p.WebUser] = secretFingerprint(p.WebSecret)
 	if err := writeTelemtState(p.StateDir, state); err != nil {
@@ -335,9 +295,7 @@ func InitTelemtNode(ctx context.Context, ex Exec, p TelemtInitParams) (string, e
 	return p.TokenPath, nil
 }
 
-// chownTelemtPaths hands telemt's config and state to its service account. The token file keeps
-// mode 0600 and becomes telemt-owned; the agent reads it as root. A failure here is fatal: it
-// almost always means the installer did not create the account (see TelemtServiceAccount).
+// chownTelemtPaths hands telemt's config and state to its service account.
 func chownTelemtPaths(ctx context.Context, ex Exec, p TelemtInitParams) error {
 	owner := TelemtServiceAccount + ":" + TelemtServiceAccount
 	seen := map[string]bool{}
@@ -378,8 +336,7 @@ func ensureAPIToken(path string) (string, error) {
 	return token, nil
 }
 
-// installTelemtSite copies the bundle into the decoy directory. telemt validates the decoy at
-// startup and requires the index file to exist, so an empty bundle still gets a placeholder.
+// installTelemtSite copies the bundle into the decoy directory.
 func installTelemtSite(src, dst string) error {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err

@@ -24,13 +24,6 @@ interface StatusBadgeProps {
   hideLabel?: boolean;
 }
 
-/**
- * Status is a 7px dot plus a word, never a filled pill: in a table of thirty
- * rows the dots form a column you can scan, while thirty coloured pills would
- * be the loudest thing on the page. Live states (online, active, degraded)
- * carry a soft pulsing ring - the panel's one recurring motif - which
- * prefers-reduced-motion turns off (see .tgwp-pulse-ring in index.css).
- */
 export function StatusBadge({ status, label, className, hideLabel }: StatusBadgeProps) {
   const { t } = useTranslation();
   const text = label ?? t(`common.${status}`);

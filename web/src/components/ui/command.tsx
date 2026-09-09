@@ -7,15 +7,6 @@ import { SearchIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-/*
- * Command palette surface. It borrows nothing from the page: one popover
- * panel, a search row separated by a hairline, and groups labelled with the
- * same micro role the sidebar group headings use, so "sections" in the
- * palette and "sections" in the rail are visibly the same idea.
- *
- * The group heading is the micro role spelled out through cmdk's child
- * selector (a class cannot reach the heading element cmdk renders itself).
- */
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
     <CommandPrimitive

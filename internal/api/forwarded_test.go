@@ -8,14 +8,6 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// TestForwardedForCannotSpoofTheLoginLimiterOrAuditIP is the end-to-end half of
-// the X-Forwarded-For hardening (final review I1). Caddy is configured to
-// overwrite the header with the peer address, and the panel additionally reads
-// only the *last* entry - the one a proxy appended - so a client that writes its
-// own X-Forwarded-For gets no say in which bucket its attempts land in.
-//
-// The httptest client really is 127.0.0.1, so a header naming 1.2.3.4 must never
-// be the key: if it were, every assertion below would flip.
 func TestForwardedForCannotSpoofTheLoginLimiterOrAuditIP(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -33,8 +25,6 @@ func TestForwardedForCannotSpoofTheLoginLimiterOrAuditIP(t *testing.T) {
 		t.Fatalf("11th attempt: %d, want 429", resp.StatusCode)
 	}
 
-	// Same forged head, different proxy-appended entry: a separate bucket, so the
-	// key cannot be the value the caller chose.
 	fresh := h.Anonymous().SetHeader("X-Forwarded-For", "1.2.3.4, 10.0.0.10")
 	switch code := fresh.Post("/api/v1/auth/login", wrong).StatusCode; code {
 	case 401: // as expected: an untouched bucket

@@ -14,8 +14,6 @@ import (
 	"tgwebproxy/internal/worker"
 )
 
-// fakeSender records every SendWith call; shared by alerts_test.go,
-// stats_test.go and apply_test.go (all package worker_test).
 type fakeSender struct {
 	mu       sync.Mutex
 	calls    []sentMsg
@@ -165,8 +163,6 @@ func TestAlertsEscapesNodeNameAndHostname(t *testing.T) {
 func TestAlertsNilPointerIsNoOp(t *testing.T) {
 	var a *worker.Alerts
 	node := testNode("n1", "n1.test")
-	// Must not panic even though a is nil: Stats/Apply hold *Alerts
-	// unconditionally and only get a real one when main.go wires it up.
 	a.NodeOffline(t.Context(), node)
 	a.NodeOnline(t.Context(), node)
 	a.ApplyFailed(t.Context(), node, "boom")
@@ -184,10 +180,6 @@ func TestAlertsConfigErrorSendsNothing(t *testing.T) {
 	}
 }
 
-// TestAlertsFailedSendDoesNotConsumeTheRateLimitSlot: the (node, kind) slot used to be
-// claimed before SendWith ran, so one transient Telegram failure suppressed that alert for
-// the whole five-minute window - the window in which an operator most needs to hear that a
-// node went offline.
 func TestAlertsFailedSendDoesNotConsumeTheRateLimitSlot(t *testing.T) {
 	sender := &fakeSender{}
 	sender.failNextSends(1)

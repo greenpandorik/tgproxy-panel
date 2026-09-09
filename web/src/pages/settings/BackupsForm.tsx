@@ -84,8 +84,6 @@ export function BackupsForm() {
       const created = await createBackup.mutateAsync();
       toast.add({ description: t('settings.backups_create_success', { name: created.name }), type: 'success' });
     } catch (err) {
-      // backup_running is the only expected failure: the panel takes one dump at
-      // a time, so say so instead of showing the generic error.
       const description =
         err instanceof ApiError && err.code === 'backup_running'
           ? t('settings.backups_create_running')
@@ -116,8 +114,6 @@ export function BackupsForm() {
   };
 
   return (
-    // Wider than the other six forms only because it holds a five-column table;
-    // the head/body/footer shape underneath is the same.
     <div className="flex max-w-3xl flex-col gap-4">
       <Arriving>
         <Panel>

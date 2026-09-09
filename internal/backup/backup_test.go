@@ -16,9 +16,6 @@ import (
 
 const testURL = "postgres://tgwp:s3cret@localhost:5432/tgwp?sslmode=disable"
 
-// fakeExec records the command it was asked to run and, when the argument list
-// carries a --file, creates that file with the given contents so Create can stat
-// a real dump without a real pg_dump.
 type fakeExec struct {
 	name  string
 	args  []string
@@ -118,9 +115,7 @@ func TestCreateRejectsUnknownKind(t *testing.T) {
 	}
 }
 
-// The dump command carries the database URL, password and all. A failure must
-// surface pg_dump's own message without ever echoing that URL back to an API
-// response, a log line or the CLI.
+// The dump command carries the database URL, password and all.
 func TestCreateErrorCarriesStderrButNotTheURL(t *testing.T) {
 	fe := &fakeExec{
 		write: "partial",
@@ -155,8 +150,6 @@ func TestCreateErrorWithoutOutputStillFails(t *testing.T) {
 	}
 }
 
-// Two dumps of the same kind inside one second share a timestamp; the second
-// must not overwrite the first file while its row still points at it.
 func TestCreateNeverOverwritesAnExistingDump(t *testing.T) {
 	fe := &fakeExec{write: "x"}
 	r := newRunner(t, fe)
@@ -317,8 +310,6 @@ func TestPruneKeepsEverythingWhenUnderTheLimit(t *testing.T) {
 	}
 }
 
-// keep <= 0 would otherwise mean "delete everything"; a misconfigured setting
-// must never wipe the backup history.
 func TestPruneIgnoresNonPositiveKeep(t *testing.T) {
 	fe := &fakeExec{}
 	r := newRunner(t, fe)
@@ -332,8 +323,6 @@ func TestPruneIgnoresNonPositiveKeep(t *testing.T) {
 	}
 }
 
-// A dump deleted from disk by hand still has a row; pruning must clear the row
-// rather than stopping on the missing file.
 func TestPruneRemovesTheRowWhenTheFileIsGone(t *testing.T) {
 	fe := &fakeExec{}
 	r := newRunner(t, fe)
@@ -387,12 +376,6 @@ func TestScheduleDefaults(t *testing.T) {
 	}
 }
 
-// TestScheduleClampsOutOfRangeStoredValues covers final-review M8. PUT /settings
-// runs Validate and refuses hour: 99, but a value that reaches the settings row
-// another way - a restore from an older install, a hand-written UPDATE - used to
-// make RunOnce return false forever, so nightly backups silently never ran and
-// nothing anywhere said why. A clamped hour dumps at the wrong time; an
-// unclamped one never dumps at all, and only the first of those is noticeable.
 func TestScheduleClampsOutOfRangeStoredValues(t *testing.T) {
 	for raw, want := range map[string]backup.Schedule{
 		`{"enabled":true,"hour":99,"keep":7}`:   {Enabled: true, Hour: 23, Keep: 7},

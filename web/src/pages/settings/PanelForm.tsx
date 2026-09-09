@@ -51,8 +51,6 @@ type PanelDraft = Omit<FormValues, 'bot_token'>;
 
 function draftOf(v: FormValues): PanelDraft {
   return {
-    // The number inputs hold strings once typed into; compare them as numbers
-    // so "30" typed over 30 does not count as a change worth remembering.
     apply_interval: Number(v.apply_interval),
     offline_after: Number(v.offline_after),
     telegram_enabled: v.telegram_enabled,
@@ -102,8 +100,6 @@ export function PanelForm() {
   const chatIdValue = values.chat_id;
   const tokenSet = settingsQuery.data?.telegram_alerts.bot_token_set ?? false;
 
-  // Only an owner can save, so only an owner gets a draft; it waits for the
-  // settings to arrive so the placeholder defaults are never stored.
   const draft = useDraft<PanelDraft>('settings-panel', draftOf(values), {
     initial: draftOf(settingsQuery.data ? valuesFromSettings(settingsQuery.data) : DEFAULT_VALUES),
     open: isOwner && !!settingsQuery.data,
@@ -136,9 +132,6 @@ export function PanelForm() {
 
   const onTestMessage = async () => {
     try {
-      // Both values come from the form, not from what is stored: canTestTelegram enables the
-      // button off the in-progress chat id, so sending the stored one would reject a form
-      // that looks complete. The server uses them for this send only.
       const result = await telegramTest.mutateAsync({
         bot_token: botTokenValue.trim() || undefined,
         chat_id: chatIdValue.trim() || undefined,

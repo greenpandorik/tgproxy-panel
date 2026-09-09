@@ -14,20 +14,9 @@ import { cn } from '@/lib/utils';
 
 import type { Node, NodeCheckResult } from '@/api/types';
 
-/**
- * Prerequisite checks in display order, matching internal/nodecheck.Checker.RunTelemt.
- * `pq_kex` is advisory (never counted in all_ok); `mask` is telemt-only and absent from a
- * tproxy node's report.
- */
+// Prerequisite checks in display order, matching internal/nodecheck.Checker.RunTelemt.
 const CHECK_NAMES = ['dns_a', 'tcp_80', 'tcp_443', 'tls_cert', 'pq_kex', 'http_root', 'mask'] as const;
 
-/**
- * One prerequisite, as a row rather than a card: dot, what was checked, and
- * whatever the checker had to say about it in mono on the right. Read down the
- * column of dots and the failing step is the one that stops you. An advisory
- * probe that did not pass is a note, not a stop, so it takes the info tone
- * instead of red and carries its hint under the label.
- */
 function CheckRow({ result }: { result: NodeCheckResult }) {
   const { t, i18n } = useTranslation();
   const tone = result.ok ? 'ok' : result.advisory ? 'info' : 'err';
@@ -80,9 +69,6 @@ export function NodeCheckCard({ node }: { node: Node }) {
     }
   };
 
-  // While a run is in flight, prefer its live results over the stale
-  // persisted report so the rows update the moment the response lands
-  // (before the node query refetch confirms it).
   const results = runCheck.data?.results ?? report?.results;
   const allOk = runCheck.data?.all_ok ?? report?.all_ok;
   const ranAt = runCheck.data?.ran_at ?? report?.ran_at;

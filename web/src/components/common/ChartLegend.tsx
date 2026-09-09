@@ -6,16 +6,6 @@ export interface LegendItem {
   color: string;
 }
 
-/**
- * Legend for the line charts, rendered outside the chart so it survives the
- * lazy recharts boundary (it shows while the chart is still loading) and so
- * the names stay real text rather than SVG.
- *
- * The swatch is a line segment, not a dot, because that is the mark it stands
- * for. Names are set in ink, never in the series colour - identity is carried
- * by the swatch beside the word, so the row still reads with colour vision
- * differences or on a black-and-white print.
- */
 export function ChartLegend({ items, className }: { items: LegendItem[]; className?: string }) {
   if (items.length === 0) return null;
 

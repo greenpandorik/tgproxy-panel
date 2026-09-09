@@ -1,7 +1,3 @@
-// Helpers for the TemplateEditorPage live preview iframe. Mirrors the
-// inlining logic in internal/api/sites.go handleSitePreview - the srcdoc is
-// built client-side so the preview updates without a round trip, while the
-// deployed-on-a-node preview (NodeSiteTab) still uses the real endpoint.
 
 /** Decodes a base64 asset value (as stored in the `assets` map) to a UTF-8 string. */
 export function base64ToText(b64: string): string {

@@ -65,8 +65,6 @@ func TestNewBoxRequiresCurrentKey(t *testing.T) {
 	}
 }
 
-// TestNewBoxRejectsOutOfRangeVersions covers the 2-byte version prefix in the
-// blob layout: a version outside 1..65535 would be silently truncated.
 func TestNewBoxRejectsOutOfRangeVersions(t *testing.T) {
 	k := bytes.Repeat([]byte{9}, 32)
 	for _, v := range []int{0, -1, 65536, 1 << 20} {

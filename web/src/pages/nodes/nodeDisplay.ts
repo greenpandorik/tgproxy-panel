@@ -7,29 +7,11 @@ export const DASH = '—';
 /** How an uncapped node's capacity is written. */
 export const INFINITY = '∞';
 
-/**
- * A node's state as the whole panel reports it: the lifecycle status the
- * heartbeat persisted, and nothing else.
- *
- * There are two candidate sources and they disagree. `status` is what the
- * panel recorded the last time the node reported in; `online` is a driver
- * probe taken while this one request was being served. Showing the probe made
- * the same node read "online" in the list and "0 online" in the rail, because
- * the rail counts persisted statuses - so the panel contradicted itself on
- * screen. One source wins everywhere a state is *displayed* (rail count,
- * lists, detail header, palette), and it is `status`.
- *
- * `online` keeps its real job: gating the live fetches (logs, health, stats)
- * that only work while the driver can actually reach the box.
- */
 export function nodeStatus(node: Node): Status {
   return node.status;
 }
 
-/**
- * Profile capacity as text. `max_profiles = 0` means "no cap configured", so
- * it is written `4 / ∞` rather than the nonsense `4 / 0`.
- */
+// Profile capacity as text.
 export function capacityText(count: number, max: number): string {
   return `${count} / ${max > 0 ? max : INFINITY}`;
 }
@@ -41,16 +23,7 @@ export function shortVersion(v: string): string {
   return v.length > 16 ? v.slice(0, 16) + '…' : v;
 }
 
-/**
- * The telemt build a node reports.
- *
- * There are two places it can come from and they fill in at different times:
- * `telemt_version` is what the panel recorded for the node, while the health
- * report carries the live figure in `tproxy_version` as "telemt 3.5.5" (one
- * field for "whatever proxy this engine runs"). The recorded value wins when it
- * exists; otherwise the prefix is stripped off the live one. Empty means the
- * node has not reported yet.
- */
+// The telemt build a node reports.
 export function telemtVersion(node: Pick<Node, 'telemt_version' | 'tproxy_version'>): string {
   if (node.telemt_version) return node.telemt_version;
   const reported = node.tproxy_version.trim();
@@ -85,14 +58,6 @@ export const LOAD_TONE_CLASS: Record<LoadTone, { text: string; bar: string }> = 
   danger: { text: 'text-err', bar: 'bg-err' },
 };
 
-/**
- * CPU and memory use from the node's last heartbeat, clamped to 0-100.
- *
- * Undefined when there is nothing honest to show: a node that has never
- * reported has no figure, and an offline node's last figure describes a
- * moment the panel can no longer vouch for, so both print as "—" rather than
- * as a number that reads as current.
- */
 export function nodeLoad(node: Pick<Node, 'status' | 'health'>): { cpu: number; mem: number } | undefined {
   if (!node.health || node.status === 'offline') return undefined;
   const clamp = (v: number) => Math.max(0, Math.min(100, Number.isFinite(v) ? v : 0));

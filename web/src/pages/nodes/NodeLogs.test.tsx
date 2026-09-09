@@ -48,9 +48,6 @@ describe('NodeLogs', () => {
     setLang('en');
   });
 
-  // Debt item 14: the pane used to render an "offline" placeholder and never
-  // open the stream, so a node that had just reconnected stayed unusable until
-  // the next node poll refreshed the flag.
   it('opens the stream even when the cached node status says offline', async () => {
     render(wrap(<NodeLogs nodeId="11111111-1111-4111-8111-111111111111" online={false} />));
     await waitFor(() => expect(FakeEventSource.opened).toHaveLength(1));

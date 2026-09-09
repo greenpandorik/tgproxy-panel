@@ -28,25 +28,12 @@ type Params struct {
 	PanelURL, InstallToken, Hostname, ACMEEmail, Secret, TProxyCommit, AgentSHA256 string
 	Site                                                                           map[string][]byte
 
-	// Engine selects the branch of script.sh.tmpl. The zero value renders the tproxy-server +
-	// MTProxy stack, so callers that predate the telemt engine keep the script they had.
-	Engine domain.Engine
-	// The rest is telemt only. WebUser is the node's own profile name, which becomes the first
-	// [access.users] entry; TelemtVersion/TelemtSHA256 pin the release tarball the node
-	// downloads and are the panel's only guarantee about the binary it makes root run.
+	Engine                                          domain.Engine
 	WebUser, TLSDomain, TelemtVersion, TelemtSHA256 string
 	ClassicPort                                     int
 
-	// PublicIP is the address the operator set on the node, if any. The script prefers it
-	// over its own detection (ipify, then the outbound route), which picks the wrong side of
-	// a NAT; empty means detect. It is what makes "set public_ip in the panel and re-run"
-	// an instruction the script can actually follow.
 	PublicIP string
 
-	// NoSysctlTuning drops the /etc/sysctl.d/90-tgwp.conf step (BBR, fq, larger backlogs,
-	// shorter keepalives - adopted from MTPROTO_FIX_By_MEKO). The zero value keeps the tuning
-	// on, so every caller gets it without opting in; the field exists so it can be switched
-	// off later without touching the template. Not exposed in the panel UI or API.
 	NoSysctlTuning bool
 }
 
@@ -60,19 +47,12 @@ func (p Params) SysctlTuning() bool { return !p.NoSysctlTuning }
 const DefaultClassicPort = 8443
 
 var (
-	// reTelemtVersion and reTelemtSHA256 are the last check before the values are pasted into
-	// a download URL and a sha256sum line in a script that runs as root on a fresh node. sq
-	// quoting already stops them becoming commands; these stop them becoming a different
-	// download.
 	reTelemtVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 	reTelemtSHA256  = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	reWebUser       = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,64}$`)
 )
 
-// sq renders v as a single-quoted shell word. Everything inside '…' is literal to the
-// shell, and an embedded single quote is closed, backslash-escaped and reopened, so no
-// substituted value can ever break out of its quoting and run as a command. Every
-// substitution in script.sh.tmpl goes through this - the script runs as root on a fresh node.
+// sq renders v as a single-quoted shell word.
 func sq(v string) string {
 	return "'" + strings.ReplaceAll(v, "'", `'\''`) + "'"
 }
@@ -93,8 +73,6 @@ func Render(p Params) (string, error) {
 		if !reWebUser.MatchString(p.WebUser) {
 			return "", fmt.Errorf("telemt web user %q is not a valid user name", p.WebUser)
 		}
-		// Nodes created before tls_domain/classic_port existed carry empty values; the Fake-TLS
-		// listener masks behind the node's own site, so the hostname is the honest default.
 		if p.TLSDomain == "" {
 			p.TLSDomain = p.Hostname
 		}
@@ -150,16 +128,9 @@ func tarGzBase64(files map[string][]byte) (string, error) {
 }
 
 // TelemtReleaseAsset is the release asset a telemt node installs: the x86_64 glibc tarball.
-// TelemtReleaseURL builds its download URL.
-//
-// script.sh.tmpl builds the same URL in shell from $TELEMT_VERSION, because the script is
-// what a fresh install runs; this is the Go spelling of it, used by the node upgrade
-// endpoint so an upgrading node is pointed at exactly the file a fresh install downloads.
-// TestTelemtReleaseURLMatchesScript keeps the two from drifting apart.
 const TelemtReleaseAsset = "telemt-x86_64-linux-gnu.tar.gz"
 
-// TelemtReleaseURL is the download URL of the pinned telemt release. version is validated by
-// config (reSemver) and again by Render before it ever reaches a script.
+// TelemtReleaseURL is the download URL of the pinned telemt release.
 func TelemtReleaseURL(version string) string {
 	return "https://github.com/telemt/telemt/releases/download/" + version + "/" + TelemtReleaseAsset
 }

@@ -13,8 +13,7 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// stubQuerier serves one node with one profile and whatever GetNodeSite result
-// the test wants.
+// stubQuerier serves one node with one profile and whatever GetNodeSite result the test wants.
 type stubQuerier struct {
 	node     db.Node
 	profiles []db.ListNodeProfilesWithKeyRow
@@ -49,9 +48,6 @@ func testQuerier(t *testing.T) (stubQuerier, *crypto.Box) {
 	}, box
 }
 
-// TestDesiredStatePropagatesSiteError covers debt item 17: a transient DB error
-// from GetNodeSite used to be swallowed, which silently means "site unchanged"
-// and lets an apply report success while the node serves the old site.
 func TestDesiredStatePropagatesSiteError(t *testing.T) {
 	q, box := testQuerier(t)
 	boom := errors.New("connection reset by peer")

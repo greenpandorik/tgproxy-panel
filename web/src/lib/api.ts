@@ -1,7 +1,3 @@
-// Thin fetch wrapper around the panel API. All mutating requests carry the
-// double-submit CSRF token from the `tgwp_csrf` cookie (see internal/api/csrf.go);
-// a 401 (other than on the login endpoint itself) broadcasts `tgwp:unauthorized`
-// so AuthProvider can clear state and redirect to /login.
 
 export class ApiError extends Error {
   status: number;

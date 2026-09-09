@@ -39,12 +39,6 @@ message HealthReport {
   double disk_used_percent = 11;
   int32 profile_count = 12;
 
-  // Fields 13-20 are the node's connectivity to Telegram's datacenters, read from telemt's
-  // GET /v1/stats/upstreams in the same heartbeat cycle as the rest of the report. The
-  // tproxy agent leaves them zero with dc_data_available=false; the telemt agent sets
-  // dc_data_available=false too when the call fails or telemt answers enabled=false, so the
-  // panel can tell "no data" from "zero latency". A DC whose EMA telemt has not measured yet
-  // arrives with known=false, never with latency_ms=0.
   repeated DcLatency dcs = 13;
   bool upstream_healthy = 14;
   int32 upstream_fails = 15;
@@ -82,11 +76,6 @@ message Profile {
   string carrier_mode = 4;
   ProfileLimits limits = 5;
 
-  // Fields 10-16 are the telemt engine's per-user limits and lifecycle. The tproxy agent
-  // ignores them; the telemt agent sends them on to the control API. Zero means "no limit of
-  // this kind" (telemt's own semantics), expires_at_unix = 0 means "never expires", and
-  // `enabled` is written literally: the panel always sets it to true for a profile it wants
-  // served, so the proto3 default (false) can only mean "disable this user".
   uint64 data_quota_bytes = 10;
   uint64 rate_limit_up_bps = 11;
   uint64 rate_limit_down_bps = 12;
@@ -121,21 +110,9 @@ message ApplyRequest {
   repeated string mtproxy_secrets = 3;
   SiteBundle site = 4;   // nil = leave site untouched
 
-  // Fields 5-6 are the telemt node's Fake-TLS listener, as the panel wants it. The tproxy
-  // agent ignores them; the telemt agent compares them against the node's live config and
-  // rewrites `[censorship] tls_domain` / `[[server.listeners]]` when they differ, which is
-  // process-deferred and therefore costs a telemt restart. An empty tls_domain and a zero
-  // classic_port both mean "the panel has no opinion", so an old panel talking to a new
-  // agent never touches the listeners.
   string tls_domain = 5;
   uint32 classic_port = 6;
-  // Field 7 is the node's public IPv4 as the panel holds it: the address the hostname's A
-  // record points at. The telemt agent rewrites `web.vhosts[0].public_addr` ("<ip>:443") when
-  // it differs and restarts telemt like a listener move; the tproxy agent ignores it. Empty
-  // means "the panel has no opinion", so an old panel never touches it.
   string public_ip = 7;
-  // Field 8 is the sponsor-channel tag, applied to every profile. Empty means no sponsor
-  // channel, which is also what an old panel sends.
   string ad_tag = 8;
 }
 message GetSiteRequest {}

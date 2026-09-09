@@ -120,8 +120,6 @@ func TestMethodNotAllowedEnvelope(t *testing.T) {
 	}
 }
 
-// TestCannotDeleteLastOwner: without this guard an installation can end up with zero owners,
-// which permanently locks it out of /admins and PUT /settings.
 func TestCannotDeleteLastOwner(t *testing.T) {
 	h := apitest.New(t)
 	rootID := h.CreateAdmin("root", "pass-123456", "owner")

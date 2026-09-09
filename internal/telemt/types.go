@@ -5,8 +5,7 @@ import (
 	"fmt"
 )
 
-// APIError is a telemt error envelope ({"ok":false,"error":{code,message}}) or a non-envelope
-// HTTP failure. It never carries request headers, so it is safe to log.
+// APIError is a telemt error envelope ({"ok":false,"error":{code,message}}) or a non-envelope HTTP failure.
 type APIError struct {
 	Status  int
 	Code    string
@@ -28,8 +27,6 @@ type envelope struct {
 	} `json:"error"`
 }
 
-// User is telemt's UserInfo plus the secret, which the API returns only from create and
-// rotate-secret responses (list and get views never expose it).
 type User struct {
 	Username           string `json:"username"`
 	Secret             string `json:"secret,omitempty"`
@@ -47,8 +44,7 @@ type User struct {
 	UserAdTag          string `json:"user_ad_tag,omitempty"`
 }
 
-// CreateUserRequest is POST /v1/users. Optional fields are pointers because telemt reads a
-// present-but-null value as "remove the override"; an omitted field means "use the default".
+// CreateUserRequest is POST /v1/users.
 type CreateUserRequest struct {
 	Username          string  `json:"username"`
 	Secret            string  `json:"secret,omitempty"`
@@ -62,9 +58,6 @@ type CreateUserRequest struct {
 	UserAdTag         *string `json:"user_ad_tag,omitempty"`
 }
 
-// PatchUserRequest is PATCH /v1/users/{name} with JSON Merge Patch semantics: an omitted field
-// is unchanged, an explicit null removes the per-user entry. Set the field pointer to change a
-// value; list the JSON name in Clear to remove it.
 type PatchUserRequest struct {
 	Secret            *string `json:"secret,omitempty"`
 	MaxTCPConns       *uint64 `json:"max_tcp_conns,omitempty"`
@@ -138,8 +131,7 @@ type PatchConfigResult struct {
 	Reload                 *ReloadAccepted `json:"reload"`
 }
 
-// ReloadRequest is POST /v1/system/reload. Mode is "instant" (cancels the previous
-// generation's sessions) or "drain" (lets them finish within TimeoutSecs).
+// ReloadRequest is POST /v1/system/reload.
 type ReloadRequest struct {
 	Mode          string `json:"mode,omitempty"`
 	TimeoutSecs   int    `json:"timeout_secs,omitempty"`
@@ -192,25 +184,21 @@ type ConnectionsSummaryPayload struct {
 	} `json:"top"`
 }
 
-// ConnectionsSummary is GET /v1/runtime/connections/summary. Data is nil when the runtime edge
-// feature is disabled or the snapshot source is unavailable; Reason says which.
+// ConnectionsSummary is GET /v1/runtime/connections/summary.
 type ConnectionsSummary struct {
 	Enabled bool                       `json:"enabled"`
 	Reason  string                     `json:"reason,omitempty"`
 	Data    *ConnectionsSummaryPayload `json:"data"`
 }
 
-// UpstreamDc is one Telegram datacenter in an upstream's health view. LatencyEmaMs is nil
-// while telemt has not measured that DC yet (the API sends null), which a caller must keep
-// apart from a measured 0 ms.
+// UpstreamDc is one Telegram datacenter in an upstream's health view.
 type UpstreamDc struct {
 	DC           int      `json:"dc"`
 	LatencyEmaMs *float64 `json:"latency_ema_ms"`
 	IPPreference string   `json:"ip_preference"`
 }
 
-// Upstream is one route to Telegram as telemt's upstream health check sees it. The panel only
-// ever configures a direct route, so it reads the first entry.
+// Upstream is one route to Telegram as telemt's upstream health check sees it.
 type Upstream struct {
 	RouteKind          string       `json:"route_kind"`
 	Healthy            bool         `json:"healthy"`
@@ -220,9 +208,7 @@ type Upstream struct {
 	DC                 []UpstreamDc `json:"dc"`
 }
 
-// UpstreamsStats is GET /v1/stats/upstreams, trimmed to what the panel shows. Enabled is false
-// when telemt is not tracking upstream health at all; Zero carries the process-wide connect
-// counters towards Telegram.
+// UpstreamsStats is GET /v1/stats/upstreams, trimmed to what the panel shows.
 type UpstreamsStats struct {
 	Enabled bool `json:"enabled"`
 	Zero    struct {

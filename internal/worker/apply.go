@@ -31,17 +31,11 @@ type Apply struct {
 	inFlight     map[uuid.UUID]bool
 	wg           sync.WaitGroup
 
-	// runStarted/runDone let Stop wait for Run to return before it waits on wg.
-	// Run is the only caller of spawn (and so of wg.Add), so a Trigger landing at
-	// the same instant as Stop would otherwise Add concurrently with Wait, which
-	// sync.WaitGroup explicitly forbids.
 	runStarted atomic.Bool
 	runDone    chan struct{}
 }
 
-// applyTimeout bounds a single detached apply. The gateway driver already caps
-// its own call at 90s; this is the backstop that keeps a spawned goroutine from
-// outliving the process's shutdown budget.
+// applyTimeout bounds a single detached apply.
 const applyTimeout = 2 * time.Minute
 
 // stopTimeout is how long Stop waits for in-flight applies before giving up.
@@ -55,21 +49,13 @@ func NewApply(st *store.Store, box *crypto.Box, driver nodedriver.Driver, interv
 	}
 }
 
-// SetIntervalFunc installs an override consulted after every tick of Run to
-// decide the sweep interval; a nil or non-positive result keeps the current
-// interval. Nil (the default) keeps the interval fixed at the constructor's
-// value.
 func (a *Apply) SetIntervalFunc(f func(context.Context) time.Duration) {
 	a.intervalFunc = f
 }
 
-// SetAlerts installs the Telegram alert notifier; nil (the default) means no
-// notifications are sent.
+// SetAlerts installs the Telegram alert notifier; nil (the default) means no notifications are sent.
 func (a *Apply) SetAlerts(alerts *Alerts) { a.alerts = alerts }
 
-// Trigger requests an apply pass for nodeID. Non-blocking: if the buffer is
-// full the request is dropped, since the periodic sweep over dirty nodes
-// will pick it up anyway.
 func (a *Apply) Trigger(nodeID uuid.UUID) {
 	select {
 	case a.trigger <- nodeID:
@@ -77,18 +63,9 @@ func (a *Apply) Trigger(nodeID uuid.UUID) {
 	}
 }
 
-// Run drives the apply loop until ctx is cancelled: it reacts to Trigger
-// requests immediately and otherwise sweeps every dirty node on each tick.
-//
-// The sweep uses ListDirtyNodesAny (no status filter) and lets ApplyNode's
-// driver.Online check decide reachability. Filtering on status in SQL used to
-// hide a node whose gRPC stream was alive but whose row the stats worker had
-// marked offline on a stale heartbeat: dirty, reachable, and never swept.
 func (a *Apply) Run(ctx context.Context) {
 	a.runStarted.Store(true)
 	defer close(a.runDone)
-	// Applies are spawned on a context detached from ctx so a SIGTERM does not
-	// cut one mid-restart; Stop waits for them instead.
 	applyCtx := context.WithoutCancel(ctx)
 	interval := a.interval
 	t := time.NewTicker(interval)
@@ -129,16 +106,7 @@ func (a *Apply) spawn(ctx context.Context, id uuid.UUID) {
 	}()
 }
 
-// Stop waits for the applies Run has spawned, so the process does not exit
-// while a node is mid-restart. It gives up after stopTimeout (or when ctx is
-// done, whichever is sooner) and reports that as an error; the agent's own
-// rollback is what covers the node from there.
-//
-// Call it only after the context passed to Run has been cancelled - that is the
-// shutdown order cmd/panel uses. Stop waits for Run to return first: Run is the
-// only goroutine that calls wg.Add, so letting a Trigger land while wg.Wait is
-// already running would be exactly the concurrent Add/Wait sync.WaitGroup
-// forbids.
+// Stop waits for the applies Run has spawned, so the process does not exit while a node is mid-restart.
 func (a *Apply) Stop(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, stopTimeout)
 	defer cancel()
@@ -206,9 +174,6 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		}
 		errMsg := applyErr.Error()
 		firstLine, _, _ := strings.Cut(errMsg, "\n")
-		// One transaction so the job row, the profile sync states and the apply_failed alert
-		// can never disagree. Only the profiles this apply actually pushed are marked failed;
-		// anything created after the snapshot is still 'pending' and belongs to the next apply.
 		if txErr := a.st.Tx(ctx, func(q *db.Queries) error {
 			if err := q.FinishApplyJob(ctx, db.FinishApplyJobParams{ID: job.ID, Status: status, Error: errMsg, Log: res.Log}); err != nil {
 				return err
@@ -221,8 +186,6 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		}); txErr != nil {
 			a.log.Error("record apply failure", "node", nodeID, "err", txErr)
 		} else if a.alerts != nil {
-			// Notify after the transaction commits: the Telegram call is a network round
-			// trip and must not hold the DB transaction open.
 			if node, err := a.st.Q.GetNode(ctx, nodeID); err == nil {
 				a.alerts.ApplyFailed(ctx, node, errMsg)
 			}
@@ -237,22 +200,14 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 			return err
 		}
 		if des.Req.Site != nil {
-			// des.SiteHash, not a fresh read: the row may already carry a bundle
-			// assigned while this apply was in flight, which was never pushed. The
-			// query's own bundle_hash guard then matches nothing, deployed_hash stays
-			// as it was and the next sweep deploys the new bundle.
 			hash := des.SiteHash
 			if err := q.SetNodeSiteDeployed(ctx, db.SetNodeSiteDeployedParams{NodeID: nodeID, Hash: &hash}); err != nil {
 				return err
 			}
 		}
-		// Conditional on dirty_seq: if anything dirtied the node while this apply was in
-		// flight the update matches no row, the node stays dirty and the sweep re-applies.
 		if err := q.SetNodeApplied(ctx, db.SetNodeAppliedParams{ID: nodeID, DirtySeq: des.DirtySeq}); err != nil {
 			return err
 		}
-		// A prior failure's alert, if any, is now stale; close it silently (no notification
-		// on recovery from an apply failure - only node offline/online gets a "back" message).
 		if _, err := q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(nodeID), Kind: "apply_failed"}); err != nil {
 			return err
 		}

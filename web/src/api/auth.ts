@@ -16,8 +16,6 @@ export const useLogin = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { username: string; password: string }) => api.post<LoginResult>('/api/v1/auth/login', input),
-    // A challenge is not a session: seeding the `me` cache with it would let the
-    // router treat a half-finished login as authenticated.
     onSuccess: (res) => {
       if (!isTotpChallenge(res)) qc.setQueryData(authKeys.me, res);
     },
@@ -35,12 +33,6 @@ export const useTotpVerify = () => {
 
 export const useTotpSetup = () => useMutation({ mutationFn: () => api.post<TotpSetup>('/api/v1/auth/totp/setup') });
 
-/**
- * Confirm carries the password as well as the code: a live session alone must not
- * be enough to enrol a second factor, or a hijacked session becomes a lockout the
- * real owner cannot undo. The server also ends every other session for the
- * account and re-issues this one, so nothing here needs to re-authenticate.
- */
 export const useTotpConfirm = () => {
   const qc = useQueryClient();
   return useMutation({

@@ -98,8 +98,6 @@ func TestRenderHasNoExternalScripts(t *testing.T) {
 }
 
 func TestRenderNeverShowsLabelFields(t *testing.T) {
-	// Page has no field to carry a key label/owner label/note at all: the type
-	// system itself enforces that the public page cannot leak them.
 	p := testPage()
 	var buf strings.Builder
 	if err := subscription.Render(&buf, p); err != nil {
@@ -122,9 +120,6 @@ func TestRenderEmptyLocationsStillRenders(t *testing.T) {
 	}
 }
 
-// TestRenderErrorHasNoLocationOrSecretData covers Task 33 item 3(d): the
-// branded 404/410 page for /s/{token} carries only PanelName/Theme/Message -
-// there is no field to leak a key label, hostname or link even by accident.
 func TestRenderErrorHasNoLocationOrSecretData(t *testing.T) {
 	var buf strings.Builder
 	p := subscription.ErrorPage{PanelName: "Acme Panel", Theme: "dark", Message: "Ссылка не найдена."}

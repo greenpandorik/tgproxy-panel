@@ -2,12 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { cn } from './utils';
 
-/*
- * These pin the one thing about `cn` that is not obvious: the panel's font
- * sizes are named roles, and tailwind-merge has to be told so. When it was not,
- * it read `text-label` as a text colour, dropped the real colour next to it,
- * and shipped a white button label on a white fill.
- */
 describe('cn', () => {
   it('keeps a colour and a role size together', () => {
     expect(cn('bg-foreground text-background', 'text-label')).toBe('bg-foreground text-background text-label');

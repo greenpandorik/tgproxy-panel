@@ -21,13 +21,6 @@ function jobTiming(job: ApplyJob, locale: string): string | null {
   return formatCompactAge(job.started_at ?? job.created_at, locale);
 }
 
-/**
- * The last applies, as a log rather than a card list: node, what was pushed,
- * and how long it took next to the status the machine reported. Statuses stay
- * in their raw form (`ok`, `failed`) and in mono - they are the words that
- * appear in the job log and the audit trail, and translating them here would
- * only make the two harder to match up.
- */
 export function RecentJobsSection({ jobs }: { jobs: ApplyJob[] }) {
   const { t, i18n } = useTranslation();
 

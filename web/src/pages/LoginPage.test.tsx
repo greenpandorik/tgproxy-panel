@@ -11,11 +11,6 @@ import { AuthProvider } from '@/auth/AuthProvider';
 
 import { LoginPage } from './LoginPage';
 
-/**
- * Routes fetch calls by path so the test drives the real hooks (useLogin ->
- * useTotpVerify) rather than a mocked AuthProvider: the point of the test is that
- * a `totp_required` answer is not treated as a session.
- */
 function stubFetch(handlers: Record<string, () => { status: number; body: unknown }>) {
   return vi.fn((input: RequestInfo | URL) => {
     const path = String(input);
@@ -74,9 +69,7 @@ describe('LoginPage two-factor step', () => {
     await waitFor(() => expect(verified).toBe(true));
   });
 
-  // An expired challenge is dead: no code will ever be accepted against it. Telling
-  // the user their code was wrong sends them off checking their phone's clock,
-  // when the only thing that helps is starting the sign-in again.
+  // An expired challenge is dead: no code will ever be accepted against it.
   it('offers a restart instead of "wrong code" when the challenge has expired', async () => {
     const user = userEvent.setup();
     globalThis.fetch = stubFetch({
@@ -99,8 +92,7 @@ describe('LoginPage two-factor step', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This sign-in attempt expired. Start over and sign in again.');
-    // The primary action becomes the way out, and Confirm is gone: pressing it
-    // again could only fail.
+    // The primary action becomes the way out, and Confirm is gone: pressing it again could only fail.
     expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
     await user.click(screen.getAllByRole('button', { name: 'Start over' })[0]);
     expect(await screen.findByLabelText('Username')).toBeInTheDocument();
@@ -170,11 +162,6 @@ describe('LoginPage two-factor step', () => {
   });
 });
 
-/**
- * Below 900px the split layout collapses to the form alone: the status panel is
- * not rendered at all (rather than hidden with CSS), so a phone never pays for
- * the public-status request or scrolls past a card it cannot use.
- */
 describe('LoginPage split layout', () => {
   function mockWidth(matches: boolean) {
     Object.defineProperty(window, 'matchMedia', {

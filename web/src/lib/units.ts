@@ -1,17 +1,3 @@
-/*
- * Unit conversion for the per-key telemt limits.
- *
- * telemt stores every limit in machine units - bytes and bits per second - and
- * nobody types a quota in bytes. The form works in the units the operator says
- * out loud (gigabytes, megabits per second) and converts at the edges, here, so
- * the conversion exists once and is tested once instead of being retyped in the
- * create dialog and the drawer.
- *
- * Two different bases on purpose, because that is what the two quantities mean:
- * a gigabyte of traffic is 1024³ bytes (the same base `formatBytes` prints, so a
- * quota of 50 GB reads back as "50.0 GB"), while a megabit per second is 10⁶
- * bits per second - the decimal unit every link speed is quoted in.
- */
 
 import type { TelemtLimits } from '@/api/types';
 
@@ -21,19 +7,9 @@ export const BPS_PER_MBIT = 1_000_000;
 /** Backend ceiling on a quota (internal/domain.MaxTelemtQuotaBytes = 100 TB), in GB. */
 export const MAX_QUOTA_GB = 100 * 1024;
 
-/**
- * Backend ceiling on the two counters (internal/domain.MaxTelemtCounter). Both
- * cross the wire as 32-bit unsigned integers, so a value above 2^32-1 wraps -
- * 4294967297 becomes 1, and "effectively unlimited" silently becomes "one IP".
- * Empty still means no limit.
- */
+// Backend ceiling on the two counters (internal/domain.MaxTelemtCounter).
 export const MAX_TELEMT_COUNTER = 1_000_000;
 
-/**
- * Rounds away the float noise a division leaves behind, so a value that went
- * bytes -> GB -> bytes comes back as the number that was typed. Six decimals is
- * finer than any figure the form accepts and coarser than the error.
- */
 function tidy(value: number): number {
   return Math.round(value * 1e6) / 1e6;
 }
@@ -62,11 +38,6 @@ export function bpsToMbit(bps: number): number {
   return tidy(bps / BPS_PER_MBIT);
 }
 
-/**
- * The limits as the form holds them: strings, because an empty field is the way
- * "no limit" is expressed and 0 is the way the API expresses it. Keeping them as
- * text also means a half-typed "1." never snaps back under the caret.
- */
 export interface TelemtLimitsForm {
   quota_gb: string;
   rate_up_mbit: string;
@@ -99,11 +70,7 @@ export function telemtLimitsToForm(limits: TelemtLimits | undefined | null): Tel
   };
 }
 
-/**
- * Reads a form field as a non-negative number. Empty, blank and unparseable all
- * come back as 0 - "no limit" - which is what the API stores for an unset limit.
- * A comma is accepted as the decimal separator: the ru locale types one.
- */
+// Reads a form field as a non-negative number.
 export function parseAmount(raw: string): number {
   const trimmed = raw.trim().replace(',', '.');
   if (trimmed === '') return 0;
@@ -128,11 +95,7 @@ export function isEmptyTelemtLimits(limits: TelemtLimits | undefined | null): bo
   return Object.values(limits).every((v) => !v);
 }
 
-/**
- * Which field of the form is out of range, as a stable message id the caller
- * translates. A field is either a positive number or empty; the quota also has
- * the backend's 100 TB ceiling, and the two counters the backend's 1e6 one.
- */
+// Which field of the form is out of range, as a stable message id the caller translates.
 export function validateTelemtLimitsForm(form: TelemtLimitsForm): Partial<Record<keyof TelemtLimitsForm, string>> {
   const out: Partial<Record<keyof TelemtLimitsForm, string>> = {};
   for (const [name, raw] of Object.entries(form) as [keyof TelemtLimitsForm, string][]) {

@@ -49,8 +49,7 @@ describe('NodeCheckCard', () => {
     setLang('en');
   });
 
-  // Task 46b: pq_kex is informational. A front that only negotiates classical key exchange
-  // must not read as a failed prerequisite - neutral dot, neutral detail, roll-up still green.
+  // Task 46b: pq_kex is informational.
   it('renders a failing advisory probe in the info tone and keeps the roll-up green', () => {
     render(
       wrap(

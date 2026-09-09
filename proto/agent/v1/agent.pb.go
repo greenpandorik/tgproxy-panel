@@ -264,33 +264,27 @@ func (x *Heartbeat) GetHealth() *HealthReport {
 }
 
 type HealthReport struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	RelayActive     bool                   `protobuf:"varint,1,opt,name=relay_active,json=relayActive,proto3" json:"relay_active,omitempty"`
-	MtproxyActive   bool                   `protobuf:"varint,2,opt,name=mtproxy_active,json=mtproxyActive,proto3" json:"mtproxy_active,omitempty"`
-	CaddyActive     bool                   `protobuf:"varint,3,opt,name=caddy_active,json=caddyActive,proto3" json:"caddy_active,omitempty"`
-	Healthz         bool                   `protobuf:"varint,4,opt,name=healthz,proto3" json:"healthz,omitempty"`
-	Readyz          bool                   `protobuf:"varint,5,opt,name=readyz,proto3" json:"readyz,omitempty"`
-	TproxyVersion   string                 `protobuf:"bytes,6,opt,name=tproxy_version,json=tproxyVersion,proto3" json:"tproxy_version,omitempty"`
-	AgentVersion    string                 `protobuf:"bytes,7,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
-	UptimeSeconds   int64                  `protobuf:"varint,8,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
-	CpuPercent      float64                `protobuf:"fixed64,9,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
-	MemUsedPercent  float64                `protobuf:"fixed64,10,opt,name=mem_used_percent,json=memUsedPercent,proto3" json:"mem_used_percent,omitempty"`
-	DiskUsedPercent float64                `protobuf:"fixed64,11,opt,name=disk_used_percent,json=diskUsedPercent,proto3" json:"disk_used_percent,omitempty"`
-	ProfileCount    int32                  `protobuf:"varint,12,opt,name=profile_count,json=profileCount,proto3" json:"profile_count,omitempty"`
-	// Fields 13-20 are the node's connectivity to Telegram's datacenters, read from telemt's
-	// GET /v1/stats/upstreams in the same heartbeat cycle as the rest of the report. The
-	// tproxy agent leaves them zero with dc_data_available=false; the telemt agent sets
-	// dc_data_available=false too when the call fails or telemt answers enabled=false, so the
-	// panel can tell "no data" from "zero latency". A DC whose EMA telemt has not measured yet
-	// arrives with known=false, never with latency_ms=0.
-	Dcs                      []*DcLatency `protobuf:"bytes,13,rep,name=dcs,proto3" json:"dcs,omitempty"`
-	UpstreamHealthy          bool         `protobuf:"varint,14,opt,name=upstream_healthy,json=upstreamHealthy,proto3" json:"upstream_healthy,omitempty"`
-	UpstreamFails            int32        `protobuf:"varint,15,opt,name=upstream_fails,json=upstreamFails,proto3" json:"upstream_fails,omitempty"`
-	EffectiveLatencyMs       float64      `protobuf:"fixed64,16,opt,name=effective_latency_ms,json=effectiveLatencyMs,proto3" json:"effective_latency_ms,omitempty"`
-	ConnectSuccessTotal      int64        `protobuf:"varint,17,opt,name=connect_success_total,json=connectSuccessTotal,proto3" json:"connect_success_total,omitempty"`
-	ConnectFailTotal         int64        `protobuf:"varint,18,opt,name=connect_fail_total,json=connectFailTotal,proto3" json:"connect_fail_total,omitempty"`
-	UpstreamLastCheckAgeSecs int64        `protobuf:"varint,19,opt,name=upstream_last_check_age_secs,json=upstreamLastCheckAgeSecs,proto3" json:"upstream_last_check_age_secs,omitempty"`
-	DcDataAvailable          bool         `protobuf:"varint,20,opt,name=dc_data_available,json=dcDataAvailable,proto3" json:"dc_data_available,omitempty"`
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	RelayActive              bool                   `protobuf:"varint,1,opt,name=relay_active,json=relayActive,proto3" json:"relay_active,omitempty"`
+	MtproxyActive            bool                   `protobuf:"varint,2,opt,name=mtproxy_active,json=mtproxyActive,proto3" json:"mtproxy_active,omitempty"`
+	CaddyActive              bool                   `protobuf:"varint,3,opt,name=caddy_active,json=caddyActive,proto3" json:"caddy_active,omitempty"`
+	Healthz                  bool                   `protobuf:"varint,4,opt,name=healthz,proto3" json:"healthz,omitempty"`
+	Readyz                   bool                   `protobuf:"varint,5,opt,name=readyz,proto3" json:"readyz,omitempty"`
+	TproxyVersion            string                 `protobuf:"bytes,6,opt,name=tproxy_version,json=tproxyVersion,proto3" json:"tproxy_version,omitempty"`
+	AgentVersion             string                 `protobuf:"bytes,7,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
+	UptimeSeconds            int64                  `protobuf:"varint,8,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
+	CpuPercent               float64                `protobuf:"fixed64,9,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemUsedPercent           float64                `protobuf:"fixed64,10,opt,name=mem_used_percent,json=memUsedPercent,proto3" json:"mem_used_percent,omitempty"`
+	DiskUsedPercent          float64                `protobuf:"fixed64,11,opt,name=disk_used_percent,json=diskUsedPercent,proto3" json:"disk_used_percent,omitempty"`
+	ProfileCount             int32                  `protobuf:"varint,12,opt,name=profile_count,json=profileCount,proto3" json:"profile_count,omitempty"`
+	Dcs                      []*DcLatency           `protobuf:"bytes,13,rep,name=dcs,proto3" json:"dcs,omitempty"`
+	UpstreamHealthy          bool                   `protobuf:"varint,14,opt,name=upstream_healthy,json=upstreamHealthy,proto3" json:"upstream_healthy,omitempty"`
+	UpstreamFails            int32                  `protobuf:"varint,15,opt,name=upstream_fails,json=upstreamFails,proto3" json:"upstream_fails,omitempty"`
+	EffectiveLatencyMs       float64                `protobuf:"fixed64,16,opt,name=effective_latency_ms,json=effectiveLatencyMs,proto3" json:"effective_latency_ms,omitempty"`
+	ConnectSuccessTotal      int64                  `protobuf:"varint,17,opt,name=connect_success_total,json=connectSuccessTotal,proto3" json:"connect_success_total,omitempty"`
+	ConnectFailTotal         int64                  `protobuf:"varint,18,opt,name=connect_fail_total,json=connectFailTotal,proto3" json:"connect_fail_total,omitempty"`
+	UpstreamLastCheckAgeSecs int64                  `protobuf:"varint,19,opt,name=upstream_last_check_age_secs,json=upstreamLastCheckAgeSecs,proto3" json:"upstream_last_check_age_secs,omitempty"`
+	DcDataAvailable          bool                   `protobuf:"varint,20,opt,name=dc_data_available,json=dcDataAvailable,proto3" json:"dc_data_available,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -643,24 +637,19 @@ func (x *ProfileLimits) GetMaxPendingPerSession() int32 {
 }
 
 type Profile struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Secret      string                 `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
-	Backend     string                 `protobuf:"bytes,3,opt,name=backend,proto3" json:"backend,omitempty"`
-	CarrierMode string                 `protobuf:"bytes,4,opt,name=carrier_mode,json=carrierMode,proto3" json:"carrier_mode,omitempty"`
-	Limits      *ProfileLimits         `protobuf:"bytes,5,opt,name=limits,proto3" json:"limits,omitempty"`
-	// Fields 10-16 are the telemt engine's per-user limits and lifecycle. The tproxy agent
-	// ignores them; the telemt agent sends them on to the control API. Zero means "no limit of
-	// this kind" (telemt's own semantics), expires_at_unix = 0 means "never expires", and
-	// `enabled` is written literally: the panel always sets it to true for a profile it wants
-	// served, so the proto3 default (false) can only mean "disable this user".
-	DataQuotaBytes   uint64 `protobuf:"varint,10,opt,name=data_quota_bytes,json=dataQuotaBytes,proto3" json:"data_quota_bytes,omitempty"`
-	RateLimitUpBps   uint64 `protobuf:"varint,11,opt,name=rate_limit_up_bps,json=rateLimitUpBps,proto3" json:"rate_limit_up_bps,omitempty"`
-	RateLimitDownBps uint64 `protobuf:"varint,12,opt,name=rate_limit_down_bps,json=rateLimitDownBps,proto3" json:"rate_limit_down_bps,omitempty"`
-	MaxUniqueIps     uint32 `protobuf:"varint,13,opt,name=max_unique_ips,json=maxUniqueIps,proto3" json:"max_unique_ips,omitempty"`
-	MaxTcpConns      uint32 `protobuf:"varint,14,opt,name=max_tcp_conns,json=maxTcpConns,proto3" json:"max_tcp_conns,omitempty"`
-	ExpiresAtUnix    int64  `protobuf:"varint,15,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
-	Enabled          bool   `protobuf:"varint,16,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Secret           string                 `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
+	Backend          string                 `protobuf:"bytes,3,opt,name=backend,proto3" json:"backend,omitempty"`
+	CarrierMode      string                 `protobuf:"bytes,4,opt,name=carrier_mode,json=carrierMode,proto3" json:"carrier_mode,omitempty"`
+	Limits           *ProfileLimits         `protobuf:"bytes,5,opt,name=limits,proto3" json:"limits,omitempty"`
+	DataQuotaBytes   uint64                 `protobuf:"varint,10,opt,name=data_quota_bytes,json=dataQuotaBytes,proto3" json:"data_quota_bytes,omitempty"`
+	RateLimitUpBps   uint64                 `protobuf:"varint,11,opt,name=rate_limit_up_bps,json=rateLimitUpBps,proto3" json:"rate_limit_up_bps,omitempty"`
+	RateLimitDownBps uint64                 `protobuf:"varint,12,opt,name=rate_limit_down_bps,json=rateLimitDownBps,proto3" json:"rate_limit_down_bps,omitempty"`
+	MaxUniqueIps     uint32                 `protobuf:"varint,13,opt,name=max_unique_ips,json=maxUniqueIps,proto3" json:"max_unique_ips,omitempty"`
+	MaxTcpConns      uint32                 `protobuf:"varint,14,opt,name=max_tcp_conns,json=maxTcpConns,proto3" json:"max_tcp_conns,omitempty"`
+	ExpiresAtUnix    int64                  `protobuf:"varint,15,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
+	Enabled          bool                   `protobuf:"varint,16,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1175,27 +1164,12 @@ type ApplyRequest struct {
 	Profiles       []*Profile             `protobuf:"bytes,2,rep,name=profiles,proto3" json:"profiles,omitempty"`
 	MtproxySecrets []string               `protobuf:"bytes,3,rep,name=mtproxy_secrets,json=mtproxySecrets,proto3" json:"mtproxy_secrets,omitempty"`
 	Site           *SiteBundle            `protobuf:"bytes,4,opt,name=site,proto3" json:"site,omitempty"` // nil = leave site untouched
-	// Fields 5-6 are the telemt node's Fake-TLS listener, as the panel wants it. The tproxy
-	// agent ignores them; the telemt agent compares them against the node's live config and
-	// rewrites `[censorship] tls_domain` / `[[server.listeners]]` when they differ, which is
-	// process-deferred and therefore costs a telemt restart. An empty tls_domain and a zero
-	// classic_port both mean "the panel has no opinion", so an old panel talking to a new
-	// agent never touches the listeners.
-	TlsDomain   string `protobuf:"bytes,5,opt,name=tls_domain,json=tlsDomain,proto3" json:"tls_domain,omitempty"`
-	ClassicPort uint32 `protobuf:"varint,6,opt,name=classic_port,json=classicPort,proto3" json:"classic_port,omitempty"`
-	// Field 7 is the node's public IPv4 as the panel holds it: the address the hostname's A
-	// record points at. The telemt agent rewrites `web.vhosts[0].public_addr` ("<ip>:443") when
-	// it differs and restarts telemt like a listener move; the tproxy agent ignores it. Empty
-	// means "the panel has no opinion", so an old panel never touches it.
-	PublicIp string `protobuf:"bytes,7,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
-	// Field 8 is the sponsor-channel tag telemt's middle-proxy mode advertises to Telegram
-	// (registered per server with @MTProxybot), applied identically to every profile this apply
-	// pushes. The tproxy agent ignores it. Empty means "no sponsor channel": the telemt agent
-	// turns `[general] use_middle_proxy` off and clears the tag from every user, which is also
-	// the correct behaviour for an old panel that has never heard of this field.
-	AdTag         string `protobuf:"bytes,8,opt,name=ad_tag,json=adTag,proto3" json:"ad_tag,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TlsDomain      string                 `protobuf:"bytes,5,opt,name=tls_domain,json=tlsDomain,proto3" json:"tls_domain,omitempty"`
+	ClassicPort    uint32                 `protobuf:"varint,6,opt,name=classic_port,json=classicPort,proto3" json:"classic_port,omitempty"`
+	PublicIp       string                 `protobuf:"bytes,7,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
+	AdTag          string                 `protobuf:"bytes,8,opt,name=ad_tag,json=adTag,proto3" json:"ad_tag,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ApplyRequest) Reset() {

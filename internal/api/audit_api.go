@@ -12,8 +12,7 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// nonEmpty returns a pointer to s for use as a nullable sqlc.narg param, or
-// nil when s is empty - the query treats a nil param as "no filter".
+// nonEmpty returns a pointer to s for use as a nullable sqlc.narg param, or nil when s is empty.
 func nonEmpty(s string) *string {
 	if s == "" {
 		return nil
@@ -21,12 +20,6 @@ func nonEmpty(s string) *string {
 	return &s
 }
 
-// likeEscaper escapes the characters that are special to a Postgres LIKE
-// pattern (%, _ and the escape character itself, \) so a caller-supplied
-// prefix is matched literally. ListAuditFiltered/CountAuditFiltered build
-// their pattern as `action LIKE $1 || '%' ESCAPE '\'`, so an ?action=key.%
-// filter matches only actions literally starting with "key.%" instead of
-// "key." followed by anything.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
 
 // escapeLikePrefix escapes s for safe use as a LIKE prefix under ESCAPE '\'.
@@ -35,8 +28,6 @@ func escapeLikePrefix(s string) string {
 }
 
 // parseFilterTime parses an RFC3339 query param into a nullable timestamp.
-// An empty string means "no filter" (nil, no error); a malformed value is
-// reported so the handler can return 400.
 func parseFilterTime(s string) (*time.Time, error) {
 	if s == "" {
 		return nil, nil
@@ -48,9 +39,7 @@ func parseFilterTime(s string) (*time.Time, error) {
 	return &t, nil
 }
 
-// maxAuditPage caps the requested page number. maxAuditPage * the 200-row per_page ceiling
-// stays well inside int32, which is what the generated OFFSET parameter is; the audit log
-// would need 20M rows before the cap could hide anything, and nothing pages that far by hand.
+// maxAuditPage caps the requested page number.
 const maxAuditPage = 100000
 
 func (s *Server) mountAudit(r chi.Router) {
@@ -81,9 +70,6 @@ func (s *Server) handleListAudit(w http.ResponseWriter, r *http.Request) {
 	if per < 1 || per > 200 {
 		per = 50
 	}
-	// Computed in int64 and clamped above: (page-1)*per used to be an int32 conversion, so
-	// page beyond ~10.7M wrapped to a negative OFFSET, which Postgres rejects and the handler
-	// surfaced as a 500.
 	offset := int64(page-1) * int64(per)
 
 	from, err := parseFilterTime(q.Get("from"))

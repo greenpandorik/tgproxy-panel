@@ -2,18 +2,6 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-/*
- * Dense technical table: hairline between rows (no zebra striping), sticky
- * micro-role uppercase dim header, hover on --bg-3. Numeric cells get tabular
- * figures from the base layer, so columns of numbers line up without per-cell
- * classes.
- *
- * Rows are 44px and the head 36px (phase 8 refit): the table itself stays
- * dense, but a row now has room for a status dot beside a two-line-capable
- * cell without the text touching the hairline above it. Rows and hairlines
- * are the one place in the panel with no radius at all - a rounded row would
- * break the grid the eye follows down a column.
- */
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">

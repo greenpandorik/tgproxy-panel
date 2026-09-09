@@ -14,16 +14,7 @@ interface HelpButtonProps {
   className?: string;
 }
 
-/**
- * The `?` icon next to a title. Ghost, dim, and labelled for screen readers;
- * it never competes with the actions beside it.
- *
- * The sheet it opens is rendered right here rather than at the shell, on
- * purpose: inside a modal dialog the help must be a *nested* dialog in React's
- * tree, or the dialog underneath reads a click in the help as an outside press
- * and closes itself - form and all. `data-help-button` is what the `?`
- * shortcut looks for to open the help of whichever dialog is on top.
- */
+// The `?` icon next to a title.
 export function HelpButton({ topic, className }: HelpButtonProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);

@@ -37,12 +37,6 @@ func contrastRatio(t *testing.T, a, b string) float64 {
 	return (la + 0.05) / (lb + 0.05)
 }
 
-// TestDefaultColors pins the brand defaults to the same rule the settings UI
-// enforces (a valid hex colour) and to the design spec's contrast floor: the
-// primary is used as link text on the dark ground, so it must clear WCAG AA
-// for text (4.5:1); the accent only ever colours chart strokes, so 3:1 (UI) is
-// its floor. Both values are also asserted at their documented ratios so a
-// silent palette change shows up here before it shows up in docs/design/brand.md.
 func TestDefaultColors(t *testing.T) {
 	for _, c := range []string{DefaultPrimaryColor, DefaultAccentColor, DarkGround} {
 		if !ValidateColor(c) {

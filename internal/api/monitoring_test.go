@@ -33,10 +33,6 @@ func TestMonitoringOverviewRates(t *testing.T) {
 	}
 }
 
-// TestMonitoringRangeIsClamped covers I3: both monitoring reads are mounted for every role
-// and the SPA polls the overview every 60s, so an unbounded `from` let any authenticated
-// user make the server materialise every retained snapshot for every node, repeatedly.
-// Retention is 30 days, so anything past 31 is asking for rows that do not exist.
 func TestMonitoringRangeIsClamped(t *testing.T) {
 	_, c, n := ownerWithNode(t)
 	to := time.Now()
@@ -63,10 +59,6 @@ func TestMonitoringRangeIsClamped(t *testing.T) {
 	_ = resp.Body.Close()
 }
 
-// TestMonitoringOverviewBucketsInSQL covers the other half of I3. A wide step used to be
-// honoured by *sampling* in Go - one raw 60s rate every step seconds, with every other
-// snapshot read, grouped and then thrown away. It now aggregates in the database: the row
-// count is O(range/step) per node and each point summarises its whole bucket.
 func TestMonitoringOverviewBucketsInSQL(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	// 20 snapshots, one per minute, counters climbing 60 bytes/minute (= 1 B/s).
@@ -110,22 +102,15 @@ func TestMonitoringOverviewBucketsInSQL(t *testing.T) {
 		if i == 0 {
 			continue
 		}
-		// Counters climb 1 B/s up and 2 B/s down throughout, so every bucket-to-bucket
-		// rate must reproduce that regardless of the bucket width - including the last,
-		// partially-filled bucket, which is why a bucket's timestamp is its newest sample
-		// rather than the bucket boundary.
 		if p.BytesUpRate != 1 || p.BytesDownRate != 2 {
 			t.Fatalf("bucket %d rates = %v/%v, want 1/2 B/s", i, p.BytesUpRate, p.BytesDownRate)
 		}
 	}
 }
 
-// TestMonitoringLoadSeries: both monitoring reads carry the server load. The per-node series
-// returns it per snapshot; the overview averages it per bucket like the other gauges.
+// TestMonitoringLoadSeries: both monitoring reads carry the server load.
 func TestMonitoringLoadSeries(t *testing.T) {
 	h, c, n := ownerWithNode(t)
-	// Aligned to a five-minute boundary so that base and base+1m never straddle
-	// a bucket, whatever the wall clock says when the test runs.
 	base := time.Now().Add(-7 * time.Minute).Truncate(5 * time.Minute)
 	for i, cpu := range []float32{20, 40} {
 		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{
@@ -171,9 +156,7 @@ func TestMonitoringLoadSeries(t *testing.T) {
 	}
 }
 
-// TestMonitoringDcLatencySeries: both monitoring reads carry dc_latency. The per-node series
-// returns each snapshot's object as stored; the overview averages per DC over the rows of the
-// bucket that measured that DC - a row without the key is "unknown" and must not count as 0.
+// TestMonitoringDcLatencySeries: both monitoring reads carry dc_latency.
 func TestMonitoringDcLatencySeries(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	base := time.Now().Add(-7 * time.Minute).Truncate(5 * time.Minute)
@@ -207,8 +190,6 @@ func TestMonitoringDcLatencySeries(t *testing.T) {
 		t.Fatalf("series point 2 dc_latency must be an empty object, got %+v", p)
 	}
 
-	// All three fall into one five-minute bucket: DC 1 averages its two readings, DC 2 keeps
-	// its single reading rather than being averaged with a missing 0.
 	var overview struct {
 		Series map[string][]point `json:"series"`
 	}

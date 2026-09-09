@@ -14,15 +14,6 @@ interface SegmentedControlProps<T extends string> {
   className?: string;
 }
 
-/**
- * A few mutually exclusive choices in one hairline group, the chosen one filled
- * with --bg-3.
- *
- * A segmented group says "these are the same kind of thing and you get one of
- * them"; separate buttons would not, and an underlined tab row would read as page
- * navigation. Used for the time windows on the monitoring page and in the key
- * drawer, which is why it lives here rather than in either of them.
- */
 export function SegmentedControl<T extends string>({ value, options, onChange, label, className }: SegmentedControlProps<T>) {
   return (
     <div role="radiogroup" aria-label={label} className={cn('inline-flex rounded-control border border-hairline-strong p-0.5', className)}>

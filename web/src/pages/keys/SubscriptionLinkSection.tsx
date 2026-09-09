@@ -19,22 +19,6 @@ interface SubscriptionLinkSectionProps {
   locked?: boolean;
 }
 
-/**
- * "Subscription link" section shared by KeyLinkDialog and KeyDetailDrawer: create
- * or rotate a per-key subscription URL (POST /keys/{id}/subscription, which
- * returns the URL and its QR code once - the server only ever stores a hash, so
- * neither can be recovered later) and revoke it.
- *
- * Because the URL is shown exactly once, the moment it exists it becomes the
- * loudest thing in the section: a recessed mono field with copy beside it and
- * the QR on the same white tile the per-node links use. Everything before that
- * moment is a hairline row and a button.
- *
- * The freshly-issued URL is local, one-time UI state. Callers reusing this
- * component across different keys (the dialog/drawer stays mounted while its
- * `keyId` prop changes) must render it with `key={keyId}` so that state resets
- * instead of leaking the previous key's link.
- */
 export function SubscriptionLinkSection({ keyId, subscriptionActive, isWriter, locked }: SubscriptionLinkSectionProps) {
   const { t } = useTranslation();
   const [created, setCreated] = useState<{ url: string; qrDataUri: string } | null>(null);

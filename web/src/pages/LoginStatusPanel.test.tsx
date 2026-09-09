@@ -7,11 +7,6 @@ import { setLang } from '@/i18n';
 
 import { LoginStatusPanel } from './LoginStatusPanel';
 
-/**
- * The panel is shown to anyone who can reach the login URL, so the assertions
- * below are as much about what it must *not* say (a hostname, a node name) as
- * about what it shows.
- */
 function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(

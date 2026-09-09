@@ -1,5 +1,3 @@
-// recharts is only ever imported here - KeyStatsSection lazy-loads this component
-// (React.lazy) so the keys page bundle stays free of it.
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
@@ -22,14 +20,7 @@ export interface TrafficPoint {
 
 const CHART_HEIGHT = 110;
 
-/**
- * One node's traffic for one key, sample by sample.
- *
- * A single series, so it carries no legend - the node's name above the plot is
- * the label, and a second line here would have to be the connection count, which
- * is a different unit and would need a second axis. The connections figure sits
- * beside the node name instead, where it is a number rather than a shape.
- */
+// One node's traffic for one key, sample by sample.
 export function KeyTrafficChart({ points, color }: { points: TrafficPoint[]; color: string }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;

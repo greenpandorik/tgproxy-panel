@@ -28,14 +28,6 @@ const DcLatencyChart = lazy(() => import('./DcLatencyChart').then((m) => ({ defa
 const DEFAULT_BRAND_PRIMARY = '#3b82f6';
 const DEFAULT_BRAND_ACCENT = '#22c55e';
 
-/**
- * The node's server load over time - CPU, memory and disk - with the same
- * range switch the monitoring page uses, so a reader moving between the two
- * finds the same control in the same corner. The series is the stats
- * worker's snapshot history, so it reads while the node is offline too: the
- * question "what was it doing before it went away" is exactly the one an
- * offline node raises.
- */
 function NodeLoadPanel({ nodeId }: { nodeId: string }) {
   const { t } = useTranslation();
   const [range, setRange] = useState<MonitoringRange>('24h');
@@ -89,13 +81,6 @@ function NodeLoadPanel({ nodeId }: { nodeId: string }) {
   );
 }
 
-/**
- * The node's latency to each Telegram datacenter over time, from the same
- * snapshot series as the load chart and with the same range switch in the
- * same corner. The two panels ask for the same query key, so react-query
- * fetches the window once for both. tproxy reports no DC figures, so on a
- * tproxy node the panel says so and asks for nothing.
- */
 function NodeDcLatencyPanel({ nodeId, engine }: { nodeId: string; engine: NodeEngine }) {
   const { t } = useTranslation();
   const [range, setRange] = useState<MonitoringRange>('24h');
@@ -145,13 +130,6 @@ function NodeDcLatencyPanel({ nodeId, engine }: { nodeId: string; engine: NodeEn
   );
 }
 
-/**
- * MTProxy's own counters, printed as it reports them: raw key on the left,
- * raw value on the right, both mono, split into two columns so a couple of
- * dozen counters fit on one screen. No translation of the keys - these are the
- * names that appear in MTProxy's stats output and in every issue report about
- * it, and renaming them here would only make the two harder to match up.
- */
 function NodeCountersPanel({ nodeId, online }: { nodeId: string; online: boolean }) {
   const { t } = useTranslation();
   const statsQuery = useNodeStats(nodeId, online);
@@ -182,8 +160,6 @@ function NodeCountersPanel({ nodeId, online }: { nodeId: string; online: boolean
       {offline ? (
         <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
       ) : statsQuery.isLoading ? (
-        // The counters land as a two-column grid of key/value rows, so the
-        // wait draws that grid rather than three loose lines.
         <div className="grid grid-cols-1 gap-px bg-hairline lg:grid-cols-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between gap-4 bg-card px-4 py-2">

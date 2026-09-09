@@ -20,14 +20,7 @@ interface ClientSupportNoticeProps {
   className?: string;
 }
 
-/**
- * Which Telegram clients can actually open the link that was just handed out.
- *
- * Shown wherever a t.me/tg:// link appears. It is a fact about the world, not
- * a warning, so it gets no coloured panel - just a hairline row and the same
- * dot the rest of the panel uses for status, one per platform, so "Android is
- * amber" is legible without reading the word next to it.
- */
+// Which Telegram clients can actually open the link that was just handed out.
 export function ClientSupportNotice({ clientSupport, className }: ClientSupportNoticeProps) {
   const { t } = useTranslation();
   const support = clientSupport ?? DEFAULT_SUPPORT;

@@ -15,8 +15,6 @@ type subCreateResp struct {
 	QRDataURI string `json:"qr_data_uri"`
 }
 
-// twoNodeKey creates an owner, two nodes and a shared key bound to both, returning
-// the harness, an authenticated owner client and the created key's id.
 func twoNodeKey(t *testing.T) (*apitest.Harness, *apitest.Client, string) {
 	t.Helper()
 	h := apitest.New(t)
@@ -228,11 +226,6 @@ func TestSubscriptionUnknownTokenReturns404(t *testing.T) {
 	}
 }
 
-// TestSubscriptionErrorPagesAreBrandedHTMLNotJSON covers Task 33 item 3(d):
-// the human-facing /s/{token} route must not answer a dead link with a JSON
-// error body - it renders the same minimal branded HTML page for both the
-// unknown-token (404) and revoked-key (410) cases. The .json route is
-// unaffected and keeps returning JSON.
 func TestSubscriptionErrorPagesAreBrandedHTMLNotJSON(t *testing.T) {
 	h, c, keyID := twoNodeKey(t)
 	anon := h.Anonymous()

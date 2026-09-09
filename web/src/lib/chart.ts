@@ -1,16 +1,3 @@
-/*
- * Series colour assignment for the panel's charts.
- *
- * The spec puts the operator's own brand pair at the front of every chart:
- * --brand-primary is series 1, --brand-accent is series 2. That is a branding
- * rule, and branding must not win over legibility - two brand hues sitting a
- * few degrees apart on the wheel are two lines nobody can tell apart. So the
- * pair is checked first, and when the hues collide the accent is dropped and
- * the fixed neutral palette takes over from slot 2 onwards.
- *
- * The palette itself is a fixed order, never cycled and never reassigned by
- * rank: a node keeps its colour when the list is filtered or re-sorted.
- */
 
 /** Fallback hues after the brand pair, in fixed order. */
 export const NEUTRAL_SERIES = ['#a78bfa', '#f59e0b', '#22c55e', '#ec4899'] as const;
@@ -40,10 +27,7 @@ function parseHex(color: string): [number, number, number] | null {
   return null;
 }
 
-/**
- * Hue of a hex colour in degrees, or null when it has no usable hue - either
- * it does not parse, or it is so close to grey that its hue is noise.
- */
+// Hue of a hex colour in degrees, or null when it has no usable hue.
 export function hexHue(color: string): number | null {
   const rgb = parseHex(color);
   if (!rgb) return null;
@@ -81,13 +65,6 @@ export function seriesColorsCollide(a: string, b: string): boolean {
   return gap < MIN_HUE_SEPARATION_DEG;
 }
 
-/**
- * `count` distinct series colours: the brand primary, then the brand accent
- * unless it collides with the primary, then the neutral palette. Duplicates
- * are skipped, so a brand hue that already appears in the palette is only
- * ever handed out once. Returns fewer than `count` colours when the palette
- * runs out - the caller folds the remaining series into one "other" bucket.
- */
 export function seriesPalette(brandPrimary: string, brandAccent: string, count: number): string[] {
   const out: string[] = [];
   const add = (color: string | undefined | null) => {

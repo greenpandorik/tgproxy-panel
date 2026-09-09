@@ -1,5 +1,3 @@
-// recharts is only ever imported by the chart components, which every page
-// lazy-loads (React.lazy) so the shell bundle stays free of it.
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
@@ -20,14 +18,7 @@ export interface DcLatencyChartProps {
 
 const DEFAULT_HEIGHT = 140;
 
-/**
- * A node's latency to each Telegram datacenter over time, one line per DC
- * on one millisecond axis. They share a chart because they share a unit and
- * the question is comparative: which DC is the slow one, and did it get
- * slow at the same moment the others did (the node's uplink) or on its own
- * (that DC's route). The axis starts at zero so a quiet node's few-ms swing
- * is not blown up into a storm.
- */
+// A node's latency to each Telegram datacenter over time, one line per DC on one millisecond axis.
 export function DcLatencyChart({ dcs, rows, height = DEFAULT_HEIGHT }: DcLatencyChartProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;

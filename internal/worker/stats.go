@@ -61,18 +61,14 @@ type TelemtUserMetrics struct {
 	UniqueIPs   int
 }
 
-// TelemtMetrics is the telemt equivalent of RelayMetrics. telemt has no single "live
-// connections" gauge, so the live figure is the sum of the per-user gauges; that series is
-// capped at a fixed number of users on telemt's side, which is why the per-user rows the
-// panel stores come from the control API (the agent's stats map) and only fall back to these.
+// TelemtMetrics is the telemt equivalent of RelayMetrics.
 type TelemtMetrics struct {
 	ConnectionsTotal int64
 	ConnectionsLive  int
 	Users            map[string]TelemtUserMetrics
 }
 
-// ParseTelemtMetrics reads the telemt_* metrics the panel charts. The per-user series carry a
-// single `user` label; every other labelled series is ignored.
+// ParseTelemtMetrics reads the telemt_* metrics the panel charts.
 func ParseTelemtMetrics(text string) TelemtMetrics {
 	m := TelemtMetrics{Users: map[string]TelemtUserMetrics{}}
 	for _, line := range strings.Split(text, "\n") {
@@ -111,8 +107,7 @@ func ParseTelemtMetrics(text string) TelemtMetrics {
 	return m
 }
 
-// splitUserLabel splits `telemt_user_x{user="k1"}` into the metric name and the user. A series
-// with any other label set is returned with an empty user, so it is skipped by the caller.
+// splitUserLabel splits `telemt_user_x{user="k1"}` into the metric name and the user.
 func splitUserLabel(name string) (metric, user string) {
 	metric, labels, ok := strings.Cut(name, "{")
 	if !ok {
@@ -131,17 +126,9 @@ func splitUserLabel(name string) (metric, user string) {
 }
 
 // telemtRelayMetrics maps a telemt node onto the engine-agnostic snapshot columns.
-//
-// sessions_live and streams_live both carry the live connection count: telemt has no notion of
-// streams inside a session, and leaving streams_live at zero would break the existing charts.
-// telemt reports exactly one cumulative octet counter per user (traffic in both directions
-// together), so the total lands in bytes_down and bytes_up stays 0 rather than inventing a
-// split - the node stats tab labels it accordingly.
 func telemtRelayMetrics(m TelemtMetrics, stats map[string]string) RelayMetrics {
 	live := m.ConnectionsLive
 	if len(m.Users) == 0 {
-		// Per-user telemetry is off (or the series was capped away): the agent's summary of
-		// the control API is then the only live figure available.
 		live = int(statsInt(stats, "connections_total"))
 	}
 	out := RelayMetrics{SessionsLive: live, StreamsLive: live, SessionsCreated: m.ConnectionsTotal}
@@ -178,24 +165,14 @@ type Stats struct {
 	alerts           *Alerts
 	log              *slog.Logger
 
-	// notifySlots bounds how many alert notifications may be in flight at once;
-	// notifyWG lets a test wait for them. See notify.
 	notifySlots chan struct{}
 	notifyWG    sync.WaitGroup
 
-	// lastKeyStatsSweep is when the key_stats_snapshots retention sweep last ran. The sweep
-	// is the only statement that touches the whole table, and nothing depends on it being
-	// prompt, so it runs on keyStatsSweepEvery rather than on every tick. now() is a hook so
-	// a test does not have to wait ten minutes.
 	lastKeyStatsSweep time.Time
 	now               func() time.Time
 }
 
-// maxInFlightNotifications bounds the goroutines RunOnce may have out sending Telegram
-// messages. A fleet cannot produce more simultaneous offline/online transitions than this
-// without the rate limiter kicking in, and anything beyond it is dropped rather than queued -
-// the (node, kind) slot is only consumed by a *successful* send, so a dropped notification is
-// simply retried on the next tick.
+// maxInFlightNotifications bounds the goroutines RunOnce may have out sending Telegram messages.
 const maxInFlightNotifications = 32
 
 func NewStats(st *store.Store, driver nodedriver.Driver, offlineAfter time.Duration, log *slog.Logger) *Stats {
@@ -206,11 +183,6 @@ func NewStats(st *store.Store, driver nodedriver.Driver, offlineAfter time.Durat
 }
 
 // notify runs one alert notification off RunOnce's goroutine.
-//
-// The shared Telegram client has a 10s timeout, and that bound is per call, not per tick:
-// when the panel's own uplink hiccups every node goes stale at once and inline sends stall
-// RunOnce for N x 10s - delaying the snapshots and the recovery detection that would clear
-// the very alerts being sent. RunOnce must therefore never wait on a network round trip.
 func (s *Stats) notify(ctx context.Context, fn func(context.Context)) {
 	select {
 	case s.notifySlots <- struct{}{}:
@@ -226,25 +198,16 @@ func (s *Stats) notify(ctx context.Context, fn func(context.Context)) {
 	}()
 }
 
-// WaitNotifications blocks until every notification spawned so far has finished. Production
-// code never needs it - the notifier is deliberately fire-and-forget - but a test asserting
-// on what was sent must not race the send.
+// WaitNotifications blocks until every notification spawned so far has finished.
 func (s *Stats) WaitNotifications() { s.notifyWG.Wait() }
 
-// SetOfflineAfterFunc installs an override consulted on every RunOnce to
-// decide the stale-heartbeat threshold; a nil or non-positive result falls
-// back to the constructor's value. Nil (the default) keeps it fixed.
 func (s *Stats) SetOfflineAfterFunc(f func(context.Context) time.Duration) {
 	s.offlineAfterFunc = f
 }
 
-// SetAlerts installs the Telegram alert notifier; nil (the default) means no
-// notifications are sent.
+// SetAlerts installs the Telegram alert notifier; nil (the default) means no notifications are sent.
 func (s *Stats) SetAlerts(a *Alerts) { s.alerts = a }
 
-// RunOnce marks nodes with a stale heartbeat offline (raising a node_offline
-// alert), takes a stats snapshot for every online node, resolves offline
-// alerts for nodes that are back, and prunes snapshots older than 30 days.
 func (s *Stats) RunOnce(ctx context.Context) error {
 	offlineAfter := s.offlineAfter
 	if s.offlineAfterFunc != nil {
@@ -301,11 +264,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 			NodeID: n.ID, SessionsLive: int32(m.SessionsLive), StreamsLive: int32(m.StreamsLive),
 			BytesUp: m.BytesUp, BytesDown: m.BytesDown, SessionsCreated: m.SessionsCreated, LimitHits: m.LimitHits,
 			CpuPercent: load.CpuPercent, MemUsedPercent: load.MemUsedPercent, DiskUsedPercent: load.DiskUsedPercent,
-			DcLatency: load.DcLatency,
-			// relay_raw is deliberately left empty: nothing reads it, and storing the full
-			// Prometheus text every 60s for 30 days is ~200 MB per node of write-only data.
-			// The column is kept (reserved) — the parsed columns above carry everything the
-			// UI uses, and mtproxy_raw is read by the node stats tab.
+			DcLatency:  load.DcLatency,
 			MtproxyRaw: raw, RelayRaw: "",
 		}); err != nil {
 			s.log.Error("snapshot", "err", err)
@@ -316,8 +275,6 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 			}
 		}
 	}
-	// Expired sessions are filtered out by GetSession but were never deleted, so the table
-	// grew forever. This is the only per-minute sweep the panel runs, so it lives here.
 	if err := s.st.Q.DeleteExpiredSessions(ctx); err != nil {
 		s.log.Error("delete expired sessions", "err", err)
 	}
@@ -325,16 +282,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	return s.st.Q.DeleteOldSnapshots(ctx, time.Now().Add(-retention))
 }
 
-// nodeLoad reads the server-load percentages out of a node's last heartbeat. The heartbeat
-// lands the whole health report in nodes.last_health, so at snapshot time the newest CPU /
-// memory / disk figures are already on the row the worker is iterating - no driver round
-// trip, and a node whose heartbeat has not carried a report yet (or an unreadable one) simply
-// records zero load rather than failing the snapshot.
-//
-// The DC latencies ride along the same way, as the {"<dc>": <ms>} object the snapshot column
-// stores: only DCs telemt has actually measured (known=true) are written, so a missing key
-// means "unknown" and never reads as a 0 ms round trip, and a report without DC data (tproxy,
-// or a failed stats call at heartbeat time) writes an empty object.
+// nodeLoad reads the server-load percentages out of a node's last heartbeat.
 func nodeLoad(lastHealth []byte) db.InsertSnapshotParams {
 	var h nodedriver.HealthReport
 	if len(lastHealth) == 0 || json.Unmarshal(lastHealth, &h) != nil {
@@ -363,21 +311,9 @@ func dcLatencyJSON(h nodedriver.HealthReport) []byte {
 	return raw
 }
 
-// keyStatsSweepEvery is how often the key_stats_snapshots retention sweep runs, and
-// keyStatsSweepBatch how many rows one DELETE statement may take.
-//
-// The table gets one row per (key, node) per minute, so it is by far the largest in the
-// database and its expired tail is the only thing a sweep has to remove. Running it on every
-// 60s tick bought nothing - a minute's worth of rows falls out of the window each time - while
-// paying for a full pass over the table's dead tail every minute. Ten minutes keeps the table
-// just as bounded, and the batches keep each statement short enough that its locks and WAL
-// burst are not felt by the rest of the panel.
 const (
-	keyStatsSweepEvery = 10 * time.Minute
-	keyStatsSweepBatch = 5000
-	// keyStatsSweepMaxBatches bounds one sweep so a table that is far behind (a long panel
-	// outage, a retention change) cannot hold the worker for an unbounded time; whatever is
-	// left is taken by the next sweep.
+	keyStatsSweepEvery      = 10 * time.Minute
+	keyStatsSweepBatch      = 5000
 	keyStatsSweepMaxBatches = 40
 )
 
@@ -388,8 +324,6 @@ func (s *Stats) clock() time.Time {
 	return time.Now()
 }
 
-// sweepKeyStats deletes expired key_stats_snapshots rows in bounded batches, at most once per
-// keyStatsSweepEvery.
 func (s *Stats) sweepKeyStats(ctx context.Context) {
 	now := s.clock()
 	if !s.lastKeyStatsSweep.IsZero() && now.Sub(s.lastKeyStatsSweep) < keyStatsSweepEvery {
@@ -412,16 +346,10 @@ func (s *Stats) sweepKeyStats(ctx context.Context) {
 	s.log.Warn("key stats retention sweep hit its batch limit; the rest is taken by the next sweep")
 }
 
-// retention is how long both snapshot tables are kept. The key stats endpoint caps the range
-// it will serve just above it, so nothing the UI can ask for has been pruned away.
+// retention is how long both snapshot tables are kept.
 const retention = 30 * 24 * time.Hour
 
 // keySnapshots writes one key_stats_snapshots row per key that telemt reported on this node.
-//
-// The per-user figures come from the agent's stats map (telemt's control API, which lists
-// every user) and only fall back to the Prometheus series, whose per-user cardinality telemt
-// caps. A profile telemt does not mention at all - a key created seconds ago, say - gets no
-// row: a zero row would show up in the drawer as a real reading of zero traffic.
 func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetrics, stats map[string]string) error {
 	profiles, err := s.st.Q.ListNodeProfilesWithKey(ctx, nodeID)
 	if err != nil {
@@ -443,8 +371,6 @@ func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetr
 			TotalOctets: parseIntOr(octets, 0),
 			ActiveIps:   int32(parseIntOr(stats["user."+p.Name+".active_ips"], int64(user.UniqueIPs))),
 		}
-		// quota_used_bytes only means something against a quota; without one it stays 0 so a
-		// reader cannot mistake cumulative traffic for consumption of a limit.
 		var limits domain.TelemtLimits
 		if len(p.KeyTelemtLimits) > 0 {
 			_ = json.Unmarshal(p.KeyTelemtLimits, &limits)
@@ -459,8 +385,6 @@ func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetr
 	return nil
 }
 
-// parseIntOr reads a stats-map value, falling back to the metrics reading when the map has no
-// entry (or an unparseable one) for it.
 func parseIntOr(v string, fallback int64) int64 {
 	n, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {

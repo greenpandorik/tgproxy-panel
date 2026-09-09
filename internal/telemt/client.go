@@ -1,6 +1,4 @@
 // Package telemt is a client for the telemt Control API (docs: Architecture/API/API.md).
-// Every response uses the {ok, data, revision} envelope; failures are surfaced as *APIError.
-// The client never logs and never echoes the Authorization header or a user secret.
 package telemt
 
 import (
@@ -16,9 +14,7 @@ import (
 	"time"
 )
 
-// DefaultMetricsURL is telemt's Prometheus listener from the node template ([server]
-// metrics_listen). It is a separate port from the control API and is guarded by its own
-// whitelist, so the API token is never sent there.
+// DefaultMetricsURL is telemt's Prometheus listener from the node template ([server] metrics_listen).
 const DefaultMetricsURL = "http://127.0.0.1:9090/metrics"
 
 // maxResponseBytes caps a single API response. /metrics is the largest realistic body.
@@ -33,8 +29,7 @@ type Client struct {
 	HTTP       *http.Client
 }
 
-// New returns a client for baseURL (e.g. http://127.0.0.1:9091) authenticating with the exact
-// value telemt expects in the Authorization header.
+// New returns a client for baseURL (e.g.
 func New(baseURL, authHeader string) *Client {
 	return &Client{
 		BaseURL:    strings.TrimRight(baseURL, "/"),
@@ -96,8 +91,6 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) (st
 		}
 		return "", e
 	}
-	// A 503 with ok:true is a legitimate answer (health/ready when not ready yet), so status is
-	// not consulted beyond the envelope.
 	if out != nil && len(env.Data) > 0 {
 		if err := json.Unmarshal(env.Data, out); err != nil {
 			return env.Revision, fmt.Errorf("telemt %s %s: decode data: %w", method, path, err)
@@ -120,8 +113,7 @@ func (c *Client) Health(ctx context.Context) (HealthData, error) {
 	return out, err
 }
 
-// Ready reports readiness. telemt answers 503 with a success envelope when it is not ready, so
-// a false Ready with a nil error is the normal "not ready yet" answer.
+// Ready reports readiness.
 func (c *Client) Ready(ctx context.Context) (ReadyData, error) {
 	var out ReadyData
 	_, err := c.do(ctx, http.MethodGet, "/v1/health/ready", nil, &out)
@@ -134,8 +126,7 @@ func (c *Client) SystemInfo(ctx context.Context) (SystemInfo, error) {
 	return out, err
 }
 
-// ListUsers returns the configured users sorted by username. The returned secrets are empty:
-// the API never exposes a secret in a list view.
+// ListUsers returns the configured users sorted by username.
 func (c *Client) ListUsers(ctx context.Context) ([]User, error) {
 	var out []User
 	_, err := c.do(ctx, http.MethodGet, "/v1/users", nil, &out)
@@ -164,8 +155,6 @@ func (c *Client) DeleteUser(ctx context.Context, username string) error {
 	return err
 }
 
-// RotateSecret sets a new secret (or, with an empty secret, lets telemt generate one) and
-// returns the user with the effective secret.
 func (c *Client) RotateSecret(ctx context.Context, username, secret string) (User, error) {
 	var body any
 	if secret != "" {
@@ -202,9 +191,7 @@ func (c *Client) GetConfig(ctx context.Context) (map[string]any, string, error) 
 	return out, rev, nil
 }
 
-// PatchConfig applies a sparse patch. Tables deep-merge; arrays and scalars replace wholesale,
-// so an array (e.g. web.vhosts) must be sent complete. With reload the patch also asks for a
-// draining runtime reload, which activates a new generation without cutting live sessions.
+// PatchConfig applies a sparse patch.
 func (c *Client) PatchConfig(ctx context.Context, patch map[string]any, reload bool) (PatchConfigResult, error) {
 	path := "/v1/config"
 	if reload {
@@ -215,14 +202,10 @@ func (c *Client) PatchConfig(ctx context.Context, patch map[string]any, reload b
 	return out, err
 }
 
-// ReloadDrainSecs is how long telemt lets the previous generation's sessions finish. It is
-// exported because it is also the floor for the caller's own wait budget: a reload sits in the
-// non-terminal `draining` state for up to this long, so a poller that gives up sooner would
-// call a perfectly good reload a failure.
+// ReloadDrainSecs is how long telemt lets the previous generation's sessions finish.
 const ReloadDrainSecs = 30
 
-// Reload asks telemt to activate a new runtime generation from the on-disk config. An empty
-// request defaults to a draining reload so live sessions are not cut.
+// Reload asks telemt to activate a new runtime generation from the on-disk config.
 func (c *Client) Reload(ctx context.Context, req ReloadRequest) (ReloadAccepted, error) {
 	if req.Mode == "" {
 		req.Mode, req.TimeoutSecs = "drain", ReloadDrainSecs
@@ -244,16 +227,13 @@ func (c *Client) ConnectionsSummary(ctx context.Context) (ConnectionsSummary, er
 	return out, err
 }
 
-// UpstreamsStats reports the node's connectivity to Telegram's datacenters: per-DC latency EMAs
-// from telemt's own health checks plus the connect counters.
 func (c *Client) UpstreamsStats(ctx context.Context) (UpstreamsStats, error) {
 	var out UpstreamsStats
 	_, err := c.do(ctx, http.MethodGet, "/v1/stats/upstreams", nil, &out)
 	return out, err
 }
 
-// Metrics fetches the Prometheus exposition text from the metrics listener. It is a plain text
-// endpoint on its own port, so no envelope and no Authorization header are involved.
+// Metrics fetches the Prometheus exposition text from the metrics listener.
 func (c *Client) Metrics(ctx context.Context) (string, error) {
 	target := c.MetricsURL
 	if target == "" {

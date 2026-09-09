@@ -33,10 +33,6 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 }
 
 // chown is best-effort via the exec layer so tests on macOS do not need root.
-// chown sets the file owner. Failures are non-fatal — the agent and systemd's
-// LoadCredential both read as root, so group ownership is defence in depth —
-// but they are returned so the caller can record them in the apply log instead
-// of discarding them.
 func (h *Handler) chown(ctx context.Context, path, owner string) error {
 	out, err := h.exec.Run(ctx, "chown", owner, path)
 	if err != nil {

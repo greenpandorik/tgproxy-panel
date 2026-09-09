@@ -21,9 +21,6 @@ const (
 	settingBackupSchedule = "backup_schedule"
 )
 
-// telegramSender is satisfied by *notify.Telegram; kept as a narrow,
-// unexported interface here (rather than importing notify's concrete type
-// everywhere) so tests can inject a fake sender without a real HTTP call.
 type telegramSender interface {
 	SendWith(ctx context.Context, botToken, chatID, text string) error
 }
@@ -34,9 +31,6 @@ func (s *Server) mountSettings(r chi.Router) {
 	r.With(RequireRole(RoleOwner)).Post("/settings/telegram/test", s.handleTelegramTest)
 }
 
-// TelegramConfig implements the worker.AlertSource contract: it reads the
-// stored telegram_alerts setting and decrypts the bot token with the box. An
-// unset token decrypts to "" rather than an error.
 func (s *Server) TelegramConfig(ctx context.Context) (enabled bool, botToken, chatID string, err error) {
 	stored := s.getTelegramAlerts(ctx)
 	if stored.BotTokenEnc == "" {
@@ -53,17 +47,14 @@ func (s *Server) TelegramConfig(ctx context.Context) (enabled bool, botToken, ch
 	return stored.Enabled, token, stored.ChatID, nil
 }
 
-// telegramAlertsStored is the shape persisted in the settings table. The bot
-// token is never stored in the clear: BotTokenEnc holds base64(box.Encrypt
-// (token)). Never serialize this type to an HTTP response.
+// telegramAlertsStored is the shape persisted in the settings table.
 type telegramAlertsStored struct {
 	Enabled     bool   `json:"enabled"`
 	BotTokenEnc string `json:"bot_token_enc"`
 	ChatID      string `json:"chat_id"`
 }
 
-// telegramAlertsOut is the shape returned to clients: bot_token_set instead
-// of the token itself.
+// telegramAlertsOut is the shape returned to clients: bot_token_set instead of the token itself.
 type telegramAlertsOut struct {
 	Enabled     bool   `json:"enabled"`
 	BotTokenSet bool   `json:"bot_token_set"`
@@ -212,16 +203,6 @@ type postTelegramTestReq struct {
 	ChatID   *string `json:"chat_id"`
 }
 
-// handleTelegramTest sends a one-off "Test message from <panel name>" to the
-// configured chat, using the bot token and chat id from the request body when
-// given and falling back to the stored (decrypted) ones otherwise. It never
-// returns or logs the token: only {"ok":true} on success, or the Telegram API's
-// error description on failure.
-//
-// Both overrides exist for the same reason: the settings form enables "Send test"
-// off its own in-progress values, so a chat id typed but not yet saved has to reach
-// the handler or the button returns "must be configured" for a form that looks
-// complete. Neither override is persisted - only the send uses them.
 func (s *Server) handleTelegramTest(w http.ResponseWriter, r *http.Request) {
 	var req postTelegramTestReq
 	if err := decodeJSON(r, &req); err != nil {

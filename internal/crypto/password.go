@@ -17,11 +17,7 @@ const (
 	argonThreads = 2
 	argonKeyLen  = 32
 
-	// Bounds on the PHC parameters accepted by VerifyPassword. The hash always
-	// comes from our own DB, but a row rewritten by an attacker who reached
-	// Postgres would otherwise turn one login attempt into an unbounded
-	// memory/CPU burn. 1 GiB and t=64 are far above anything we ever write
-	// (64 MiB, t=3).
+	// Bounds on the PHC parameters accepted by VerifyPassword.
 	maxArgonMemoryKiB = 1 << 20 // 1 GiB, argon2 memory is expressed in KiB
 	maxArgonTime      = 64
 	maxArgonThreads   = 64

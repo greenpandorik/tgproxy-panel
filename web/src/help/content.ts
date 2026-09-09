@@ -1,20 +1,3 @@
-/*
- * Registry of help topics.
- *
- * The words live in i18n (`help.topics.<id>.*` in ru.json / en.json, parity
- * enforced), so that a topic reads the same way in both languages and the
- * parity check catches a half-translated one. What lives here is the shape of
- * every topic - which fields it explains and in what order, and which section
- * of the setup guide says more - so a HelpButton can only name a topic that
- * exists, the sheet knows what to render before it looks anything up, and a
- * test can walk the source for `topic="…"` and compare it against this list.
- *
- * i18n layout per topic:
- *   help.topics.<id>.title
- *   help.topics.<id>.intro
- *   help.topics.<id>.fields.<field>.{name,what,example?,tip?}
- *   help.topics.<id>.notes.<n>          (numbered from 1, any count)
- */
 
 /** Which section of docs/setup.*.md a topic links to. Anchors are GitHub's heading slugs. */
 export const DOC_SECTIONS = {

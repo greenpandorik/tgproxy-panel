@@ -18,9 +18,7 @@ type Telegram struct {
 	base  string
 }
 
-// NewTelegram builds a client. httpc defaults to http.DefaultClient when nil.
-// base defaults to https://api.telegram.org when empty; tests point it at an
-// httptest server instead.
+// NewTelegram builds a client.
 func NewTelegram(httpc *http.Client, base string) *Telegram {
 	if httpc == nil {
 		httpc = http.DefaultClient
@@ -43,9 +41,7 @@ type sendMessageResponse struct {
 	Description string `json:"description"`
 }
 
-// SendWith posts text to chatID via the bot identified by botToken. On any
-// failure the returned error's message never contains botToken, even when the
-// underlying transport error embeds the request URL (which carries the token).
+// SendWith posts text to chatID via the bot identified by botToken.
 func (t *Telegram) SendWith(ctx context.Context, botToken, chatID, text string) error {
 	url := t.base + "/bot" + botToken + "/sendMessage"
 	body, err := json.Marshal(sendMessageRequest{
@@ -79,9 +75,6 @@ func (t *Telegram) SendWith(ctx context.Context, botToken, chatID, text string) 
 	return nil
 }
 
-// stripToken removes any occurrence of token from err's message so a caller can
-// never leak the bot token through a logged or returned error (net/http errors
-// embed the failing request URL, which contains the token).
 func stripToken(err error, token string) error {
 	if token == "" {
 		return err

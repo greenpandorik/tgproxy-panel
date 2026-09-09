@@ -1,9 +1,5 @@
 import '@testing-library/jest-dom/vitest';
 
-// Node's experimental localStorage shadows jsdom's implementation in this
-// runtime and exposes no methods, which breaks anything that reads a stored
-// preference (src/i18n reads the language). Install a minimal in-memory shim
-// when the ambient one is unusable.
 if (typeof window !== 'undefined' && typeof window.localStorage?.getItem !== 'function') {
   const store = new Map<string, string>();
   const shim: Storage = {
@@ -19,9 +15,6 @@ if (typeof window !== 'undefined' && typeof window.localStorage?.getItem !== 'fu
   Object.defineProperty(window, 'localStorage', { value: shim, configurable: true });
 }
 
-// cmdk (the ⌘K palette) observes its list for size changes and scrolls the
-// selected item into view; jsdom has neither API. No-op stubs are enough -
-// nothing under test asserts on measured sizes or scroll position.
 if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = class {
     observe() {}

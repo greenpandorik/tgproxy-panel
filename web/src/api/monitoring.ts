@@ -17,9 +17,7 @@ const RANGE_SECONDS: Record<MonitoringRange, number> = {
   '7d': 7 * 24 * 3600,
 };
 
-// A coarser sample step for wider ranges keeps the response light without
-// losing visible shape - the backend still computes rates from every raw
-// snapshot pair before thinning to this spacing.
+// A coarser sample step for wider ranges keeps the response light without losing visible shape.
 const RANGE_STEP_SECONDS: Record<MonitoringRange, number> = {
   '1h': 10,
   '6h': 60,
@@ -32,11 +30,7 @@ export const monitoringKeys = {
   nodeSeries: (nodeId: string, range: MonitoringRange) => ['monitoring', 'series', nodeId, range] as const,
 };
 
-/**
- * One node's raw snapshot series over a range. The window is computed when the
- * fetch runs, not when the hook renders, so the key stays stable and the
- * 60s refetch is what moves the window forward.
- */
+// One node's raw snapshot series over a range.
 export const useNodeSeries = (nodeId: string, range: MonitoringRange) =>
   useQuery({
     queryKey: monitoringKeys.nodeSeries(nodeId, range),

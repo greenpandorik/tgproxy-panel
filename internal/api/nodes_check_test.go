@@ -27,11 +27,7 @@ type checkReportResp struct {
 	AllOK   bool              `json:"all_ok"`
 }
 
-// noopResolver never finds a record, and noopDial never connects - together
-// they make every probe fail deterministically, without the test touching
-// the real network (the test node's hostname, "n1.test", isn't a real
-// domain anyway, but a live DNS lookup for it is slow and environment
-// dependent).
+// noopResolver never finds a record, and noopDial never connects.
 type noopResolver struct{}
 
 func (noopResolver) LookupIPAddr(context.Context, string) ([]net.IPAddr, error) {
@@ -42,9 +38,6 @@ func noopDial(context.Context, string, string) (net.Conn, error) {
 	return nil, errors.New("dial disabled in this test")
 }
 
-// ownerWithNodeAndChecker is like ownerWithNode but wires a deterministic,
-// network-free Checker into the server so /nodes/{id}/check is reproducible
-// in CI regardless of the sandbox's DNS/network access.
 func ownerWithNodeAndChecker(t *testing.T) (*apitest.Harness, *apitest.Client, nodeResp) {
 	t.Helper()
 	checker := &nodecheck.Checker{Resolver: noopResolver{}, Dial: noopDial, Timeout: 2 * time.Second}
@@ -64,9 +57,6 @@ func TestOwnerRunsNodeCheckAndItPersists(t *testing.T) {
 		t.Fatalf("check expected 200, got %d", resp.StatusCode)
 	}
 	c.JSON(resp, &report)
-	// Seven probes on a telemt node (the default engine): the six public prerequisites
-	// (including the advisory pq_kex) plus the telemt-only `mask` probe of the Fake-TLS
-	// listener.
 	if len(report.Results) != 7 {
 		t.Fatalf("expected 7 results, got %+v", report.Results)
 	}
@@ -117,10 +107,6 @@ func TestOwnerRunsNodeCheckAndItPersists(t *testing.T) {
 	}
 }
 
-// TestViewerSeesNoCheckDetailText covers Task 33 item 1: a viewer reading a
-// node's last_check gets name/ok/ran_at/all_ok like anyone else, but the
-// per-probe detail strings (which can leak resolved IPs, TLS errors, private
-// ranges etc.) are only visible to writers (owner/admin).
 func TestViewerSeesNoCheckDetailText(t *testing.T) {
 	h, c, n := ownerWithNodeAndChecker(t)
 	if resp := c.Post("/api/v1/nodes/"+n.ID.String()+"/check", nil); resp.StatusCode != http.StatusOK {
@@ -188,10 +174,6 @@ func TestViewerCannotRunNodeCheck(t *testing.T) {
 	}
 }
 
-// M9: `unknown_sni_action = "mask"` sends unauthenticated Fake-TLS traffic to tls_domain:443,
-// which is the node's own public address. The mask probe is the only check that observes the
-// node reaching itself, so it runs on telemt nodes - and only there: a tproxy node has no such
-// listener and its report keeps the six public probes.
 func TestNodeCheckMaskProbeIsTelemtOnly(t *testing.T) {
 	checker := &nodecheck.Checker{Resolver: noopResolver{}, Dial: noopDial, Timeout: 2 * time.Second}
 	h := apitest.New(t, func(d *api.Deps) { d.NodeChecker = checker })

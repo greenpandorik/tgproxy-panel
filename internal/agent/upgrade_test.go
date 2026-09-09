@@ -20,8 +20,6 @@ import (
 	"time"
 )
 
-// fakeExec answers the systemctl/journalctl/version calls the upgrade makes, and records them
-// so a test can assert what the node was actually told to do.
 type upgradeExec struct {
 	mu    sync.Mutex
 	calls []string
@@ -67,8 +65,6 @@ func TestNormalizeAndCompareVersions(t *testing.T) {
 		{"telemt 3.5.6", "3.5.6", true},
 		{"v3.5.6\n", "3.5.6", true},
 		{"3.5.5", "3.5.6", false},
-		// A node ahead of the pin is out of date too: the pin is the truth, so the same
-		// command performs the documented downgrade.
 		{"3.6.0", "3.5.6", false},
 		{"", "3.5.6", false},
 	} {
@@ -259,8 +255,7 @@ func newStubPanel(t *testing.T, agentBody []byte, declaredSHA string) *stubPanel
 	return s
 }
 
-// upgradeBench is a node in a temp directory: an env file, an installed agent binary, and a
-// fake systemd.
+// upgradeBench is a node in a temp directory: an env file, an installed agent binary, and a fake systemd.
 type upgradeBench struct {
 	dir      string
 	envPath  string
@@ -302,8 +297,6 @@ func (b *upgradeBench) agentContent(t *testing.T) string {
 	return string(raw)
 }
 
-// TestUpgradeChecksumMismatchAborts is the important one: a download whose sha256 does not
-// match the panel's pin must never reach the target, and nothing may be restarted.
 func TestUpgradeChecksumMismatchAborts(t *testing.T) {
 	panel := newStubPanel(t, []byte("tampered binary"), sha256Hex([]byte("the binary the panel pinned")))
 	b := newUpgradeBench(t, panel.srv.URL, []byte("old agent"))
@@ -369,9 +362,7 @@ func TestUpgradeAgentSucceeds(t *testing.T) {
 	}
 }
 
-// TestUpgradeAgentRollsBack: the new binary installs and the unit restarts, but the agent
-// never reports back. The previous binary must be put back from the copy on disk - no second
-// download - and the unit restarted with it.
+// TestUpgradeAgentRollsBack: the new binary installs and the unit restarts, but the agent never reports back.
 func TestUpgradeAgentRollsBack(t *testing.T) {
 	newBin := []byte("new agent binary")
 	panel := newStubPanel(t, newBin, sha256Hex(newBin))
@@ -409,8 +400,6 @@ func TestUpgradeAgentRollsBack(t *testing.T) {
 	}
 }
 
-// TestUpgradeCheckChangesNothing: --check reports the plan and touches neither the binary nor
-// systemd, and it needs no confirmation.
 func TestUpgradeCheckChangesNothing(t *testing.T) {
 	newBin := []byte("new agent binary")
 	panel := newStubPanel(t, newBin, sha256Hex(newBin))
@@ -445,8 +434,6 @@ func TestUpgradeCheckChangesNothing(t *testing.T) {
 	}
 }
 
-// TestUpgradeWithoutTTYNeedsYes: unattended and unconfirmed is the one combination that must
-// stop before doing anything.
 func TestUpgradeWithoutTTYNeedsYes(t *testing.T) {
 	newBin := []byte("new agent binary")
 	panel := newStubPanel(t, newBin, sha256Hex(newBin))
@@ -486,8 +473,6 @@ func TestUpgradeNothingToDo(t *testing.T) {
 	}
 }
 
-// TestExtractTelemtBinary: the release tarball's layout changes between versions, so the
-// binary is found by name wherever it sits.
 func TestExtractTelemtBinary(t *testing.T) {
 	dir := t.TempDir()
 	tgz := filepath.Join(dir, "telemt.tar.gz")
@@ -516,8 +501,6 @@ func TestExtractTelemtBinary(t *testing.T) {
 	}
 }
 
-// TestBackupAndRestoreBinary pins the rollback mechanic: the copy exists while the new binary
-// is on trial, and restoring it needs nothing from the network.
 func TestBackupAndRestoreBinary(t *testing.T) {
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "thing")
@@ -542,8 +525,6 @@ func TestBackupAndRestoreBinary(t *testing.T) {
 		t.Error("restoring must consume the kept copy")
 	}
 
-	// Nothing installed yet: there is no copy to keep, and rolling back means removing what
-	// was just put there rather than failing.
 	fresh := filepath.Join(dir, "absent")
 	prev, err = backupBinary(fresh)
 	if err != nil || prev != "" {

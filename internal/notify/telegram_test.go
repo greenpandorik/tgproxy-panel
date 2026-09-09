@@ -66,8 +66,6 @@ func TestSendWithMapsAPIErrorDescriptionWithoutLeakingToken(t *testing.T) {
 }
 
 func TestSendWithNetworkErrorNeverLeaksToken(t *testing.T) {
-	// Nothing listens on this base URL; the transport error from net/http embeds the
-	// full request URL (which contains the token) unless we strip it.
 	tg := notify.NewTelegram(http.DefaultClient, "http://127.0.0.1:1")
 	err := tg.SendWith(t.Context(), testToken, "42", "hello")
 	if err == nil {

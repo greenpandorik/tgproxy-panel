@@ -15,8 +15,7 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// Report counts the rows Rotate (or CountPending) touched, one field per
-// encrypted column.
+// Report counts the rows Rotate (or CountPending) touched, one field per encrypted column.
 type Report struct {
 	Profiles    int
 	Keys        int
@@ -25,18 +24,12 @@ type Report struct {
 	Settings    int
 }
 
-// settingTelegramAlertsKey mirrors the unexported settingTelegramAlerts
-// constant in internal/api. It is duplicated here rather than imported
-// because internal/api imports internal/store, and the reverse import would
-// cycle.
+// settingTelegramAlertsKey mirrors the unexported settingTelegramAlerts constant in internal/api.
 const settingTelegramAlertsKey = "telegram_alerts"
 
 // encColumn names one bytea column encrypted with the master-key Box.
 type encColumn struct{ table, column string }
 
-// rotatableColumns lists every such column except settings.telegram_alerts,
-// whose ciphertext sits base64-encoded inside a JSON value rather than in its
-// own column and is handled separately by rotateTelegramAlerts.
 var rotatableColumns = []encColumn{
 	{"profiles", "secret_enc"},
 	{"access_keys", "secret_enc"},
@@ -44,15 +37,7 @@ var rotatableColumns = []encColumn{
 	{"admin_users", "totp_pending_enc"},
 }
 
-// Rotate re-encrypts every encrypted column from key version `from` to key
-// version `to`, in one transaction. `from` must contain every key version any
-// stored row might still be using; `to` is the new current version. A row
-// already at to.CurrentVersion() is left untouched, which makes Rotate
-// idempotent - running it again after a successful rotation reports all
-// zeros. Every re-encrypted blob is decrypted with `to` and compared against
-// the original plaintext before commit, as a self-check; any error - a
-// decrypt failure under `from`, a failed verification, anything - rolls the
-// whole transaction back, so a mid-way failure changes no row at all.
+// Rotate re-encrypts every encrypted column from key version `from` to key version `to`, in one transaction.
 func Rotate(ctx context.Context, st *Store, from, to *crypto.Box) (Report, error) {
 	tx, err := st.Pool.Begin(ctx)
 	if err != nil {
@@ -90,10 +75,7 @@ func Rotate(ctx context.Context, st *Store, from, to *crypto.Box) (Report, error
 	return report, nil
 }
 
-// CountPending reports, per column, how many rows are not yet encrypted at
-// to.CurrentVersion() - the counts `panel keys rotate --dry-run` prints. It
-// only reads the version prefix of each blob: nothing is decrypted,
-// re-encrypted, locked or written.
+// CountPending reports, per column, how many rows are not yet encrypted at to.CurrentVersion().
 func CountPending(ctx context.Context, st *Store, to *crypto.Box) (Report, error) {
 	var report Report
 	for _, c := range rotatableColumns {
@@ -134,13 +116,7 @@ type pendingRow struct {
 	blob []byte
 }
 
-// selectRows reads every non-NULL blob in table.column. forUpdate locks the
-// rows FOR UPDATE, which only makes sense (and is only used) inside Rotate's
-// transaction; CountPending's read-only pass leaves it off.
-//
-// table and column are always one of the fixed literals in rotatableColumns,
-// never caller/user input, so building the query with fmt.Sprintf here is
-// safe.
+// selectRows reads every non-NULL blob in table.column.
 func selectRows(ctx context.Context, dbtx db.DBTX, c encColumn, forUpdate bool) ([]pendingRow, error) {
 	q := fmt.Sprintf(`SELECT id, %s FROM %s WHERE %s IS NOT NULL`, c.column, c.table, c.column)
 	if forUpdate {
@@ -165,8 +141,6 @@ func selectRows(ctx context.Context, dbtx db.DBTX, c encColumn, forUpdate bool) 
 	return out, nil
 }
 
-// rotateColumn re-encrypts every row of one column that is not already at
-// to.CurrentVersion(), returning how many rows it changed.
 func rotateColumn(ctx context.Context, tx pgx.Tx, c encColumn, from, to *crypto.Box) (int, error) {
 	rows, err := selectRows(ctx, tx, c, true)
 	if err != nil {
@@ -190,10 +164,6 @@ func rotateColumn(ctx context.Context, tx pgx.Tx, c encColumn, from, to *crypto.
 	return count, nil
 }
 
-// telegramAlertsBlob reads the raw bot_token_enc blob out of the
-// telegram_alerts setting, decoding its base64. ok is false when the setting
-// row does not exist, or exists but has no token configured (an empty
-// bot_token_enc, the normal state for a panel that has never set one up).
 func telegramAlertsBlob(ctx context.Context, dbtx db.DBTX) ([]byte, bool, error) {
 	var raw []byte
 	err := dbtx.QueryRow(ctx, `SELECT value FROM settings WHERE key = $1`, settingTelegramAlertsKey).Scan(&raw)
@@ -218,9 +188,6 @@ func telegramAlertsBlob(ctx context.Context, dbtx db.DBTX) ([]byte, bool, error)
 	return blob, true, nil
 }
 
-// rotateTelegramAlerts re-encrypts settings.telegram_alerts.bot_token_enc in
-// place, preserving every other field in the stored JSON. It locks the
-// settings row FOR UPDATE for the rest of the transaction.
 func rotateTelegramAlerts(ctx context.Context, tx pgx.Tx, from, to *crypto.Box) (int, error) {
 	var raw []byte
 	err := tx.QueryRow(ctx, `SELECT value FROM settings WHERE key = $1 FOR UPDATE`, settingTelegramAlertsKey).Scan(&raw)
@@ -260,9 +227,6 @@ func rotateTelegramAlerts(ctx context.Context, tx pgx.Tx, from, to *crypto.Box) 
 	return 1, nil
 }
 
-// reencrypt decrypts blob with `from` and re-encrypts the plaintext with
-// `to`, then decrypts its own output with `to` and compares it against the
-// original plaintext as a self-check before handing the new blob back.
 func reencrypt(blob []byte, from, to *crypto.Box) ([]byte, error) {
 	plain, err := from.Decrypt(blob)
 	if err != nil {

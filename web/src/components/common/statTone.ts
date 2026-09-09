@@ -1,32 +1,8 @@
-/**
- * What tone a stat tile paints itself in, decided by the fact it is showing.
- *
- * Eleven tiles of the same size do not tell an operator what to read first,
- * and the fix is not to make one of them bigger. It is that a tile whose fact
- * means a problem carries its tone only while the problem is there: nodes
- * offline `0` is a calm neutral tile, nodes offline `1` is a red one. So
- * "look here" is said by the state of the system rather than by the layout,
- * and a healthy dashboard is almost entirely neutral with one green tile on
- * it saying the fleet is up.
- *
- * Facts with no state - how many sessions there are, how many bytes moved,
- * how many keys are live - are never a problem or a success, so they are
- * always neutral. Colour in this panel is meaning, and a number that cannot
- * be good or bad has no meaning to spend it on.
- *
- * The whole rule lives here, in one pure function, rather than as a tone
- * prop guessed at each of the eleven call sites.
- */
 import { dcTone } from '@/pages/nodes/dcDisplay';
 
 export type StatTone = 'neutral' | 'ok' | 'warn' | 'err' | 'info';
 
-/**
- * Where average CPU load stops being quiet. Same two thresholds as
- * `loadTone` in pages/nodes/nodeDisplay.ts, which paints the per-node figure
- * in the tables; the tile is an average of the same readings and must not
- * disagree with the column it summarises.
- */
+// Where average CPU load stops being quiet.
 export const LOAD_WARN_PERCENT = 80;
 export const LOAD_ERR_PERCENT = 95;
 
@@ -52,8 +28,6 @@ export type TileFact =
 export function statTone(fact: TileFact): StatTone {
   switch (fact.kind) {
     case 'nodes_online':
-      // A fleet with no nodes in it is not a fleet that is up: the dashboard
-      // shows its empty state long before this, so total 0 stays neutral.
       if (fact.total <= 0) return 'neutral';
       return fact.online >= fact.total ? 'ok' : 'warn';
     case 'nodes_offline':
@@ -70,8 +44,6 @@ export function statTone(fact: TileFact): StatTone {
       if (fact.percent >= LOAD_WARN_PERCENT) return 'warn';
       return 'ok';
     case 'dc_latency':
-      // The same function the DC panel and the nodes list read, so the tile
-      // that averages their figures cannot call slow what they call quiet.
       return dcTone(fact.ms);
     case 'stateless':
     default:

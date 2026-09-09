@@ -98,8 +98,6 @@ func TestStatsNotifiesOfflineThenOnlineOnce(t *testing.T) {
 		t.Fatalf("expected the 2nd notification to be 'back online', sends=%d last=%q", sender.count(), sender.last().text)
 	}
 
-	// a further RunOnce with nothing changing must not re-notify: there is no open
-	// node_offline alert left to resolve.
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -133,10 +131,6 @@ func (b *blockingSender) count() int {
 	return b.calls
 }
 
-// TestStatsDoesNotBlockOnSlowNotifications: NodeOffline/NodeOnline used to be called inline
-// in RunOnce with a 10s-timeout Telegram client. That bound is per call, not per tick, so
-// when the panel's uplink hiccups and every node goes stale at once, snapshotting and the
-// recovery detection that clears those very alerts stall for N x 10s.
 func TestStatsDoesNotBlockOnSlowNotifications(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -230,8 +224,6 @@ func TestStatsTelemtNodeWritesNodeAndKeySnapshots(t *testing.T) {
 	if len(snaps) != 1 {
 		t.Fatalf("snapshots: %+v", snaps)
 	}
-	// Live connections drive both live gauges; telemt reports one cumulative octet counter
-	// per user, which the panel charts as downstream traffic.
 	if snaps[0].SessionsLive != 3 || snaps[0].StreamsLive != 3 {
 		t.Fatalf("live connections: %+v", snaps[0])
 	}
@@ -255,8 +247,6 @@ func TestStatsTelemtNodeWritesNodeAndKeySnapshots(t *testing.T) {
 	}
 }
 
-// Without a quota there is nothing to report usage against, so the column stays 0 rather than
-// implying a limit the key does not have.
 func TestStatsTelemtKeySnapshotWithoutQuota(t *testing.T) {
 	f := newTelemtFixture(t)
 	ctx := context.Background()
@@ -324,8 +314,6 @@ func TestStatsPrunesOldKeyStats(t *testing.T) {
 	}
 }
 
-// TestStatsSnapshotCarriesNodeLoad: the snapshot copies the CPU / memory / disk percentages
-// out of the node's last heartbeat, so the load has a history and not just a current value.
 func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -360,9 +348,6 @@ func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
 	}
 }
 
-// TestStatsSnapshotCarriesDcLatency: the snapshot copies telemt's per-DC latency out of the
-// last heartbeat as {"<dc>": <ms>}. A DC telemt has not measured yet (known=false) is left
-// out rather than written as 0, and a report without DC data at all writes '{}'.
 func TestStatsSnapshotCarriesDcLatency(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -400,8 +385,6 @@ func TestStatsSnapshotCarriesDcLatency(t *testing.T) {
 		t.Fatalf("an unknown DC must be omitted, not written as 0: %s", snaps[0].DcLatency)
 	}
 
-	// A heartbeat that says the data is unavailable (tproxy, or a failed stats call) writes {}
-	// even if stray DC entries are present.
 	raw, _ = json.Marshal(nodedriver.HealthReport{RelayActive: true, DCs: []nodedriver.DcLatency{{DC: 1, LatencyMs: 5, Known: true}}})
 	if err := f.st.Q.SetNodeHeartbeat(ctx, db.SetNodeHeartbeatParams{ID: f.node.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
 		t.Fatal(err)

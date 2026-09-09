@@ -168,24 +168,11 @@ function NodeChips({ nodes }: { nodes: AccessKey['nodes'] }) {
   );
 }
 
-/**
- * The 30-day traffic of a key.
- *
- * Only telemt reports per-key traffic, so a key that sits only on tproxy nodes
- * has no figure at all - an em dash, not a zero, because "0 B" would read as "was
- * not used" when the truth is "was never measured". A key that is on a telemt
- * node and has moved nothing does get the zero.
- */
 function TrafficCell({ bytes, measured }: { bytes: number; measured: boolean }) {
   if (bytes <= 0 && !measured) return <span className="mono text-mono text-dim">—</span>;
   return <span className="mono text-mono text-mute">{formatBytes(bytes)}</span>;
 }
 
-/**
- * Label above value, for the narrow layout where there is no column header to
- * carry the name. The label is the same micro role the table head uses, because
- * it is the same thing: the column name, moved inside the row.
- */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
@@ -195,15 +182,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/**
- * Every key the operator has issued.
- *
- * The table is the page: a filter row on top, a bulk strip that appears only
- * once something is selected, and rows in which the label is the only thing
- * set in the reading face - hosts, dates and the key's kind are all machine
- * values and all mono, so a column of them can be compared without reading.
- * Red appears in exactly one place: an expiry inside three days.
- */
+// Every key the operator has issued.
 export function KeysPage() {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
@@ -235,10 +214,6 @@ export function KeysPage() {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
-  // Deep links from the ⌘K palette: /keys?create=1 opens the create dialog and
-  // /keys?key=<id> opens that key's drawer. Both are *derived* from the URL
-  // rather than copied into state on mount, so there is no effect racing the
-  // first render - closing the dialog is what drops the parameter.
   const [searchParams, setSearchParams] = useSearchParams();
   const dropParam = (name: string) => {
     if (!searchParams.has(name)) return;
@@ -294,8 +269,6 @@ export function KeysPage() {
   const total = keysQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const nodes = nodesQuery.data?.items ?? [];
-  // Which keys can have traffic at all: the key JSON carries the figure but not
-  // the engines behind it, and the node list is already loaded for the filter.
   const telemtNodeIds = new Set(nodes.filter((n) => n.engine === 'telemt').map((n) => n.id));
   const measured = (key: AccessKey) => key.nodes.some((n) => telemtNodeIds.has(n.node_id));
 

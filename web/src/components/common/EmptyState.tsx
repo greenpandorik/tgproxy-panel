@@ -12,16 +12,7 @@ interface EmptyStateProps {
   className?: string;
 }
 
-/**
- * Empty is not an error and not a mood: one muted line saying what is not
- * here, and the button that fixes it. No illustration and no mascot.
- *
- * The one glyph it does take is the subject's own - the same icon the panel
- * header and the nav item use - on the same tinted plate a stat tile draws,
- * in the neutral tone. It is what tells the reader at a glance *which* empty
- * thing they are looking at when three panels on a page are all empty, and
- * it costs one line of vertical space rather than an illustration's ten.
- */
+// Empty is not an error and not a mood: one muted line saying what is not here, and the button that fixes it.
 export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
     <div
@@ -48,15 +39,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
   );
 }
 
-/**
- * The same fact one level in: this *panel* has nothing to list.
- *
- * It takes no border and no radius - the panel around it already draws both -
- * and one padding, px-6 py-10. The padding is the whole point of the
- * component: the ten in-panel empties in the panel used to be written by hand
- * at py-8, px-4 py-8, px-4 py-6 and px-6 py-10, so two panels stacked in the
- * same column disagreed about how much room "nothing here" needs.
- */
+// The same fact one level in: this *panel* has nothing to list.
 export function PanelEmpty({ children, className }: { children: ReactNode; className?: string }) {
   return <p className={cn('px-6 py-10 text-center text-body text-mute', className)}>{children}</p>;
 }

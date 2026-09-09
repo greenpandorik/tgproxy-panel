@@ -69,8 +69,6 @@ describe('TotpSection recovery codes dialog', () => {
     expect(await screen.findByText(CODES[0])).toBeInTheDocument();
   }
 
-  // A live session alone must not be able to enrol a factor: without the password
-  // a hijacked tab could attach a stranger's authenticator to the account.
   it('will not confirm without the password', async () => {
     const user = userEvent.setup();
     renderSection();

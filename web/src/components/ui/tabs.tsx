@@ -5,18 +5,6 @@ import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 
-/*
- * Tabs are underlined, not segmented: a row of labels on a hairline rule with
- * a 2px foreground marker under the active one. A segmented pill control would
- * be a second filled surface competing with the primary button, and the panel
- * only has one of those. Both variant names are kept ("line" is the same
- * thing, spelled explicitly by older call sites).
- *
- * A tab is the one clickable control without the active:scale press: its
- * marker is a 2px rule sitting exactly on the list's hairline, and shrinking
- * the tab would lift the marker off that line for the length of the press.
- * The colour change to --fg is the feedback here.
- */
 function Tabs({ className, orientation = 'horizontal', ...props }: TabsPrimitive.Root.Props) {
   return (
     <TabsPrimitive.Root

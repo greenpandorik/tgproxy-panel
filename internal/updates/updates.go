@@ -1,9 +1,4 @@
 // Package updates asks GitHub whether a newer panel release exists.
-//
-// The only thing that ever leaves the panel is two anonymous (or token-bearing,
-// if GITHUB_TOKEN is set) GETs against the public repository metadata: the
-// latest release and the star count. Nothing about the installation - version,
-// hostname, node count - is sent; the current version is compared locally.
 package updates
 
 import (
@@ -24,24 +19,16 @@ import (
 )
 
 const (
-	// DefaultTTL is how long a successful answer is served before GitHub is
-	// asked again. Releases are rare; an hour keeps a busy panel well inside the
-	// 60 req/h anonymous rate limit.
+	// DefaultTTL is how long a successful answer is served before GitHub is asked again.
 	DefaultTTL = time.Hour
-	// retryAfter is the floor between attempts once one has failed, so a
-	// rate-limited (403) panel does not keep hammering GitHub on every page load.
 	retryAfter = 5 * time.Minute
-	// maxBody caps what is read from either response: the two documents are a
-	// few KB, and an upstream (or a proxy in the way) must not be able to make
-	// the panel buffer arbitrary bytes.
-	maxBody = 1 << 20
+	maxBody    = 1 << 20
 
 	defaultBaseURL = "https://api.github.com"
 	httpTimeout    = 10 * time.Second
 )
 
-// Status is the answer served by GET /api/v1/status/update. Field names are
-// the wire contract the SPA is built against.
+// Status is the answer served by GET /api/v1/status/update.
 type Status struct {
 	Enabled         bool   `json:"enabled"`
 	Current         string `json:"current"`
@@ -55,8 +42,6 @@ type Status struct {
 	Stale           bool   `json:"stale"`
 }
 
-// Disabled is the response when UPDATE_CHECK=false: the version and the repo
-// link are still useful to the UI, everything else is "unknown".
 func Disabled(repo, current string) Status {
 	return Status{Current: current, Stars: -1, RepoURL: RepoURL(repo)}
 }
@@ -72,9 +57,6 @@ type fetched struct {
 }
 
 // Checker caches the GitHub answer and hands it out as a Status.
-//
-// Exported fields are set before the first Status call and read-only after:
-// tests point BaseURL at an httptest server, freeze Now and shrink TTL.
 type Checker struct {
 	Repo  string
 	Token string
@@ -84,9 +66,7 @@ type Checker struct {
 	// BaseURL replaces https://api.github.com; no trailing slash.
 	BaseURL string
 	// Log receives one warning per failed fetch; nil logs nothing.
-	Log *slog.Logger
-	// Current is the version compared against the latest tag; empty means
-	// version.Version. Tests set it to exercise "dev" and equal-version paths.
+	Log     *slog.Logger
 	Current string
 
 	mu sync.Mutex
@@ -95,13 +75,10 @@ type Checker struct {
 	// lastAttempt and lastFailed drive the post-failure backoff.
 	lastAttempt time.Time
 	lastFailed  bool
-	// inflight is non-nil while a fetch is running and closed when it ends;
-	// callers with nothing cached wait on it instead of starting their own.
-	inflight chan struct{}
+	inflight    chan struct{}
 }
 
-// New returns a Checker with production defaults: a one-hour TTL and a
-// 10-second HTTP timeout.
+// New returns a Checker with production defaults: a one-hour TTL and a 10-second HTTP timeout.
 func New(repo, token string) *Checker {
 	return &Checker{
 		Repo:  repo,
@@ -133,11 +110,6 @@ func (c *Checker) current() string {
 	return version.Version
 }
 
-// Status returns the cached answer, refreshing it first when it is older than
-// TTL. Only one refresh runs at a time: while it is in flight, callers that
-// already have an earlier answer get that one back, and callers with nothing
-// wait for the refresh. A failed refresh keeps the previous numbers, marks the
-// answer stale, and is not retried for retryAfter.
 func (c *Checker) Status(ctx context.Context) Status {
 	c.mu.Lock()
 	now := c.now()
@@ -145,8 +117,6 @@ func (c *Checker) Status(ctx context.Context) Status {
 		done := make(chan struct{})
 		c.inflight = done
 		c.mu.Unlock()
-		// Detached from the caller: an operator closing the tab mid-fetch must
-		// not turn into a failure that every other caller then waits out.
 		got, err := c.fetch(context.WithoutCancel(ctx))
 		c.mu.Lock()
 		defer c.mu.Unlock()
@@ -211,9 +181,7 @@ type repoDoc struct {
 	Stars int `json:"stargazers_count"`
 }
 
-// fetch does the two round trips. Any failure discards both results: a
-// half-updated cache (new stars, old release) would be more confusing than a
-// stale one.
+// fetch does the two round trips.
 func (c *Checker) fetch(ctx context.Context) (fetched, error) {
 	base := c.BaseURL
 	if base == "" {
@@ -247,8 +215,7 @@ func (c *Checker) fetch(ctx context.Context) (fetched, error) {
 	return f, nil
 }
 
-// get issues one GitHub API request. A non-2xx status is returned, not an
-// error, so the caller can treat 404 specially; the body is decoded only on 200.
+// get issues one GitHub API request.
 func (c *Checker) get(ctx context.Context, url string, out any) (int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -256,8 +223,6 @@ func (c *Checker) get(ctx context.Context, url string, out any) (int, error) {
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	// A fixed User-Agent: the docs promise that nothing about the installation
-	// (the running version included) is sent to GitHub.
 	req.Header.Set("User-Agent", "tgproxy-panel")
 	if c.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
@@ -271,9 +236,6 @@ func (c *Checker) get(ctx context.Context, url string, out any) (int, error) {
 		return 0, err
 	}
 	defer resp.Body.Close() //nolint:errcheck
-	// One byte past the cap is read so that an oversized document is detected
-	// as such rather than silently truncated into a decode error or, worse,
-	// a document that happens to parse.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
 	if err != nil {
 		return 0, err
@@ -290,9 +252,7 @@ func (c *Checker) get(ctx context.Context, url string, out any) (int, error) {
 	return resp.StatusCode, nil
 }
 
-// releaseURL keeps html_url only when it is an https link on github.com. The
-// value ends up as an href in the SPA, so a broken or hostile upstream must not
-// be able to turn the version chip into a javascript: or off-site link.
+// releaseURL keeps html_url only when it is an https link on github.com.
 func releaseURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Host != "github.com" {
@@ -302,9 +262,6 @@ func releaseURL(raw string) string {
 }
 
 // Newer reports whether latest is a strictly higher release than current.
-// Both are major.minor.patch with an optional "v" prefix and an optional
-// "-pre" suffix, which sorts below the plain release of the same number.
-// Anything that does not parse (including "dev") compares as not newer.
 func Newer(latest, current string) bool {
 	l, okL := parseSemver(latest)
 	c, okC := parseSemver(current)

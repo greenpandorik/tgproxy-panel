@@ -67,13 +67,6 @@ function assetRejection(file: File): 'size' | 'type' | null {
   return null;
 }
 
-/**
- * One uploadable asset as a hairline row: the thumbnail the operator is about
- * to replace, what the slot is for, and the button that replaces it. The
- * thumbnail keeps a white ground - a logo drawn for a light page must not be
- * judged against the panel's near-black one.
- * The row is also a drop target for the slot it names.
- */
 function AssetUpload({
   label,
   hint,
@@ -194,11 +187,8 @@ function ColorField({
 }
 
 interface BrandingFormProps {
-  /** Profile this form edits. Callers should remount (e.g. `key={profile.id}`) when the
-   * selected profile changes, so unsaved edits and the live preview reset cleanly. */
+  // Profile this form edits.
   profile: BrandingProfile;
-  /** Notified whenever the form's dirty state changes, so a profile switcher can confirm
-   * before discarding unsaved edits. */
   onDirtyChange?: (dirty: boolean) => void;
 }
 
@@ -237,24 +227,11 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDirty]);
 
-  // Tracks the latest `isDirty` for the effect below to read without depending on it (that
-  // would re-run the reset on every keystroke). Updated in an effect - not during render -
-  // so it never leads a render to read a value it mutated itself.
   const isDirtyRef = useRef(isDirty);
   useEffect(() => {
     isDirtyRef.current = isDirty;
   }, [isDirty]);
 
-  // `profile` is a fresh object every time the profiles query refetches (after any mutation
-  // that invalidates it - not just this form's own save, e.g. an asset upload, or another
-  // profile being activated/deleted elsewhere on the page). Blindly resetting on every such
-  // change silently threw away in-progress edits to the *other* fields (the bug this guards
-  // against). Only resync from `profile` when there is nothing unsaved to lose: on first
-  // mount, if the selected profile itself changed (defensive - the container also remounts
-  // this component via `key={profile.id}` on switch, but don't rely solely on that), or when
-  // the form isn't dirty. Asset preview URLs (logo/favicon/login_bg) aren't form-managed
-  // fields - they're read straight from `profile` in the JSX below - so a fresh upload still
-  // shows up immediately even while this effect skips the reset for dirty text fields.
   const lastResetProfileIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (lastResetProfileIdRef.current !== profile.id || !isDirtyRef.current) {
@@ -265,8 +242,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
   const watched = watch();
 
-  // One draft per profile. Armed only once the form has been filled in from
-  // `profile` (see useDraft), so the empty defaults above are never stored.
+  // One draft per profile.
   const draft = useDraft<FormValues>(`branding-${profile.id}`, watched, { initial: valuesFromProfile(profile) });
 
   const resumeDraft = () => {
@@ -276,9 +252,6 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
     draft.dismiss();
   };
 
-  // Live preview: mirror the form's colors/title/favicon/CSS/theme onto the
-  // running page via ThemeProvider until this tab unmounts (navigating away
-  // or saving both fall back to the real fetched branding).
   useEffect(() => {
     previewBranding({
       panel_name: watched.panel_name,
@@ -336,10 +309,6 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
       const result = await updateBranding.mutateAsync({ name: profile.name, ...values });
       draft.clear();
       setCssRemoved(result.css_removed ?? []);
-      // Reset explicitly to the saved (possibly CSS-sanitized) values now, rather than
-      // relying on the profile-changed effect above: that effect deliberately skips the
-      // reset while the form is dirty (see its comment), and right after submit isDirty is
-      // still true until this call clears it.
       reset(valuesFromProfile(result));
       lastResetProfileIdRef.current = result.id;
       toast.add({ description: t('settings.branding_save_success'), type: 'success' });

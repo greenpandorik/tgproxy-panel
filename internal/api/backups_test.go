@@ -29,8 +29,6 @@ type backupEntryJSON struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// backupHarness wires a Runner whose pg_dump is a func writing a small file, so
-// the handlers run end to end without postgres client tools.
 func backupHarness(t *testing.T, exec func(ctx context.Context, name string, args ...string) ([]byte, error)) (*apitest.Harness, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -153,9 +151,6 @@ func TestBackupRoutesAreOwnerOnly(t *testing.T) {
 	}
 }
 
-// A dump of a real database takes minutes; a second click (or a scheduled run
-// landing on top of a manual one) must be refused rather than starting a second
-// pg_dump against the same directory.
 func TestBackupCreateRejectsAConcurrentRun(t *testing.T) {
 	release := make(chan struct{})
 	started := make(chan struct{})
@@ -220,8 +215,7 @@ func TestBackupCreateFailureDoesNotLeakTheDatabaseURL(t *testing.T) {
 	}
 }
 
-// A row whose file was removed from the host by hand must not 500 the download
-// and must still be deletable.
+// A row whose file was removed from the host by hand must not 500 the download and must still be deletable.
 func TestBackupDownloadMissingFileIsNotFound(t *testing.T) {
 	h, dir := backupHarness(t, fakeDump("dump"))
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -308,8 +302,6 @@ func TestSettingsBackupSchedule(t *testing.T) {
 	}
 }
 
-// The setting used to be a free-text string; an installation upgrading with that
-// value in the table must still get a usable object out of GET /settings.
 func TestSettingsBackupScheduleToleratesTheOldStringValue(t *testing.T) {
 	h, _ := backupHarness(t, fakeDump("dump"))
 	h.CreateAdmin("root", "pass-123456", "owner")

@@ -47,22 +47,7 @@ func ipFrom(ctx context.Context) string {
 	return s
 }
 
-// clientIP is the address every per-IP rate limit and every audit row is keyed
-// off, so it must be the one value on the request an outsider cannot choose.
-//
-// X-Forwarded-For is a list that grows left to right: each proxy appends the peer
-// it accepted the connection from. Anything a client sends arrives at the head of
-// that list, which is why the *first* entry is attacker-controlled text and the
-// *last* entry is the one our own reverse proxy wrote. We take the last, and only
-// when it parses as an IP - a header from somewhere other than our proxy then
-// degrades to RemoteAddr rather than to a value of the caller's choosing.
-//
-// deploy/Caddyfile additionally pins the header with `header_up X-Forwarded-For
-// {remote_host}`, so in the shipped deployment there is exactly one entry. This
-// function is the defence in depth for every other way the panel might be fronted.
 func clientIP(r *http.Request) string {
-	// Values(), not Get(): a client can split its forgery across repeated header
-	// lines, and Get() would only ever see the first of them.
 	if values := r.Header.Values("X-Forwarded-For"); len(values) > 0 {
 		last := values[len(values)-1]
 		if i := strings.LastIndex(last, ","); i >= 0 {
@@ -151,9 +136,7 @@ func (s *Server) issueSession(w http.ResponseWriter, r *http.Request, userID uui
 	return nil
 }
 
-// clearSession expires both cookies. Deletion matches on name+path, but the Secure and
-// SameSite attributes are mirrored from issue time because browsers are progressively
-// requiring a deleting cookie to match the attributes of the one it replaces.
+// clearSession expires both cookies.
 func (s *Server) clearSession(w http.ResponseWriter) {
 	for _, n := range []string{sessionCookie, csrfCookie} {
 		http.SetCookie(w, &http.Cookie{

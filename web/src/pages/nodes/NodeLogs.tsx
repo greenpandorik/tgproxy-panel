@@ -23,11 +23,6 @@ const SERVICES = [
 const LINE_OPTIONS = [100, 200, 500, 1000, 2000];
 const MAX_BUFFER = 5000;
 
-/**
- * A service filter, as a toggle chip rather than a checkbox and a word.
- * The three chips are the log's own vocabulary - unit names, in mono - and a
- * selected one reads as pressed: hairline goes strong, text goes to --fg.
- */
 function ServiceChip({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
   return (
     <button
@@ -49,10 +44,6 @@ function ServiceChip({ label, selected, onToggle }: { label: string; selected: b
 
 export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }) {
   const { t } = useTranslation();
-  // The `online` flag is only as fresh as the last node poll, so it is not used
-  // to gate the stream: the tab always attempts the EventSource and shows the
-  // error state if it fails. A failure also refetches the node, so a status that
-  // has gone stale in either direction corrects itself immediately.
   const { refetch: refetchNode } = useNode(nodeId);
   const [services, setServices] = useState<string[]>(['tproxy-server']);
   const [lines, setLines] = useState(200);
@@ -66,8 +57,6 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Nothing to reset here on the early-return path: React already invoked the
-    // previous run's cleanup (closing its EventSource) before this run started.
     if (services.length === 0) return undefined;
 
     const es = new EventSource(nodeLogsUrl(nodeId, services, lines, follow));
@@ -95,8 +84,6 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
       setConnected(false);
       setDisconnected(true);
       es.close();
-      // The stream is the freshest signal about reachability; pull the node row
-      // so the rest of the page stops showing a status the stream just refuted.
       void refetchNode();
     };
 

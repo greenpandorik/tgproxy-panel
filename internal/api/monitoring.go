@@ -13,23 +13,15 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// maxSeriesPoints bounds how many points a single /monitoring/nodes/{id}/series
-// response returns; maxOverviewPoints does the same per node for the overview
-// endpoint's rate series.
 const (
 	maxSeriesPoints   = 2000
 	maxOverviewPoints = 600
 )
 
-// maxRangeSpan caps the window a monitoring request may ask for. Snapshots are pruned at 30
-// days (worker.Stats.RunOnce), so nothing beyond this exists to plot; without the cap a
-// hand-edited from=1970-01-01 makes the server read every retained row for every node into
-// memory, and any authenticated role - viewers included - can poll that endpoint.
+// maxRangeSpan caps the window a monitoring request may ask for.
 const maxRangeSpan = 31 * 24 * time.Hour
 
-// bucketStepThreshold is the step above which the overview aggregates in SQL instead of
-// thinning in Go. At or below it the raw one-per-minute rows are already at (or finer than)
-// the requested resolution, so bucketing would buy nothing.
+// bucketStepThreshold is the step above which the overview aggregates in SQL instead of thinning in Go.
 const bucketStepThreshold = 60
 
 func (s *Server) mountMonitoring(r chi.Router) {
@@ -37,11 +29,7 @@ func (s *Server) mountMonitoring(r chi.Router) {
 	r.Get("/monitoring/nodes/{id}/series", s.handleMonitoringSeries)
 }
 
-// parseRFC3339Query parses a query value as RFC3339. A literal "+" in a
-// non-UTC offset (e.g. "+03:00") arrives here decoded to a space - form
-// query decoding treats "+" as an escaped space - so a bare space where the
-// offset sign belongs is restored before parsing; RFC3339 never contains a
-// real space.
+// parseRFC3339Query parses a query value as RFC3339. A literal "+" in a non-UTC offset (e.g.
 func parseRFC3339Query(v string) (time.Time, error) {
 	if t, err := time.Parse(time.RFC3339, v); err == nil {
 		return t, nil
@@ -49,9 +37,7 @@ func parseRFC3339Query(v string) (time.Time, error) {
 	return time.Parse(time.RFC3339, strings.ReplaceAll(v, " ", "+"))
 }
 
-// parseFromTo reads the "from"/"to" RFC3339 query params, defaulting to
-// [now-24h, now]. It writes a 400 response and returns ok=false on a parse
-// error.
+// parseFromTo reads the "from"/"to" RFC3339 query params, defaulting to [now-24h, now].
 func parseFromTo(w http.ResponseWriter, r *http.Request) (from, to time.Time, ok bool) {
 	q := r.URL.Query()
 	to = time.Now()
@@ -110,9 +96,7 @@ func (s *Server) handleMonitoringSeries(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, 200, map[string]any{"points": points})
 }
 
-// dcLatencyRaw passes a snapshot's dc_latency object through as stored. The column is NOT NULL
-// DEFAULT '{}', so an empty value can only come from a row read before the column existed in
-// the caller's view; it is emitted as an empty object so the client never sees null.
+// dcLatencyRaw passes a snapshot's dc_latency object through as stored.
 func dcLatencyRaw(b []byte) json.RawMessage {
 	if len(b) == 0 {
 		return json.RawMessage("{}")
@@ -141,9 +125,6 @@ type monitoringPointJSON struct {
 	DcLatency json.RawMessage `json:"dc_latency"`
 }
 
-// overviewSample is one stats sample feeding the rate series, whether it came from a raw
-// snapshot row or from a SQL time bucket. Having both paths converge here keeps the rate
-// computation - the part with the counter-reset and first-point rules - in exactly one place.
 type overviewSample struct {
 	NodeID       uuid.UUID
 	T            time.Time
@@ -156,9 +137,7 @@ type overviewSample struct {
 	DcLatency                                   []byte
 }
 
-// overviewSamples reads the snapshots backing the overview. Above bucketStepThreshold it
-// aggregates in SQL, so the rows crossing the wire are bounded by the requested resolution
-// rather than by retention; at or below it the raw rows already are the resolution.
+// overviewSamples reads the snapshots backing the overview.
 func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSeconds int) ([]overviewSample, error) {
 	if stepSeconds > bucketStepThreshold {
 		rows, err := s.store.Q.ListSnapshotsAllNodesBucketed(r.Context(), db.ListSnapshotsAllNodesBucketedParams{
@@ -194,14 +173,6 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 	return out, nil
 }
 
-// handleMonitoringOverview returns every node plus, per node, a rate series
-// derived from consecutive stats-snapshot deltas: rate = max(0, cur-prev) /
-// seconds(cur-prev), clamped to 0 on a counter reset (relay restart) and for
-// each node's first point. Series are sampled to at most maxOverviewPoints
-// per node; an optional "step" (seconds) query param sets the resolution -
-// above bucketStepThreshold the samples are averaged into step-wide buckets by
-// the database (so a wide range no longer plots one arbitrary 60s rate every
-// half hour), below it the raw rows are thinned in Go to that spacing.
 func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request) {
 	from, to, ok := parseFromTo(w, r)
 	if !ok {
@@ -233,8 +204,6 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// snapRows is ordered node_id, time (per the query), so grouping by
-	// appending to the current node's slice preserves per-node time order.
 	byNode := make(map[uuid.UUID][]overviewSample)
 	order := make([]uuid.UUID, 0, len(nodes))
 	for _, row := range snapRows {
@@ -270,9 +239,6 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 	writeJSON(w, 200, map[string]any{"nodes": nodes, "series": series})
 }
 
-// rate computes a clamped-at-zero bytes/second rate from a counter delta;
-// a negative delta (relay restart resets the counter) yields 0 rather than
-// a bogus negative rate.
 func rate(prev, cur int64, seconds float64) float64 {
 	delta := cur - prev
 	if delta < 0 {
@@ -281,10 +247,6 @@ func rate(prev, cur int64, seconds float64) float64 {
 	return float64(delta) / seconds
 }
 
-// sampleOverviewPoints first thins points to be at least stepSeconds apart
-// (when stepSeconds > 0), then caps the result to maxPoints via capSamples.
-// Above bucketStepThreshold the database has already produced exactly one point per
-// step-wide bucket, so the thinning pass keeps every point and only the cap can bite.
 func sampleOverviewPoints(points []monitoringPointJSON, stepSeconds, maxPoints int) []monitoringPointJSON {
 	if stepSeconds > 0 && len(points) > 0 {
 		thinned := make([]monitoringPointJSON, 0, len(points))
@@ -300,13 +262,6 @@ func sampleOverviewPoints(points []monitoringPointJSON, stepSeconds, maxPoints i
 	return capSamples(points, maxPoints)
 }
 
-// capSamples downsamples items to at most maxPoints by taking an even
-// stride through the slice, starting at index 0 (so the first item is
-// always kept). A plain stride loop can land short of the last index (e.g.
-// 1000 items strided by 2 stops at index 998, dropping the most recent
-// point) - a chart caller cares about that last point most of all, so it is
-// always included too, swapped in for the last sampled item rather than
-// appended when the loop already produced maxPoints entries.
 func capSamples[T any](items []T, maxPoints int) []T {
 	n := len(items)
 	if n <= maxPoints || maxPoints <= 0 {

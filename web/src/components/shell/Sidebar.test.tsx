@@ -32,13 +32,6 @@ function node(over: Record<string, unknown>) {
   };
 }
 
-/*
- * The two sources disagree on purpose here: one node the panel recorded as
- * online but whose driver probe currently fails, and one recorded offline
- * whose probe succeeds. Counting probes would print "1/2" too, so the offline
- * node also carries `online: true` - only a count taken from `status` lands on
- * "Amsterdam is up, Helsinki is not".
- */
 const NODES = {
   items: [
     node({ status: 'online', online: false }),

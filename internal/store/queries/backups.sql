@@ -1,8 +1,3 @@
--- backups.path holds the dump's file name, not an absolute path: the directory
--- is DATA_DIR/backups, which moves with the deployment (a bind mount today, a
--- different volume tomorrow), and every consumer resolves the name against the
--- runner's Dir anyway - which is also what keeps a row from ever naming a file
--- outside it.
 
 -- name: InsertBackup :one
 INSERT INTO backups (path, size, kind) VALUES ($1, $2, $3) RETURNING *;

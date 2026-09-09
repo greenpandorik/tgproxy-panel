@@ -17,31 +17,21 @@ import (
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
 
-// fakeTelemt is an in-memory stand-in for a node's telemt control API. It keeps the users and
-// the editable config, records every mutating call in order, and can be made to fail one route.
 type fakeTelemt struct {
-	mu    sync.Mutex
-	users map[string]string // username -> secret
-	// attrs is the per-user override set telemt persists: create seeds it, PATCH merges into
-	// it (an explicit null removes the key) and GET /v1/users reports it back, so a test can
-	// assert both what the agent sent and what a second apply then sees.
-	attrs      map[string]map[string]any
-	userWrites map[string][]string // username -> raw bodies of POST/PATCH for that user
-	config     map[string]any
-	writes     []string // "METHOD path" of every mutating call, in order
-	patches    []string // raw bodies of PATCH /v1/config
-	reloads    int
-	// reloadStates is the sequence GET /v1/system/reload/{id} walks through, one state per
-	// poll; the last entry is repeated forever. It defaults to a single "succeeded", so a
-	// test that does not care sees the reload finish on the first poll.
+	mu           sync.Mutex
+	users        map[string]string // username -> secret
+	attrs        map[string]map[string]any
+	userWrites   map[string][]string // username -> raw bodies of POST/PATCH for that user
+	config       map[string]any
+	writes       []string // "METHOD path" of every mutating call, in order
+	patches      []string // raw bodies of PATCH /v1/config
+	reloads      int
 	reloadStates []string
 	ready        bool
 	failOn       string // "METHOD path" prefix that must answer 500
-	// upstreams is what GET /v1/stats/upstreams answers; nil serves defaultUpstreams, the
-	// shape a production telemt 3.5.7 node returns (DC 4 has no EMA yet: null).
-	upstreams map[string]any
-	authSeen  map[string]bool
-	srv       *httptest.Server
+	upstreams    map[string]any
+	authSeen     map[string]bool
+	srv          *httptest.Server
 }
 
 func newFakeTelemt(t *testing.T, decoyDir string) *fakeTelemt {
@@ -171,8 +161,6 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 		f.ok(w, map[string]any{"username": name, "enabled": true})
 	case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/v1/users/"):
 		name := strings.TrimPrefix(r.URL.Path, "/v1/users/")
-		// telemt validates the whole resulting config, so deleting a user that a WEB
-		// profile still references is refused.
 		for _, p := range f.profileUsers() {
 			if p == name {
 				f.fail(w, http.StatusBadRequest, "bad_request", "user is referenced by a web profile")
@@ -246,8 +234,6 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// mergePatch models telemt's config patch semantics: tables deep-merge field by field, arrays
-// and scalars replace what is there wholesale.
 func mergePatch(dst, patch map[string]any) {
 	for k, v := range patch {
 		sub, isTable := v.(map[string]any)
@@ -333,8 +319,6 @@ func (f *fakeTelemt) bodies(user string) []string {
 	return append([]string(nil), f.userWrites[user]...)
 }
 
-// setAttrs pre-seeds the overrides telemt already holds for a user, standing in for a node
-// that was configured before the panel started sending limits.
 func (f *fakeTelemt) setAttrs(user string, attrs map[string]any) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -406,8 +390,6 @@ func TestTelemtApplyCreatesUserAndPatchesProfiles(t *testing.T) {
 		t.Fatalf("users must be created before the profile patch: %v", writes)
 	}
 
-	// The vhost object must be sent whole: telemt replaces arrays wholesale, so dropping
-	// host/public_addr/decoy would erase them.
 	var patch struct {
 		Web struct {
 			Vhosts []map[string]any `json:"vhosts"`
@@ -516,8 +498,7 @@ func TestTelemtApplyResetsSecretsWhenTheStateFileIsLost(t *testing.T) {
 	if err := os.Remove(telemtStatePath(cfg.StateDir)); err != nil {
 		t.Fatal(err)
 	}
-	// Without a recorded fingerprint the agent cannot tell a rotated secret from an unchanged
-	// one — the API never returns secrets — so it must re-set it rather than assume.
+	// Without a recorded fingerprint the agent cannot tell a rotated secret from an unchanged one.
 	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
 		ApplyProfiles: true, Profiles: profiles("node", secretNode),
 	})
@@ -699,8 +680,6 @@ func TestTelemtHealthWhenTheAPIIsUnreachable(t *testing.T) {
 	}
 }
 
-// defaultUpstreams is GET /v1/stats/upstreams as a production telemt 3.5.7 node answers it,
-// including fields the panel ignores. DC 4 carries a null EMA: telemt has not measured it yet.
 func defaultUpstreams() map[string]any {
 	return map[string]any{
 		"enabled": true,
@@ -991,8 +970,6 @@ func TestTelemtApplyClearsRemovedLimits(t *testing.T) {
 	if err := json.Unmarshal([]byte(raw[0]), &body); err != nil {
 		t.Fatal(err)
 	}
-	// telemt's merge-patch semantics: an explicit null removes the per-user override. Sending
-	// 0 instead would persist a zero quota, which is not the same thing.
 	for _, field := range []string{"data_quota_bytes", "rate_limit_up_bps", "rate_limit_down_bps", "max_unique_ips", "max_tcp_conns", "expiration_rfc3339"} {
 		v, present := body[field]
 		if !present || v != nil {
@@ -1001,9 +978,6 @@ func TestTelemtApplyClearsRemovedLimits(t *testing.T) {
 	}
 }
 
-// A node whose limits telemt already holds must not be re-patched just because the agent has
-// no fingerprint for them yet (an agent upgrade, or a lost state file): the control API
-// reports the current overrides, so the agent reconciles against those instead.
 func TestTelemtApplySkipsPatchWhenLimitsAlreadyMatch(t *testing.T) {
 	h, cfg, ft := telemtHandler(t, &fakeExec{})
 	exp := time.Now().Add(24 * time.Hour).Truncate(time.Second)
@@ -1028,8 +1002,6 @@ func TestTelemtApplySkipsPatchWhenLimitsAlreadyMatch(t *testing.T) {
 	}
 }
 
-// Every telemt apply says so in the log, including the one that changed nothing: the panel
-// surfaces the job log and an operator must be able to see that no restart happened.
 func TestTelemtApplyLogAlwaysSaysNoRestart(t *testing.T) {
 	h, _, _ := telemtHandler(t, &fakeExec{})
 	req := &agentv1.ApplyRequest{ApplyProfiles: true, Profiles: profiles("node", secretNode, "k1", secretK1)}
@@ -1042,24 +1014,18 @@ func TestTelemtApplyLogAlwaysSaysNoRestart(t *testing.T) {
 	}
 }
 
-// forceRuntimeReload makes the fake report runtime_reload_required on every config patch, the
-// way telemt does for a vhost/profile change.
 func (f *fakeTelemt) forceRuntimeReload() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.config["__force_runtime_reload"] = true
 }
 
-// withConfig rebuilds the handler around a modified Config, keeping the state the fixture
-// already seeded.
+// withConfig rebuilds the handler around a modified Config, keeping the state the fixture already seeded.
 func withConfig(t *testing.T, cfg Config, ex *fakeExec) *Handler {
 	t.Helper()
 	return NewHandler(cfg, ex, slog.New(slog.DiscardHandler))
 }
 
-// C1: a draining reload is non-terminal for as long as telemt lets old sessions finish, which
-// is far longer than the health budget. The reload has its own deadline, so a drain that
-// outlasts HealthWait many times over still ends in a successful apply rather than a rollback.
 func TestTelemtReloadWaitsOutADrainLongerThanHealthWait(t *testing.T) {
 	ex := &fakeExec{}
 	_, cfg, ft := telemtHandler(t, ex)
@@ -1086,8 +1052,6 @@ func TestTelemtReloadWaitsOutADrainLongerThanHealthWait(t *testing.T) {
 	}
 }
 
-// C1: a reload still draining when even the reload budget runs out is an *activated* generation
-// with old sessions winding down, not a failure. It is logged and the apply proceeds.
 func TestTelemtReloadStillDrainingAtTheDeadlineIsNotAFailure(t *testing.T) {
 	ex := &fakeExec{}
 	_, cfg, ft := telemtHandler(t, ex)
@@ -1130,9 +1094,7 @@ func TestTelemtReloadFailureRollsBack(t *testing.T) {
 	}
 }
 
-// C2: changing tls_domain/classic_port in the panel reaches the node - censorship.tls_domain and
-// the Fake-TLS entry of server.listeners are patched, the WEB listener is left alone, and telemt
-// is restarted because a listener move is process-owned.
+// C2: changing tls_domain/classic_port in the panel reaches the node.
 func TestTelemtApplyMovesTheFakeTLSListener(t *testing.T) {
 	ex := &fakeExec{}
 	h, _, ft := telemtHandler(t, ex)
@@ -1201,8 +1163,6 @@ func TestTelemtApplyMovesTheFakeTLSListener(t *testing.T) {
 	}
 }
 
-// The panel's public IP reaches the WEB vhost: a changed value rewrites public_addr (the whole
-// vhost array, arrays replace wholesale, with host/decoy/profiles intact) and restarts telemt.
 func TestTelemtApplyRewritesThePublicAddr(t *testing.T) {
 	ex := &fakeExec{}
 	h, _, ft := telemtHandler(t, ex)
@@ -1282,8 +1242,6 @@ func TestTelemtApplyRejectsBadPublicIP(t *testing.T) {
 	}
 }
 
-// When the restart after a public_addr change fails, the previous vhost list goes back and
-// telemt is restarted onto it, even though no listener moved.
 func TestTelemtApplyRestoresPublicAddrWhenTheRestartFails(t *testing.T) {
 	ex := &fakeExec{failNth: "restart telemt", failNthCount: 1, failMsg: "job failed"}
 	h, _, ft := telemtHandler(t, ex)
@@ -1312,8 +1270,7 @@ func TestTelemtApplyRestoresPublicAddrWhenTheRestartFails(t *testing.T) {
 	}
 }
 
-// C2: an apply that carries the listener values telemt already has changes nothing and restarts
-// nothing - the panel sends them on every apply, so they must be a no-op in the steady state.
+// C2: an apply that carries the listener values telemt already has changes nothing and restarts nothing.
 func TestTelemtApplyLeavesMatchingListenersAlone(t *testing.T) {
 	ex := &fakeExec{}
 	h, _, ft := telemtHandler(t, ex)
@@ -1332,11 +1289,7 @@ func TestTelemtApplyLeavesMatchingListenersAlone(t *testing.T) {
 	}
 }
 
-// C2: when the restart after a listener move fails, the previous domain, listener array and
-// link port all go back and telemt is restarted onto them again.
 func TestTelemtApplyRestoresListenersWhenTheRestartFails(t *testing.T) {
-	// The first `systemctl restart telemt` (the apply's) fails; the second (the rollback's)
-	// succeeds, so the node ends up back on its original listener.
 	ex := &fakeExec{failNth: "restart telemt", failNthCount: 1, failMsg: "job failed"}
 	h, _, ft := telemtHandler(t, ex)
 	res := h.Apply(context.Background(), &agentv1.ApplyRequest{

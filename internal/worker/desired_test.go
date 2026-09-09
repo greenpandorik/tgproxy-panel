@@ -25,9 +25,6 @@ type fixture struct {
 	node db.Node
 }
 
-// newFixture builds a tproxy node: the engine is named explicitly because the column defaults
-// to telemt, and these fixtures model the relay + MTProxy stack (backends, mtproxy secrets,
-// tproxy_* metrics).
 func newFixture(t *testing.T) *fixture { return newFixtureEngine(t, db.NodeEngineTproxy) }
 
 // newTelemtFixture is newFixture for a node running the telemt engine.
@@ -124,8 +121,6 @@ func TestDesiredStateCarriesTelemtLimitsAndExpiry(t *testing.T) {
 	}
 }
 
-// A key with an empty telemt_limits object must not produce an all-zero limits struct: the
-// agent reads non-nil as "the panel has an opinion" and would PATCH every user on every apply.
 func TestDesiredStateLeavesEmptyTelemtLimitsNil(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -138,8 +133,6 @@ func TestDesiredStateLeavesEmptyTelemtLimitsNil(t *testing.T) {
 	}
 }
 
-// C2: the Fake-TLS listener travels with every apply on a telemt node, so an operator's edit of
-// tls_domain/classic_port actually reaches the agent. A tproxy node sends neither.
 func TestDesiredStateCarriesListenersForTelemtOnly(t *testing.T) {
 	ctx := context.Background()
 	tel := newTelemtFixture(t)

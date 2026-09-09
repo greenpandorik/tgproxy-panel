@@ -18,12 +18,6 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-/**
- * The rail is grouped by what an operator is doing, not by data model:
- * looking at the system, changing the infrastructure, handing out access,
- * and administering the panel itself. Order is stable; nothing is hidden by
- * role here (routes enforce that).
- */
 export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.group_overview',

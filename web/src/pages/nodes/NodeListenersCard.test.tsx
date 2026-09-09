@@ -81,9 +81,7 @@ describe('NodeListenersCard', () => {
     expect(mutateAsync).not.toHaveBeenCalled();
   });
 
-  // Correcting the address is the NAT fix: the change reaches the node with the next
-  // apply. It restarts telemt but does not invalidate links, so it gets its own, lighter
-  // confirmation rather than the "reissue every Fake-TLS link" one.
+  // Correcting the address is the NAT fix: the change reaches the node with the next apply.
   it('saves a corrected public IP after its own confirmation, sending all three fields', async () => {
     render(wrap(<NodeListenersCard node={node} canEdit />));
     const ip = screen.getByLabelText('Public IP');

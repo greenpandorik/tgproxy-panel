@@ -29,12 +29,6 @@ export interface NodeDcsCardProps {
 /** Telegram has five DCs, so the wait is drawn as five rows and the panel does not change height when they land. */
 const SKELETON_ROWS = 5;
 
-/**
- * The route to Telegram in one line: what kind of route, how many
- * connections got through, how long ago telemt last checked. The dot and the
- * text take the route's tone - --mute while it is fine, so the line reads as
- * a fact, and amber or red only when the route itself is the problem.
- */
 function RouteLine({ health }: { health: NodeHealth }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
@@ -92,26 +86,9 @@ function DcsSkeleton() {
   );
 }
 
-/**
- * How this node reaches Telegram: the route as a whole, then one row per
- * datacenter with telemt's own moving-average latency to it. The figures
- * come from telemt's upstream stats via the same heartbeat as the rest of
- * the health readout, so the panel needs no fetch of its own - it reads the
- * one the tab already has.
- *
- * Colour follows the panel's one rule: a latency is --mute while it is
- * quiet and turns amber at 150 ms and red at 400, the same thresholds the
- * nodes list and the dashboard tile read from `dcDisplay`. A DC telemt has
- * not measured prints a dash in --dim, which is a mark and not a figure.
- *
- * tproxy does not report any of this, so on a tproxy node the panel is one
- * line saying so rather than a permanently empty table.
- */
 export function NodeDcsCard({ engine, offline, health, error, onRetry }: NodeDcsCardProps) {
   const { t } = useTranslation();
   const telemt = engine === 'telemt';
-  // The agent says outright whether it had DC data; an agent from before
-  // that flag existed is read by whether it sent the list at all.
   const available = health ? (health.dc_data_available ?? Array.isArray(health.dcs)) : false;
   const dcs = [...(health?.dcs ?? [])].sort((a, b) => a.dc - b.dc);
   const showing = telemt && !offline && !error && !!health && available && dcs.length > 0;

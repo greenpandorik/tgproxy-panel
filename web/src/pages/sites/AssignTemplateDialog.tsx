@@ -65,8 +65,7 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        // The pick is kept as a draft, not as live state, so a reopened dialog
-        // starts clean and offers it back.
+        // The pick is kept as a draft, not as live state, so a reopened dialog starts clean and offers it back.
         if (!next) setNodeId('');
         onOpenChange(next);
       }}

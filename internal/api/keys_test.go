@@ -145,9 +145,6 @@ func TestCapacityReturns409(t *testing.T) {
 	}
 }
 
-// TestBulkExtendValidates covers I12: POST /keys/bulk action=extend used to write
-// expires_at straight to the DB, so a past date silently scheduled the key for revocation
-// and a revoked key reported success while staying dead.
 func TestBulkExtendValidates(t *testing.T) {
 	_, c, n := ownerWithNode(t)
 	mk := func(label string) keyResp {
@@ -195,9 +192,6 @@ func TestBulkExtendValidates(t *testing.T) {
 	}
 }
 
-// TestKeyQRDispositionEscapesLabel covers debt item 9: the label is free text,
-// so a quote in it used to truncate the filename the browser parsed out of
-// Content-Disposition.
 func TestKeyQRDispositionEscapesLabel(t *testing.T) {
 	_, c, n := ownerWithNode(t)
 	var k keyResp

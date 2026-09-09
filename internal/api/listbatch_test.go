@@ -8,9 +8,6 @@ import (
 	"tgwebproxy/internal/api/apitest"
 )
 
-// TestListNodesCarriesProfileCounts covers debt item 8: the list endpoint now
-// gets every profile count from one ListNodesWithCounts query. The JSON shape
-// must be byte-identical to the per-node CountNodeProfiles it replaced.
 func TestListNodesCarriesProfileCounts(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -51,8 +48,6 @@ func TestListNodesCarriesProfileCounts(t *testing.T) {
 	}
 }
 
-// TestListKeysCarriesBindings covers debt item 8: bindings for a whole page of
-// keys come from one ListBindingsForKeys query keyed by key id.
 func TestListKeysCarriesBindings(t *testing.T) {
 	h, c, n1 := ownerWithNode(t)
 	_ = h

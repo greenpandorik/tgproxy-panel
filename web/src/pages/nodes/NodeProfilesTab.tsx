@@ -32,14 +32,6 @@ function limitsSummary(limits: Profile['limits'] | LiveProfile['limits'], t: TFu
   return parts.length > 0 ? parts.join(' · ') : DASH;
 }
 
-/**
- * The limits telemt is enforcing for this profile's key, in one mono line.
- *
- * Written in the units the operator set them in - gigabytes, megabits per second -
- * with the machine's own comparison sign, so a column of these can be scanned for
- * the profile whose ceiling differs from its neighbours. A key with no limits gets
- * an em dash, not "0": zero here means "not set", and the two read differently.
- */
 function telemtLimitsSummary(limits: TelemtLimits | undefined, t: TFunction): string {
   if (!limits) return DASH;
   const parts: string[] = [];
@@ -61,11 +53,6 @@ function keyCell(p: Profile | LiveProfile, t: TFunction): string {
   return p.key_label || `#${p.access_key_id.slice(0, 8)}`;
 }
 
-/**
- * The profiles the relay is configured with. Every column but the name is a
- * machine value, so the whole table is mono: names on the left in the reading
- * face, everything the relay produced on the right in the typing face.
- */
 function ProfilesTable({
   profiles,
   showSync,

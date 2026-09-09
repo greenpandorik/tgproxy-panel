@@ -35,19 +35,12 @@ type CodeValues = z.infer<typeof codeSchema>;
 const ERROR_KEY: Record<string, string> = {
   invalid_credentials: 'auth.error_invalid_credentials',
   invalid_code: 'auth.error_invalid_code',
-  // A challenge that ran out of time is told apart from a wrong code on purpose:
-  // the fix is "start over", and being told the authenticator is wrong sends the
-  // user off checking their phone's clock instead.
   challenge_expired: 'auth.error_challenge_expired',
   rate_limited: 'auth.error_rate_limited',
   locked: 'auth.error_locked',
 };
 
-/**
- * The split layout's breakpoint. Below it the left panel is not hidden but
- * *not rendered*: on a phone the public status belongs on one line under the
- * form, not as a card nobody scrolls to.
- */
+// The split layout's breakpoint.
 const WIDE = '(min-width: 900px)';
 
 /** Field label and control, at the login screen's own (larger) scale. */
@@ -111,12 +104,8 @@ export function LoginPage() {
   const location = useLocation();
   const wide = useMediaQuery(WIDE);
   const [formError, setFormError] = useState<string | null>(null);
-  // A non-null challenge is the whole second step: the password was accepted but no
-  // session exists yet, so the screen swaps its body instead of routing elsewhere.
   const [challenge, setChallenge] = useState<string | null>(null);
   const [useRecovery, setUseRecovery] = useState(false);
-  // An expired challenge is dead: no code will ever be accepted against it, so the
-  // screen points at the way out instead of leaving "Start over" as a footnote.
   const [expired, setExpired] = useState(false);
 
   const {
@@ -171,8 +160,7 @@ export function LoginPage() {
     codeForm.reset();
   };
 
-  // A hairline row above the button, where the eye already is - not a toast
-  // that appears in a corner and disappears before it is read.
+  // A hairline row above the button, where the eye already is.
   const errorBanner = formError && (
     <p
       role="alert"

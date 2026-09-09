@@ -9,13 +9,6 @@ import { cn } from '@/lib/utils';
 
 import type { ReactElement, ReactNode } from 'react';
 
-/*
- * Topbar status chips: panel version (tinted with the brand hue when a newer
- * release exists), the GitHub mark with the star count, and nodes online.
- * All three are read-only glances - the version chip only becomes a link when
- * there is somewhere useful to go (the release page).
- */
-
 const CHIP =
   'mono inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border border-hairline-strong px-2 text-micro text-mute transition-[background-color,border-color,color,scale] duration-fast ease-out hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985]';
 
@@ -160,10 +153,6 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/**
- * The same three facts as plain rows, for the user dropdown on narrow
- * screens where the topbar has no room for chips.
- */
 export function StatusMenuRows() {
   const { t } = useTranslation();
   const { data: update } = useUpdateStatus();

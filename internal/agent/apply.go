@@ -74,8 +74,6 @@ func RenderProfilesJSON(ps []*agentv1.Profile) ([]byte, error) {
 	return append(b, '\n'), nil
 }
 
-// existingMTProxySecrets recovers the secret list currently in effect from an mtproxy.env file, so a
-// re-apply of the same secrets can be recognised as a no-op regardless of the file's prior format.
 func existingMTProxySecrets(env []byte) []string {
 	for _, line := range strings.Split(string(env), "\n") {
 		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "MTPROXY_SECRETS="); ok {
@@ -130,9 +128,7 @@ type applyLog struct{ b strings.Builder }
 
 func (l *applyLog) f(format string, a ...any) { l.b.WriteString(fmt.Sprintf(format, a...) + "\n") }
 
-// chownLogged records a failed ownership change in the apply log. The apply
-// continues: the files are already written with the right mode and root owns
-// them, so a missing group only weakens defence in depth.
+// chownLogged records a failed ownership change in the apply log.
 func (h *Handler) chownLogged(ctx context.Context, lg *applyLog, path, owner string) {
 	if err := h.chown(ctx, path, owner); err != nil {
 		lg.f("warning: %v (continuing; file is root-owned with the correct mode)", err)
@@ -153,9 +149,6 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 		return res
 	}
 
-	// The timestamp has one-second granularity, so two applies in the same second would
-	// share a directory and the second would silently overwrite the first's backup. The
-	// random suffix keeps them distinct.
 	backupDir := filepath.Join(h.cfg.StateDir, "backup", time.Now().UTC().Format("20060102T150405Z")+"-"+randSuffix())
 	if err := os.MkdirAll(backupDir, 0o700); err != nil {
 		return fail(err)
@@ -211,9 +204,6 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 		return res
 	}
 
-	// Backup current state. A read error for a file that exists is fatal — a backup we could not
-	// read is not usable for rollback, so abort before any mutation. A missing file is fine to
-	// skip (there was nothing to back up).
 	for _, p := range []string{h.cfg.ProfilesPath, h.cfg.MTProxyEnvPath} {
 		data, err := os.ReadFile(p)
 		if err != nil {
@@ -233,9 +223,7 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 	}
 	lg.f("backup written to %s", backupDir)
 
-	// rollback restores the pre-apply backup and reports whether every restore step actually
-	// succeeded. RolledBack must only be true when the node was genuinely returned to its prior
-	// state — a silently-discarded restore error must never be reported as a successful rollback.
+	// rollback restores the pre-apply backup and reports whether every restore step actually succeeded.
 	rollback := func(cause error) *agentv1.ApplyResult {
 		lg.f("rolling back: %v", cause)
 		restored := true
@@ -275,9 +263,6 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 		if out, err := h.exec.Run(ctx, "systemctl", "restart", "tproxy-server"); err != nil {
 			step("restart tproxy-server", fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err))
 		}
-		// Health is re-checked best-effort for diagnostics only: it depends on the external
-		// admin endpoint and does not by itself indicate whether the restore succeeded, so a
-		// failure here is logged but does not flip restored to false.
 		if err := h.waitHealthy(ctx); err != nil {
 			lg.f("rollback step failed: wait healthy: %v", err)
 		}
@@ -336,9 +321,7 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 	return res
 }
 
-// keptBackups is how many per-apply backup directories survive a successful apply. Each one
-// can hold a full copy of the site tree, on the same disk the relay runs on, and nothing
-// else ever deleted them.
+// keptBackups is how many per-apply backup directories survive a successful apply.
 const keptBackups = 5
 
 func randSuffix() string {
@@ -350,8 +333,7 @@ func randSuffix() string {
 	return hex.EncodeToString(b[:])
 }
 
-// pruneBackups removes all but the newest keep backup directories and reports how many it
-// deleted. Directory names sort chronologically (RFC3339-ish UTC timestamp + suffix).
+// pruneBackups removes all but the newest keep backup directories and reports how many it deleted.
 func (h *Handler) pruneBackups(keep int) (int, error) {
 	root := filepath.Join(h.cfg.StateDir, "backup")
 	entries, err := os.ReadDir(root)
@@ -428,8 +410,6 @@ func (h *Handler) swapSiteDir(src string) error {
 		moved = true
 	}
 	// restore puts the previous site back on any failure after the rename above.
-	// Without it a failed copy leaves SiteDir missing entirely and the relay
-	// serves nothing — including when swapSiteDir is itself the rollback step.
 	restore := func() {
 		if moved {
 			_ = os.Rename(old, dir)

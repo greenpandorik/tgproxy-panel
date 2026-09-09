@@ -150,8 +150,6 @@ func TestBindUnbind(t *testing.T) {
 	}
 }
 
-// TestBatchCreateIsAtomic covers I5: a batch that does not fit must create nothing and name
-// the node that is short, instead of leaving orphan keys the operator has to clean up.
 func TestBatchCreateIsAtomic(t *testing.T) {
 	svc, st, nodeID := setup(t)
 	ctx := context.Background()
@@ -180,8 +178,6 @@ func TestBatchCreateIsAtomic(t *testing.T) {
 	}
 }
 
-// TestRotateRejectsRevoked: a revoked key has no profiles, so SetKeySecret would put it back
-// to 'pending' where nothing can ever activate it again.
 func TestRotateRejectsRevoked(t *testing.T) {
 	svc, st, nodeID := setup(t)
 	ctx := context.Background()

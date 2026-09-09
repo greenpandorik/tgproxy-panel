@@ -39,13 +39,6 @@ interface LimitsFieldsProps {
   className?: string;
 }
 
-/**
- * Advanced per-key relay limits (see internal/domain.ProfileLimits): plain
- * non-negative integer inputs, zero meaning "inherit the node's global
- * default". Shared between CreateKeyDialog and KeyDetailDrawer via a
- * value/onChange contract so each caller can wire it through its own
- * react-hook-form `Controller` without sharing form-generic typing.
- */
 export function LimitsFields({ value, onChange, errors, className }: LimitsFieldsProps) {
   const { t } = useTranslation();
 

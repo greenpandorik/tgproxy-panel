@@ -119,8 +119,6 @@ func TestApplyFailureRecordsAlertAndNotifiesThenSuccessResolves(t *testing.T) {
 		t.Fatalf("apply_failed alert not recorded: %+v", openAlerts)
 	}
 
-	// A subsequent successful apply resolves the open apply_failed alert without
-	// sending a new notification (only node offline/online gets a "back" message).
 	if err := a.ApplyNode(ctx, f.node.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -199,8 +197,6 @@ func TestTriggerRunsApply(t *testing.T) {
 	t.Fatal("trigger did not apply")
 }
 
-// blockingDriver wraps a Mock and holds Apply open until release is closed, so a test can
-// commit a mutation while an apply is genuinely in flight.
 type blockingDriver struct {
 	*nodedriver.Mock
 	entered chan struct{}
@@ -222,9 +218,7 @@ func (d *blockingDriver) Apply(ctx context.Context, id uuid.UUID, req nodedriver
 	return d.Mock.Apply(ctx, id, req)
 }
 
-// TestApplyDoesNotSyncStateCreatedMidApply is the C1 regression test. A key created while an
-// apply is in flight must not be marked synced/active by that apply (its secret was never
-// pushed), and the node must stay dirty so the next sweep pushes it for real.
+// TestApplyDoesNotSyncStateCreatedMidApply is the C1 regression test.
 func TestApplyDoesNotSyncStateCreatedMidApply(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -290,11 +284,6 @@ func TestApplyDoesNotSyncStateCreatedMidApply(t *testing.T) {
 	}
 }
 
-// TestSweepPicksUpDirtyNodeMarkedOffline covers debt item 15: the sweep used to
-// filter on status IN ('online','degraded') in SQL, so a node whose gRPC stream
-// was alive but whose row the stats worker had marked offline on a stale
-// heartbeat stayed dirty and invisible forever. Reachability is the driver's
-// call, not the status column's.
 func TestSweepPicksUpDirtyNodeMarkedOffline(t *testing.T) {
 	f := newFixture(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -316,8 +305,6 @@ func TestSweepPicksUpDirtyNodeMarkedOffline(t *testing.T) {
 	t.Fatal("sweep never applied a dirty node the driver reports online")
 }
 
-// TestStopWaitsForInFlightApply covers debt item 10: SIGTERM used to cut an
-// apply mid-restart because Run's goroutines were never awaited.
 func TestStopWaitsForInFlightApply(t *testing.T) {
 	f := newFixture(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -378,9 +365,6 @@ func TestStopWithNoWorkReturnsImmediately(t *testing.T) {
 	stop := worker.Start(ctx, worker.NewApply(f.st, f.box, nodedriver.NewMock(), time.Hour, slog.New(slog.DiscardHandler)),
 		worker.NewExpiry(f.st, f.keys, slog.New(slog.DiscardHandler)),
 		worker.NewStats(f.st, nodedriver.NewMock(), time.Minute, slog.New(slog.DiscardHandler)), nil)
-	// Stop's contract is "after Run's context is cancelled", which is the order
-	// cmd/panel shuts down in: listeners drain, the signal context is already done,
-	// then the workers are awaited.
 	cancel()
 	start := time.Now()
 	if err := stop(context.Background()); err != nil {
@@ -391,9 +375,6 @@ func TestStopWithNoWorkReturnsImmediately(t *testing.T) {
 	}
 }
 
-// TestApplyFailureLeavesJobAndProfilesConsistent covers debt item 18: the
-// failure path writes the job row, the profile sync states and the alert in one
-// transaction, so they can never disagree.
 func TestApplyFailureLeavesJobAndProfilesConsistent(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -440,9 +421,6 @@ func TestApplyFailureLeavesJobAndProfilesConsistent(t *testing.T) {
 	}
 }
 
-// assignSite writes a node_sites row holding a one-file bundle whose index.html is body,
-// and dirties the node — the same two writes POST /nodes/{id}/site makes. It returns the
-// bundle's hash.
 func assignSite(t *testing.T, f *fixture, body string) string {
 	t.Helper()
 	ctx := context.Background()
@@ -456,12 +434,6 @@ func assignSite(t *testing.T, f *fixture, body string) string {
 	return b.Hash()
 }
 
-// TestApplyDoesNotMarkSiteAssignedMidApplyAsDeployed is the site-side twin of
-// TestApplyDoesNotSyncStateCreatedMidApply. The apply used to re-read node_sites inside its
-// success transaction and record *that* row's bundle_hash as deployed — so a template
-// assigned while the apply was in flight was marked deployed without ever being pushed, and
-// because Uniquify is deterministic, re-assigning it reproduced the same hash and never
-// dirtied the site again. The node served the old page forever with no recovery path.
 func TestApplyDoesNotMarkSiteAssignedMidApplyAsDeployed(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -510,10 +482,6 @@ func TestApplyDoesNotMarkSiteAssignedMidApplyAsDeployed(t *testing.T) {
 	if site.DeployedHash != nil && *site.DeployedHash == hashB {
 		t.Fatal("bundle assigned mid-apply was marked deployed although it was never pushed")
 	}
-	// The apply writes its own snapshotted hash (A) under a bundle_hash = $hash guard, so
-	// with the row already holding B the write matches nothing and deployed_hash keeps its
-	// pre-apply value. Either way it must differ from bundle_hash, which is what makes the
-	// next DesiredState push a site.
 	if site.DeployedHash != nil && *site.DeployedHash != hashA {
 		t.Fatalf("deployed_hash = %q, want NULL or the pushed bundle's hash %q", *site.DeployedHash, hashA)
 	}
@@ -543,8 +511,6 @@ func TestApplyDoesNotMarkSiteAssignedMidApplyAsDeployed(t *testing.T) {
 	}
 }
 
-// TestApplyRecordsDeployedHashOfPushedBundle is the un-raced half of the property above: with
-// nothing mutating the row, the apply must record exactly the bundle it pushed.
 func TestApplyRecordsDeployedHashOfPushedBundle(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
@@ -571,10 +537,6 @@ func TestApplyRecordsDeployedHashOfPushedBundle(t *testing.T) {
 	}
 }
 
-// TestStopWaitsForRunToReturn covers the documented sync.WaitGroup misuse: Stop used to call
-// wg.Wait() while Run was still live, so a Trigger landing at the same instant could call
-// wg.Add concurrently with the Wait. Stop now waits for Run's done channel first, which means
-// its caller has to cancel Run's context - the order cmd/panel already shuts down in.
 func TestStopWaitsForRunToReturn(t *testing.T) {
 	f := newFixture(t)
 	ctx, cancel := context.WithCancel(context.Background())

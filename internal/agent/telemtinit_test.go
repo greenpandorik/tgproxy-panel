@@ -62,8 +62,6 @@ func TestInitTelemtNodeRendersConfigTokenUnitAndSite(t *testing.T) {
 		"[[server.listeners]]\nip = \"0.0.0.0\"\nport = 8443\nsynlimit = \"nftables\"\n",
 		"[[server.listeners]]\nip = \"127.0.0.1\"\nport = 18080\ntransport = \"web\"\nproxy_protocol = false\nweb_client_ip_source = \"x_forwarded_for\"\nweb_trusted_proxy_cidrs = [\"127.0.0.1/32\"]\n",
 		"[censorship]\ntls_domain = \"n1.example.com\"\nmask = true\nunknown_sni_action = \"mask\"\n",
-		// M4: the username is a quoted TOML key, not a bare one - a bare key containing a
-		// dot would silently become a nested table.
 		"[access.users]\n\"kabc123456789\" = \"0123456789abcdef0123456789abcdef\"\n",
 		"[web]\nenabled = true\ncarrier = \"https\"\ncarriers = [\"websocket-lanes\", \"websocket\", \"https-lanes\"]\n",
 		"[[web.vhosts]]\nhost = \"n1.example.com\"\npublic_addr = \"203.0.113.7:443\"\n",
@@ -125,8 +123,6 @@ func TestInitTelemtNodeRendersConfigTokenUnitAndSite(t *testing.T) {
 		t.Fatalf("telemt must not run as root:\n%s", unit)
 	}
 
-	// Config and state must belong to the service account, or the unprivileged process cannot
-	// read its config nor write it back through the control API.
 	for _, path := range []string{filepath.Dir(p.ConfigPath), p.DataDir, p.SiteDir} {
 		if !ex.has("chown -R telemt:telemt " + path) {
 			t.Fatalf("missing chown for %s: %v", path, ex.calls)
@@ -226,9 +222,6 @@ func TestInitTelemtNodeIPv6PublicAddr(t *testing.T) {
 	}
 }
 
-// TestRenderTelemtConfigNoSynlimit covers the fakenode/test-bench escape hatch: without
-// CAP_NET_ADMIN telemt aborts at startup when it cannot install its netfilter rules, so the
-// line is omitted entirely rather than set to a value telemt would still act on.
 func TestRenderTelemtConfigNoSynlimit(t *testing.T) {
 	p := telemtParams(t)
 	p.NoSynlimit = true
@@ -255,9 +248,6 @@ func TestRenderTelemtConfigNoSynlimit(t *testing.T) {
 	}
 }
 
-// TestRenderTelemtConfigNoTLSEmulation is the second bench-only escape hatch: a fictional
-// tls_domain resolves nowhere, so telemt's TLS-front fetch never produces a real profile and
-// every runtime reload would refuse to activate. Real nodes keep the emulation on.
 func TestRenderTelemtConfigNoTLSEmulation(t *testing.T) {
 	p := telemtParams(t)
 	p.NoTLSEmulation = true
@@ -279,10 +269,7 @@ func TestRenderTelemtConfigNoTLSEmulation(t *testing.T) {
 	}
 }
 
-// M4: `[access.users]` is a TOML table whose keys are usernames. userRe permits a dot, and a
-// dot in a *bare* key opens a nested table - `k1.2 = "..."` would become `[access.users.k1]
-// 2 = "..."`, which telemt reads as something else entirely or refuses. The key is therefore
-// quoted like every other interpolated value in the template.
+// M4: `[access.users]` is a TOML table whose keys are usernames.
 func TestRenderTelemtConfigQuotesTheAccessUserKey(t *testing.T) {
 	p := telemtParams(t)
 	p.WebUser = "k1.2"

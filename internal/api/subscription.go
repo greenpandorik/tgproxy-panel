@@ -15,22 +15,14 @@ import (
 	"tgwebproxy/internal/subscription"
 )
 
-// subscriptionQRSize is the edge, in pixels, of the QR code embedded in the
-// create response - a browser-sized code the operator can screenshot and hand
-// to whoever owns the key, without a second round trip to fetch it.
+// subscriptionQRSize is the edge, in pixels, of the QR code embedded in the create response.
 const subscriptionQRSize = 256
 
-// hasActiveSubscription reports whether keyID currently has a live (unrevoked)
-// subscription token, for the key JSON's subscription_active flag.
 func (s *Server) hasActiveSubscription(ctx context.Context, keyID uuid.UUID) bool {
 	_, err := s.store.Q.GetKeySubscription(ctx, keyID)
 	return err == nil
 }
 
-// handleCreateSubscription mints a fresh subscription token for the key, revoking
-// any token the key already had (rotate). The plaintext token exists only in this
-// response's URL - the database only ever sees its sha256 hash - so this is the
-// one and only time the URL can be produced; there is no "show it again" path.
 func (s *Server) handleCreateSubscription(w http.ResponseWriter, r *http.Request) {
 	k, ok := s.loadKey(w, r)
 	if !ok {
@@ -45,9 +37,6 @@ func (s *Server) handleCreateSubscription(w http.ResponseWriter, r *http.Request
 	hash := crypto.HashToken(token)
 	revoked := false
 	err = s.store.Tx(r.Context(), func(q *db.Queries) error {
-		// Re-read the key inside the transaction: the loadKey check above ran before
-		// this transaction started, and a concurrent revoke in between must not be
-		// able to mint a token for a key that turns out to already be dead.
 		current, err := q.GetKey(r.Context(), k.ID)
 		if err != nil {
 			return err
@@ -82,8 +71,7 @@ func (s *Server) handleCreateSubscription(w http.ResponseWriter, r *http.Request
 	writeJSON(w, 200, map[string]any{"url": url, "qr_data_uri": qr})
 }
 
-// handleRevokeSubscription revokes every live token for the key. Idempotent: a key
-// with no active token still returns 204.
+// handleRevokeSubscription revokes every live token for the key.
 func (s *Server) handleRevokeSubscription(w http.ResponseWriter, r *http.Request) {
 	k, ok := s.loadKey(w, r)
 	if !ok {
@@ -98,14 +86,6 @@ func (s *Server) handleRevokeSubscription(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(204)
 }
 
-// subscriptionLookup is the shared 404/410 gate for both public /s/ routes: an
-// unknown or already-revoked token is indistinguishable from the outside (404),
-// and a token that is still valid but whose key has since been revoked is 410 -
-// the link existed, it just does not work anymore. status is 0 on success; on
-// failure it is http.StatusNotFound or http.StatusGone and the caller is
-// responsible for writing the response in whatever form suits its route (JSON
-// for .json, a branded HTML page for the human-facing one) - this function
-// never writes to w itself.
 func (s *Server) subscriptionLookup(r *http.Request, token string) (db.AccessKey, int) {
 	sub, err := s.store.Q.GetSubscriptionByHash(r.Context(), crypto.HashToken(token))
 	if err != nil || sub.RevokedAt != nil {
@@ -121,15 +101,6 @@ func (s *Server) subscriptionLookup(r *http.Request, token string) (db.AccessKey
 	return key, 0
 }
 
-// subscriptionSecurityHeaders locks the public page down to exactly what it needs:
-// never cached or indexed, never framed, and (CSP) unable to load or run anything
-// beyond its own inline style/script - it never reveals label/owner/note, so there
-// is nothing here worth an external request being able to reach.
-//
-// frame-ancestors 'none' is what stops the page being embedded in someone else's
-// site: the connection details and the copy buttons are the whole content, and a
-// page that can be framed can be framed invisibly under something else's UI.
-// X-Frame-Options is set globally (server.go) for browsers that predate it.
 func subscriptionSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Robots-Tag", "noindex")
@@ -162,12 +133,6 @@ func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// writeSubscriptionErrorPage renders the minimal branded HTML page for the
-// human-facing /s/{token} route's 404 (unknown/revoked token) and 410 (token
-// still valid, key revoked) cases - a bare JSON error body reads like a
-// broken link to someone who followed a QR code, so the HTML route gets a
-// small page instead. The .json twin keeps returning JSON (see
-// handleSubscriptionJSON) for API clients that parse it.
 func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Request, status int) {
 	panelName, theme := "TGWebProxy", "dark"
 	if b, err := s.store.Q.GetActiveBranding(r.Context()); err == nil {
@@ -189,8 +154,6 @@ func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// handleSubscriptionJSON serves the machine-readable twin of the public page, for
-// clients that would rather parse than scrape HTML.
 func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) {
 	subscriptionSecurityHeaders(w)
 	if !s.subLimiter.Allow(ipFrom(r.Context())) {
@@ -214,8 +177,7 @@ func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) 
 	}
 	locations := make([]map[string]any, 0, len(links))
 	for _, l := range links {
-		// tme/tg stay the WEB link every client already reads; links[] carries
-		// every kind the node offers, WEB first.
+		// tme/tg stay the WEB link every client already reads; links[] carries every kind the node offers, WEB first.
 		loc := map[string]any{"name": l.NodeName, "hostname": l.Hostname, "links": l.Links}
 		if len(l.Links) > 0 {
 			loc["tme"], loc["tg"] = l.Links[0].TMe, l.Links[0].Tg
@@ -230,8 +192,7 @@ func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, 200, map[string]any{"panel_name": panelName, "locations": locations})
 }
 
-// linkKindLabel names a link kind for the public page. Unknown kinds fall back
-// to the raw value rather than rendering an empty heading.
+// linkKindLabel names a link kind for the public page.
 func linkKindLabel(kind string) string {
 	switch kind {
 	case keys.LinkWeb:
@@ -243,10 +204,6 @@ func linkKindLabel(kind string) string {
 	}
 }
 
-// subscriptionPage assembles the subscription.Page for key from the active branding
-// profile and the key's node links/QR codes. Branding lookup failures degrade to
-// sane defaults rather than failing the whole page - a subscription link must keep
-// working even if branding is misconfigured.
 func (s *Server) subscriptionPage(r *http.Request, key db.AccessKey) (subscription.Page, error) {
 	links, err := s.keys.NodeLinks(r.Context(), key.ID)
 	if err != nil {

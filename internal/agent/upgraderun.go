@@ -19,17 +19,7 @@ import (
 	"tgwebproxy/internal/telemt"
 )
 
-// Node self-upgrade: the acting half.
-//
-// Every replacement follows the same shape, which is what makes it safe to run unattended on
-// a live node: download to a temp file, verify the panel's sha256 (a mismatch aborts before
-// anything on disk is touched), keep the previous binary, install atomically, restart the
-// unit, wait for it to prove itself, and on failure put the previous binary back and restart
-// it. The rollback is a rename of a file that is already on disk, so it works even when the
-// download that broke things is no longer reachable.
-
-// UpgradeOptions configures RunUpgrade. Everything with a system default is overridable so
-// the whole flow can be exercised in a temp directory with a fake systemctl.
+// UpgradeOptions configures RunUpgrade.
 type UpgradeOptions struct {
 	EnvPath string
 	Scope   UpgradeScope
@@ -39,10 +29,8 @@ type UpgradeOptions struct {
 	Yes bool
 
 	Out, Err io.Writer
-	// In is the prompt's input; nil means os.Stdin. TTY decides whether there is anybody to
-	// ask at all and whether to colour the output.
-	In  *os.File
-	TTY *bool
+	In       *os.File
+	TTY      *bool
 
 	HTTP *http.Client
 	Exec Exec
@@ -95,19 +83,15 @@ func (o *UpgradeOptions) withDefaults() {
 	}
 }
 
-// stdoutOf returns w as an *os.File when it is one, so colour detection looks at the real
-// stdout rather than a test buffer.
 func stdoutOf(w io.Writer) *os.File {
 	f, _ := w.(*os.File)
 	return f
 }
 
 type upgrader struct {
-	o   UpgradeOptions
-	ui  *ui
-	env map[string]string
-	// telemtToken is telemt's control-API authorization value. It is read once, before
-	// anything is replaced, and never printed.
+	o           UpgradeOptions
+	ui          *ui
+	env         map[string]string
 	telemtToken string
 }
 
@@ -169,8 +153,6 @@ func (u *upgrader) run(ctx context.Context) error {
 		u.ui.ok("everything is already at the pinned version")
 		return nil
 	}
-	// The telemt API token is needed to prove telemt came back healthy. Read it now, while a
-	// failure still costs nothing.
 	for _, c := range changes {
 		if c.Name == ComponentTelemt {
 			if err := u.loadTelemtToken(); err != nil {
@@ -214,8 +196,7 @@ func describeManifest(m UpgradeManifest) string {
 	return strings.Join(parts, ", ")
 }
 
-// installed reports what is on the node now. A component whose version cannot be read is
-// reported as empty, which the plan treats as out of date.
+// installed reports what is on the node now.
 func (u *upgrader) installed(ctx context.Context, m UpgradeManifest) Installed {
 	out := Installed{}
 	if m.Telemt != nil {
@@ -228,8 +209,6 @@ func (u *upgrader) installed(ctx context.Context, m UpgradeManifest) Installed {
 	return out
 }
 
-// installedTelemt asks the binary first (`telemt --version`) and falls back to the running
-// process's own answer over the control API, which is the version actually serving traffic.
 func (u *upgrader) installedTelemt(ctx context.Context) string {
 	if out, err := u.o.Exec.Run(ctx, u.o.TelemtBin, "--version"); err == nil {
 		if v := ParseVersionOutput(string(out)); v != "" {
@@ -246,8 +225,6 @@ func (u *upgrader) installedTelemt(ctx context.Context) string {
 	return ParseVersionOutput(info.Version)
 }
 
-// installedAgent asks the installed binary rather than assuming this process is it: the
-// operator may be running a freshly downloaded copy from /tmp.
 func (u *upgrader) installedAgent(ctx context.Context) string {
 	if out, err := u.o.Exec.Run(ctx, u.o.AgentBin, "version"); err == nil {
 		if v := ParseVersionOutput(string(out)); v != "" {
@@ -268,9 +245,6 @@ func (u *upgrader) telemtClient() *telemt.Client {
 	return telemt.New(u.telemtAPI(), u.telemtToken)
 }
 
-// loadTelemtToken reads telemt's control-API token from the env file or, as the installer
-// leaves it, from /etc/telemt/api.token (0600, root-readable). The value never leaves this
-// struct.
 func (u *upgrader) loadTelemtToken() error {
 	if u.telemtToken != "" {
 		return nil
@@ -294,8 +268,7 @@ func (u *upgrader) loadTelemtToken() error {
 	return nil
 }
 
-// confirm prints the plan's consequence and asks, unless --yes. Without a terminal there is
-// nobody to ask, so --yes is required rather than assumed.
+// confirm prints the plan's consequence and asks, unless --yes.
 func (u *upgrader) confirm(changes []ComponentPlan) error {
 	if u.o.Yes {
 		return nil
@@ -320,8 +293,6 @@ func (u *upgrader) confirm(changes []ComponentPlan) error {
 	return err
 }
 
-// upgradeTelemt replaces /usr/local/bin/telemt with the pinned release and proves the new
-// process serves its control API before the previous binary is discarded.
 func (u *upgrader) upgradeTelemt(ctx context.Context, c ComponentPlan) error {
 	u.ui.step("telemt %s", c.Wanted)
 	dir := filepath.Dir(u.o.TelemtBin)
@@ -383,12 +354,6 @@ func (u *upgrader) upgradeTelemt(ctx context.Context, c ComponentPlan) error {
 }
 
 // upgradeAgent replaces the agent binary and lets systemd restart the unit.
-//
-// The delicate case: a process cannot restart itself. This command is not the agent - it is a
-// short-lived invocation of the same binary from the operator's shell - so `systemctl restart`
-// is carried out by systemd and cannot be interrupted by this process exiting. The one way
-// that stops being true is running the command from inside the unit's own cgroup, where the
-// restart would kill the caller mid-flight; that is refused rather than half-done.
 func (u *upgrader) upgradeAgent(ctx context.Context, c ComponentPlan) error {
 	u.ui.step("tgwp-agent %s", c.Wanted)
 	if insideUnit(agentUnit) {
@@ -397,8 +362,6 @@ func (u *upgrader) upgradeAgent(ctx context.Context, c ComponentPlan) error {
 		return err
 	}
 	dir := filepath.Dir(u.o.AgentBin)
-	// The same name the install script stages under, in the same directory as the target, so
-	// the install below is an atomic rename within one filesystem.
 	staged := filepath.Join(dir, "tgwp-agent.new")
 	_ = os.Remove(staged)
 	tmp, err := u.download(ctx, c.Artifact, dir, ".tgwp-agent-download-")
@@ -458,10 +421,6 @@ func (u *upgrader) upgradeAgent(ctx context.Context, c ComponentPlan) error {
 	return nil
 }
 
-// agentHealthy is the agent's equivalent of telemt's readiness probe: the unit is active and
-// the new process has logged that it reached the panel. Where journalctl is unavailable, a
-// unit that is still active a few seconds after the restart is the best available answer (a
-// binary that cannot start would be cycling under Restart=always).
 func (u *upgrader) agentHealthy(ctx context.Context, since time.Time) bool {
 	if out, err := u.o.Exec.Run(ctx, "systemctl", "is-active", agentUnit); err != nil ||
 		strings.TrimSpace(string(out)) != "active" {
@@ -474,8 +433,6 @@ func (u *upgrader) agentHealthy(ctx context.Context, since time.Time) bool {
 	return strings.Contains(string(out), "connected to panel")
 }
 
-// insideUnit reports whether this process belongs to the given systemd service, which is how
-// `tgwp-agent upgrade` recognises that it is the very unit it is about to restart.
 func insideUnit(unit string) bool {
 	raw, err := os.ReadFile("/proc/self/cgroup")
 	if err != nil {
@@ -484,9 +441,7 @@ func insideUnit(unit string) bool {
 	return strings.Contains(string(raw), "/"+unit+".service")
 }
 
-// download fetches the artifact into dir and verifies the panel's sha256 before returning the
-// file. A mismatch, or a missing checksum, is an error and the file is deleted: this is the
-// one gate between a compromised release host and root on the node.
+// download fetches the artifact into dir and verifies the panel's sha256 before returning the file.
 func (u *upgrader) download(ctx context.Context, a UpgradeArtifact, dir, pattern string) (string, error) {
 	if a.SHA256 == "" {
 		return "", fmt.Errorf("the panel published no sha256 for %s; refusing to install an unverified download", a.URL)
@@ -529,9 +484,7 @@ func (u *upgrader) download(ctx context.Context, a UpgradeArtifact, dir, pattern
 	return name, nil
 }
 
-// extractTelemtBinary pulls the `telemt` executable out of the release tarball into dst
-// (0755). The release lays the binary out under a directory that changes between versions, so
-// it is found by name.
+// extractTelemtBinary pulls the `telemt` executable out of the release tarball into dst (0755).
 func extractTelemtBinary(tgz, dst string) error {
 	f, err := os.Open(tgz)
 	if err != nil {
@@ -571,11 +524,7 @@ func extractTelemtBinary(tgz, dst string) error {
 	return fmt.Errorf("no telemt binary inside %s", tgz)
 }
 
-// backupBinary copies path to path+".prev" and returns it. It is a copy, not a rename, so the
-// target keeps its inode until the new binary is renamed over it and there is never a moment
-// where neither exists. A target that does not exist yet (a component being installed rather
-// than replaced) yields an empty path: there is nothing to roll back to, and restoreBinary
-// takes that to mean "remove what was installed".
+// backupBinary copies path to path+".prev" and returns it.
 func backupBinary(path string) (string, error) {
 	prev := path + ".prev"
 	src, err := os.Open(path)
@@ -617,9 +566,7 @@ func keptAs(prev string) string {
 	return " (previous kept as " + filepath.Base(prev) + ")"
 }
 
-// restoreBinary puts the kept copy back. It renames rather than downloading anything, so a
-// rollback works with no network and no release host. With no kept copy (nothing was there
-// before) it removes what was just installed instead.
+// restoreBinary puts the kept copy back.
 func restoreBinary(prev, path string) error {
 	if prev == "" {
 		return os.Remove(path)

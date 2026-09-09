@@ -14,12 +14,6 @@ interface DraftBannerProps {
   className?: string;
 }
 
-/**
- * "Draft from 12:30 · Continue / Start over", at the top of a form that was
- * closed with something typed in it. A fact about the form, not a warning, so
- * it gets the same hairline row and 7px dot the rest of the panel uses for
- * state; the timestamp is mono like every other time on screen.
- */
 export function DraftBanner({ savedAt, onResume, onDiscard, className }: DraftBannerProps) {
   const { t, i18n } = useTranslation();
 

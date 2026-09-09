@@ -64,12 +64,6 @@ export function SecurityForm() {
   };
 
   return (
-    /*
-     * Every settings form is built the same way: a panel whose header says what
-     * the section is, a body that groups the fields, and a footer strip holding
-     * the one action that commits them. The seven forms behind these tabs used
-     * to each put their button somewhere different.
-     */
     <div className="flex max-w-2xl flex-col gap-4">
       <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
         <Arriving>

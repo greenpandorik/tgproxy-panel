@@ -1,17 +1,5 @@
 import { OFFLINE_SERIES_COLOR } from '@/lib/chart';
 
-/*
- * A row of a table says how a node is right now. The sparkline says how it
- * got there, which is the question an operator actually opens a node to
- * answer - and it costs one path per row, drawn from the 24h series the
- * chart above the table has already fetched.
- *
- * It is a data mark, not a control and not a surface, so it takes no radius,
- * no fill and no axis. It is also decoration to a screen reader: the number
- * columns beside it carry the facts, so it is aria-hidden and never the only
- * place something is said.
- */
-
 /** The mark's own coordinate space. Width matches the column the mockup gives it. */
 const W = 76;
 const H = 22;

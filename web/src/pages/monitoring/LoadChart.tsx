@@ -1,5 +1,3 @@
-// recharts is only ever imported by the chart components, which every page
-// lazy-loads (React.lazy) so the shell bundle stays free of it.
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
@@ -21,14 +19,7 @@ const DEFAULT_HEIGHT = 140;
 /** The load chart's y-axis ticks: a percentage axis is read against quarters, not against whatever recharts picks. */
 const PERCENT_TICKS = [0, 25, 50, 75, 100];
 
-/**
- * A node's server load over time: CPU, memory and disk as three lines on one
- * percentage axis. They share a chart, unlike the sessions and traffic
- * readings, because they share a unit - a reader can honestly compare "CPU at
- * 80" with "disk at 80", and the point of the chart is to see which resource
- * is the one under pressure. The axis is pinned to 0-100 so a quiet box does
- * not get its 3% swing blown up to look like a storm.
- */
+// A node's server load over time: CPU, memory and disk as three lines on one percentage axis.
 export function LoadChart({ points, colors, height = DEFAULT_HEIGHT }: LoadChartProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;

@@ -8,13 +8,6 @@ import (
 	"time"
 )
 
-// ui prints the step style shared by install.sh and the node install script
-// (.superpowers/sdd/phase6/ui-style.md), so `tgwp-agent upgrade` reads as the same product:
-// bold "==> Title" sections, "  ✔ done", "  ✘ failed" on stderr, "  ! warning", indented dim
-// detail, and a waiting line that ends as a ✔ or a ✘.
-//
-// Colors appear only on a terminal with NO_COLOR unset; the marks fall back to [ok]/[x]/[..]
-// when the locale is not UTF-8, exactly as the two shell scripts do.
 type ui struct {
 	out, errw io.Writer
 	tty       bool
@@ -44,8 +37,6 @@ func newUI(out, errw io.Writer, tty bool, getenv func(string) string) *ui {
 	return u
 }
 
-// print is the one place output is written: an unwritable stdout is not something a node
-// upgrade can do anything about, so the error is dropped here rather than at every call site.
 func (u *ui) print(w io.Writer, format string, a ...any) {
 	_, _ = fmt.Fprintf(w, format, a...)
 }
@@ -70,9 +61,7 @@ func (u *ui) info(format string, a ...any) {
 	u.print(u.out, "    %s%s%s\n", u.dim, fmt.Sprintf(format, a...), u.reset)
 }
 
-// waitFor polls probe once a second for up to budget. On a terminal the line is redrawn with
-// the elapsed time every 5s; in a log it is one line at the start and one at the end, so a
-// journal never fills with carriage returns. It is the Go twin of the scripts' wait_for.
+// waitFor polls probe once a second for up to budget.
 func (u *ui) waitFor(label string, budget time.Duration, sleep func(time.Duration), probe func() bool) bool {
 	secs := int(budget / time.Second)
 	if u.tty {
@@ -99,8 +88,7 @@ func (u *ui) waitFor(label string, budget time.Duration, sleep func(time.Duratio
 	return false
 }
 
-// isTTY reports whether f is a terminal, which decides colors and whether there is anybody to
-// prompt. A file, a pipe or a systemd journal is not.
+// isTTY reports whether f is a terminal, which decides colors and whether there is anybody to prompt.
 func isTTY(f *os.File) bool {
 	if f == nil {
 		return false

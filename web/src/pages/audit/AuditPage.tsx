@@ -48,12 +48,6 @@ function metaCompact(meta: unknown, max = 3): string {
   return entries.length > max ? `${parts.join(', ')}, …` : parts.join(', ');
 }
 
-/**
- * The meta column shows as much of the payload as fits on one line and hides
- * the rest behind a popover holding the raw JSON. An audit row is evidence:
- * the compact form is for scanning a page of them, the pre is for reading the
- * one that matters, and neither is a summary the panel invented.
- */
 function MetaCell({ meta }: { meta: unknown }) {
   const { t } = useTranslation();
   const hasMeta = meta !== null && meta !== undefined && (typeof meta !== 'object' || Object.keys(meta as object).length > 0);
@@ -88,12 +82,6 @@ function TargetCell({ type, id }: { type: string; id: string }) {
   );
 }
 
-/**
- * The action name, as the server wrote it: never translated, and set in the
- * body role rather than as a chip. It is the one thing an operator scans a
- * page of audit rows for, so it carries the row's ink; the mono face stays
- * because `site_template.update` is a machine's word, not prose.
- */
 function ActionName({ action }: { action: string }) {
   return <span className="mono text-body text-foreground">{action}</span>;
 }

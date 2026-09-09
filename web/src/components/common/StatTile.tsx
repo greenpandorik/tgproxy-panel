@@ -7,11 +7,7 @@ import type { StatTone } from './statTone';
 import type { LucideIcon } from 'lucide-react';
 import type { CSSProperties } from 'react';
 
-/**
- * The tone tokens, as the custom property `.tgwp-tone-tint` reads. Neutral is
- * --mute rather than a hue: a fact with no state is chrome-coloured, and the
- * tile only lights up when the fact behind it means something.
- */
+// The tone tokens, as the custom property `.tgwp-tone-tint` reads.
 const TONE_VAR: Record<StatTone, string> = {
   neutral: 'var(--mute)',
   ok: 'var(--status-ok)',
@@ -42,23 +38,7 @@ export interface StatTileProps {
   style?: CSSProperties;
 }
 
-/**
- * One fact from the dashboard, as a tile.
- *
- * The design comes straight from the approved mockup: a 16px glyph on a 10%
- * tint of its own tone with a 20% border, the caption in the label role and
- * the number in display. The colour lives entirely in that plate - caption,
- * number and context stay --mute / --fg / --mute, because a page of eleven
- * tiles whose text was tinted would be a page with no text hierarchy at all.
- *
- * Which tone the plate takes is not this component's decision. It is
- * `statTone`, so the rule that a tile is neutral until its fact means a
- * problem is written once and tested, rather than eleven times by eye.
- *
- * A tile that leads somewhere becomes a link and gets the panel's standard
- * press plus a hover that moves colour only: the ground steps to --bg-3, so
- * nothing under it reflows.
- */
+// One fact from the dashboard, as a tile.
 export function StatTile({
   icon: Icon,
   tone = 'neutral',

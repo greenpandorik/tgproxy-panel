@@ -46,12 +46,6 @@ function isCommitHash(v: string): boolean {
   return /^[0-9a-f]{7,40}$/i.test(v);
 }
 
-/**
- * One cell of a mono slab: what it is on the left, what the machine says on
- * the right. A grid of these replaces a row of bordered boxes - the point of
- * a health readout is that the values line up in a column you can sweep, and
- * boxes put a frame between every pair of them.
- */
 function Cell({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn('flex items-center justify-between gap-3 bg-card px-4 py-3', className)}>
@@ -72,28 +66,9 @@ function ServiceState({ active }: { active: boolean }) {
   );
 }
 
-/**
- * The four figures the health readout ends on: how long the node has been up,
- * and how much of its processor, memory and disk is in use.
- *
- * They are the panel's stat tiles rather than four hand-drawn rules, so a
- * number here is shaped exactly like a number on the dashboard. Uptime is a
- * fact that cannot be good or bad and stays neutral; the three resources take
- * `statTone`'s one load rule, quiet under 80%, amber at 80 and red at 95, so a
- * node's own reading and the fleet average that includes it cannot disagree
- * about when a machine is under pressure.
- */
-/**
- * Two columns then four, never three: the block is exactly four tiles, so the
- * grid's default third column would leave disk alone on a second row for the
- * whole tablet range.
- */
 const HEALTH_GRID = 'border-t border-hairline p-4 sm:grid-cols-2 lg:grid-cols-4';
 
 function healthTiles(health: NodeHealth | undefined, t: TFunction, language: string): StatGridTile[] {
-  // While the readout is still on its way the tiles are the same four boxes
-  // with skeletons in them, and every plate stays neutral: a tone is a claim
-  // about the machine, and nothing has been reported yet.
   const loading = !health;
   const usage = (percent: number | undefined) => Math.max(0, Math.min(100, percent ?? 0));
   const resource = (id: string, icon: LucideIcon, label: string, percent: number | undefined): StatGridTile => ({
@@ -121,15 +96,6 @@ function healthTiles(health: NodeHealth | undefined, t: TFunction, language: str
   ];
 }
 
-/**
- * The slots that keep the last row of the service grid whole.
- *
- * The 1px gaps between the cells are painted by the container, so a row that
- * runs out of cells shows the gap colour as a lit rectangle. telemt serves
- * Fake-TLS itself and reports mtproxy_active as a constant true, so its grid
- * is four cells rather than five: it needs two fillers at three columns and
- * none at two, where a tproxy node's five need the one filler either way.
- */
 function ServiceGridFiller({ telemt }: { telemt: boolean }) {
   if (!telemt) return <div className="hidden bg-card sm:block" aria-hidden="true" />;
   return (
@@ -140,11 +106,6 @@ function ServiceGridFiller({ telemt }: { telemt: boolean }) {
   );
 }
 
-/**
- * The health readout before it arrives: the same service grid and the same
- * four tiles under it, drawn empty. The panel does not change height when the
- * figures land.
- */
 function HealthSkeleton({ telemt }: { telemt: boolean }) {
   const { t, i18n } = useTranslation();
   return (
@@ -214,14 +175,7 @@ function JobRow({ job }: { job: ApplyJob }) {
   );
 }
 
-/**
- * What the node is doing right now, in four panels. The states it reports keep
- * the slab shape - a label on the left, the machine's own value in mono on the
- * right - and the figures it reports are stat tiles, the same as everywhere
- * else in the panel. Colour appears only where something is wrong: a dead
- * service, a resource past its threshold, a failed apply. Anything toned on
- * this page is the thing to look at.
- */
+// What the node is doing right now, in four panels.
 export function NodeOverviewTab({ node }: { node: Node }) {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();

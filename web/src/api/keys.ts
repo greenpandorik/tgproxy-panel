@@ -54,12 +54,7 @@ export const useKeys = (filters: KeyFilters = {}) =>
 export const useKey = (id: string) =>
   useQuery({ queryKey: keyKeys.one(id), queryFn: () => api.get<AccessKey>(`/api/v1/keys/${id}`), enabled: !!id });
 
-/**
- * Every link of a key, grouped by node - the shape the link dialog renders, with
- * each node's engine spelled out so a tproxy node can say why it has no Fake-TLS
- * link. Writer-only on the server, so callers gate it on the role rather than
- * letting it 403 in the background.
- */
+// Every link of a key, grouped by node.
 export const useKeyLinks = (id: string, enabled = true) =>
   useQuery({
     queryKey: keyKeys.links(id),
@@ -172,11 +167,7 @@ export function linkKindLabel(kind: LinkKind): string {
   return kind === 'tls' ? 'Fake-TLS' : 'WEB';
 }
 
-/**
- * Creates or rotates the key's subscription link. The returned URL and QR are
- * shown once - the API never lets the URL be recovered later (only the sha256
- * hash is stored), so a lost link means "create a new one".
- */
+// Creates or rotates the key's subscription link.
 export const useCreateSubscription = (id: string) => {
   const qc = useQueryClient();
   return useMutation({

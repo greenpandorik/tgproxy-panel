@@ -168,12 +168,7 @@ export function nodeLogsUrl(id: string, services: string[], lines: number, follo
   return `/api/v1/nodes/${id}/logs?${q.toString()}`;
 }
 
-/**
- * Queues an apply on every node that has unapplied changes, for the command
- * palette's "Apply everywhere". Requests go out together and failures are
- * counted rather than thrown, so one unreachable node does not hide the rest
- * having been queued; the caller reports `queued` of `total`.
- */
+// Queues an apply on every node that has unapplied changes, for the command palette's "Apply everywhere".
 export const useApplyDirtyNodes = () => {
   const qc = useQueryClient();
   return useMutation({

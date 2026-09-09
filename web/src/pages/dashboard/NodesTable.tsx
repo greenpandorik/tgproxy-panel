@@ -169,11 +169,6 @@ function NodeHeads() {
 /** Widths of the eight value columns, so the skeleton has the table's texture. */
 const SKELETON_WIDTHS = ['w-28', 'w-40', 'w-14', 'w-12', 'w-10', 'w-10', 'w-[76px]', 'w-20'];
 
-/**
- * The fleet while it is still loading: the real heads over rows of the real
- * height, with a bar where each value will land. It is the shape of the answer
- * rather than a spinner, so the panel does not resize the moment data arrives.
- */
 export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
   const placeholders = Array.from({ length: rows }, (_, i) => i);
 
@@ -186,8 +181,6 @@ export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
             {placeholders.map((i) => (
               <TableRow key={i}>
                 {SKELETON_WIDTHS.map((w, col) => (
-                  // Column 6 is the sparkline: a mark, not a number, so its
-                  // placeholder stays left where the line will start.
                   <TableCell key={col} className={col >= 4 && col !== 6 ? 'text-right' : undefined}>
                     <Skeleton className={cn('h-3', w, col >= 4 && col !== 6 && 'ml-auto')} />
                   </TableCell>
@@ -226,30 +219,7 @@ export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-/**
- * The fleet, in two shapes for two widths.
- *
- * Wide: one table. Everything the machine reports - host, relay build, profile
- * use, CPU load, sessions, heartbeat - is mono, so the eye can run down a
- * column and spot the row that does not match its neighbours.
- *
- * Wide also carries a 24h sparkline per row, in the colour that node already
- * has in the chart above, so the row says how the node got here and not only
- * where it is. A node that stopped reporting gets a flat dashed rule in
- * --dim rather than a line at zero: the panel does not know that its sessions
- * went to zero, only that it stopped being told.
- *
- * Narrow: the same fields as a stacked row, because a table that has to be
- * scrolled sideways hides exactly the columns this panel exists to show -
- * sessions, heartbeat, and the way into the node. Column headers cannot
- * survive the fold, so each value carries its own label instead, and the
- * sparkline is dropped outright rather than squeezed into a phone: a 76px
- * mark at half that width is a smudge, and every fact it hints at is already
- * spelled out in the fields above it.
- *
- * Either way a node that has stopped reporting says so in red on its
- * heartbeat, the field that actually went wrong; the rest of it stays quiet.
- */
+// The fleet, in two shapes for two widths.
 export function NodesTable({ nodes, sessionsByNode, seriesByNode, colorByNode }: NodesTableProps) {
   return (
     <>

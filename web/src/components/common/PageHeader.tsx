@@ -7,15 +7,6 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-/**
- * Page heading: the display role, with the page's own actions on the right and
- * an optional mono note beside the title. No rule under it - the first panel
- * below already draws one, and two lines 12px apart is a stack, not a
- * hierarchy.
- *
- * This is the only display-sized text on a page other than a KPI number, and
- * a page has exactly one of these.
- */
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">

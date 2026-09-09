@@ -16,8 +16,6 @@ import (
 	"tgwebproxy/internal/config"
 )
 
-// upgradeManifest mirrors the endpoint's response shape from the outside, so a change to the
-// contract the agent relies on shows up here as a compile-time or assertion failure.
 type upgradeManifestResp struct {
 	Engine string `json:"engine"`
 	Telemt *struct {
@@ -36,8 +34,6 @@ type upgradeManifestResp struct {
 	} `json:"agent"`
 }
 
-// stageAgentBinary writes the two files the install route serves and the manifest reports:
-// the agent binary and its checksum. Same files, one path.
 func stageAgentBinary(t *testing.T, h *apitest.Harness, sum string) {
 	t.Helper()
 	dir := filepath.Join(h.Deps.Cfg.DataDir, "agent")
@@ -52,9 +48,6 @@ func stageAgentBinary(t *testing.T, h *apitest.Harness, sum string) {
 	}
 }
 
-// registerNode creates a node of the given engine and walks it through the install
-// registration callback, returning the node token the agent would end up holding in
-// /etc/tgwp-agent/agent.env.
 func registerNode(t *testing.T, h *apitest.Harness, c *apitest.Client, host, engine string) (string, string) {
 	t.Helper()
 	var created struct {
@@ -162,9 +155,7 @@ func TestNodeUpgradeManifestTProxy(t *testing.T) {
 	}
 }
 
-// TestNodeUpgradeRejectsBadTokens: a missing, unknown or superseded token is the same 401,
-// byte for byte. A node that was re-installed has its old token replaced (RegisterNode writes
-// a new agent_token_hash), which is the only way a node token is revoked today.
+// TestNodeUpgradeRejectsBadTokens: a missing, unknown or superseded token is the same 401, byte for byte.
 func TestNodeUpgradeRejectsBadTokens(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -218,8 +209,6 @@ func TestNodeUpgradeRejectsBadTokens(t *testing.T) {
 	}
 }
 
-// TestNodeUpgradeUnpinnedTelemtRefuses: with no TELEMT_SHA256_X86_64 the panel must not hand
-// a node a download it cannot verify, exactly as the install script refuses to.
 func TestNodeUpgradeUnpinnedTelemtRefuses(t *testing.T) {
 	h := apitest.New(t, func(d *api.Deps) { d.Cfg.TelemtSHA256 = "" })
 	h.CreateAdmin("root", "pass-123456", "owner")

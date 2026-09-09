@@ -104,11 +104,6 @@ func TestAssignSiteToNode(t *testing.T) {
 	}
 }
 
-// TestAssignSiteUniquifiesPerNode covers Task 22: the same template assigned to two different
-// nodes must deploy byte-different bundles (per-node uniquification defeats a single static
-// site fingerprint), but re-assigning the same template to a node that already runs it must
-// reproduce the identical bundle_hash — otherwise every idempotent re-assign would look like a
-// change and force a needless relay restart.
 func TestAssignSiteUniquifiesPerNode(t *testing.T) {
 	_, c, n1 := ownerWithNode(t)
 	n2, _ := createNode(t, c, "n2.test")
@@ -153,12 +148,8 @@ func TestAssignSiteUniquifiesPerNode(t *testing.T) {
 	}
 }
 
-// TestSiteTemplateSizeCap covers I6: an oversized bundle would be accepted here and then
-// break every apply for every node it is assigned to with an opaque gRPC ResourceExhausted.
 func TestSiteTemplateSizeCap(t *testing.T) {
 	_, c, _ := ownerWithNode(t)
-	// Just over the 2 MB cap; decodeJSON caps the request body at 4 MB, so the base64 of a
-	// much larger payload would be rejected as a 400 before the cap is even consulted.
 	big := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte("a"), (2<<20)+4096))
 	body := map[string]any{"name": "huge", "html": goodHTML, "assets": map[string]string{"big.css": big}}
 

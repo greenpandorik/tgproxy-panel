@@ -33,11 +33,6 @@ function useClock(): string {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
-/**
- * One rail row. Active state is derived from the pathname rather than via
- * NavLink's render-prop className, because the collapsed rail wraps the same
- * element in a Tooltip trigger and that needs a plain string class to merge.
- */
 function NavRow({
   item,
   count,
@@ -93,8 +88,6 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
   const healthQuery = usePanelHealth();
   const clock = useClock();
   const apiOk = healthQuery.data === true && !healthQuery.isError;
-  // The summary query is the cheapest thing on the page that actually reads
-  // postgres, so its error state is an honest proxy for "db reachable".
 
   return (
     <nav

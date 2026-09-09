@@ -44,9 +44,6 @@ func fakeGitHub(t *testing.T, tag string, stars int) *httptest.Server {
 	return srv
 }
 
-// TestUpdateStatusForEveryRole: the chip in the topbar is rendered for whoever
-// is logged in, so a viewer gets the same answer an owner does - and nobody
-// without a session gets anything.
 func TestUpdateStatusForEveryRole(t *testing.T) {
 	gh := fakeGitHub(t, "v99.0.0", 6096)
 	c := updates.New("acme/panel", "")
@@ -90,9 +87,6 @@ func (f failingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return nil, errors.New("outbound call with update check disabled")
 }
 
-// TestUpdateStatusDisabledMakesNoCalls: UPDATE_CHECK=false is the promise that
-// the panel never talks to GitHub, so even a checker handed in by the wiring
-// must not be used.
 func TestUpdateStatusDisabledMakesNoCalls(t *testing.T) {
 	c := updates.New("acme/panel", "")
 	c.HTTP = &http.Client{Transport: failingTransport{t}}

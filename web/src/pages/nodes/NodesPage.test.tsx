@@ -20,8 +20,6 @@ vi.mock('@/api/nodes', async (importOriginal) => ({
   ...(await importOriginal<typeof NodesApi>()),
   useNodes: vi.fn(),
 }));
-// The create dialog is its own component with its own tests; the list under
-// test only needs it mounted closed.
 vi.mock('./CreateNodeDialog', () => ({ CreateNodeDialog: () => null }));
 
 function wrap(node: ReactNode) {
@@ -83,9 +81,6 @@ function node(name: string, status: Node['status'], h?: NodeHealth): Node {
   };
 }
 
-// The name appears twice - once in the wide table, once in the narrow card
-// list (jsdom applies no CSS, so both layouts are in the tree); the table row
-// is the one with a <tr> above it.
 function rowOf(name: string): HTMLElement {
   const row = screen
     .getAllByText(name)

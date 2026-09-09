@@ -21,9 +21,7 @@ import (
 const (
 	// maxGRPCMessageBytes matches the panel's server-side limit (cmd/panel/main.go).
 	maxGRPCMessageBytes = 16 << 20
-	// healthySession is how long a session must last before it counts as "the panel is
-	// fine", which resets the reconnect backoff.
-	healthySession = 60 * time.Second
+	healthySession      = 60 * time.Second
 )
 
 // Run keeps one session open to the panel, reconnecting with backoff.
@@ -49,8 +47,6 @@ func Run(ctx context.Context, cfg Config, h *Handler, log *slog.Logger) error {
 		if ctx.Err() != nil {
 			return nil
 		}
-		// A session that stayed up is evidence the panel is healthy, so a node that flapped
-		// earlier must not still be waiting 30s between attempts.
 		if time.Since(started) >= healthySession {
 			backoff = time.Second
 		}
@@ -69,8 +65,6 @@ func Run(ctx context.Context, cfg Config, h *Handler, log *slog.Logger) error {
 func session(ctx context.Context, target string, creds credentials.TransportCredentials, cfg Config, h *Handler, log *slog.Logger) error {
 	conn, err := grpc.NewClient(target,
 		grpc.WithTransportCredentials(creds),
-		// Matches the panel's server-side limits; gRPC's 4 MB default would reject a legal
-		// site bundle with an opaque ResourceExhausted.
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(maxGRPCMessageBytes),
 			grpc.MaxCallSendMsgSize(maxGRPCMessageBytes),
@@ -86,8 +80,6 @@ func session(ctx context.Context, target string, creds credentials.TransportCred
 	if err != nil {
 		return err
 	}
-	// The engine version comes from Health, so a telemt node reports "telemt <version>" from
-	// its control API instead of the tproxy build string.
 	hello := &agentv1.Hello{AgentVersion: Version, TproxyVersion: h.Health(ctx).GetTproxyVersion(), Hostname: readHostname(cfg)}
 	if err := stream.Send(&agentv1.Envelope{Body: &agentv1.Envelope_Hello{Hello: hello}}); err != nil {
 		return err
@@ -138,8 +130,6 @@ func session(ctx context.Context, target string, creds credentials.TransportCred
 
 func readHostname(cfg Config) string {
 	if cfg.Engine == EngineTelemt {
-		// telemt has no relay config.json; the field is informational, so the system
-		// hostname is the best available answer.
 		name, _ := os.Hostname()
 		return name
 	}

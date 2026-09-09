@@ -16,9 +16,6 @@ func env(rid string) *agentv1.Envelope {
 	return &agentv1.Envelope{RequestId: rid, Body: &agentv1.Envelope_LogChunk{LogChunk: &agentv1.LogChunk{}}}
 }
 
-// TestDeliverBlocksOnFullChannel covers debt item 5, now scoped to Response
-// envelopes: a reply used to be dropped the instant the 32-slot channel filled,
-// leaving the caller waiting for its request context. deliver waits instead.
 func TestDeliverBlocksOnFullChannel(t *testing.T) {
 	c := newConn(uuid.New())
 	ch := c.register("r1")
@@ -90,8 +87,7 @@ func TestDeliverReturnsWhenConnClosed(t *testing.T) {
 	}
 }
 
-// Unknown request ids (a reply that arrives after the caller gave up) are dropped
-// without waiting at all.
+// Unknown request ids (a reply that arrives after the caller gave up) are dropped without waiting at all.
 func TestDeliverUnknownRequestIsImmediate(t *testing.T) {
 	c := newConn(uuid.New())
 	start := time.Now()
@@ -107,9 +103,6 @@ func TestDeliverTimeoutDefault(t *testing.T) {
 	}
 }
 
-// TestDeliverNoWaitDropsImmediately is the other half of I2: the LogChunk path must
-// never hold the Recv pump, because that pump also delivers the heartbeats the stats
-// worker uses to decide a node is offline.
 func TestDeliverNoWaitDropsImmediately(t *testing.T) {
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))

@@ -22,17 +22,6 @@ function useNotes(topic: HelpTopic): string[] {
   return Object.values(raw as Record<string, string>).filter((v) => typeof v === 'string' && v !== '');
 }
 
-/**
- * The contextual help panel: a right-hand sheet, 420px, that explains the
- * screen or dialog it was opened from - what it is, then every field (what it
- * means, an example value, a tip), then the things that go wrong, then a link
- * into the setup guide.
- *
- * The prose is plain by design: an operator who has never run a Telegram proxy
- * should be able to fill in the form from this sheet alone. Examples are set
- * in mono like every other machine value in the panel, so the eye can tell
- * "type this" from "this is what it means".
- */
 export function HelpSheet({ topic, open, onOpenChange }: HelpSheetProps) {
   const { t, i18n } = useTranslation();
   const def = HELP_TOPICS[topic];

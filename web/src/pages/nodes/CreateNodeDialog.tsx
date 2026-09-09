@@ -24,8 +24,6 @@ const HOSTNAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 
 const ENGINES: NodeEngine[] = ['telemt', 'tproxy'];
 
-// The footer sits outside the scrolling field list, so its submit button reaches
-// the form by id rather than by nesting.
 const FORM_ID = 'create-node-form';
 
 /** internal/api/nodes.go defaultClassicPort. */
@@ -54,8 +52,6 @@ const schema = z
     if (!HOSTNAME_RE.test(val.tls_domain) || !val.tls_domain.includes('.')) {
       ctx.addIssue({ code: 'custom', path: ['tls_domain'], message: 'hostname' });
     }
-    // internal/api/nodes.go validateClassicPort: unprivileged, and never the two
-    // ports Caddy already owns on a telemt node.
     if (!Number.isInteger(val.classic_port) || val.classic_port < 1024 || val.classic_port > 65535) {
       ctx.addIssue({ code: 'custom', path: ['classic_port'], message: 'range' });
     }
@@ -73,20 +69,6 @@ const defaultValues: FormValues = {
   classic_port: DEFAULT_CLASSIC_PORT,
 };
 
-/**
- * The engine choice, as two cards side by side.
- *
- * It is the one decision on this form that cannot be changed afterwards - a node
- * is installed for one engine - and it decides what the operator can hand out
- * later, so it is not a select. Each card says what the engine gives you in one
- * line; the chosen one is filled with --bg-3 and outlined with the strong
- * hairline, the same "this one is active" treatment the range switch uses.
- *
- * A card is not a table row, so its state is a glyph on a tinted plate rather
- * than a 7px dot: the chosen engine takes a filled check in the brand hue, the
- * other an empty ring in --mute. At 20px the mark is legible next to the
- * engine's name where a dot only registered once you already knew to look.
- */
 function EngineCards({ value, onChange }: { value: NodeEngine; onChange: (engine: NodeEngine) => void }) {
   const { t } = useTranslation();
 
@@ -134,9 +116,7 @@ interface CreateNodeDialogProps {
 export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDialogProps) {
   const { t } = useTranslation();
   const createNode = useCreateNode();
-  // The Fake-TLS domain follows the hostname until the operator types their own -
-  // masking behind the node's own site is the sane default, and it would be silly
-  // to make them type the same name twice.
+  // The Fake-TLS domain follows the hostname until the operator types their own.
   const tlsDomainEdited = useRef(false);
 
   const {

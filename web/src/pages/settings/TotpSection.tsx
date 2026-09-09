@@ -20,28 +20,13 @@ import { Arriving, FormFooter } from './formShell';
 
 import type { TotpSetup } from '@/api/types';
 
-/**
- * Base UI reports why a dialog wants to close. These are the reasons that mean "the
- * user dismissed it" rather than "the app closed it deliberately"; the recovery-codes
- * dialog refuses all of them.
- */
+// Base UI reports why a dialog wants to close.
 const DISMISSALS = new Set<string>(['outside-press', 'escape-key', 'close-press', 'focus-out']);
 
-/** Shared shape for the two short code fields (enrolment confirm, disable). */
-/*
- * The six-digit code fields. tracking-code is the one non-micro letter
- * spacing in the panel and it is not a typographic choice: the eye has to
- * count six characters here rather than read a word, so the digits are set as
- * separate cells. The token is named in index.css so both OTP inputs share
- * one number. The placeholder rides the same spacing, or the dots would sit
- * where the digits will not.
- */
+// Shared shape for the two short code fields (enrolment confirm, disable).
 const codeFieldClass = 'mono h-9 text-center text-body tracking-code placeholder:tracking-code placeholder:text-mute';
 
-/**
- * Two-factor authentication for the signed-in admin. Rendered only when the panel
- * runs with FEATURE_TOTP; it is self-service for every role, viewers included.
- */
+// Two-factor authentication for the signed-in admin.
 export function TotpSection() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -55,9 +40,6 @@ export function TotpSection() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
-  // The acknowledgement lives here rather than in the dialog so it is reset at the
-  // moment a new set of codes arrives - a fresh enrolment must never inherit the tick
-  // from the previous one.
   const [recoveryAcknowledged, setRecoveryAcknowledged] = useState(false);
   const [disableOpen, setDisableOpen] = useState(false);
 
@@ -95,9 +77,6 @@ export function TotpSection() {
       setRecoveryCodes(res.recovery_codes);
       toast.add({ description: t('settings.totp_enabled_toast'), type: 'success' });
     } catch (err) {
-      // The server answers a wrong password and a wrong code with the same 422
-      // shape, distinguished only by which field it names; showing the error on
-      // the wrong input is the difference between "try again" and "give up".
       if (err instanceof ApiError && err.fields.password) {
         setPasswordError(t('settings.security_error_current'));
         return;
@@ -180,12 +159,6 @@ interface EnrolDialogProps {
   onConfirm: () => void;
 }
 
-/**
- * Enrolment, start to finish, in one dialog: scan, or type the secret in by
- * hand, then prove both that the authenticator works and that the person at
- * the keyboard knows the account password. The QR keeps a white tile of its
- * own - scanners want the quiet zone light whatever theme the panel is in.
- */
 function EnrolDialog({
   enrolment,
   code,
@@ -291,13 +264,7 @@ function EnrolDialog({
   );
 }
 
-/**
- * The recovery codes exist in plaintext exactly once, in the confirm response. Once
- * this dialog is gone they are unrecoverable, so it cannot be dismissed by reflex:
- * Escape, an outside press and the close button are all refused, and the one button
- * that closes it stays disabled until the user has ticked the acknowledgement. The
- * two ways of getting the codes out of the browser sit next to it.
- */
+// The recovery codes exist in plaintext exactly once, in the confirm response.
 interface RecoveryCodesDialogProps {
   codes: string[] | null;
   username: string;
@@ -327,9 +294,6 @@ function RecoveryCodesDialog({ codes, username, acknowledged, onAcknowledgedChan
       open={!!codes}
       disablePointerDismissal
       onOpenChange={(open, details) => {
-        // Every dismissal route the component offers by default would throw away the
-        // only copy of the codes, so all of them are refused here; the acknowledgement
-        // button calls onClose directly and never comes through this handler.
         if (!open && DISMISSALS.has(details.reason)) return;
         if (!open) onClose();
       }}
@@ -385,10 +349,6 @@ interface DisableDialogProps {
   pending: boolean;
 }
 
-/**
- * Disabling asks for the password and a second factor together: a stolen session
- * alone must not be enough to strip 2FA off the account it is sitting in.
- */
 function DisableDialog({ open, onOpenChange, onDisable, pending }: DisableDialogProps) {
   const { t } = useTranslation();
   const [password, setPassword] = useState('');

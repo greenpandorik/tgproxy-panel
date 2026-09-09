@@ -17,9 +17,6 @@ type Box struct {
 	aeads   map[int]cipher.AEAD
 }
 
-// maxKeyVersion is dictated by the blob layout: the version is stored as a
-// 2-byte big-endian prefix, so anything outside 1..65535 would be truncated by
-// Encrypt and then fail to decrypt. Reject it at construction instead.
 const maxKeyVersion = 65535
 
 func NewBox(current int, keys map[int][]byte) (*Box, error) {

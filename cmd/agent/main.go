@@ -19,8 +19,7 @@ func main() {
 			fmt.Println(agent.Version)
 			return
 		case "upgrade":
-			// Self-upgrade: the node asks the panel what it should be running and moves
-			// itself there. No panel session, no install token, no re-install.
+			// Self-upgrade: the node asks the panel what it should be running and moves itself there.
 			fs := flag.NewFlagSet("upgrade", flag.ExitOnError)
 			fs.Usage = func() {
 				fmt.Fprint(os.Stderr, `Usage: tgwp-agent upgrade [--telemt|--agent] [--check] [--yes]

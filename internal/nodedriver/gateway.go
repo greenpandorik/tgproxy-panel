@@ -66,10 +66,7 @@ func (g *Gateway) Apply(ctx context.Context, id uuid.UUID, req ApplyRequest) (Ap
 	return applyResultFrom(resp, err)
 }
 
-// applyResultFrom maps an agent reply onto an ApplyResult. It never returns a
-// nil error without an ApplyResponse: an agent that answers an Apply with some
-// other body would otherwise look like a successful apply and let the worker
-// mark profiles synced for state the node never received.
+// applyResultFrom maps an agent reply onto an ApplyResult.
 func applyResultFrom(resp *agentv1.Response, err error) (ApplyResult, error) {
 	if a := resp.GetApply(); a != nil {
 		res := ApplyResult{OK: a.Ok, RestartedRelay: a.RestartedRelay, RestartedMTProxy: a.RestartedMtproxy, RolledBack: a.RolledBack, Log: a.Log}

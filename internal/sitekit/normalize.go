@@ -26,12 +26,7 @@ type Report struct {
 	Warnings []string `json:"warnings"`
 }
 
-// inputDigest is a stable fingerprint of a Normalize input: the HTML plus every asset in
-// sorted path order. Generated names are derived from it so that normalising the same
-// input twice yields a byte-identical bundle — and therefore the same Bundle.Hash().
-// Re-assigning the template a node already runs must not look like a change, because a
-// changed bundle makes the agent swap the site directory and restart the relay, which
-// drops every live carrier session.
+// inputDigest is a stable fingerprint of a Normalize input: the HTML plus every asset in sorted path order.
 func inputDigest(src string, assets map[string][]byte) []byte {
 	paths := make([]string, 0, len(assets))
 	for p := range assets {
@@ -50,9 +45,7 @@ func inputDigest(src string, assets map[string][]byte) []byte {
 	return h.Sum(nil)
 }
 
-// derive produces a short, stable, per-item suffix from the input digest. kind separates
-// the namespaces (stylesheet / script / generated class) and n is a counter within a
-// namespace, so two style attributes with identical content still get distinct classes.
+// derive produces a short, stable, per-item suffix from the input digest.
 func derive(seed []byte, kind string, n int) string {
 	h := sha256.New()
 	h.Write(seed)
@@ -85,11 +78,6 @@ func isLocal(raw string) bool {
 	return u.Scheme == "" && u.Host == ""
 }
 
-// cleanAssetPath is the single normalisation used for both bundle file keys and
-// the paths referenced from the HTML. Both sides must agree: when they did not,
-// a reference like "./a.css" to an asset stored as "a.css" was reported as a
-// missing file. It rejects traversal and empty paths, mirroring the agent's
-// safeSitePath guard so the panel never offers an unsafe path to a node.
 func cleanAssetPath(raw string) (string, bool) {
 	raw = strings.TrimSpace(raw)
 	if strings.Contains(raw, "..") {
@@ -102,9 +90,7 @@ func cleanAssetPath(raw string) (string, bool) {
 	return strings.TrimPrefix(clean, "/"), true
 }
 
-// assetPath maps an href/src attribute onto a bundle file key. An unsafe or
-// unparseable reference is returned close to verbatim so it still surfaces as a
-// missing-file error rather than being silently dropped.
+// assetPath maps an href/src attribute onto a bundle file key.
 func assetPath(raw string) string {
 	raw = strings.TrimSpace(raw)
 	u, err := url.Parse(raw)
@@ -117,12 +103,8 @@ func assetPath(raw string) string {
 	return strings.TrimPrefix(u.Path, "/")
 }
 
-// sanitizeAssetPath rejects path-traversal or otherwise unsafe asset keys before they become
-// bundle file paths.
 func sanitizeAssetPath(raw string) (string, bool) { return cleanAssetPath(raw) }
 
-// Normalize parses html, rejects forbidden constructs, extracts inline CSS/JS into files and
-// returns a deployable bundle. Report.Errors non-empty means the site must be rejected.
 func Normalize(src string, assets map[string][]byte) (Bundle, Report, error) {
 	var rep Report
 	doc, err := html.Parse(strings.NewReader(src))
@@ -217,9 +199,6 @@ func Normalize(src string, assets map[string][]byte) (Bundle, Report, error) {
 				}
 			}
 
-			// Rebuild the attribute list once: compute the generated class first (if a
-			// style attribute is present), then drop style/on* and replace/add class.
-			// Never rely on attribute order in n.Attr.
 			styleVal := attr(n, "style")
 			var cls string
 			hasStyle := styleVal != ""

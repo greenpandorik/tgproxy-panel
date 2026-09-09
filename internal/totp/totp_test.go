@@ -65,8 +65,6 @@ func TestValidateAcceptsCurrentAndPreviousStep(t *testing.T) {
 
 func TestValidateRejectsGarbage(t *testing.T) {
 	t.Parallel()
-	// Fixed secret and instant so the "wrong code" case is deterministic: the
-	// rejected code is chosen to differ from every code the ±1 window accepts.
 	const secret = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
 	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
 

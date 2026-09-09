@@ -13,8 +13,6 @@ export const brandingKeys = {
 export const useBranding = () =>
   useQuery({ queryKey: brandingKeys.active, queryFn: () => api.get<Branding>('/api/v1/branding') });
 
-// The list endpoint is writers-only; pass `enabled: false` for viewers so the
-// request (and its guaranteed 403) is never made.
 export const useBrandingProfiles = (opts?: { enabled?: boolean }) =>
   useQuery({
     queryKey: brandingKeys.profiles,

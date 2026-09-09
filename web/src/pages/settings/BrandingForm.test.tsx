@@ -68,9 +68,7 @@ describe('BrandingForm', () => {
     await user.type(panelNameInput, 'My typed name');
     expect(panelNameInput).toHaveValue('My typed name');
 
-    // Same profile id, new object reference, only the logo URL changed - this simulates the
-    // profiles query refetching after an unrelated mutation (e.g. an asset upload elsewhere
-    // on the page invalidating the shared query) while the panel name field is still dirty.
+    // Same profile id, new object reference, only the logo URL changed.
     rerenderWith({ ...PROFILE_A, logo_url: '/logo-b.png' });
 
     expect(panelNameInput).toHaveValue('My typed name');

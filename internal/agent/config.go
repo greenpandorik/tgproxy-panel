@@ -14,13 +14,9 @@ import (
 // Version is stamped from the release tag at link time.
 var Version = "0.1.0"
 
-// DefaultReloadWait is the budget telemtReload polls a reload for: the whole drain window plus
-// 30s of slack for preparation, activation and the poll interval itself.
 const DefaultReloadWait = telemt.ReloadDrainSecs*time.Second + 30*time.Second
 
-// Node engines. The engine is fixed when the node is created and selects the agent code path:
-// tproxy is the tproxy-server + official MTProxy stack, telemt is a single telemt process
-// driven through its control API.
+// Node engines.
 const (
 	EngineTProxy = "tproxy"
 	EngineTelemt = "telemt"
@@ -31,16 +27,10 @@ type Config struct {
 	RelayAdminURL, MTProxyStatsURL, TProxyVersion                                           string
 	HealthWait                                                                              time.Duration
 
-	// ReloadWait bounds a telemt runtime reload. It is deliberately *not* HealthWait: a
-	// draining reload is non-terminal for up to telemt.ReloadDrainSecs while old sessions
-	// finish, so reusing the (much shorter) health budget would make every apply on a node
-	// with live traffic time out and roll a successful change back.
 	ReloadWait time.Duration
 
 	// Engine is EngineTProxy or EngineTelemt.
-	Engine string
-	// TelemtAPIToken is the exact Authorization value telemt's control API expects. It is
-	// read from TGWP_TELEMT_API_TOKEN or the token file and must never be logged.
+	Engine                                                                                  string
 	TelemtAPI, TelemtAPIToken, TelemtConfigPath, TelemtSiteDir, TelemtBin, TelemtMetricsURL string
 }
 

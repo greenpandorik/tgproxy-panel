@@ -42,24 +42,10 @@ func (c *conn) unregister(id string) {
 	c.mu.Unlock()
 }
 
-// deliverTimeout bounds how long the stream's Recv pump waits on a full
-// per-request channel (cap 32) before giving up on a *Response* envelope.
-// Responses are one-per-call and rare, so a moment of back-pressure is cheap
-// insurance against dropping one. Atomic so a test can shorten it while other
-// sessions' Recv pumps are still running.
 var deliverTimeout atomic.Int64
 
 func init() { deliverTimeout.Store(int64(2 * time.Second)) }
 
-// deliver hands a Response envelope to the goroutine waiting on env.RequestId,
-// waiting up to deliverTimeout if that goroutine's channel is momentarily full.
-// Unknown request ids (a late reply to a cancelled call) are discarded silently.
-//
-// Only Response envelopes may use this: the caller is the session's single Recv
-// pump, which also dispatches heartbeats, so anything that can block it for
-// seconds at a time can starve heartbeats past offline_after and raise a false
-// node_offline alert for a perfectly healthy node. Log chunks - the one envelope
-// type an agent can emit without bound - go through deliverNoWait instead.
 func (c *conn) deliver(env *agentv1.Envelope, log *slog.Logger) {
 	ch := c.pendingChan(env.RequestId)
 	if ch == nil {
@@ -81,13 +67,6 @@ func (c *conn) deliver(env *agentv1.Envelope, log *slog.Logger) {
 	}
 }
 
-// deliverNoWait hands env to the goroutine waiting on env.RequestId, dropping it
-// immediately with a warning when that goroutine's channel is full. This is the
-// path for LogChunk envelopes: a `journalctl -f` flood behind a slow SSE client
-// must cost the Recv pump nothing, because the same pump delivers heartbeats.
-// Losing a log line is survivable; a chunk carrying Done only costs the Stream
-// consumer its early exit, and that consumer already selects on ctx.Done(), so
-// it ends with the HTTP request either way.
 func (c *conn) deliverNoWait(env *agentv1.Envelope, log *slog.Logger) {
 	ch := c.pendingChan(env.RequestId)
 	if ch == nil {

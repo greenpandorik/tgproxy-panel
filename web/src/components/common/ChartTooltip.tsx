@@ -16,11 +16,7 @@ export interface ChartTooltipProps {
   formatValue?: (value: number) => string;
 }
 
-/**
- * Hover readout: the timestamp in dim mono, then one row per series with its
- * line swatch, name and value. Values are mono and right-aligned so the rows
- * compare vertically the way the table columns do.
- */
+// Hover readout: the timestamp in dim mono, then one row per series with its line swatch, name and value.
 export function ChartTooltip({ active, payload, label, locale, formatValue }: ChartTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 

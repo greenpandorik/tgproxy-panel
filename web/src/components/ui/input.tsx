@@ -3,11 +3,6 @@ import { Input as InputPrimitive } from '@base-ui/react/input';
 
 import { cn } from '@/lib/utils';
 
-/**
- * Recessed field: the page ground (--bg) inside a panel (--bg-2), so an input
- * reads as a hole rather than a raised control. Focus is the only place the
- * brand hue appears on a form.
- */
 const FIELD_CLASS =
   'w-full min-w-0 rounded-control border border-hairline-strong bg-background px-2.5 text-body text-foreground transition-colors outline-none placeholder:text-mute focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive/60 aria-invalid:ring-2 aria-invalid:ring-destructive/25';
 

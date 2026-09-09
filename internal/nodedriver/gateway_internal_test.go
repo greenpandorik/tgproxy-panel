@@ -7,8 +7,6 @@ import (
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
 
-// TestApplyResultFromEmptyResponse covers debt item 6: a reply carrying no
-// ApplyResponse must not read as a successful apply.
 func TestApplyResultFromEmptyResponse(t *testing.T) {
 	for name, resp := range map[string]*agentv1.Response{
 		"nil response":  nil,

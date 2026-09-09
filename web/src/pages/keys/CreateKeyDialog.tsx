@@ -31,20 +31,9 @@ import type { TelemtLimitsForm } from '@/lib/units';
 
 const CARRIER_MODES: CarrierMode[] = ['https', 'https-lanes', 'websocket', 'websocket-lanes'];
 
-// The footer sits outside the scrolling field list, so its submit button reaches
-// the form by id rather than by nesting.
 const FORM_ID = 'create-key-form';
 
-/*
- * The form is a stack of decisions, not a stack of fields.
- *
- * This is the busiest form in the panel - three tabs, a node picker, a carrier
- * select, an expiry and a collapsible limits block - and set as one uniform
- * column it reads as sixteen things of equal weight. So each decision gets its
- * own block: fields inside a block sit 12px apart, blocks are 16px apart and
- * divided by the same hairline the tables use. The eye can then find "where
- * does this key live" without reading the label above every input.
- */
+// The form is a stack of decisions, not a stack of fields.
 const GROUP_CLASS = 'space-y-3 py-4 first:pt-0 last:pb-0';
 
 function carrierSlug(mode: CarrierMode): string {
@@ -170,8 +159,7 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
   const selectedNodeIds = values.node_ids;
   const nodes = nodesQuery.data?.items ?? [];
 
-  // One draft for the whole dialog: the tab is a form value, so a batch left
-  // half-typed comes back as a batch.
+  // One draft for the whole dialog: the tab is a form value, so a batch left half-typed comes back as a batch.
   const draft = useDraft<FormValues>('key-create', values, { initial: defaultValues, open });
 
   const resumeDraft = () => {
@@ -181,8 +169,6 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
     setShowLimits(Object.values(saved.limits ?? {}).some((v) => Number(v) > 0));
     draft.dismiss();
   };
-  // The limits are enforced by telemt on the node, so they mean nothing until at
-  // least one of the key's nodes runs that engine.
   const hasTelemtNode = nodes.some((n) => n.engine === 'telemt' && selectedNodeIds.includes(n.id));
 
   const close = () => {

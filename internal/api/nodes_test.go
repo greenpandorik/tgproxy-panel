@@ -224,9 +224,6 @@ func TestViewerCannotCreateNode(t *testing.T) {
 	}
 }
 
-// TestNodeListHealthMatchesHealthEndpoint: the list's `health` is the last heartbeat, and it
-// must come out in the same snake_case shape as GET /nodes/{id}/health - the SPA has one
-// NodeHealth type for both, and the row is stored with Go field names.
 func TestNodeListHealthMatchesHealthEndpoint(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	raw, _ := json.Marshal(nodedriver.HealthReport{RelayActive: true, CPUPercent: 42.5, MemUsedPercent: 61, DiskUsedPercent: 12})
@@ -251,8 +248,6 @@ func TestNodeListHealthMatchesHealthEndpoint(t *testing.T) {
 	}
 }
 
-// TestNodeListHealthCarriesDcConnectivity: the DC fields the heartbeat stores come out of the
-// list's `health` in the spec's snake_case names, with an unmeasured DC kept known=false.
 func TestNodeListHealthCarriesDcConnectivity(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	raw, _ := json.Marshal(nodedriver.HealthReport{
@@ -306,8 +301,6 @@ func TestNodeListHealthCarriesDcConnectivity(t *testing.T) {
 	}
 }
 
-// A tproxy node's heartbeat never carries DC data; the list must say so explicitly (false, with
-// an empty dcs list) rather than omit the fields, so the SPA has one shape for both engines.
 func TestNodeListHealthTproxyHasNoDcData(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")

@@ -13,16 +13,8 @@ import (
 	"strings"
 )
 
-// Node self-upgrade: the data half.
-//
-// A node must be able to move to a newer pinned engine on its own, by running one command on
-// the host. It asks the panel what it should be running (GET /api/v1/node/upgrade, authorised
-// by the node token it already holds), compares that with what is installed, and upgrades
-// only what differs. Nothing here needs a panel session, an install token or a re-install.
-
 const (
-	// DefaultAgentEnvPath is the file the installer writes and the systemd unit reads. It
-	// holds TGWP_PANEL_URL and TGWP_TOKEN, so it is 0600 and its contents are never printed.
+	// DefaultAgentEnvPath is the file the installer writes and the systemd unit reads.
 	DefaultAgentEnvPath = "/etc/tgwp-agent/agent.env"
 	// DefaultAgentBin is where the install script puts the agent binary.
 	DefaultAgentBin = "/usr/local/bin/tgwp-agent"
@@ -33,14 +25,12 @@ const (
 	agentUnit  = "tgwp-agent"
 	telemtUnit = "telemt"
 
-	// ComponentTelemt and ComponentAgent name the two upgradable components. tproxy-server is
-	// built from source at a pinned commit and is not one of them.
+	// ComponentTelemt and ComponentAgent name the two upgradable components.
 	ComponentTelemt = "telemt"
 	ComponentAgent  = "agent"
 )
 
-// maxUpgradeDownloadBytes caps a download. The telemt tarball is tens of megabytes; this is
-// only here so a wrong URL cannot fill the node's disk.
+// maxUpgradeDownloadBytes caps a download.
 const maxUpgradeDownloadBytes = 512 << 20
 
 // UpgradeArtifact is one downloadable component as the panel pins it.
@@ -64,8 +54,7 @@ type UpgradeManifest struct {
 	Agent  UpgradeArtifact  `json:"agent"`
 }
 
-// UpgradeScope limits which components are considered (--telemt / --agent). The zero value
-// means "neither flag was given", which is the same as both.
+// UpgradeScope limits which components are considered (--telemt / --agent).
 type UpgradeScope struct{ Telemt, Agent bool }
 
 func (s UpgradeScope) includes(component string) bool {
@@ -83,9 +72,7 @@ func (s UpgradeScope) includes(component string) bool {
 
 // ComponentPlan is the verdict for one component.
 type ComponentPlan struct {
-	Name string
-	// Installed is what the node is running now; empty when it could not be determined, which
-	// counts as out of date (better a needless reinstall than a silent skip).
+	Name      string
 	Installed string
 	Wanted    string
 	Artifact  UpgradeArtifact
@@ -109,14 +96,11 @@ func (p UpgradePlan) Changes() []ComponentPlan {
 	return out
 }
 
-// Installed is what the node currently has, keyed by component name. An empty or missing
-// value means "could not be determined".
+// Installed is what the node currently has, keyed by component name.
 type Installed map[string]string
 
 var reVersion = regexp.MustCompile(`[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?`)
 
-// normalizeVersion reduces a reported version to something comparable: "telemt 3.5.6",
-// "v3.5.6" and "3.5.6\n" are all 3.5.6.
 func normalizeVersion(v string) string {
 	v = strings.TrimSpace(v)
 	v = strings.TrimPrefix(v, "telemt ")
@@ -125,27 +109,19 @@ func normalizeVersion(v string) string {
 	return v
 }
 
-// sameVersion is deliberately equality, not "newer than": the panel's pin is the truth, so a
-// node running something newer than the pin is out of date too and gets moved back to it.
-// That is what makes a downgrade (the documented way to back out of a bad release) work with
-// the same command.
 func sameVersion(installed, wanted string) bool {
 	a, b := normalizeVersion(installed), normalizeVersion(wanted)
 	return a != "" && strings.EqualFold(a, b)
 }
 
-// ParseVersionOutput pulls a version out of whatever `telemt --version` prints - the exact
-// wording varies between releases, so the first thing shaped like a version wins.
+// ParseVersionOutput pulls a version out of whatever `telemt --version` prints.
 func ParseVersionOutput(out string) string {
 	return reVersion.FindString(out)
 }
 
-// BuildUpgradePlan compares the panel's manifest with what is installed. It never decides
-// anything from the node's own opinion of what it should run: the panel's pin is the target.
+// BuildUpgradePlan compares the panel's manifest with what is installed.
 func BuildUpgradePlan(m UpgradeManifest, installed Installed, scope UpgradeScope) UpgradePlan {
 	var plan UpgradePlan
-	// telemt first, the agent last: replacing the agent restarts the unit this command's own
-	// node depends on, so anything else must already be done by then.
 	if m.Telemt != nil && scope.includes(ComponentTelemt) {
 		plan.Components = append(plan.Components, componentPlan(ComponentTelemt, installed[ComponentTelemt], *m.Telemt))
 	} else if m.Telemt != nil {
@@ -155,8 +131,6 @@ func BuildUpgradePlan(m UpgradeManifest, installed Installed, scope UpgradeScope
 		})
 	}
 	if m.TProxy != nil && scope.includes(ComponentTelemt) {
-		// tproxy-server is compiled from source on the node; the agent cannot swap it in
-		// place, so this is reported and never acted on.
 		plan.Components = append(plan.Components, ComponentPlan{
 			Name: "tproxy-server", Installed: installed["tproxy-server"], Wanted: m.TProxy.Commit,
 			Reason: "pinned at " + shortCommit(m.TProxy.Commit) + "; a tproxy node is upgraded by re-running its install command",
@@ -185,8 +159,6 @@ func componentPlan(name, installed string, a UpgradeArtifact) ComponentPlan {
 		c.Change = true
 		c.Reason = normalizeVersion(installed) + " → " + normalizeVersion(a.Version)
 	}
-	// A component the panel cannot vouch for is never installed: an unverified download runs
-	// as root on this host.
 	if c.Change && a.SHA256 == "" {
 		c.Change = false
 		c.Reason = "the panel published no sha256 for " + a.Version + "; refusing to install an unverified download"
@@ -201,8 +173,7 @@ func shortCommit(c string) string {
 	return c
 }
 
-// ReadEnvFile parses the KEY=VALUE lines of an agent env file. Values are taken literally
-// (the installer writes no quoting) and the map is never logged: it holds the node token.
+// ReadEnvFile parses the KEY=VALUE lines of an agent env file.
 func ReadEnvFile(path string) (map[string]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -228,8 +199,7 @@ func ReadEnvFile(path string) (map[string]string, error) {
 	return out, nil
 }
 
-// FetchUpgradeManifest asks the panel what this node should be running. The node token goes
-// in the Authorization header and is never part of a URL, a log line or an error.
+// FetchUpgradeManifest asks the panel what this node should be running.
 func FetchUpgradeManifest(ctx context.Context, httpc *http.Client, panelURL, token string) (UpgradeManifest, error) {
 	var m UpgradeManifest
 	if httpc == nil {

@@ -14,8 +14,6 @@ import (
 )
 
 // github is a fake api.github.com serving the two endpoints the checker reads.
-// Both handlers count hits and can be switched to a failure status; block, when
-// set, makes them wait until it is closed (for the single-flight test).
 type github struct {
 	t   *testing.T
 	srv *httptest.Server
@@ -272,8 +270,6 @@ func TestStatusFailureAfterSuccessKeepsLastGood(t *testing.T) {
 		t.Fatalf("expected a refetch after TTL, releases hits=%d", r)
 	}
 
-	// Backoff: a minute after the failure nothing is retried even though GitHub
-	// is fine again.
 	g.set(func(g *github) { g.releaseStatus = 200 })
 	ck.advance(time.Minute)
 	st = c.Status(context.Background())
@@ -382,8 +378,6 @@ func TestStatusCallerCancellationDoesNotPoisonWaiters(t *testing.T) {
 	c, _ := newChecker(g, "1.0.0")
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	// A caller whose request is already gone must not leave the checker with a
-	// failure that makes the next caller wait out the backoff window.
 	_ = c.Status(ctx)
 	st := c.Status(context.Background())
 	if st.Stale || st.Latest != "1.0.1" {

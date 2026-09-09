@@ -10,11 +10,7 @@ export interface PublicStatus {
   relay_commit: string;
 }
 
-/**
- * Public panel status: version, node counts and the relay commit, with no
- * hostnames or names in it. Served without a session (the login screen shows
- * it), cached 10s on the server, so a slow poll here is enough.
- */
+// Public panel status: version, node counts and the relay commit, with no hostnames or names in it.
 export const usePublicStatus = (options: { refetchInterval?: number } = {}) =>
   useQuery({
     queryKey: ['status', 'public'],

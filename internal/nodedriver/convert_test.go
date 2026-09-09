@@ -51,8 +51,6 @@ func TestProfileTelemtFieldsRoundTrip(t *testing.T) {
 	}
 }
 
-// A profile with no telemt limits must not materialise an all-zero limits struct on the far
-// side: the agent uses non-nil to mean "the panel has an opinion about these fields".
 func TestProfileWithoutTelemtLimitsStaysNil(t *testing.T) {
 	out := ProfileFromProto(ProfileToProto(Profile{Name: "a", Enabled: true}))
 	if out.Telemt != nil {
@@ -66,8 +64,7 @@ func TestProfileWithoutTelemtLimitsStaysNil(t *testing.T) {
 	}
 }
 
-// A disabled profile must survive the round trip as disabled - proto3 has no presence for a
-// bare bool, so the panel writes it literally and the agent reads it literally.
+// A disabled profile must survive the round trip as disabled.
 func TestProfileDisabledRoundTrip(t *testing.T) {
 	out := ProfileFromProto(ProfileToProto(Profile{Name: "a", Enabled: false}))
 	if out.Enabled {
@@ -75,8 +72,6 @@ func TestProfileDisabledRoundTrip(t *testing.T) {
 	}
 }
 
-// The DC connectivity fields ride the same HealthReport both ways: a DC telemt has not measured
-// yet keeps known=false through the round trip rather than turning into a measured 0 ms.
 func TestHealthDcFieldsRoundTrip(t *testing.T) {
 	in := HealthReport{
 		RelayActive: true, CPUPercent: 1.5,

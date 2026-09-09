@@ -96,8 +96,6 @@ func TestPresetsNormalizeClean(t *testing.T) {
 	}
 }
 
-// TestNormalizeRejectsAssetPathTraversal is not part of the brief's verbatim test list; it
-// guards a self-review finding: asset map keys must not be able to escape the bundle directory.
 func TestNormalizeRejectsAssetPathTraversal(t *testing.T) {
 	cases := []string{"../../etc/passwd", "a/../../b.css", "/../x.css"}
 	for _, p := range cases {
@@ -119,9 +117,6 @@ func keys(m map[string][]byte) []string {
 	return out
 }
 
-// TestNormalizeIsDeterministic covers I3: re-assigning the same template must produce the
-// same bundle hash, otherwise the agent swaps the site dir and restarts the relay, dropping
-// every live carrier session.
 func TestNormalizeIsDeterministic(t *testing.T) {
 	html := `<!doctype html><html><head><title>x</title><style>body{color:red}</style></head>
 <body><h1 style="margin:0">Hi</h1><p style="margin:0">two</p><script>console.log(1)</script></body></html>`
@@ -155,8 +150,6 @@ func TestNormalizeIsDeterministic(t *testing.T) {
 	}
 }
 
-// TestAssetPathAndSanitizeAgree covers debt item 11: the two normalisers used to
-// diverge on "./a.css", which made Normalize report a present asset as missing.
 func TestAssetPathAndSanitizeAgree(t *testing.T) {
 	for _, raw := range []string{"a.css", "./a.css", "/a.css", "css/../a.css.map", "sub/./b.js", "/sub//b.js"} {
 		clean, ok := sanitizeAssetPath(raw)

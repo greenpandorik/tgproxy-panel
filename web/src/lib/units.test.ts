@@ -148,8 +148,7 @@ describe('validateTelemtLimitsForm', () => {
     });
   });
 
-  // M5: both counters cross the wire as 32-bit unsigned integers, so a value past 2^32-1
-  // wraps - 4294967297 would become 1, locking the key out instead of leaving it unlimited.
+  // M5: both counters cross the wire as 32-bit unsigned integers, so a value past 2^32-1 wraps.
   it('holds the counters to the backend ceiling', () => {
     expect(validateTelemtLimitsForm({ ...EMPTY_TELEMT_LIMITS_FORM, max_unique_ips: String(MAX_TELEMT_COUNTER) })).toEqual({});
     expect(validateTelemtLimitsForm({ ...EMPTY_TELEMT_LIMITS_FORM, max_unique_ips: String(MAX_TELEMT_COUNTER + 1) })).toEqual({

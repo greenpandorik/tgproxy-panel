@@ -22,8 +22,6 @@ func TestPublicBrandingAndUpdate(t *testing.T) {
 		ThemeDefault string `json:"theme_default"`
 	}
 	h.Anonymous().JSON(h.Anonymous().Get("/api/v1/branding"), &pub)
-	// The defaults come from migration 00008 and must agree with the Go constants
-	// (a fresh install, the login page and the subscription page all read them).
 	if pub.PanelName != branding.DefaultPanelName || pub.PrimaryColor != branding.DefaultPrimaryColor || pub.ThemeDefault != "dark" {
 		t.Fatalf("defaults %+v", pub)
 	}
@@ -87,8 +85,6 @@ func TestBrandingUpload(t *testing.T) {
 	}
 }
 
-// uploadBrandingAsset posts filename/content as the "file" field of a kind=logo upload for
-// profile id and returns the resulting logo_url.
 func uploadBrandingAsset(t *testing.T, c interface {
 	PostRaw(path, contentType string, body []byte) *http.Response
 	JSON(resp *http.Response, out any)
@@ -172,8 +168,6 @@ func TestBrandingUploadReplacesStaleExtension(t *testing.T) {
 	if r.StatusCode != http.StatusOK {
 		t.Fatalf("initial svg fetch %d", r.StatusCode)
 	}
-	// I4: these headers neutralise SVG XSS even if the sanitiser is ever bypassed. The asset
-	// is served publicly, from the panel's origin, on the pre-auth login page.
 	if got := r.Header.Get("Content-Security-Policy"); got != "default-src 'none'; style-src 'unsafe-inline'; sandbox" {
 		t.Errorf("branding asset CSP = %q", got)
 	}
@@ -193,10 +187,6 @@ func TestBrandingUploadReplacesStaleExtension(t *testing.T) {
 	}
 }
 
-// TestDeleteBrandingReportsZeroRows covers debt item 12: the DELETE carries
-// "AND is_active = false", so a profile activated between the handler's
-// pre-check and the statement matches no row. The handler now reads the row
-// count and answers 409 instead of a misleading 204.
 func TestDeleteBrandingReportsZeroRows(t *testing.T) {
 	h, c, _ := ownerWithNode(t)
 	var list struct {
@@ -245,8 +235,6 @@ func TestDeleteBrandingReportsZeroRows(t *testing.T) {
 	}
 }
 
-// TestBrandingAssetCopyFailureIsAudited covers debt item 13: clearing the path
-// when the copy fails is deliberate, but it used to be invisible.
 func TestBrandingAssetCopyFailureIsAudited(t *testing.T) {
 	h, c, _ := ownerWithNode(t)
 	var list struct {
@@ -290,8 +278,7 @@ func TestBrandingAssetCopyFailureIsAudited(t *testing.T) {
 	}
 }
 
-// Dark logos use the same validated upload and public serving path as the main
-// logo. Cloning a profile must copy the file into the clone's own directory.
+// Dark logos use the same validated upload and public serving path as the main logo.
 func TestBrandingDarkLogoUploadAndClone(t *testing.T) {
 	h, c, _ := ownerWithNode(t)
 	var profiles struct {

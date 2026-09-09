@@ -28,10 +28,6 @@ type backupFixture struct {
 
 func newBackupFixture(t *testing.T) *backupFixture {
 	t.Helper()
-	// The fake clock is anchored to today's real UTC date at 03:30, because the
-	// rows the worker writes get their created_at from the database's own clock:
-	// a fixed date in the past would make every "already ran today" check compare
-	// against rows stamped in the future.
 	now := time.Now().UTC()
 	f := &backupFixture{
 		st:  store.OpenTest(t),
@@ -132,8 +128,6 @@ func TestBackupWorkerSkipsWhenDisabledOrOffHour(t *testing.T) {
 	}
 }
 
-// A dump taken by hand at 03:10 must not make the panel skip the nightly one,
-// and the nightly one must run again the next day.
 func TestBackupWorkerCountsOnlyScheduledDumpsAndRunsDaily(t *testing.T) {
 	f := newBackupFixture(t)
 	f.setSchedule(t, backup.Schedule{Enabled: true, Hour: 3, Keep: 7})
@@ -194,8 +188,6 @@ func TestBackupWorkerPrunesToKeep(t *testing.T) {
 	if kinds[db.BackupKindScheduled] != 2 {
 		t.Fatalf("%d scheduled rows, want keep=2: %+v", kinds[db.BackupKindScheduled], rows)
 	}
-	// Retention is per nightly dump: a dump the operator took by hand is theirs,
-	// not the worker's to expire.
 	if kinds[db.BackupKindManual] != 1 || !names["manual.dump"] {
 		t.Fatalf("the manual dump was pruned: %+v", rows)
 	}

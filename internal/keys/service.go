@@ -76,9 +76,7 @@ func (in CreateInput) validate(requireLabel bool) error {
 	return nil
 }
 
-// createTx creates one key and its per-node profiles inside an existing transaction. The
-// caller owns validation and the transaction, so Create and CreateBatch can share it while
-// CreateBatch keeps the whole batch in a single unit of work.
+// createTx creates one key and its per-node profiles inside an existing transaction.
 func (s *Service) createTx(ctx context.Context, q *db.Queries, in CreateInput) (db.AccessKey, error) {
 	secret, err := crypto.NewSecretHex()
 	if err != nil {
@@ -122,10 +120,6 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (db.AccessKey, err
 	return key, nil
 }
 
-// CreateBatch creates count keys as one atomic user action: capacity for the whole batch is
-// checked against every target node up front, and every key is created in a single
-// transaction. A batch that cannot complete creates nothing, so the operator never has to
-// clean up a half-finished run before retrying.
 func (s *Service) CreateBatch(ctx context.Context, in CreateInput, prefix string, count int) ([]db.AccessKey, error) {
 	if count < 1 || count > 100 {
 		return nil, ValidationError{"count": "1..100"}
@@ -273,9 +267,6 @@ func (s *Service) Rotate(ctx context.Context, keyID uuid.UUID) (db.AccessKey, er
 		if err != nil {
 			return ErrNotFound
 		}
-		// A revoked key has no profiles left, and SetKeySecret would put it back to
-		// 'pending'. ActivatePendingKeysForNode requires at least one profile, so the key
-		// would be stuck 'pending' forever with no UI path out.
 		if old.Status == db.KeyStatusRevoked {
 			return ValidationError{"status": "key is revoked"}
 		}
@@ -309,9 +300,7 @@ func (s *Service) Delete(ctx context.Context, keyID uuid.UUID) error {
 	})
 }
 
-// UpdateInput is the full desired state of an editable key. The API layer fills
-// every field (from the stored key where the request left it out), so Update
-// never has to distinguish "unset" from "cleared".
+// UpdateInput is the full desired state of an editable key.
 type UpdateInput struct {
 	Label, OwnerLabel, Note string
 	ExpiresAt               *time.Time
@@ -349,9 +338,6 @@ func (s *Service) Update(ctx context.Context, keyID uuid.UUID, in UpdateInput) (
 		if err != nil {
 			return err
 		}
-		// The relay profiles carry the tproxy limits only; telemt limits reach the
-		// node through the desired state, so a change to them still has to make the
-		// node dirty even though no profile row changes.
 		if old.CarrierMode != string(carrier) || string(old.Limits) != string(raw) || string(old.TelemtLimits) != string(telemtRaw) {
 			profiles, err := q.ListProfilesByKey(ctx, uuid.NullUUID{UUID: keyID, Valid: true})
 			if err != nil {
@@ -369,10 +355,7 @@ func (s *Service) Update(ctx context.Context, keyID uuid.UUID, in UpdateInput) (
 	return key, err
 }
 
-// Extend moves a key's expiry forward. Two guards the raw SetKeyExpiry query has not got:
-// a date in the past would be silently revoked by the expiry worker on its next minute
-// tick, and a revoked key has already had its profiles deleted — "extending" one would
-// report success while leaving the key dead, which reads to an operator as data loss.
+// Extend moves a key's expiry forward.
 func (s *Service) Extend(ctx context.Context, keyID uuid.UUID, expiresAt time.Time) error {
 	if !expiresAt.After(time.Now()) {
 		return ValidationError{"expires_at": "must be in the future"}
@@ -394,8 +377,7 @@ func (s *Service) Secret(ctx context.Context, key db.AccessKey) (string, error) 
 	return s.box.DecryptString(key.SecretEnc)
 }
 
-// Link kinds. "web" is the WEB-transport link every node offers; "tls" is the
-// Fake-TLS (classic MTProto) link only telemt nodes listen for.
+// Link kinds.
 const (
 	LinkWeb = "web"
 	LinkTLS = "tls"
@@ -417,8 +399,7 @@ type NodeLinks struct {
 	Links    []KindLink `json:"links"`
 }
 
-// Link is the flattened form of NodeLinks: one entry per node and kind. It is
-// what the key JSON has always carried, now with the kind spelled out.
+// Link is the flattened form of NodeLinks: one entry per node and kind.
 type Link struct {
 	NodeID   uuid.UUID `json:"node_id"`
 	NodeName string    `json:"node_name"`
@@ -428,10 +409,7 @@ type Link struct {
 	Tg       string    `json:"tg"`
 }
 
-// NodeLinks builds every link for the key, grouped by node. A telemt node also
-// gets a Fake-TLS link - but only once it has a tls_domain, because the secret a
-// client needs encodes the SNI the node masks behind and there is no meaningful
-// link to hand out before that is configured.
+// NodeLinks builds every link for the key, grouped by node.
 func (s *Service) NodeLinks(ctx context.Context, keyID uuid.UUID) ([]NodeLinks, error) {
 	key, err := s.st.Q.GetKey(ctx, keyID)
 	if err != nil {
@@ -463,8 +441,7 @@ func (s *Service) NodeLinks(ctx context.Context, keyID uuid.UUID) ([]NodeLinks, 
 	return out, nil
 }
 
-// Links is NodeLinks flattened, in node order with the web link of each node
-// first.
+// Links is NodeLinks flattened, in node order with the web link of each node first.
 func (s *Service) Links(ctx context.Context, keyID uuid.UUID) ([]Link, error) {
 	grouped, err := s.NodeLinks(ctx, keyID)
 	if err != nil {

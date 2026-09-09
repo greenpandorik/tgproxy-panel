@@ -20,15 +20,7 @@ export function isNodeFull(node: Node): boolean {
   return node.max_profiles > 0 && node.profile_count >= node.max_profiles;
 }
 
-/**
- * Where the key will live.
- *
- * A list rather than a multi-select popup: which nodes a key binds to is the
- * decision this dialog exists for, and it is made against each node's
- * remaining capacity - so the count sits on every row, in mono, and a node
- * with no room left is struck out and unselectable rather than silently
- * failing on submit.
- */
+// Where the key will live.
 export function NodeCapacityList({ nodes, selectedIds, onChange, className }: NodeCapacityListProps) {
   const { t } = useTranslation();
 
@@ -49,10 +41,6 @@ export function NodeCapacityList({ nodes, selectedIds, onChange, className }: No
           <label
             key={node.id}
             className={cn(
-              // The whole row is the target, so the whole row presses: the same
-              // sub-pixel squeeze every button in the panel carries, which is
-              // what tells a pointer the click landed on a control with no
-              // background of its own.
               'flex cursor-pointer items-center justify-between gap-4 px-3 py-2 transition-[background-color,scale] hover:bg-elevated active:scale-[0.985]',
               full && 'cursor-not-allowed opacity-45 hover:bg-transparent active:scale-100',
             )}

@@ -26,8 +26,6 @@ type engineNodeResp struct {
 	Dirty         bool      `json:"dirty"`
 }
 
-// createEngineNode posts a node with whatever engine fields the caller supplies
-// and returns the node plus its install command.
 func createEngineNode(t *testing.T, c *apitest.Client, body map[string]any) (engineNodeResp, string) {
 	t.Helper()
 	var out struct {
@@ -115,9 +113,6 @@ func TestPatchNodeFakeTLSSettingsMarkDirty(t *testing.T) {
 	}
 }
 
-// The public IP is editable after creation: a NAT host's installer can register the egress
-// address, and the fix is to correct it in the panel. A change is desired state (it reaches
-// the node on the next apply), so it marks the node dirty; anything but an IPv4 is refused.
 func TestPatchNodePublicIPValidatesAndMarksDirty(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -178,8 +173,7 @@ func TestRegisterStoresPublicIPAndRequiresItForTelemt(t *testing.T) {
 	token := installToken(t, cmd)
 	anon := h.Anonymous()
 
-	// telemt needs the address for web.vhosts.public_addr, so a registration
-	// without one is refused - and must not burn the single-use install token.
+	// telemt needs the address for web.vhosts.public_addr, so a registration without one is refused.
 	resp := anon.Post("/api/v1/install/"+token+"/register", map[string]string{"hostname": "n1.test", "agent_version": "0.1.0"})
 	if resp.StatusCode != 422 {
 		b, _ := io.ReadAll(resp.Body)
@@ -214,8 +208,6 @@ func TestRegisterTProxyNodeWithoutPublicIP(t *testing.T) {
 	resp.Body.Close() //nolint:errcheck
 }
 
-// TestRegisterKeepsExistingPublicIP: the panel operator may have typed the
-// address in at create time; the script's guess must not overwrite it.
 func TestRegisterKeepsExistingPublicIP(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -282,8 +274,6 @@ func TestKeyTelemtLimitsRoundTripAndValidation(t *testing.T) {
 		t.Fatalf("telemt_limits %+v", k.TelemtLimits)
 	}
 
-	// Creating the key already made the node dirty; clear it so the assertion
-	// below is about the limits change and nothing else.
 	if err := h.Store.Q.SetNodeDirty(t.Context(), db.SetNodeDirtyParams{ID: n.ID, Dirty: false}); err != nil {
 		t.Fatal(err)
 	}
@@ -308,8 +298,6 @@ func TestKeyTelemtLimitsRoundTripAndValidation(t *testing.T) {
 		t.Fatalf("get limits %+v", got.TelemtLimits)
 	}
 
-	// Limits reach the node through the desired state, so changing them has to
-	// mark every node the key is bound to dirty even though no profile row moves.
 	var node engineNodeResp
 	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &node)
 	if !node.Dirty {
@@ -484,10 +472,6 @@ func TestSubscriptionCarriesBothLinkKinds(t *testing.T) {
 	}
 }
 
-// TestNodeProfilesCarryKeyLabelAndLimits: the node's Profiles tab prints a profile next to the
-// key that produced it, so the listing carries the key's label, expiry and telemt limits. The
-// node's own default profile has no key and must come back with those fields empty rather than
-// with somebody else's values.
 func TestNodeProfilesCarryKeyLabelAndLimits(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")

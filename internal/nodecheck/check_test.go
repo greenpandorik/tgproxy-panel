@@ -39,8 +39,6 @@ func resultByName(t *testing.T, report Report, name string) Result {
 	return Result{}
 }
 
-// noDial stubs Checker.Dial to fail instantly, so DNS-focused tests never
-// touch the real network via the tcp_80/tcp_443 checks that Run also runs.
 func noDial(_ context.Context, _, _ string) (net.Conn, error) {
 	return nil, errors.New("dial disabled in this test")
 }
@@ -66,8 +64,7 @@ func TestDNSExpectedIPMismatch(t *testing.T) {
 	}
 }
 
-// newLocalListener starts a plain TCP listener that immediately closes any
-// accepted connection - enough to make tcp_80 succeed.
+// newLocalListener starts a plain TCP listener that immediately closes any accepted connection.
 func newLocalListener(t *testing.T) net.Listener {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -189,8 +186,6 @@ func TestRunTCP443RefusedSkipsDependents(t *testing.T) {
 	}
 }
 
-// selfSignedCert builds a minimal self-signed certificate for hostName,
-// valid from just before now until notAfter.
 func selfSignedCert(t *testing.T, hostName string, notAfter time.Time) tls.Certificate {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -257,13 +252,6 @@ func TestTLSCertExpiringSoonFails(t *testing.T) {
 	}
 }
 
-// TestHTTPRootDoesNotFollowRedirect guards against http_root being turned
-// into an SSRF primitive: a node the checker is asked to probe controls its
-// own HTTP responses, so if the checker's client followed a redirect it
-// could be steered into fetching an arbitrary URL on the panel's behalf. "/"
-// redirects to "/secret" on the very same server (so the redirect target is
-// reachable via the test's Dial regardless of host matching) - if the
-// client ever followed it, secretHits would go from 0 to 1.
 func TestHTTPRootDoesNotFollowRedirect(t *testing.T) {
 	var secretHits int32
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -303,9 +291,6 @@ func TestHTTPRootDoesNotFollowRedirect(t *testing.T) {
 	}
 }
 
-// TestProbeBudgetSharesTheDeadline pins the arithmetic behind the per-probe timeout: five
-// 5s probes want 25s, but the handler only gives Run 15s, so each probe must take a share of
-// what is left rather than the full default.
 func TestProbeBudgetSharesTheDeadline(t *testing.T) {
 	c := &Checker{Timeout: 5 * time.Second}
 
@@ -333,9 +318,6 @@ func TestProbeBudgetSharesTheDeadline(t *testing.T) {
 	}
 }
 
-// TestRunStaysInsideTheCallersDeadline is the behavioural half: with everything hanging, a
-// Run given less than one probe's default timeout must still come back with a full report
-// inside that budget instead of overrunning it probe by probe.
 func TestRunStaysInsideTheCallersDeadline(t *testing.T) {
 	block := func(ctx context.Context, _, _ string) (net.Conn, error) {
 		<-ctx.Done()
@@ -363,11 +345,7 @@ func TestRunStaysInsideTheCallersDeadline(t *testing.T) {
 	}
 }
 
-// M9: the mask probe connects to the Fake-TLS port offering tls_domain as the SNI and no
-// secret. telemt answers that by masking the connection to tls_domain:443 - the node's own
-// public address, served by Caddy - so a completed handshake with a certificate valid for
-// tls_domain proves at once that the port is open, that telemt is listening on it, and that the
-// node can reach its own public address (NAT hairpin, egress policy).
+// M9: the mask probe connects to the Fake-TLS port offering tls_domain as the SNI and no secret.
 func TestMaskProbeHandshakesTheFakeTLSPort(t *testing.T) {
 	plain := newLocalListener(t)
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -377,8 +355,6 @@ func TestMaskProbeHandshakesTheFakeTLSPort(t *testing.T) {
 	pool := x509.NewCertPool()
 	pool.AddCert(srv.Certificate())
 
-	// 8443 stands in for the Fake-TLS listener: it is masked to the same TLS front, so it
-	// presents the same certificate 443 does.
 	dial := func(_ context.Context, network, addr string) (net.Conn, error) {
 		_, port, err := net.SplitHostPort(addr)
 		if err != nil {
@@ -409,8 +385,6 @@ func TestMaskProbeHandshakesTheFakeTLSPort(t *testing.T) {
 		t.Fatalf("mask detail = %q", mask.Detail)
 	}
 
-	// A node that cannot reach its own public address fails the probe instead of silently
-	// serving a connection error to every probing client.
 	broken := *c
 	broken.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		if _, port, _ := net.SplitHostPort(addr); port == "8443" {
@@ -440,8 +414,6 @@ func TestRunTelemtSkipsMaskWithoutAListener(t *testing.T) {
 	}
 }
 
-// pqKexChecker wires a Checker whose 80 goes to a throwaway listener and whose 443 goes to
-// srv, trusting srv's certificate, so the whole Run passes apart from whatever pq_kex says.
 func pqKexChecker(t *testing.T, srv *httptest.Server) *Checker {
 	t.Helper()
 	plain := newLocalListener(t)
@@ -469,9 +441,6 @@ func pqKexChecker(t *testing.T, srv *httptest.Server) *Checker {
 	}
 }
 
-// Task 46b: pq_kex reports whether the node's TLS front negotiates the post-quantum hybrid
-// X25519MLKEM768. Go's default server config prefers it with a client that offers it, so a
-// stock httptest TLS server passes.
 func TestPQKexNegotiated(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
@@ -487,8 +456,7 @@ func TestPQKexNegotiated(t *testing.T) {
 	}
 }
 
-// A front that only offers classical key exchange fails the probe with the curve it chose -
-// but the probe is informational, so the report's roll-up stays green.
+// A front that only offers classical key exchange fails the probe with the curve it chose.
 func TestPQKexClassicalOnlyIsAdvisory(t *testing.T) {
 	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))

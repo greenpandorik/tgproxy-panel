@@ -34,8 +34,6 @@ import type { Node, SeriesPoint } from '@/api/types';
 // recharts stays out of the shell bundle - only SessionsChart.tsx imports it.
 const SessionsChart = lazy(() => import('./dashboard/SessionsChart').then((m) => ({ default: m.SessionsChart })));
 
-// index.css ships these as the --brand-primary/--brand-accent defaults; the
-// palette needs the literal values, not the CSS variables, to compare hues.
 const DEFAULT_BRAND_PRIMARY = '#3b82f6';
 const DEFAULT_BRAND_ACCENT = '#22c55e';
 
@@ -62,12 +60,6 @@ function trafficDeltas(points: SeriesPoint[]): { up: number; down: number } {
   };
 }
 
-/**
- * Percentage change in total live sessions over the last hour, or null when
- * the series does not reach back that far. Reported as a whole percent - the
- * number is a direction of travel, and a decimal would imply a precision the
- * sampling does not have.
- */
 function sessionsHourChange(seriesByNode: Record<string, SeriesPoint[]>): number | null {
   const totals = new Map<string, number>();
   for (const points of Object.values(seriesByNode)) {
@@ -106,8 +98,7 @@ function buildChartData(
   const series: SessionsSeriesConfig[] = main.map((n, i) => ({
     key: n.id,
     name: n.name,
-    // A node that stopped reporting is not one more category on the chart -
-    // it is an absence, so it goes grey and lets the live nodes keep the hues.
+    // A node that stopped reporting is not one more category on the chart.
     color: n.status === 'offline' ? OFFLINE_SERIES_COLOR : palette[i],
   }));
   if (rest.length > 0) {
@@ -134,10 +125,6 @@ function buildChartData(
   return { data, series };
 }
 
-/**
- * "обновлено 12 с назад" beside the page title. It ticks in its own component
- * so the second hand never re-renders the chart underneath it.
- */
 function UpdatedAgo({ at }: { at: number }) {
   const { t, i18n } = useTranslation();
   const [, setTick] = useState(0);
@@ -204,8 +191,7 @@ export function DashboardPage() {
     [nodes, seriesByNode, palette, t],
   );
 
-  // Sessions per node for the table: the freshest sample, but only from a node
-  // that is still reporting - a three-hour-old count is not a live count.
+  // Sessions per node for the table: the freshest sample, but only from a node that is still reporting.
   const sessionsByNode = useMemo(() => {
     const out: Record<string, number | undefined> = {};
     for (const n of nodes) {
@@ -216,12 +202,7 @@ export function DashboardPage() {
 
   const sessionsChange = useMemo(() => sessionsHourChange(seriesByNode), [seriesByNode]);
 
-  /*
-   * The hour's movement, as one mono line. It is not tinted: inside a tile
-   * the only colour is the icon's, and the arrow already says which way the
-   * number went - a green "up" would also be wrong half the time, since more
-   * sessions is not automatically good news.
-   */
+  // The hour's movement, as one mono line.
   const sessionsDelta = useMemo((): string | undefined => {
     if (sessionsChange === null) return undefined;
     const arrow = sessionsChange > 0 ? '▲' : sessionsChange < 0 ? '▼' : '·';
@@ -234,12 +215,6 @@ export function DashboardPage() {
     return Number.isFinite(ms) && ms > 0 ? formatCompactDuration(ms / 1000, i18n.language) : null;
   }, [chart.data, i18n.language]);
 
-  /**
-   * The colour each node already has in the chart above the table, so the
-   * sparkline in a row and the line in the chart are the same node. Nodes
-   * past the palette are folded into one "other" series there and have no
-   * colour of their own; the table falls back to --series-other for them.
-   */
   const colorByNode = useMemo(() => {
     const out: Record<string, string> = {};
     for (const s of chart.series) if (s.key !== OTHER_SERIES_KEY) out[s.key] = s.color;
@@ -294,11 +269,7 @@ export function DashboardPage() {
     },
   ];
 
-  /*
-   * The error branch comes before the empty one on purpose. When /nodes fails
-   * the list falls back to [], and without this the operator whose API is down
-   * is told "no nodes yet, add one" about a fleet that is running.
-   */
+  // The error branch comes before the empty one on purpose.
   if (!loading && failed) {
     return (
       <>

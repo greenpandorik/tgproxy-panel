@@ -89,8 +89,7 @@ func run(args []string) error {
 	return fmt.Errorf("unknown command %q (serve|migrate|admin create|admin totp-reset|db backup|db restore|keys rotate)", cmd)
 }
 
-// adminRoles is the enum accepted by db.AdminRole. Validated here so a typo
-// produces the usage line instead of a raw Postgres enum cast error.
+// adminRoles is the enum accepted by db.AdminRole.
 var adminRoles = []string{api.RoleOwner, api.RoleAdmin, api.RoleViewer}
 
 const adminUsage = "usage: panel admin create <username> <password> [owner|admin|viewer]\n       panel admin totp-reset <username>"
@@ -108,13 +107,6 @@ func adminCmd(ctx context.Context, st *store.Store, args []string) error {
 	return errors.New(adminUsage)
 }
 
-// adminTOTPReset is the lockout escape hatch: an owner who has lost both their
-// authenticator and their recovery codes can no longer finish a login, and every
-// route that could turn the second factor off sits behind a session they cannot
-// get. Clearing it needs shell access to the host, which is a higher bar than the
-// panel itself - so this is a recovery path, not a bypass. The work lives in
-// internal/admincli, which writes the auth.totp_reset audit entry in the same
-// transaction as the reset.
 func adminTOTPReset(ctx context.Context, st *store.Store, args []string) error {
 	if len(args) != 1 {
 		return errors.New(adminUsage)
@@ -152,9 +144,6 @@ func adminCreate(ctx context.Context, st *store.Store, args []string) error {
 
 const dbUsage = "usage: panel db backup\n       panel db restore <file> --yes"
 
-// dbCmd is the operator-side half of the backup feature: the panel can take and
-// hand out dumps over HTTP, but it can never restore one into the database it is
-// itself serving from, so the restore lives here, on the host.
 func dbCmd(ctx context.Context, cfg config.Config, st *store.Store, args []string) error {
 	if len(args) == 0 {
 		return errors.New(dbUsage)
@@ -172,9 +161,6 @@ func dbCmd(ctx context.Context, cfg config.Config, st *store.Store, args []strin
 	return errors.New(dbUsage)
 }
 
-// dbBackup takes the same dump the panel's "Create backup" button takes, and
-// records the same row, so a dump made from a cron job on the host shows up in
-// the UI and is covered by the nightly retention sweep.
 func dbBackup(ctx context.Context, runner *backup.Runner, st *store.Store) error {
 	e, err := runner.Create(ctx, backup.KindManual)
 	if err != nil {
@@ -205,17 +191,11 @@ func dbRestore(ctx context.Context, cfg config.Config, runner *backup.Runner, st
 	if !yes {
 		return errors.New("refusing to restore without --yes: pg_restore --clean drops every existing table first, so this replaces the current database")
 	}
-	// The panel keeps connections open and caches nothing it would re-read: a
-	// restore under a live panel drops the tables it is mid-query on and leaves
-	// it serving a database it never saw start. Stop it first.
 	release, err := requireNoPanel(ctx, st, "restore")
 	if err != nil {
 		return err
 	}
-	// Hand the database over to pg_restore rather than holding a pool open across
-	// the DROPs it is about to issue. The lock goes back first, in this order for
-	// a reason: pgxpool.Close blocks until every acquired connection is returned,
-	// and the lock is holding one.
+	// Hand the database over to pg_restore rather than holding a pool open across the DROPs it is about to issue.
 	release()
 	if st != nil {
 		st.Close()
@@ -229,10 +209,6 @@ func dbRestore(ctx context.Context, cfg config.Config, runner *backup.Runner, st
 
 const keysUsage = "usage: panel keys rotate [--dry-run]"
 
-// keysCmd is the master-key rotation entry point: `panel keys rotate` walks
-// every encrypted column and re-encrypts it under a new key version, so an
-// operator can retire an old MASTER_KEY without losing access to any stored
-// secret.
 func keysCmd(ctx context.Context, cfg config.Config, st *store.Store, args []string) error {
 	if len(args) == 0 {
 		return errors.New(keysUsage)
@@ -244,15 +220,6 @@ func keysCmd(ctx context.Context, cfg config.Config, st *store.Store, args []str
 	return errors.New(keysUsage)
 }
 
-// keysRotate re-encrypts profiles.secret_enc, access_keys.secret_enc,
-// admin_users.totp_secret_enc, admin_users.totp_pending_enc and
-// settings.telegram_alerts.bot_token_enc from the current MASTER_KEY to a new
-// key read from MASTER_KEY_NEW, in one transaction (internal/store.Rotate).
-//
-// It shares the panel's database lock with `db restore`: rotating under a
-// live panel races its connections the same way a restore would, and worse,
-// a request served mid-rotation could read a row rewritten out from under it
-// half-way through the transaction's own re-encryption pass.
 func keysRotate(ctx context.Context, cfg config.Config, st *store.Store, args []string) error {
 	dryRun := false
 	for _, a := range args {
@@ -261,8 +228,6 @@ func keysRotate(ctx context.Context, cfg config.Config, st *store.Store, args []
 		}
 		dryRun = true
 	}
-	// Held for the whole rotation, not just checked: a panel that started
-	// half-way through would read rows the transaction is still rewriting.
 	release, err := requireNoPanel(ctx, st, "rotate")
 	if err != nil {
 		return err
@@ -285,8 +250,6 @@ func keysRotate(ctx context.Context, cfg config.Config, st *store.Store, args []
 	}
 	newVersion := cfg.MasterKeyVersion + 1
 
-	// Old keys go in first, same as serve() builds its Box: the current key
-	// must never be overwritten by a stray MASTER_KEY_V<current>.
 	keyMap := map[int][]byte{}
 	for v, k := range cfg.OldMasterKeys {
 		keyMap[v] = k
@@ -296,8 +259,6 @@ func keysRotate(ctx context.Context, cfg config.Config, st *store.Store, args []
 	if err != nil {
 		return err
 	}
-	// `to` gets every key `from` has plus the new one, so it can decrypt (and
-	// so verify) rows at any version, not only the ones already at newVersion.
 	keyMap[newVersion] = newKey
 	to, err := crypto.NewBox(newVersion, keyMap)
 	if err != nil {
@@ -336,28 +297,9 @@ func printKeysReport(label string, r store.Report) {
 	fmt.Printf("  settings.telegram_alerts:     %d\n", r.Settings)
 }
 
-// panelAdvisoryLockID names the panel's single-instance lock inside Postgres'
-// advisory-lock space, a flat int64 namespace shared by everything connected to
-// the database. The value is arbitrary but must never change: 0x74677770 is
-// "tgwp" in ASCII and the low half leaves room for any further lock the project
-// might need. `panel serve` holds it for its whole life; `db restore` and
-// `keys rotate` try to take it and refuse when they cannot.
-//
-// It replaces the pid file this used to be. A pid file cannot tell two
-// containers apart - under Compose a running `panel serve` and a
-// `docker compose run --rm panel db restore` are both pid 1 - so the guard rail
-// silently passed in exactly the deployment the docs describe. Postgres has no
-// such ambiguity: the lock belongs to a database session, it is visible to every
-// process that can reach the database, and it is released automatically when
-// that session ends, so a crashed panel never blocks a recovery.
 const panelAdvisoryLockID int64 = 0x7467_7770_0000_0001
 
-// requireNoPanel is the guard rail in front of the two destructive commands. It
-// returns a release function on success; on failure it explains what to do.
-//
-// Taking the lock rather than inspecting it is deliberate: a "is it held?" query
-// would be a check with a race after it, whereas holding the lock also stops a
-// panel from starting up half-way through the operation.
+// requireNoPanel is the guard rail in front of the two destructive commands.
 func requireNoPanel(ctx context.Context, st *store.Store, verb string) (func(), error) {
 	if st == nil {
 		return func() {}, nil
@@ -373,12 +315,6 @@ func requireNoPanel(ctx context.Context, st *store.Store, verb string) (func(), 
 }
 
 func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Logger) error {
-	// One panel per database. The lock is held on a dedicated connection for the
-	// whole process lifetime, which is what makes `db restore` and `keys rotate`
-	// able to tell "the panel is running" from "the panel is stopped" across
-	// containers - and it stops a second panel from serving the same database,
-	// where two apply loops would fight over every node. Postgres drops the lock
-	// when this connection goes, so a killed panel leaves nothing behind.
 	lock, ok, err := st.TryAdvisoryLock(ctx, panelAdvisoryLockID)
 	if err != nil {
 		return fmt.Errorf("panel lock: %w", err)
@@ -386,12 +322,8 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	if !ok {
 		return errors.New("another panel instance holds the lock on this database; stop it before starting a second one")
 	}
-	// Before the deferred st.Close() in run(): pgxpool.Close blocks until every
-	// acquired connection is back in the pool.
 	defer lock.Release()
 
-	// Old keys go in first so the current key can never be overwritten by a stray
-	// MASTER_KEY_V<current>; overwriting it would make every decrypt fail at once.
 	masterKeys := map[int][]byte{}
 	for v, k := range cfg.OldMasterKeys {
 		masterKeys[v] = k
@@ -410,9 +342,6 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	} else {
 		driver = nodedriver.NewGateway(reg, 15*time.Second)
 	}
-	// Chosen rather than inherited: gRPC defaults to a 4 MB receive limit, which a legal
-	// 2 MB site bundle plus profile list can brush up against once framed. Both ends of the
-	// agent stream use the same 16 MB ceiling (see internal/agent/run.go).
 	grpcSrv := grpc.NewServer(grpc.MaxRecvMsgSize(maxGRPCMessageBytes), grpc.MaxSendMsgSize(maxGRPCMessageBytes))
 	agentv1.RegisterAgentGatewayServer(grpcSrv, gateway.NewServer(reg, presence, presence, log))
 
@@ -426,20 +355,13 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	statsW.SetOfflineAfterFunc(func(ctx context.Context) time.Duration {
 		return settingsReader.Duration(ctx, "offline_after", time.Duration(cfg.OfflineAfter)*time.Second)
 	})
-	// Shared by the /settings/telegram/test endpoint and the worker alert notifier so both
-	// send through the exact same Telegram Bot API client.
 	tg := notify.NewTelegram(&http.Client{Timeout: 10 * time.Second}, "")
-	// One runner shared by the API's manual backups and the nightly worker, so
-	// both write the same directory and both are covered by the same retention.
 	backupRunner := &backup.Runner{DatabaseURL: cfg.DatabaseURL, Dir: backup.DirFor(cfg.DataDir)}
 	deps := api.Deps{
 		Store: st, Box: box, Signer: crypto.NewSigner(cfg.SessionSecret), Log: log, Cfg: cfg, Driver: driver, Presence: presence,
 		Keys: keySvc, ApplyNow: func(ctx context.Context, id uuid.UUID) { applyW.Trigger(id) }, Notifier: tg,
 		Backups: backupRunner,
 	}
-	// Lazy: the first GET /status/update after start does the fetch, and the
-	// answer is cached for an hour. No warm-up goroutine, so a panel nobody has
-	// opened never talks to GitHub.
 	if cfg.UpdateCheck {
 		deps.Updates = updates.New(cfg.GitHubRepo, cfg.GitHubToken)
 		deps.Updates.Log = log
@@ -470,8 +392,6 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	}()
 	log.Info("panel listening", "addr", cfg.HTTPAddr)
 	serveErr := httpSrv.ListenAndServe()
-	// Listeners have drained; now wait for any apply still pushing state to a node
-	// so the process does not exit with a relay mid-restart. Bounded by Stop itself.
 	if err := stopWorkers(context.Background()); err != nil {
 		log.Warn("workers did not stop cleanly", "err", err)
 	}

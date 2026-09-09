@@ -34,9 +34,6 @@ type loginBody struct {
 	Role         string `json:"role"`
 }
 
-// enrol runs setup+confirm for the logged-in client and returns the shared secret
-// and the one-time recovery codes. The password is confirm's second requirement:
-// a live session alone must not be enough to enrol a factor onto the account.
 func enrol(t *testing.T, c *apitest.Client, password string) (string, []string) {
 	t.Helper()
 	var s setupBody
@@ -192,8 +189,6 @@ func TestTOTPVerifyWrongCodeCountsFailedLogin(t *testing.T) {
 	}
 }
 
-// The second factor is the one login surface with a fixed six-digit answer, so it
-// must sit behind the same per-IP block the password step does.
 func TestTOTPVerifyRateLimitsWrongCodes(t *testing.T) {
 	h := apitest.New(t, apitest.WithTOTP())
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -205,8 +200,6 @@ func TestTOTPVerifyRateLimitsWrongCodes(t *testing.T) {
 	var lb loginBody
 	anon.JSON(anon.Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "pass-123456"}), &lb)
 
-	// One challenge is reused for every attempt: it stays valid for five minutes, so
-	// the only thing accumulating is wrong codes.
 	got401, got429 := 0, false
 	for range 15 {
 		_, status := errCodeOf(t, anon.Post("/api/v1/auth/totp/verify", map[string]string{"challenge": lb.Challenge, "code": "000001"}))
@@ -240,18 +233,11 @@ func TestTOTPVerifyRejectsForgedAndExpiredChallenges(t *testing.T) {
 	soon := itoa(time.Now().Add(time.Minute).Unix())
 	past := itoa(time.Now().Add(-time.Second).Unix())
 
-	// Everything here must come back as the same opaque wrong-code answer: an
-	// attacker probing /auth/totp/verify learns nothing about which part of the
-	// challenge the panel objected to.
 	for name, challenge := range map[string]string{
-		"empty":         "",
-		"unsigned":      "totp:" + uid.String() + "|" + soon,
-		"bad signature": "totp:" + uid.String() + "|" + soon + ".AAAA",
-		"unknown user":  signer.Sign("totp:00000000-0000-0000-0000-000000000000|" + soon),
-		// The domain-separation case: a payload signed by the same signer but
-		// minted for something other than a login challenge. Session ids go
-		// through this signer too, so "signed by us" must not mean "is a
-		// challenge".
+		"empty":               "",
+		"unsigned":            "totp:" + uid.String() + "|" + soon,
+		"bad signature":       "totp:" + uid.String() + "|" + soon + ".AAAA",
+		"unknown user":        signer.Sign("totp:00000000-0000-0000-0000-000000000000|" + soon),
 		"no totp: prefix":     signer.Sign(uid.String() + "|" + soon),
 		"wrong prefix":        signer.Sign("session:" + uid.String() + "|" + soon),
 		"malformed payload":   signer.Sign("totp:nope"),
@@ -264,10 +250,6 @@ func TestTOTPVerifyRejectsForgedAndExpiredChallenges(t *testing.T) {
 		}
 	}
 
-	// A well-formed challenge whose own deadline has passed is the one case told
-	// apart, and only because the deadline is not a secret: it is embedded in a
-	// token the caller already holds, and the token is unforgeable. The user needs
-	// "start again", not "your authenticator is wrong".
 	stale := signer.Sign("totp:" + uid.String() + "|" + past)
 	resp := h.Anonymous().Post("/api/v1/auth/totp/verify", map[string]string{"challenge": stale, "code": code})
 	if errCode, status := errCodeOf(t, resp); status != 401 || errCode != "challenge_expired" {
@@ -275,10 +257,6 @@ func TestTOTPVerifyRejectsForgedAndExpiredChallenges(t *testing.T) {
 	}
 }
 
-// TestTOTPChallengeIsNotASessionCookie is the other half of the domain
-// separation: the challenge must not be usable where a session id is expected
-// either. Both go through the same crypto.Signer, so the prefix is the only
-// thing keeping "signed by the panel" from meaning "authenticated".
 func TestTOTPChallengeIsNotASessionCookie(t *testing.T) {
 	h := apitest.New(t, apitest.WithTOTP())
 	h.CreateAdmin("root", "pass-123456", "owner")
@@ -433,18 +411,9 @@ func TestTOTPConfirmRequiresPendingEnrolment(t *testing.T) {
 
 func itoa(v int64) string { return strconv.FormatInt(v, 10) }
 
-// TestTOTPConfirmRequiresThePasswordAndEndsOtherSessions covers final-review M3.
-// Before this, a live session was the only thing confirm asked for, so an
-// attacker sitting on a hijacked cookie could enrol their own authenticator and
-// convert temporary access into a permanent lockout: the real owner knows the
-// password but cannot produce a code, and every route that turns the factor off
-// wants one.
 func TestTOTPConfirmRequiresThePasswordAndEndsOtherSessions(t *testing.T) {
 	h := apitest.New(t, apitest.WithTOTP())
 	uid := h.CreateAdmin("root", "pass-123456", "owner")
-	// Two live sessions on one account, which is exactly the shape of a session
-	// hijack: the enroller finishes the enrolment, the other one should not
-	// survive it.
 	enroller := h.Login("root", "pass-123456")
 	other := h.Login("root", "pass-123456")
 
@@ -474,8 +443,6 @@ func TestTOTPConfirmRequiresThePasswordAndEndsOtherSessions(t *testing.T) {
 	if row.TotpEnabled {
 		t.Fatal("a confirm without the password enabled the second factor")
 	}
-	// And the other session is still live, so the assertion below is about the
-	// confirm and not about something that had already logged it out.
 	if resp := other.Get("/api/v1/auth/me"); resp.StatusCode != 200 {
 		t.Fatalf("second session before confirm: %d, want 200", resp.StatusCode)
 	}
@@ -494,8 +461,6 @@ func TestTOTPConfirmRequiresThePasswordAndEndsOtherSessions(t *testing.T) {
 		t.Fatalf("got %d recovery codes, want 8", len(cb.RecoveryCodes))
 	}
 
-	// Enrolling a factor says who may hold a session here; one opened before it
-	// must not outlive it.
 	if resp := other.Get("/api/v1/auth/me"); resp.StatusCode != 401 {
 		t.Fatalf("second session after confirm: %d, want 401", resp.StatusCode)
 	}

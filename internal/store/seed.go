@@ -8,8 +8,7 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// SeedPresets ensures every built-in site preset has a row in site_templates, creating any
-// that are missing. Existing presets (matched by name) are left untouched.
+// SeedPresets ensures every built-in site preset has a row in site_templates, creating any that are missing.
 func SeedPresets(ctx context.Context, s *Store, presets []sitekit.Preset) error {
 	for _, p := range presets {
 		if _, err := s.Q.GetPresetByName(ctx, p.Name); err == nil {

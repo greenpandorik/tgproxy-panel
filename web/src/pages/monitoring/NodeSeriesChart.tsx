@@ -1,5 +1,3 @@
-// recharts is only ever imported here - MonitoringPage lazy-loads this
-// component (React.lazy) so the shell/other pages' bundle stays free of it.
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
@@ -22,27 +20,12 @@ export interface NodeSeriesChartProps {
 
 const CHART_HEIGHT = 140;
 
-/**
- * One node's three readings, stacked and sharing an x-axis: how many sessions
- * and streams are open, how fast bytes are moving, and how loaded the box
- * underneath is. They are three charts and not one because they are three
- * units - a session count, a byte rate and a percentage on one pair of axes
- * would only invite the reader to compare numbers that cannot be compared.
- */
 export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSeriesChartProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const [first, second] = colors;
 
-  /*
-   * telemt counts one thing where tproxy counts two. It has no streams inside a
-   * session (the worker writes the live connection count into both columns) and
-   * it reports a single cumulative octet counter for both directions, which the
-   * worker lands in bytes_down. Drawing the tproxy pair for it would put two
-   * identical lines on the sessions chart and a permanently flat zero on the
-   * traffic one, so a telemt node gets one line per chart, named for what it
-   * actually is: connections, and traffic.
-   */
+  // telemt counts one thing where tproxy counts two.
   const telemt = engine === 'telemt';
   const countName = telemt ? t('monitoring.connections_live') : t('monitoring.sessions_live');
   const trafficName = telemt ? t('monitoring.traffic_total') : t('monitoring.traffic_down');

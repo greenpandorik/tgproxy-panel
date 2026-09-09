@@ -55,9 +55,7 @@ func (s *Server) nodeJSON(r *http.Request, n db.Node) nodeJSON {
 	return s.nodeJSONWithCount(r, n, count)
 }
 
-// nodeJSONWithCount is the single-node projection with the profile count already
-// known. The list endpoint gets every count in one query (ListNodesWithCounts)
-// instead of a CountNodeProfiles round trip per node.
+// nodeJSONWithCount is the single-node projection with the profile count already known.
 func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) nodeJSON {
 	out := nodeJSON{
 		ID: n.ID, Name: n.Name, Hostname: n.Hostname, PublicIP: n.PublicIp, ACMEEmail: n.AcmeEmail, Status: string(n.Status),
@@ -67,10 +65,6 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,
 		CreatedAt: n.CreatedAt,
 	}
-	// last_health is the HealthReport as the heartbeat marshalled it (Go field names). The
-	// SPA's NodeHealth type is the snake_case shape of the /health endpoint, so the row is
-	// re-emitted through the same projection; a row the report cannot be read from is
-	// omitted rather than passed through in a shape the client does not know.
 	if len(n.LastHealth) > 0 {
 		var h nodedriver.HealthReport
 		if err := json.Unmarshal(n.LastHealth, &h); err == nil {
@@ -83,15 +77,6 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 	return out
 }
 
-// redactLastCheck strips each probe's Detail string for non-writer roles, keeping
-// name/ok/ran_at/all_ok visible to every role. Detail can echo internal network
-// facts (resolved IPs, TLS errors, private-range hints) that only writers should
-// see.
-//
-// A report this function cannot process is dropped rather than passed through: a
-// redaction path has to fail closed, or the one case it does not understand is
-// exactly the case that leaks. Returning nil gives the viewer the same shape a
-// node with no check yet has, which the SPA already renders.
 func redactLastCheck(raw json.RawMessage, writer bool) json.RawMessage {
 	if writer {
 		return raw
@@ -147,13 +132,9 @@ type createNodeReq struct {
 	ClassicPort int    `json:"classic_port"`
 }
 
-// defaultClassicPort is the Fake-TLS listener port telemt nodes get unless the
-// operator picks another one.
+// defaultClassicPort is the Fake-TLS listener port telemt nodes get unless the operator picks another one.
 const defaultClassicPort = 8443
 
-// validateClassicPort keeps the Fake-TLS listener out of the privileged range
-// (Caddy owns 80/443 on a telemt node, and telemt itself runs unprivileged), and
-// off the reserved ports the panel already uses on the node.
 func validateClassicPort(port int) string {
 	if port == 80 || port == 443 {
 		return "80 and 443 are taken by the node's web server"
@@ -174,10 +155,7 @@ func validateAdTag(tag string) string {
 	return "32 lowercase hex characters, or empty to disable the sponsor channel"
 }
 
-// validatePublicIP accepts an empty value (the install script fills it in) or one IPv4
-// address. It is what telemt's WEB vhost names in public_addr and what the readiness check
-// expects the hostname to resolve to, so anything else would fail the node later and less
-// clearly.
+// validatePublicIP accepts an empty value (the install script fills it in) or one IPv4 address.
 func validatePublicIP(ip string) string {
 	if ip == "" {
 		return ""
@@ -200,8 +178,6 @@ func (s *Server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 	if req.Engine == "" {
 		req.Engine = string(domain.EngineTelemt)
 	}
-	// The Fake-TLS listener masks behind the node's own site by default, so an
-	// unspecified tls_domain is the node's hostname.
 	if req.TLSDomain == "" {
 		req.TLSDomain = req.Hostname
 	}
@@ -313,9 +289,6 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 	if req.Name != nil {
 		n.Name = *req.Name
 	}
-	// public_ip is desired state too: telemt names it in the WEB vhost's public_addr and the
-	// readiness check compares the A record against it, so a corrected address (a NAT host
-	// whose installer detected the egress side) must reach the node like a listener change.
 	dirty := false
 	if req.PublicIP != nil {
 		ip := strings.TrimSpace(*req.PublicIP)
@@ -327,8 +300,6 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 		n.PublicIp = ip
 	}
 	if req.ACMEEmail != nil {
-		// acme_email is interpolated into the root-run installer script, so it gets the same
-		// validation as on create — an unvalidated value here is an admin -> root-on-node path.
 		if _, err := mail.ParseAddress(*req.ACMEEmail); err != nil {
 			validation(w, map[string]string{"acme_email": "must be a valid email address"})
 			return
@@ -342,9 +313,6 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 		}
 		n.MaxProfiles = int32(*req.MaxProfiles)
 	}
-	// tls_domain and classic_port describe the node's listeners: changing either
-	// is a change to the desired state, so the node is marked dirty and the agent
-	// (which owns the restart the new listener needs) picks it up on the next apply.
 	listeners := db.UpdateNodeParams{ID: n.ID, Name: n.Name, PublicIp: n.PublicIp, MaxProfiles: n.MaxProfiles, AcmeEmail: n.AcmeEmail}
 	if req.TLSDomain != nil {
 		d := strings.ToLower(strings.TrimSpace(*req.TLSDomain))
@@ -404,8 +372,6 @@ func (s *Server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
-// handleNodeRegistrationSecret reveals the node's own default profile secret, which is what
-// @MTProxybot asks for when registering the server.
 func (s *Server) handleNodeRegistrationSecret(w http.ResponseWriter, r *http.Request) {
 	n, ok := s.loadNode(w, r)
 	if !ok {
@@ -503,10 +469,6 @@ func (s *Server) handleNodeProfiles(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"items": items, "total": len(items)})
 		return
 	}
-	// The key columns come along for the ride: a profile row on a telemt node is only
-	// legible next to the key that produced it - whose label it carries, when it expires,
-	// and which limits telemt is enforcing for it. The node's own default profile has no
-	// key, so those fields are absent there rather than zero.
 	rows, err := s.store.Q.ListNodeProfilesWithKey(r.Context(), n.ID)
 	if err != nil {
 		internal(w)

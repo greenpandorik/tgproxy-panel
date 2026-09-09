@@ -27,8 +27,6 @@ type keyStatsResp struct {
 	} `json:"totals"`
 }
 
-// seedKeyStats writes one key_stats_snapshots row at an explicit time; the generated insert
-// always stamps now(), and these tests need a series.
 func seedKeyStats(t *testing.T, h *apitest.Harness, keyID, nodeID uuid.UUID, at time.Time, conns int, octets int64) {
 	t.Helper()
 	_, err := h.Store.Pool.Exec(context.Background(),
@@ -71,15 +69,11 @@ func TestKeyStatsSeriesAndTotals(t *testing.T) {
 	if got.Nodes[0].Points[1].Connections != 4 || got.Nodes[0].Points[1].TotalOctets != 1000 {
 		t.Fatalf("last point: %+v", got.Nodes[0].Points[1])
 	}
-	// connections_now is the newest reading; octets_delta is the sum of the positive
-	// step-to-step deltas per node.
 	if got.Totals.ConnectionsNow != 4 || got.Totals.OctetsDelta != 900 {
 		t.Fatalf("totals: %+v", got.Totals)
 	}
 }
 
-// A key with no telemt node behind it answers with an empty series rather than an error, so
-// the drawer renders the same for both engines.
 func TestKeyStatsEmpty(t *testing.T) {
 	_, c, n := ownerWithNode(t)
 	k := keyOnNode(t, c, n.ID)
@@ -167,8 +161,6 @@ func TestKeysListCarriesTraffic30d(t *testing.T) {
 }
 
 // I2: total_octets is a process-scoped counter, so it restarts at zero when telemt does.
-// Summing positive consecutive deltas keeps the traffic on both sides of the restart; taking
-// last - first would read the window as negative and report zero for the whole 30 days.
 func TestKeysListTrafficSurvivesACounterReset(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	k := keyOnNode(t, c, n.ID)
@@ -190,8 +182,6 @@ func TestKeysListTrafficSurvivesACounterReset(t *testing.T) {
 	if len(list.Items) != 1 {
 		t.Fatalf("list: %+v", list.Items)
 	}
-	// 8000 across the restart-free run plus 500 after it; only the step spanning the reset
-	// is lost, never the whole window.
 	if list.Items[0].Traffic30d != 8_500 {
 		t.Fatalf("traffic_30d = %d, want 8500", list.Items[0].Traffic30d)
 	}
@@ -220,9 +210,6 @@ func TestKeyStatsOctetsDeltaSurvivesACounterReset(t *testing.T) {
 	}
 }
 
-// M6: a wide range is bucketed by the database, so one node's series comes back already bounded
-// instead of every raw row being loaded into Go. A 31-day window at one row a minute is ~45k
-// rows; the response must hold at most maxKeyStatsPoints (1000) of them.
 func TestKeyStatsBucketsAWideRange(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	k := keyOnNode(t, c, n.ID)
@@ -241,9 +228,6 @@ func TestKeyStatsBucketsAWideRange(t *testing.T) {
 	if len(pts) == 0 || len(pts) >= 400 {
 		t.Fatalf("a wide range must be bucketed, got %d points for 400 rows", len(pts))
 	}
-	// The bucket maxima are the closing counter values, so the traffic is essentially
-	// unchanged: only the readings inside the *first* bucket are folded away, which is at
-	// most one bucket's worth of octets out of 3990.
 	if d := got.Totals.OctetsDelta; d < 3_800 || d > 3_990 {
 		t.Fatalf("octets_delta = %d, want ~3990", d)
 	}

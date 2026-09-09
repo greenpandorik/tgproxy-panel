@@ -14,17 +14,12 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-// telegramAlertsFixture mirrors internal/api's telegramAlertsStored shape: the
-// JSON persisted under the settings key "telegram_alerts", whose bot_token_enc
-// field holds base64(box.Encrypt(token)).
 type telegramAlertsFixture struct {
 	Enabled     bool   `json:"enabled"`
 	BotTokenEnc string `json:"bot_token_enc"`
 	ChatID      string `json:"chat_id"`
 }
 
-// rotateFixture seeds one row of every encrypted column, all at v1, and
-// returns the plaintext each should decrypt back to.
 type rotateFixture struct {
 	nodeID    uuid.UUID
 	profileID uuid.UUID
@@ -92,9 +87,6 @@ func seedRotateFixture(t *testing.T, st *store.Store, box *crypto.Box) rotateFix
 	if err := st.Q.SetAdminTOTP(ctx, db.SetAdminTOTPParams{ID: admin.ID, TotpSecretEnc: totpSecretEnc, TotpEnabled: true}); err != nil {
 		t.Fatal(err)
 	}
-	// SetAdminTOTP clears totp_pending_enc, so set it after: the brief wants
-	// both totp_secret_enc and totp_pending_enc populated at once, which is
-	// exactly the state of an already-enrolled admin starting a re-enrolment.
 	totpPendingEnc, err := box.EncryptString(f.totpPending)
 	if err != nil {
 		t.Fatal(err)
@@ -134,8 +126,7 @@ func rotateBoxes(t *testing.T) (from, to *crypto.Box) {
 	return from, to
 }
 
-// getProfile fetches the single seeded profile on a node. There is no
-// GetProfile-by-id query, only ListNodeProfiles/ListProfilesByKey.
+// getProfile fetches the single seeded profile on a node.
 func getProfile(t *testing.T, st *store.Store, nodeID uuid.UUID) db.Profile {
 	t.Helper()
 	rows, err := st.Q.ListNodeProfiles(context.Background(), nodeID)
@@ -238,8 +229,6 @@ func TestRotateSkipsNullColumns(t *testing.T) {
 	from, to := rotateBoxes(t)
 	ctx := context.Background()
 
-	// An admin with no TOTP enrolment at all: both totp_secret_enc and
-	// totp_pending_enc are NULL, and no telegram_alerts setting is stored.
 	if _, err := st.Q.CreateAdmin(ctx, db.CreateAdminParams{Username: "bare", PasswordHash: "x", Role: db.AdminRoleViewer}); err != nil {
 		t.Fatal(err)
 	}
@@ -253,19 +242,12 @@ func TestRotateSkipsNullColumns(t *testing.T) {
 	}
 }
 
-// TestRotateRollsBackOnCorruptBlob is the failure test: one column has a blob
-// that decrypts fine under the new key's target version check but fails
-// decryption under `from` (simulating a bit-flipped/corrupted row). Rotate
-// must return an error and leave every row - including the ones it had
-// already re-encrypted before hitting the bad one - unchanged.
 func TestRotateRollsBackOnCorruptBlob(t *testing.T) {
 	st := store.OpenTest(t)
 	from, to := rotateBoxes(t)
 	f := seedRotateFixture(t, st, from)
 	ctx := context.Background()
 
-	// Corrupt the access key's secret in place so it no longer authenticates
-	// under `from`.
 	badBlob, err := from.EncryptString(f.keySecret)
 	if err != nil {
 		t.Fatal(err)

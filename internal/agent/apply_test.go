@@ -25,10 +25,6 @@ type fakeExec struct {
 	failMsg string
 	active  map[string]bool
 
-	// failNth makes the failNthCount-th call whose command contains this substring fail
-	// (1-based), while earlier and later matching calls succeed. Used to make a specific
-	// invocation (e.g. the restart issued during rollback, as opposed to the one during the
-	// initial apply) fail deterministically.
 	failNth      string
 	failNthCount int
 	nthSeen      map[string]int
@@ -66,8 +62,6 @@ func (f *fakeExec) Start(_ context.Context, name string, args ...string) (io.Rea
 	return io.NopCloser(strings.NewReader("2026-09-03T10:00:00+0000 host tproxy-server[1]: started\n")), nil
 }
 
-// list returns every command the handler ran, for a failure message that names what happened
-// instead of only what did not.
 func (f *fakeExec) list() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -231,13 +225,7 @@ func TestRejectsSitePathTraversal(t *testing.T) {
 	}
 }
 
-// TestRollbackReportsRestoreFailure verifies that a restore-step failure during rollback is
-// reported accurately: RolledBack must be false (not silently true) when the node was not
-// actually returned to its prior state, and the log must call out manual intervention.
 func TestRollbackReportsRestoreFailure(t *testing.T) {
-	// health always fails, forcing Apply into the rollback path; the restart issued during
-	// rollback (the second "systemctl restart tproxy-server" call — the first is the one made
-	// during the initial, failed apply) is made to fail deterministically.
 	ex := &fakeExec{failNth: "systemctl restart tproxy-server", failNthCount: 2}
 	h, cfg := testHandler(t, ex, false)
 	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
@@ -257,17 +245,12 @@ func TestRollbackReportsRestoreFailure(t *testing.T) {
 	if !strings.Contains(res.Log, "rollback step failed") {
 		t.Fatalf("expected log to name the failed step, got: %s", res.Log)
 	}
-	// The restore write itself must still have happened (best-effort restore of what could be
-	// restored) even though the subsequent restart failed.
 	prof, _ := os.ReadFile(cfg.ProfilesPath)
 	if !strings.Contains(string(prof), `"name":"default"`) {
 		t.Fatalf("expected profiles.json restored despite restart failure: %s", prof)
 	}
 }
 
-// TestApplyPrunesOldBackups covers I7: backup dirs (each of which can hold a whole site
-// tree) were never deleted, and a second apply within the same second silently overwrote
-// the previous backup because the directory name was timestamp-only.
 func TestApplyPrunesOldBackups(t *testing.T) {
 	ex := &fakeExec{}
 	h, cfg := testHandler(t, ex, true)
@@ -298,8 +281,6 @@ func TestApplyPrunesOldBackups(t *testing.T) {
 		}
 		t.Fatalf("expected the newest 5 backups to be kept, got %d: %v", len(entries), names)
 	}
-	// The random suffix keeps same-second applies in distinct directories: 8 applies in one
-	// second would otherwise have produced a single directory.
 	seen := map[string]bool{}
 	for _, e := range entries {
 		if seen[e.Name()] {
@@ -309,9 +290,6 @@ func TestApplyPrunesOldBackups(t *testing.T) {
 	}
 }
 
-// TestSwapSiteDirRestoresOldOnCopyFailure covers debt item 7: a failed copy
-// used to leave SiteDir missing, so the relay served nothing until the outer
-// backup restore ran — and if swapSiteDir was itself that restore, forever.
 func TestSwapSiteDirRestoresOldOnCopyFailure(t *testing.T) {
 	h, cfg := testHandler(t, &fakeExec{}, true)
 	if err := h.swapSiteDir(filepath.Join(t.TempDir(), "does-not-exist")); err == nil {
@@ -331,9 +309,6 @@ func TestSwapSiteDirRestoresOldOnCopyFailure(t *testing.T) {
 	}
 }
 
-// TestApplyLogsChownFailure covers debt item 7: chown errors used to be
-// discarded entirely, so an operator had no way to see the files landed with
-// the wrong group.
 func TestApplyLogsChownFailure(t *testing.T) {
 	ex := &fakeExec{failOn: "chown", failMsg: "chown: invalid group"}
 	h, _ := testHandler(t, ex, true)

@@ -25,9 +25,6 @@ func TestIPLimiter(t *testing.T) {
 	}
 }
 
-// TestIPLimiterPrunesStaleEntries covers debt item 16: the maps only ever shed
-// the IP currently being checked, so a spray from many addresses grew them for
-// the process lifetime.
 func TestIPLimiterPrunesStaleEntries(t *testing.T) {
 	l := newIPLimiter(3, time.Minute, time.Minute)
 	base := time.Now()
@@ -77,9 +74,6 @@ func TestIPLimiterPruneKeepsActiveBlocks(t *testing.T) {
 	}
 }
 
-// TestIPLimiterBlockedDoesNotRecord pins the property the TOTP verify step relies on:
-// peeking must never consume an attempt, or the second step of a login would spend a
-// slot every time it is polled.
 func TestIPLimiterBlockedDoesNotRecord(t *testing.T) {
 	l := newIPLimiter(2, time.Minute, time.Minute)
 	now := time.Now()

@@ -1,5 +1,3 @@
-// recharts is only ever imported here - DashboardPage lazy-loads this
-// component (React.lazy) so the shell/other pages' bundle stays free of it.
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
@@ -17,12 +15,7 @@ export interface SessionsChartProps {
   series: SessionsSeriesConfig[];
 }
 
-/**
- * Live sessions per node over the last 24h: one thin line per node, no fill.
- * Areas were the wrong mark here - the nodes overlap almost perfectly, and
- * three translucent fills stacked on each other turn into a single muddy
- * shape that hides exactly the divergence an operator is looking for.
- */
+// Live sessions per node over the last 24h: one thin line per node, no fill.
 export function SessionsChart({ data, series }: SessionsChartProps) {
   const { i18n } = useTranslation();
   const locale = i18n.language;

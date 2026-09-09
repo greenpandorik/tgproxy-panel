@@ -1,5 +1,3 @@
-// Formatting helpers shared by tables and stat cards. Locale-aware bits take
-// the active i18n language so numbers/dates read naturally in ru and en.
 
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const;
 
@@ -52,12 +50,7 @@ export function formatRelativeTime(value: string | number | Date, locale?: strin
   return rtf.format(Math.round(duration), 'year');
 }
 
-/**
- * Formats a span of seconds the way an operator reads it in a dense table:
- * one number and a narrow unit - "18 с", "5 мин", "3 ч", "2 дн." - instead of
- * a full sentence. Intl supplies the unit, so the abbreviations stay correct
- * per language without a translation key each.
- */
+// Formats a span of seconds the way an operator reads it in a dense table: one number and a narrow unit.
 export function formatCompactDuration(seconds: number, locale?: string): string {
   const total = Math.max(0, Math.round(seconds));
   const [value, unit] =
@@ -71,11 +64,7 @@ export function formatCompactDuration(seconds: number, locale?: string): string 
   return new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'narrow' }).format(value);
 }
 
-/**
- * How long ago a timestamp was, as a compact duration ("3 ч"). Callers wrap
- * it in `common.ago` to get "3 ч назад"; null means the timestamp is missing
- * or unparseable and the caller should show an em dash.
- */
+// How long ago a timestamp was, as a compact duration ("3 ч").
 export function formatCompactAge(value: string | number | Date | null | undefined, locale?: string, now = Date.now()): string | null {
   if (value === null || value === undefined || value === '') return null;
   const d = new Date(value);
@@ -94,11 +83,6 @@ export function formatNumber(value: number, locale?: string): string {
   return new Intl.NumberFormat(locale).format(value);
 }
 
-/**
- * GitHub star count for a 7px-high chip: exact below a thousand, one decimal
- * with a `k` above it (6096 -> "6.1k"), trailing ".0" dropped (12000 -> "12k").
- * -1 is the backend's "unknown" and prints nothing, so the chip shows the mark alone.
- */
 export function formatStars(stars: number): string {
   if (!Number.isFinite(stars) || stars < 0) return '';
   if (stars < 1000) return String(stars);

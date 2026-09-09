@@ -59,13 +59,10 @@ type keyJSON struct {
 	Links              []keys.Link       `json:"links,omitempty"`
 	ClientSupport      map[string]string `json:"client_support"`
 	SubscriptionActive bool              `json:"subscription_active"`
-	// Traffic30d is the octets the key moved across all its telemt nodes in the last 30
-	// days. It is 0 for a key on tproxy nodes only - that engine reports no per-key traffic.
+	// Traffic30d is the octets the key moved across all its telemt nodes in the last 30 days.
 	Traffic30d int64 `json:"traffic_30d"`
 }
 
-// telemtLimitsJSON keeps the field present and object-shaped even for rows
-// written before the column existed, so clients never have to handle null.
 func telemtLimitsJSON(raw []byte) json.RawMessage {
 	if len(raw) == 0 {
 		return json.RawMessage("{}")
@@ -89,9 +86,6 @@ func (s *Server) keyJSON(r *http.Request, k db.AccessKey, withSecret bool) keyJS
 	return s.keyJSONWith(r, k, withSecret, nodes, s.hasActiveSubscription(r.Context(), k.ID), s.trafficByKey(r.Context(), []db.AccessKey{k})[k.ID])
 }
 
-// keyJSONWith is keyJSON with the bindings (and subscription status) already loaded,
-// so a list of keys can fetch every binding/subscription in one batched query
-// instead of one per key.
 func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, nodes []keyNodeJSON, subscriptionActive bool, traffic30d int64) keyJSON {
 	if nodes == nil {
 		nodes = []keyNodeJSON{}
@@ -108,8 +102,7 @@ func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, n
 	return out
 }
 
-// bindingsByKey loads the bindings of a whole page of keys in one query. A query
-// error degrades to "no bindings" exactly as the per-key path already did.
+// bindingsByKey loads the bindings of a whole page of keys in one query.
 func (s *Server) bindingsByKey(ctx context.Context, ks []db.AccessKey) map[uuid.UUID][]keyNodeJSON {
 	out := make(map[uuid.UUID][]keyNodeJSON, len(ks))
 	if len(ks) == 0 {
@@ -130,8 +123,6 @@ func (s *Server) bindingsByKey(ctx context.Context, ks []db.AccessKey) map[uuid.
 	return out
 }
 
-// activeSubscriptionsByKey is hasActiveSubscription for a whole page of keys at
-// once, mirroring bindingsByKey: one query for the page instead of one per row.
 func (s *Server) activeSubscriptionsByKey(ctx context.Context, ks []db.AccessKey) map[uuid.UUID]bool {
 	out := make(map[uuid.UUID]bool, len(ks))
 	if len(ks) == 0 {
@@ -152,8 +143,7 @@ func (s *Server) activeSubscriptionsByKey(ctx context.Context, ks []db.AccessKey
 	return out
 }
 
-// trafficByKey loads the 30-day traffic of a whole page of keys in one query, mirroring
-// bindingsByKey. A query error degrades to "no traffic recorded" rather than failing the list.
+// trafficByKey loads the 30-day traffic of a whole page of keys in one query, mirroring bindingsByKey.
 func (s *Server) trafficByKey(ctx context.Context, ks []db.AccessKey) map[uuid.UUID]int64 {
 	out := make(map[uuid.UUID]int64, len(ks))
 	if len(ks) == 0 {
@@ -474,8 +464,6 @@ func (s *Server) handleKeyQR(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			w.Header().Set("Content-Type", "image/png")
-			// FormatMediaType quotes and escapes the label, which is free text: a
-			// quote in it used to truncate the filename the browser saw.
 			filename := k.Label + "-" + l.Hostname + "-" + l.Kind + ".png"
 			disposition := mime.FormatMediaType("inline", map[string]string{"filename": filename})
 			if disposition == "" {
@@ -555,8 +543,6 @@ func (s *Server) handleBulkKeys(w http.ResponseWriter, r *http.Request) {
 				validation(w, map[string]string{"expires_at": "required for extend"})
 				return
 			}
-			// Routed through the service so the future-date and revoked-key guards apply;
-			// a per-id failure lands in `failed` rather than aborting the whole bulk run.
 			err = s.keys.Extend(r.Context(), id, *in.ExpiresAt)
 		default:
 			validation(w, map[string]string{"action": "revoke, delete or extend"})
@@ -572,20 +558,14 @@ func (s *Server) handleBulkKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"done": done, "failed": failed})
 }
 
-// keyStatsRetention mirrors the stats worker's retention for key_stats_snapshots: it is both
-// the window traffic_30d sums over and the ceiling the /stats range check allows past.
 const keyStatsRetention = 30 * 24 * time.Hour
 
-// maxKeyStatsPoints bounds one node's series in a /keys/{id}/stats response. A 31-day window
-// at one snapshot a minute is ~45k rows per node; the drawer charts a few hundred.
+// maxKeyStatsPoints bounds one node's series in a /keys/{id}/stats response.
 const maxKeyStatsPoints = 1000
 
-// keyStatsSnapshotStep is the stats worker's key-snapshot cadence. Asking the database for
-// narrower buckets than that cannot produce more points, only more groups.
+// keyStatsSnapshotStep is the stats worker's key-snapshot cadence.
 const keyStatsSnapshotStep = 60
 
-// keyStatsStepSeconds picks the bucket width so one node's series comes back already bounded by
-// maxKeyStatsPoints, instead of loading every raw row into Go only to throw all but 1000 away.
 func keyStatsStepSeconds(from, to time.Time) int64 {
 	span := int64(to.Sub(from) / time.Second)
 	if span <= 0 {
@@ -610,8 +590,6 @@ type keyStatsNodeJSON struct {
 	Points   []keyStatsPointJSON `json:"points"`
 }
 
-// handleKeyStats serves the per-key traffic series the key drawer charts, one series per node
-// the key was seen on. Readable by every role: it exposes no secret, only counters.
 func (s *Server) handleKeyStats(w http.ResponseWriter, r *http.Request) {
 	k, ok := s.loadKey(w, r)
 	if !ok {
@@ -629,8 +607,6 @@ func (s *Server) handleKeyStats(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	// The query orders by (node_id, taken_at), so each node's points arrive as one contiguous
-	// run and the previous reading is simply the row before.
 	nodes := []keyStatsNodeJSON{}
 	var connectionsNow int32
 	var octetsDelta int64
@@ -643,11 +619,6 @@ func (s *Server) handleKeyStats(w http.ResponseWriter, r *http.Request) {
 			byNode[row.NodeID] = idx
 			nodes = append(nodes, keyStatsNodeJSON{NodeID: row.NodeID, NodeName: row.NodeName})
 		} else if d := row.TotalOctets - prev[row.NodeID]; d > 0 {
-			// total_octets is a process-scoped cumulative counter: it restarts at zero
-			// when telemt does. Summing the positive step-to-step deltas keeps every
-			// complete interval and loses only the one step spanning the restart, whereas
-			// last - first would read the whole window as negative and report zero. The
-			// first point of each node's run has no predecessor and contributes nothing.
 			octetsDelta += d
 		}
 		prev[row.NodeID] = row.TotalOctets

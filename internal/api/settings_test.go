@@ -55,9 +55,6 @@ func TestSettingsTelegramBotTokenEncryptedAtRest(t *testing.T) {
 	}
 }
 
-// fakeTGSender records every SendWith call so tests on the
-// POST /settings/telegram/test endpoint can assert what would have been sent
-// without making a real HTTP call to Telegram.
 type fakeTGSender struct {
 	mu    sync.Mutex
 	calls []struct{ token, chatID, text string }
@@ -173,9 +170,6 @@ func TestTelegramTestEndpointRequiresConfig(t *testing.T) {
 	}
 }
 
-// TestTelegramTestEndpointUsesBodyChatIDOverride: the settings form enables "Send test" off
-// its own in-progress chat id, so a chat id typed but not yet saved has to reach the handler
-// - it used to always read the stored one and reject a form that looked complete.
 func TestTelegramTestEndpointUsesBodyChatIDOverride(t *testing.T) {
 	sender := &fakeTGSender{}
 	_, c := ownerHarnessWithSender(t, sender)
