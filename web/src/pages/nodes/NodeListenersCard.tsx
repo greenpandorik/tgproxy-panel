@@ -21,12 +21,15 @@ import type { Node } from '@/api/types';
 const HOSTNAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 // Four dotted decimal octets, each 0..255 - what validatePublicIP on the server accepts.
 const IPV4_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+// The proxy tag @MTProxybot issues, mirroring validateAdTag on the server.
+const AD_TAG_RE = /^[0-9a-f]{32}$/;
 
 const schema = z
   .object({
     tls_domain: z.string().trim().toLowerCase(),
     classic_port: z.coerce.number().int(),
     public_ip: z.string().trim(),
+    ad_tag: z.string().trim().toLowerCase(),
   })
   .superRefine((val, ctx) => {
     if (!HOSTNAME_RE.test(val.tls_domain) || !val.tls_domain.includes('.')) {
@@ -38,6 +41,10 @@ const schema = z
     // Empty stays allowed (the installer fills it in); anything else must be one IPv4.
     if (val.public_ip !== '' && !IPV4_RE.test(val.public_ip)) {
       ctx.addIssue({ code: 'custom', path: ['public_ip'], message: 'ipv4' });
+    }
+    // Empty stays allowed (no sponsor channel); anything else must be the bot's tag shape.
+    if (val.ad_tag !== '' && !AD_TAG_RE.test(val.ad_tag)) {
+      ctx.addIssue({ code: 'custom', path: ['ad_tag'], message: 'ad_tag' });
     }
   });
 
@@ -53,6 +60,7 @@ const valuesOf = (node: Node): FormValues => ({
   tls_domain: node.tls_domain,
   classic_port: node.classic_port,
   public_ip: node.public_ip,
+  ad_tag: node.ad_tag,
 });
 
 /**
@@ -90,13 +98,13 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
   });
 
   useEffect(() => {
-    reset({ tls_domain: node.tls_domain, classic_port: node.classic_port, public_ip: node.public_ip });
-  }, [node.tls_domain, node.classic_port, node.public_ip, reset]);
+    reset({ tls_domain: node.tls_domain, classic_port: node.classic_port, public_ip: node.public_ip, ad_tag: node.ad_tag });
+  }, [node.tls_domain, node.classic_port, node.public_ip, node.ad_tag, reset]);
 
   // The form validates on submit and the confirmation opens only if it passed, so
   // the operator is never asked to confirm a change that cannot be saved. Which
   // confirmation depends on what changed: the Fake-TLS fields invalidate links,
-  // the public IP only costs a restart.
+  // the public IP and the sponsor tag only cost telemt reapplying its config.
   const askToSave = (values: FormValues) => {
     const fakeTLS = values.tls_domain !== node.tls_domain || values.classic_port !== node.classic_port;
     setPending({ kind: fakeTLS ? 'fake_tls' : 'public_ip', values });
@@ -111,6 +119,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
         tls_domain: values.tls_domain,
         classic_port: values.classic_port,
         public_ip: values.public_ip,
+        ad_tag: values.ad_tag,
       });
       reset(values);
       toast.add({ description: t('nodes.listeners_saved'), type: 'success' });
@@ -159,6 +168,19 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
 
           <p className="text-label text-mute">{t('nodes.field_public_ip_hint')}</p>
 
+          <div className="space-y-2">
+            <Label htmlFor="node-ad-tag-edit">{t('nodes.field_ad_tag')}</Label>
+            <Input
+              id="node-ad-tag-edit"
+              className="mono"
+              placeholder={t('nodes.field_ad_tag_placeholder')}
+              {...register('ad_tag')}
+              aria-invalid={!!errors.ad_tag}
+            />
+            {errors.ad_tag && <p className="text-label text-destructive">{t('nodes.validation_ad_tag')}</p>}
+            <p className="text-label text-mute">{t('nodes.field_ad_tag_hint')}</p>
+          </div>
+
           <p className="flex items-start gap-2 text-label text-warn">
             <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
             {t('nodes.listeners_restart_note')}
@@ -171,7 +193,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
           </div>
         </form>
       ) : (
-        <dl className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2">
           <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
             <dt className="truncate text-label text-mute">{t('nodes.field_tls_domain')}</dt>
             <dd className="mono shrink-0 text-mono text-foreground">{node.tls_domain || '—'}</dd>
@@ -183,6 +205,10 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
           <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
             <dt className="truncate text-label text-mute">{t('nodes.field_public_ip')}</dt>
             <dd className="mono shrink-0 text-mono text-foreground">{node.public_ip || '—'}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
+            <dt className="truncate text-label text-mute">{t('nodes.field_ad_tag')}</dt>
+            <dd className="mono shrink-0 text-mono text-foreground">{node.ad_tag || '—'}</dd>
           </div>
         </dl>
       )}

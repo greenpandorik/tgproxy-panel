@@ -78,6 +78,7 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 	// the wrong side.
 	if node.Engine == db.NodeEngineTelemt {
 		req.TLSDomain, req.ClassicPort, req.PublicIP = node.TlsDomain, uint32(node.ClassicPort), node.PublicIp
+		req.AdTag = node.AdTag
 	}
 	seen := map[string]bool{}
 	for _, p := range rows {

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/mail"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ type nodeJSON struct {
 	Engine        string          `json:"engine"`
 	TLSDomain     string          `json:"tls_domain"`
 	ClassicPort   int             `json:"classic_port"`
+	AdTag         string          `json:"ad_tag"`
 	TelemtVersion string          `json:"telemt_version"`
 	TProxyVersion string          `json:"tproxy_version"`
 	AgentVersion  string          `json:"agent_version"`
@@ -60,7 +62,7 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 	out := nodeJSON{
 		ID: n.ID, Name: n.Name, Hostname: n.Hostname, PublicIP: n.PublicIp, ACMEEmail: n.AcmeEmail, Status: string(n.Status),
 		Online: s.driver != nil && s.driver.Online(n.ID), Engine: string(n.Engine), TLSDomain: n.TlsDomain,
-		ClassicPort: int(n.ClassicPort), TelemtVersion: n.TelemtVersion,
+		ClassicPort: int(n.ClassicPort), AdTag: n.AdTag, TelemtVersion: n.TelemtVersion,
 		TProxyVersion: n.TproxyVersion, AgentVersion: n.AgentVersion,
 		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,
 		CreatedAt: n.CreatedAt,
@@ -160,6 +162,20 @@ func validateClassicPort(port int) string {
 		return "1024..65535"
 	}
 	return ""
+}
+
+// adTagRe matches the 32 lowercase hex characters a proxy tag from @MTProxybot always is - the
+// same shape as a telemt user secret, which is where the format comes from.
+var adTagRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
+// validateAdTag accepts an empty value (no sponsor channel on this node) or exactly 32
+// lowercase hex characters, the tag format @MTProxybot issues when a server is registered
+// for a sponsored/promoted channel.
+func validateAdTag(tag string) string {
+	if tag == "" || adTagRe.MatchString(tag) {
+		return ""
+	}
+	return "32 lowercase hex characters, or empty to disable the sponsor channel"
 }
 
 // validatePublicIP accepts an empty value (the install script fills it in) or one IPv4
@@ -285,6 +301,7 @@ type patchNodeReq struct {
 	ACMEEmail   *string `json:"acme_email"`
 	TLSDomain   *string `json:"tls_domain"`
 	ClassicPort *int    `json:"classic_port"`
+	AdTag       *string `json:"ad_tag"`
 }
 
 func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
@@ -349,6 +366,18 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 		}
 		listeners.ClassicPort = pgtype.Int4{Int32: int32(*req.ClassicPort), Valid: true}
 		dirty = dirty || int32(*req.ClassicPort) != n.ClassicPort
+	}
+	// ad_tag is the sponsor-channel tag telemt's middle-proxy mode advertises to Telegram; like
+	// tls_domain/classic_port it is desired state the agent applies on the next apply, so
+	// toggling it marks the node dirty rather than taking effect immediately.
+	if req.AdTag != nil {
+		tag := strings.ToLower(strings.TrimSpace(*req.AdTag))
+		if msg := validateAdTag(tag); msg != "" {
+			validation(w, map[string]string{"ad_tag": msg})
+			return
+		}
+		listeners.AdTag = &tag
+		dirty = dirty || tag != n.AdTag
 	}
 	updated, err := s.store.Q.UpdateNode(r.Context(), listeners)
 	if err != nil {

@@ -328,7 +328,11 @@
     "field_public_ip_hint": "The address the A record points at; on a NAT host the interface and the internet-facing address can differ.",
     "validation_ipv4": "IPv4 address, e.g. 203.0.113.10",
     "public_ip_confirm_title": "Change the public IP?",
-    "public_ip_confirm_description": "The next apply pushes this to the node: the agent rewrites the WEB vhost's address in telemt's config and restarts telemt, dropping live connections. Links are unaffected — they carry the domain, not the address."
+    "public_ip_confirm_description": "The next apply pushes this to the node: the agent rewrites the WEB vhost's address in telemt's config and restarts telemt, dropping live connections. Links are unaffected — they carry the domain, not the address.",
+    "field_ad_tag": "Sponsor channel tag",
+    "field_ad_tag_placeholder": "32 hex characters",
+    "field_ad_tag_hint": "Register this server with @MTProxybot on Telegram to get a tag — it is what turns on the sponsor channel for clients connected through this node. Empty means no sponsor channel.",
+    "validation_ad_tag": "32 lowercase characters (0-9, a-f), or empty"
   },
   "keys": {
     "title": "Keys",

@@ -9,20 +9,22 @@
   :root {
     --primary: {{.PrimaryColor}};
     --accent: {{.AccentColor}};
-    --bg: #0b0d10;
-    --surface: #14171c;
-    --surface-2: #1b1f26;
-    --border: #262b33;
-    --text: #e7e9ec;
-    --text-dim: #9aa3ad;
+    --bg: #151f2c;
+    --surface: #1d2939;
+    --surface-2: #263548;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-2: rgba(255, 255, 255, 0.12);
+    --text: #edf2f7;
+    --text-dim: #a6b3c4;
   }
   html[data-theme="light"] {
-    --bg: #f6f6f4;
+    --bg: #f1f5f9;
     --surface: #ffffff;
-    --surface-2: #f0f0ee;
-    --border: #e1e1dd;
-    --text: #1a1c1f;
-    --text-dim: #666b73;
+    --surface-2: #e9eff5;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-2: rgba(0, 0, 0, 0.14);
+    --text: #182433;
+    --text-dim: #526478;
   }
   * { box-sizing: border-box; }
   body {
@@ -64,8 +66,8 @@
   }
   .card {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    border: 1px solid var(--border-2);
+    border-radius: 8px;
     padding: 18px;
     margin-bottom: 14px;
   }
@@ -94,7 +96,7 @@
   .qr {
     width: 108px;
     height: 108px;
-    border-radius: 10px;
+    border-radius: 6px;
     background: #fff;
     padding: 6px;
     display: block;
@@ -114,7 +116,7 @@
     gap: 6px;
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 6px 6px 6px 10px;
   }
   .link-row .proto {
@@ -135,7 +137,7 @@
   }
   button.copy-btn {
     flex: none;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-2);
     background: transparent;
     color: var(--text);
     border-radius: 6px;
@@ -154,14 +156,14 @@
     text-decoration: none;
     font-size: 0.82rem;
     font-weight: 600;
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 8px 10px;
   }
   .notice {
     margin-top: 22px;
     padding: 14px 16px;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 8px;
     background: var(--surface);
     font-size: 0.82rem;
     color: var(--text-dim);
@@ -171,8 +173,8 @@
   .notice .en { font-size: 0.76rem; }
   .support-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .support-item {
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    border: 1px solid var(--border-2);
+    border-radius: 9999px;
     padding: 3px 10px;
     font-size: 0.72rem;
   }
@@ -189,8 +191,8 @@
   }
   footer.page a { color: var(--text-dim); }
   .empty {
-    border: 1px dashed var(--border);
-    border-radius: 12px;
+    border: 1px dashed var(--border-2);
+    border-radius: 8px;
     padding: 20px;
     text-align: center;
     color: var(--text-dim);

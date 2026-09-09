@@ -529,6 +529,7 @@ type Node struct {
 	TlsDomain           string     `json:"tls_domain"`
 	ClassicPort         int32      `json:"classic_port"`
 	TelemtVersion       string     `json:"telemt_version"`
+	AdTag               string     `json:"ad_tag"`
 }
 
 type NodeSite struct {

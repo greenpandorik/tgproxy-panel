@@ -35,6 +35,7 @@ const node = {
   engine: 'telemt',
   tls_domain: 'n1.test',
   classic_port: 8443,
+  ad_tag: '',
   telemt_version: '3.5.5',
   tproxy_version: '',
   agent_version: '1',
@@ -92,7 +93,12 @@ describe('NodeListenersCard', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
-    expect(mutateAsync).toHaveBeenCalledWith({ tls_domain: 'n1.test', classic_port: 8443, public_ip: '104.239.66.129' });
+    expect(mutateAsync).toHaveBeenCalledWith({
+      tls_domain: 'n1.test',
+      classic_port: 8443,
+      public_ip: '104.239.66.129',
+      ad_tag: '',
+    });
   });
 
   it('keeps the link-reissue confirmation for a Fake-TLS change', async () => {
@@ -110,5 +116,34 @@ describe('NodeListenersCard', () => {
     expect(screen.getByText('Public IP')).toBeInTheDocument();
     expect(screen.getByText('104.239.66.187')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  });
+
+  it('rejects anything but a 32-character hex tag before asking to confirm', async () => {
+    render(wrap(<NodeListenersCard node={node} canEdit />));
+    const tag = screen.getByLabelText('Sponsor channel tag');
+    await userEvent.type(tag, 'not-a-tag');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('32 lowercase characters (0-9, a-f), or empty')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('saves a sponsor tag after the lighter, non-destructive confirmation', async () => {
+    render(wrap(<NodeListenersCard node={node} canEdit />));
+    const tag = screen.getByLabelText('Sponsor channel tag');
+    await userEvent.type(tag, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByText('Change the Fake-TLS settings?')).toBeNull();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+    expect(mutateAsync).toHaveBeenCalledWith({
+      tls_domain: 'n1.test',
+      classic_port: 8443,
+      public_ip: '104.239.66.187',
+      ad_tag: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    });
   });
 });

@@ -53,6 +53,7 @@ func (g *Gateway) Apply(ctx context.Context, id uuid.UUID, req ApplyRequest) (Ap
 	pr := &agentv1.ApplyRequest{
 		ApplyProfiles: req.ApplyProfiles, MtproxySecrets: req.MTProxySecrets,
 		TlsDomain: req.TLSDomain, ClassicPort: req.ClassicPort, PublicIp: req.PublicIP,
+		AdTag: req.AdTag,
 	}
 	for _, p := range req.Profiles {
 		pr.Profiles = append(pr.Profiles, ProfileToProto(p))

@@ -9,6 +9,7 @@ VALUES ($1, $2, $3, $4, $5, $6,
   COALESCE(sqlc.narg('classic_port')::int, 8443))
 RETURNING *;
 
+
 -- name: GetNode :one
 SELECT * FROM nodes WHERE id = $1;
 
@@ -27,7 +28,8 @@ SELECT * FROM nodes ORDER BY created_at;
 -- name: UpdateNode :one
 UPDATE nodes SET name = $2, public_ip = $3, max_profiles = $4, acme_email = $5,
   tls_domain = COALESCE(sqlc.narg('tls_domain')::text, tls_domain),
-  classic_port = COALESCE(sqlc.narg('classic_port')::int, classic_port)
+  classic_port = COALESCE(sqlc.narg('classic_port')::int, classic_port),
+  ad_tag = COALESCE(sqlc.narg('ad_tag')::text, ad_tag)
 WHERE id = $1 RETURNING *;
 
 -- name: SetNodeInstallToken :exec

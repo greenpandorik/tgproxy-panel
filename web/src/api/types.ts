@@ -135,6 +135,8 @@ export interface Node {
   tls_domain: string;
   /** Port of the Fake-TLS listener. telemt only. */
   classic_port: number;
+  /** Sponsor-channel tag (32 hex chars) registered with @MTProxybot, or empty. telemt only. */
+  ad_tag: string;
   telemt_version: string;
   tproxy_version: string;
   agent_version: string;
@@ -165,6 +167,7 @@ export interface PatchNodeInput {
   acme_email?: string;
   tls_domain?: string;
   classic_port?: number;
+  ad_tag?: string;
 }
 
 export interface CreateNodeResult {

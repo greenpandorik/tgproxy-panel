@@ -67,6 +67,7 @@ function node(name: string, status: Node['status'], h?: NodeHealth): Node {
     engine: 'telemt',
     tls_domain: `${name}.test`,
     classic_port: 8443,
+    ad_tag: '',
     telemt_version: '3.5.5',
     tproxy_version: '',
     agent_version: '1',

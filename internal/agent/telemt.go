@@ -41,6 +41,10 @@ type telemtPolicy struct {
 	MaxTCPConns      uint64 `json:"max_tcp_conns"`
 	Expiration       string `json:"expiration_rfc3339"`
 	Enabled          bool   `json:"enabled"`
+	// AdTag is not part of the panel's per-profile policy: it is the node-level sponsor-channel
+	// tag (ApplyRequest.AdTag), copied onto every profile's policy identically because telemt
+	// expresses it per user. Empty means "no sponsor channel", not "no opinion".
+	AdTag string `json:"ad_tag"`
 }
 
 func telemtPolicyFrom(p *agentv1.Profile) telemtPolicy {
@@ -68,6 +72,10 @@ func (p telemtPolicy) fingerprint() string {
 
 func (p telemtPolicy) createRequest(name, secret string) telemt.CreateUserRequest {
 	req := telemt.CreateUserRequest{Username: name, Secret: secret, Enabled: &p.Enabled}
+	if p.AdTag != "" {
+		tag := p.AdTag
+		req.UserAdTag = &tag
+	}
 	if p.DataQuotaBytes > 0 {
 		req.DataQuotaBytes = &p.DataQuotaBytes
 	}
@@ -111,6 +119,12 @@ func (p telemtPolicy) patchRequest(secret *string) telemt.PatchUserRequest {
 	} else {
 		req.Clear = append(req.Clear, "expiration_rfc3339")
 	}
+	if p.AdTag != "" {
+		tag := p.AdTag
+		req.UserAdTag = &tag
+	} else {
+		req.Clear = append(req.Clear, "user_ad_tag")
+	}
 	return req
 }
 
@@ -121,7 +135,7 @@ func (p telemtPolicy) patchRequest(secret *string) telemt.PatchUserRequest {
 func (p telemtPolicy) matches(u telemt.User) bool {
 	if u.DataQuotaBytes != p.DataQuotaBytes || u.RateLimitUpBps != p.RateLimitUpBps ||
 		u.RateLimitDownBps != p.RateLimitDownBps || u.MaxUniqueIPs != p.MaxUniqueIPs ||
-		u.MaxTCPConns != p.MaxTCPConns || u.Enabled != p.Enabled {
+		u.MaxTCPConns != p.MaxTCPConns || u.Enabled != p.Enabled || u.UserAdTag != p.AdTag {
 		return false
 	}
 	if (u.ExpirationRFC3339 == "") != (p.Expiration == "") {
@@ -140,6 +154,9 @@ func telemtDesiredFrom(req *agentv1.ApplyRequest) ([]telemtDesired, error) {
 	if len(req.Profiles) == 0 {
 		return nil, errors.New("at least one profile is required")
 	}
+	if req.AdTag != "" && !hexRe.MatchString(req.AdTag) {
+		return nil, fmt.Errorf("ad tag must be 32 lowercase hex characters")
+	}
 	seen := map[string]bool{}
 	out := make([]telemtDesired, 0, len(req.Profiles))
 	for _, p := range req.Profiles {
@@ -153,7 +170,9 @@ func telemtDesiredFrom(req *agentv1.ApplyRequest) ([]telemtDesired, error) {
 			return nil, fmt.Errorf("duplicate profile %q", p.Name)
 		}
 		seen[p.Name] = true
-		out = append(out, telemtDesired{name: p.Name, secret: p.Secret, policy: telemtPolicyFrom(p)})
+		policy := telemtPolicyFrom(p)
+		policy.AdTag = req.AdTag
+		out = append(out, telemtDesired{name: p.Name, secret: p.Secret, policy: policy})
 	}
 	return out, nil
 }
@@ -288,7 +307,10 @@ type telemtRollback struct {
 	// publicAddrChanged records that web.vhosts[0].public_addr was rewritten; the vhost array
 	// itself goes back through prevVhosts, but a restart is needed for it to take effect.
 	publicAddrChanged bool
-	irreversible      []string // mutations telemt cannot undo from the information we hold
+	// prevMiddleProxy is general.use_middle_proxy as it was before this apply touched it
+	// (nil = not touched).
+	prevMiddleProxy *bool
+	irreversible    []string // mutations telemt cannot undo from the information we hold
 }
 
 // telemtFakeTLSListener returns the index of the Fake-TLS listener inside `server.listeners`.
@@ -508,6 +530,41 @@ func (h *Handler) reconcileTelemtPublicAddr(ctx context.Context, lg *applyLog, r
 	return true, nil
 }
 
+// reconcileTelemtMiddleProxy turns telemt's middle-proxy mode on or off to match whether the
+// panel wants a sponsor channel on this node. Unlike the listener/address reconcilers, empty is
+// authoritative here ("no sponsor channel"), not "no opinion" - so this always compares against
+// the node's current setting, on a tproxy node included (which will simply never differ, since
+// the panel never sets AdTag for one).
+//
+// `general` is unlike `censorship`/`server.listeners`/`web.vhosts`: nothing here says it is
+// process-owned, so this asks for an immediate draining reload and then trusts telemt's own
+// answer (restart_required / process_restart_required / deferred_process_fields) rather than
+// assuming either way. If telemt does defer it, the caller restarts the same way a listener
+// move would.
+func (h *Handler) reconcileTelemtMiddleProxy(ctx context.Context, lg *applyLog, req *agentv1.ApplyRequest, rb *telemtRollback) (changed, restart bool, err error) {
+	want := req.GetAdTag() != ""
+	cfg, _, err := h.tm.GetConfig(ctx)
+	if err != nil {
+		return false, false, err
+	}
+	general, _ := cfg["general"].(map[string]any)
+	cur, _ := general["use_middle_proxy"].(bool)
+	if cur == want {
+		return false, false, nil
+	}
+	out, err := h.tm.PatchConfig(ctx, map[string]any{"general": map[string]any{"use_middle_proxy": want}}, true)
+	if err != nil {
+		return false, false, err
+	}
+	prev := cur
+	rb.prevMiddleProxy = &prev
+	lg.f("general.use_middle_proxy %v -> %v", cur, want)
+	if len(out.DeferredProcessFields) > 0 {
+		lg.f("telemt deferred %s until a process restart", strings.Join(out.DeferredProcessFields, ", "))
+	}
+	return true, out.RestartRequired || out.ProcessRestartRequired, nil
+}
+
 // restartTelemt restarts the unit and waits for the control API to report ready again. A
 // listener move is process-owned, so the config patch alone would leave telemt answering on the
 // old socket until something else restarted it.
@@ -571,6 +628,12 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 			patch := map[string]any{"web": map[string]any{"vhosts": rb.prevVhosts}}
 			if _, err := h.tm.PatchConfig(ctx, patch, false); err != nil {
 				step("restore web profiles", err)
+			}
+		}
+		if rb.prevMiddleProxy != nil {
+			patch := map[string]any{"general": map[string]any{"use_middle_proxy": *rb.prevMiddleProxy}}
+			if _, err := h.tm.PatchConfig(ctx, patch, true); err != nil {
+				step("restore general.use_middle_proxy", err)
 			}
 		}
 		for _, name := range rb.created {
@@ -648,8 +711,14 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	if err != nil {
 		return rollback(err)
 	}
-	listenersChanged = listenersChanged || addrChanged
-	changed = changed || listenersChanged
+	// The sponsor channel toggle is not process-owned, but telemt's own answer decides whether
+	// this apply still needs the restart the other two might already be asking for.
+	mpChanged, mpRestart, err := h.reconcileTelemtMiddleProxy(ctx, lg, req, rb)
+	if err != nil {
+		return rollback(err)
+	}
+	restartNeeded := listenersChanged || addrChanged || mpRestart
+	changed = changed || restartNeeded || mpChanged
 
 	if !changed {
 		lg.f("nothing changed (no restart)")
@@ -657,7 +726,7 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		return res
 	}
 
-	if listenersChanged {
+	if restartNeeded {
 		// A restart re-reads the whole config, so it supersedes the runtime reload the rest
 		// of this apply would otherwise have asked for.
 		lg.f("restarting telemt: the Fake-TLS listener and the vhost address are process-owned")

@@ -1187,7 +1187,13 @@ type ApplyRequest struct {
 	// record points at. The telemt agent rewrites `web.vhosts[0].public_addr` ("<ip>:443") when
 	// it differs and restarts telemt like a listener move; the tproxy agent ignores it. Empty
 	// means "the panel has no opinion", so an old panel never touches it.
-	PublicIp      string `protobuf:"bytes,7,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
+	PublicIp string `protobuf:"bytes,7,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
+	// Field 8 is the sponsor-channel tag telemt's middle-proxy mode advertises to Telegram
+	// (registered per server with @MTProxybot), applied identically to every profile this apply
+	// pushes. The tproxy agent ignores it. Empty means "no sponsor channel": the telemt agent
+	// turns `[general] use_middle_proxy` off and clears the tag from every user, which is also
+	// the correct behaviour for an old panel that has never heard of this field.
+	AdTag         string `protobuf:"bytes,8,opt,name=ad_tag,json=adTag,proto3" json:"ad_tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1267,6 +1273,13 @@ func (x *ApplyRequest) GetClassicPort() uint32 {
 func (x *ApplyRequest) GetPublicIp() string {
 	if x != nil {
 		return x.PublicIp
+	}
+	return ""
+}
+
+func (x *ApplyRequest) GetAdTag() string {
+	if x != nil {
+		return x.AdTag
 	}
 	return ""
 }
@@ -2058,7 +2071,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\rrestart_relay\x18\b \x01(\v2\x1d.agent.v1.RestartRelayRequestH\x00R\frestartRelayB\x06\n" +
 	"\x04body\"\x0f\n" +
 	"\rHealthRequest\"\x14\n" +
-	"\x12GetProfilesRequest\"\x96\x02\n" +
+	"\x12GetProfilesRequest\"\xad\x02\n" +
 	"\fApplyRequest\x12%\n" +
 	"\x0eapply_profiles\x18\x01 \x01(\bR\rapplyProfiles\x12-\n" +
 	"\bprofiles\x18\x02 \x03(\v2\x11.agent.v1.ProfileR\bprofiles\x12'\n" +
@@ -2067,7 +2080,8 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"tls_domain\x18\x05 \x01(\tR\ttlsDomain\x12!\n" +
 	"\fclassic_port\x18\x06 \x01(\rR\vclassicPort\x12\x1b\n" +
-	"\tpublic_ip\x18\a \x01(\tR\bpublicIp\"\x10\n" +
+	"\tpublic_ip\x18\a \x01(\tR\bpublicIp\x12\x15\n" +
+	"\x06ad_tag\x18\b \x01(\tR\x05adTag\"\x10\n" +
 	"\x0eGetSiteRequest\"\x10\n" +
 	"\x0eMetricsRequest\"\x0e\n" +
 	"\fStatsRequest\"[\n" +

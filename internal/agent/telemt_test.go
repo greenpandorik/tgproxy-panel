@@ -1362,3 +1362,106 @@ func TestTelemtApplyRestoresListenersWhenTheRestartFails(t *testing.T) {
 		t.Fatalf("general.links.public_port not restored: %#v", links)
 	}
 }
+
+const sponsorTag = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+// Setting AdTag turns on general.use_middle_proxy and gives every profile the same
+// per-user tag; the fake control API never asks for a restart, so this is a hot change.
+func TestTelemtApplySetsSponsorChannelAdTag(t *testing.T) {
+	ex := &fakeExec{}
+	h, _, ft := telemtHandler(t, ex)
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode, "k1", secretK1), AdTag: sponsorTag,
+	})
+	if !res.Ok {
+		t.Fatalf("apply failed: %s", res.Log)
+	}
+	if res.RestartedRelay {
+		t.Fatalf("a hot middle-proxy toggle must not restart telemt: %s", res.Log)
+	}
+	if ft.section("general")["use_middle_proxy"] != true {
+		t.Fatalf("general.use_middle_proxy not enabled: %#v", ft.section("general"))
+	}
+	_, _, patches, _ := ft.snapshot()
+	var sawGeneral bool
+	for _, raw := range patches {
+		var p map[string]any
+		if err := json.Unmarshal([]byte(raw), &p); err != nil {
+			t.Fatalf("patch is not json: %v", err)
+		}
+		if g, ok := p["general"].(map[string]any); ok {
+			if g["use_middle_proxy"] != true {
+				t.Fatalf("wrong general patch: %s", raw)
+			}
+			sawGeneral = true
+		}
+	}
+	if !sawGeneral {
+		t.Fatalf("missing general.use_middle_proxy patch: %v", patches)
+	}
+	for _, name := range []string{"node", "k1"} {
+		body := ft.bodies(name)
+		if len(body) == 0 || !strings.Contains(body[len(body)-1], `"user_ad_tag":"`+sponsorTag+`"`) {
+			t.Fatalf("user %s missing sponsor tag: %v", name, body)
+		}
+	}
+	if !strings.Contains(res.Log, "general.use_middle_proxy false -> true") {
+		t.Fatalf("log must name the change: %s", res.Log)
+	}
+
+	// Steady state: the same tag again touches nothing.
+	ft.resetWrites()
+	res = h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode, "k1", secretK1), AdTag: sponsorTag,
+	})
+	if !res.Ok || res.RestartedRelay {
+		t.Fatalf("an unchanged tag must be a no-op: ok=%v restarted=%v log=%s", res.Ok, res.RestartedRelay, res.Log)
+	}
+	if _, _, patches, _ := ft.snapshot(); len(patches) != 0 {
+		t.Fatalf("no config patch expected, got %v", patches)
+	}
+}
+
+// An empty AdTag is authoritative, not "no opinion": it turns the sponsor channel back off
+// and clears the per-user tag telemt already holds.
+func TestTelemtApplyClearsSponsorChannelAdTag(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode), AdTag: sponsorTag,
+	})
+	if !res.Ok {
+		t.Fatalf("apply failed: %s", res.Log)
+	}
+	ft.resetWrites()
+
+	res = h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode),
+	})
+	if !res.Ok {
+		t.Fatalf("apply failed: %s", res.Log)
+	}
+	if ft.section("general")["use_middle_proxy"] != false {
+		t.Fatalf("general.use_middle_proxy not disabled: %#v", ft.section("general"))
+	}
+	body := ft.bodies("node")
+	if len(body) == 0 || !strings.Contains(body[len(body)-1], `"user_ad_tag":null`) {
+		t.Fatalf("sponsor tag must be explicitly cleared: %v", body)
+	}
+	if !strings.Contains(res.Log, "general.use_middle_proxy true -> false") {
+		t.Fatalf("log must name the change: %s", res.Log)
+	}
+}
+
+// A malformed ad tag from the panel is refused before anything is touched.
+func TestTelemtApplyRejectsBadAdTag(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode), AdTag: "not-a-tag",
+	})
+	if res.Ok || !strings.Contains(res.Log, "ad tag must be 32 lowercase hex characters") {
+		t.Fatalf("bad ad tag must fail the apply: ok=%v log=%s", res.Ok, res.Log)
+	}
+	if _, _, patches, _ := ft.snapshot(); len(patches) != 0 {
+		t.Fatalf("no config patch expected, got %v", patches)
+	}
+}

@@ -22,6 +22,7 @@ type nodeResp struct {
 	ProfileCount int       `json:"profile_count"`
 	MaxProfiles  int       `json:"max_profiles"`
 	Dirty        bool      `json:"dirty"`
+	AdTag        string    `json:"ad_tag"`
 }
 
 func createNode(t *testing.T, c *apitest.Client, host string) (nodeResp, string) {
@@ -91,6 +92,36 @@ func TestNodeListGetPatchDelete(t *testing.T) {
 	}
 	if resp := c.Get("/api/v1/nodes/" + n.ID.String()); resp.StatusCode != 404 {
 		t.Fatalf("expected 404 after delete, got %d", resp.StatusCode)
+	}
+}
+
+// The sponsor-channel tag is desired state like tls_domain/classic_port: a valid change is
+// stored and dirties the node for the agent's next apply; an invalid one is rejected untouched.
+func TestNodePatchAdTag(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	if n.Dirty {
+		t.Fatalf("freshly created node must not be dirty: %+v", n)
+	}
+
+	resp := c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"ad_tag": "not-a-tag"})
+	if resp.StatusCode != 422 {
+		t.Fatalf("expected 422 for a malformed ad tag, got %d", resp.StatusCode)
+	}
+
+	tag := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	var got nodeResp
+	c.JSON(c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"ad_tag": tag}), &got)
+	if got.AdTag != tag || !got.Dirty {
+		t.Fatalf("patch %+v", got)
+	}
+
+	// Clearing it back to empty is a valid change too (turns the sponsor channel off).
+	c.JSON(c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"ad_tag": ""}), &got)
+	if got.AdTag != "" {
+		t.Fatalf("ad tag not cleared: %+v", got)
 	}
 }
 
