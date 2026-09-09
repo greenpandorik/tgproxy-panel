@@ -28,6 +28,13 @@ type HealthReport struct {
 	ConnectFailTotal         int64
 	UpstreamLastCheckAgeSecs int64
 	DcDataAvailable          bool
+
+	// Web is the WEB transport telemetry; nil when the node reported none of it.
+	Web *WebTelemetry
+	// Capabilities is what the agent worked out the node's telemt can do; nil when it did
+	// not report a capability set.
+	Capabilities TelemtCapabilities
+	TelemtBuild  string
 }
 
 // DcLatency is one Telegram datacenter's latency EMA as telemt measures it.

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodedriver"
@@ -267,6 +268,15 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 			CpuPercent: load.CpuPercent, MemUsedPercent: load.MemUsedPercent, DiskUsedPercent: load.DiskUsedPercent,
 			DcLatency:  load.DcLatency,
 			MtproxyRaw: raw, RelayRaw: "",
+			WebCarrierSelectionsHttps:          load.WebCarrierSelectionsHttps,
+			WebCarrierSelectionsHttpsLanes:     load.WebCarrierSelectionsHttpsLanes,
+			WebCarrierSelectionsWebsocket:      load.WebCarrierSelectionsWebsocket,
+			WebCarrierSelectionsWebsocketLanes: load.WebCarrierSelectionsWebsocketLanes,
+			WebCarrierFailures:                 load.WebCarrierFailures,
+			WebRejectedAttempts:                load.WebRejectedAttempts,
+			WebEvictedSessions:                 load.WebEvictedSessions,
+			WebBridgeRecoveries:                load.WebBridgeRecoveries,
+			WebLearningEntries:                 load.WebLearningEntries,
 		}); err != nil {
 			s.log.Error("snapshot", "err", err)
 		}
@@ -284,16 +294,52 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	return s.st.Q.DeleteOldSnapshots(ctx, time.Now().Add(-retention))
 }
 
-// nodeLoad reads the server-load percentages out of a node's last heartbeat.
+// nodeLoad reads the server-load percentages and the WEB counters out of a node's last heartbeat.
 func nodeLoad(lastHealth []byte) db.InsertSnapshotParams {
 	var h nodedriver.HealthReport
 	if len(lastHealth) == 0 || json.Unmarshal(lastHealth, &h) != nil {
 		return db.InsertSnapshotParams{DcLatency: []byte("{}")}
 	}
-	return db.InsertSnapshotParams{
+	out := db.InsertSnapshotParams{
 		CpuPercent: float32(h.CPUPercent), MemUsedPercent: float32(h.MemUsedPercent), DiskUsedPercent: float32(h.DiskUsedPercent),
 		DcLatency: dcLatencyJSON(h),
 	}
+	fillWebCounters(&out, h.Web)
+	return out
+}
+
+// carrierSelectionDisposition is the selection outcome the distribution counts; telemt splits
+// telemt_web_carrier_selections_total by carrier and disposition and only this one is a carrier
+// the node actually went on to use.
+const carrierSelectionDisposition = "applied"
+
+// fillWebCounters copies the raw cumulative WEB counters into the snapshot. A family the node
+// did not report leaves its column NULL: nothing here ever turns "not measured" into a zero.
+func fillWebCounters(out *db.InsertSnapshotParams, w *nodedriver.WebTelemetry) {
+	if w == nil {
+		return
+	}
+	sel := func(carrier domain.Carrier) pgtype.Int8 {
+		return counterInt8(w.CarrierSelections.Get(string(carrier), carrierSelectionDisposition))
+	}
+	out.WebCarrierSelectionsHttps = sel(domain.CarrierHTTPS)
+	out.WebCarrierSelectionsHttpsLanes = sel(domain.CarrierHTTPSLanes)
+	out.WebCarrierSelectionsWebsocket = sel(domain.CarrierWebSocket)
+	out.WebCarrierSelectionsWebsocketLanes = sel(domain.CarrierWebSocketLanes)
+	out.WebCarrierFailures = counterInt8(w.CarrierFailures.Total())
+	out.WebRejectedAttempts = counterInt8(w.Rejections.Total())
+	out.WebEvictedSessions = counterInt8(w.SessionClosures.Total())
+	out.WebBridgeRecoveries = counterInt8(w.BridgeRecovery.Total())
+	if v, ok := w.LearningEntries.Total(); ok {
+		out.WebLearningEntries = pgtype.Int4{Int32: int32(v), Valid: true}
+	}
+}
+
+func counterInt8(v float64, ok bool) pgtype.Int8 {
+	if !ok {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: int64(v), Valid: true}
 }
 
 func dcLatencyJSON(h nodedriver.HealthReport) []byte {

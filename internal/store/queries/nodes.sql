@@ -69,12 +69,21 @@ WHERE id = $1;
 -- SetNodeHeartbeat carries the versions too: a telemt node whose control API was down at
 -- hello time reports its version on the first heartbeat that reaches it, and there is no
 -- other moment at which the panel would learn it.
+--
+-- telemt_capabilities is only written when the heartbeat carried a capability set: an agent
+-- that could not probe the node sends none, and overwriting a known set with nothing would
+-- turn "the node cannot do this" into "we never asked". checked_at moves with it for the same
+-- reason - it dates the set that is stored, not the last heartbeat.
 -- name: SetNodeHeartbeat :exec
 UPDATE nodes SET status = $2, last_seen_at = now(), last_health = $3,
   tproxy_version = COALESCE(NULLIF(sqlc.arg('tproxy_version')::text, ''), tproxy_version),
   telemt_version = CASE WHEN engine = 'telemt'
     THEN COALESCE(NULLIF(sqlc.arg('telemt_version')::text, ''), telemt_version)
-    ELSE telemt_version END
+    ELSE telemt_version END,
+  telemt_build = COALESCE(NULLIF(sqlc.arg('telemt_build')::text, ''), telemt_build),
+  telemt_capabilities = COALESCE(sqlc.narg('telemt_capabilities')::jsonb, telemt_capabilities),
+  telemt_capabilities_checked_at = CASE WHEN sqlc.narg('telemt_capabilities')::jsonb IS NOT NULL
+    THEN now() ELSE telemt_capabilities_checked_at END
 WHERE id = $1;
 
 -- name: SetNodeStatus :exec

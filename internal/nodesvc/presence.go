@@ -54,13 +54,30 @@ func (p *Presence) OnHeartbeat(ctx context.Context, id uuid.UUID, h *agentv1.Hea
 	if !h.GetRelayActive() || !h.GetMtproxyActive() || !h.GetHealthz() || !h.GetReadyz() {
 		status = db.NodeStatusDegraded
 	}
-	raw, _ := json.Marshal(nodedriver.HealthFromProto(h))
+	report := nodedriver.HealthFromProto(h)
+	raw, _ := json.Marshal(report)
 	if err := p.st.Q.SetNodeHeartbeat(ctx, db.SetNodeHeartbeatParams{
 		ID: id, Status: status, LastHealth: raw,
 		TproxyVersion: h.GetTproxyVersion(), TelemtVersion: telemtVersion(h.GetTproxyVersion()),
+		TelemtBuild: report.TelemtBuild, TelemtCapabilities: capabilitiesJSON(report.Capabilities),
 	}); err != nil {
 		p.log.Error("heartbeat", "err", err)
 	}
+}
+
+// capabilitiesJSON renders the capability set for the nodes.telemt_capabilities column. A
+// capability the agent could not determine is stored as an explicit null, so the panel can tell
+// "not available" from a node that answered and does not support it. A heartbeat that carried
+// no capability set at all stores nothing and leaves whatever the panel already knew.
+func capabilitiesJSON(caps nodedriver.TelemtCapabilities) []byte {
+	if caps == nil {
+		return nil
+	}
+	raw, err := json.Marshal(caps)
+	if err != nil {
+		return nil
+	}
+	return raw
 }
 
 func (p *Presence) OnDisconnect(ctx context.Context, id uuid.UUID) {

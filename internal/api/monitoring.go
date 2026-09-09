@@ -27,6 +27,7 @@ const bucketStepThreshold = 60
 func (s *Server) mountMonitoring(r chi.Router) {
 	r.Get("/monitoring/overview", s.handleMonitoringOverview)
 	r.Get("/monitoring/nodes/{id}/series", s.handleMonitoringSeries)
+	r.Get("/monitoring/web/carriers", s.handleFleetWebCarriers)
 }
 
 // parseRFC3339Query parses a query value as RFC3339. A literal "+" in a non-UTC offset (e.g.

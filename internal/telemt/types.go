@@ -118,9 +118,25 @@ type ReadyData struct {
 type SystemInfo struct {
 	Version       string  `json:"version"`
 	TargetArch    string  `json:"target_arch"`
+	TargetOS      string  `json:"target_os"`
+	BuildProfile  string  `json:"build_profile"`
+	GitCommit     string  `json:"git_commit"`
+	BuildTimeUTC  string  `json:"build_time_utc"`
 	ConfigPath    string  `json:"config_path"`
 	ConfigHash    string  `json:"config_hash"`
 	UptimeSeconds float64 `json:"uptime_seconds"`
+}
+
+// BuildID is the tightest identity of the running binary telemt will give us: the commit if
+// the build carried one, otherwise the platform it was built for.
+func (s SystemInfo) BuildID() string {
+	if s.GitCommit != "" {
+		return s.GitCommit
+	}
+	if s.TargetOS != "" && s.TargetArch != "" {
+		return s.TargetOS + "/" + s.TargetArch
+	}
+	return s.TargetArch
 }
 
 // PatchConfigResult is PatchConfigResponse.

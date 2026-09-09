@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteOldKeyStatsSnapshots = `-- name: DeleteOldKeyStatsSnapshots :execrows
@@ -101,28 +102,55 @@ func (q *Queries) InsertKeyStatsSnapshot(ctx context.Context, arg InsertKeyStats
 
 const insertSnapshot = `-- name: InsertSnapshot :exec
 INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw,
-  cpu_percent, mem_used_percent, disk_used_percent, dc_latency)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce($13::jsonb, '{}'::jsonb))
+  cpu_percent, mem_used_percent, disk_used_percent, dc_latency,
+  web_carrier_selections_https, web_carrier_selections_https_lanes,
+  web_carrier_selections_websocket, web_carrier_selections_websocket_lanes,
+  web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries,
+  web_learning_entries)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce($13::jsonb, '{}'::jsonb),
+  $14::bigint,
+  $15::bigint,
+  $16::bigint,
+  $17::bigint,
+  $18::bigint,
+  $19::bigint,
+  $20::bigint,
+  $21::bigint,
+  $22::int)
 `
 
 type InsertSnapshotParams struct {
-	NodeID          uuid.UUID `json:"node_id"`
-	SessionsLive    int32     `json:"sessions_live"`
-	StreamsLive     int32     `json:"streams_live"`
-	BytesUp         int64     `json:"bytes_up"`
-	BytesDown       int64     `json:"bytes_down"`
-	SessionsCreated int64     `json:"sessions_created"`
-	LimitHits       int64     `json:"limit_hits"`
-	MtproxyRaw      []byte    `json:"mtproxy_raw"`
-	RelayRaw        string    `json:"relay_raw"`
-	CpuPercent      float32   `json:"cpu_percent"`
-	MemUsedPercent  float32   `json:"mem_used_percent"`
-	DiskUsedPercent float32   `json:"disk_used_percent"`
-	DcLatency       []byte    `json:"dc_latency"`
+	NodeID                             uuid.UUID   `json:"node_id"`
+	SessionsLive                       int32       `json:"sessions_live"`
+	StreamsLive                        int32       `json:"streams_live"`
+	BytesUp                            int64       `json:"bytes_up"`
+	BytesDown                          int64       `json:"bytes_down"`
+	SessionsCreated                    int64       `json:"sessions_created"`
+	LimitHits                          int64       `json:"limit_hits"`
+	MtproxyRaw                         []byte      `json:"mtproxy_raw"`
+	RelayRaw                           string      `json:"relay_raw"`
+	CpuPercent                         float32     `json:"cpu_percent"`
+	MemUsedPercent                     float32     `json:"mem_used_percent"`
+	DiskUsedPercent                    float32     `json:"disk_used_percent"`
+	DcLatency                          []byte      `json:"dc_latency"`
+	WebCarrierSelectionsHttps          pgtype.Int8 `json:"web_carrier_selections_https"`
+	WebCarrierSelectionsHttpsLanes     pgtype.Int8 `json:"web_carrier_selections_https_lanes"`
+	WebCarrierSelectionsWebsocket      pgtype.Int8 `json:"web_carrier_selections_websocket"`
+	WebCarrierSelectionsWebsocketLanes pgtype.Int8 `json:"web_carrier_selections_websocket_lanes"`
+	WebCarrierFailures                 pgtype.Int8 `json:"web_carrier_failures"`
+	WebRejectedAttempts                pgtype.Int8 `json:"web_rejected_attempts"`
+	WebEvictedSessions                 pgtype.Int8 `json:"web_evicted_sessions"`
+	WebBridgeRecoveries                pgtype.Int8 `json:"web_bridge_recoveries"`
+	WebLearningEntries                 pgtype.Int4 `json:"web_learning_entries"`
 }
 
 // InsertSnapshot's dc_latency is coalesced so a caller with no DC data (a tproxy node, or a
 // Go nil) lands the column's '{}' rather than a NULL the NOT NULL constraint would reject.
+//
+// The web_* columns are the opposite case: they are the raw cumulative counters telemt
+// reports, and a metric family the node did not expose is written as NULL rather than 0. A
+// zero would read as a measurement ("no failures") where the truth is that nothing was
+// measured, so every one of them is passed as a nullable argument and never coalesced.
 func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) error {
 	_, err := q.db.Exec(ctx, insertSnapshot,
 		arg.NodeID,
@@ -138,6 +166,15 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 		arg.MemUsedPercent,
 		arg.DiskUsedPercent,
 		arg.DcLatency,
+		arg.WebCarrierSelectionsHttps,
+		arg.WebCarrierSelectionsHttpsLanes,
+		arg.WebCarrierSelectionsWebsocket,
+		arg.WebCarrierSelectionsWebsocketLanes,
+		arg.WebCarrierFailures,
+		arg.WebRejectedAttempts,
+		arg.WebEvictedSessions,
+		arg.WebBridgeRecoveries,
+		arg.WebLearningEntries,
 	)
 	return err
 }

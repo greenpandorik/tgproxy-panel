@@ -924,6 +924,8 @@ func (h *Handler) healthTelemt(ctx context.Context) *agentv1.HealthReport {
 	if st, err := h.tm.UpstreamsStats(ctx); err == nil && st.Enabled {
 		fillDcConnectivity(rep, st)
 	}
+	rep.Web = h.webTelemetry(ctx)
+	rep.Capabilities = h.telemtCapabilities(ctx)
 	return rep
 }
 

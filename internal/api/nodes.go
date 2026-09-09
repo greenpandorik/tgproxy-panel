@@ -26,28 +26,33 @@ import (
 const installTokenTTL = 24 * time.Hour
 
 type nodeJSON struct {
-	ID            uuid.UUID       `json:"id"`
-	Name          string          `json:"name"`
-	Hostname      string          `json:"hostname"`
-	PublicIP      string          `json:"public_ip"`
-	ACMEEmail     string          `json:"acme_email"`
-	Status        string          `json:"status"`
-	Online        bool            `json:"online"`
-	Engine        string          `json:"engine"`
-	TLSDomain     string          `json:"tls_domain"`
-	ClassicPort   int             `json:"classic_port"`
-	AdTag         string          `json:"ad_tag"`
-	TelemtVersion string          `json:"telemt_version"`
-	TProxyVersion string          `json:"tproxy_version"`
-	AgentVersion  string          `json:"agent_version"`
-	MaxProfiles   int             `json:"max_profiles"`
-	ProfileCount  int             `json:"profile_count"`
-	Dirty         bool            `json:"dirty"`
-	LastSeenAt    *time.Time      `json:"last_seen_at"`
-	LastApplyAt   *time.Time      `json:"last_apply_at"`
-	CreatedAt     time.Time       `json:"created_at"`
-	Health        map[string]any  `json:"health,omitempty"`
-	LastCheck     json.RawMessage `json:"last_check"`
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Hostname      string    `json:"hostname"`
+	PublicIP      string    `json:"public_ip"`
+	ACMEEmail     string    `json:"acme_email"`
+	Status        string    `json:"status"`
+	Online        bool      `json:"online"`
+	Engine        string    `json:"engine"`
+	TLSDomain     string    `json:"tls_domain"`
+	ClassicPort   int       `json:"classic_port"`
+	AdTag         string    `json:"ad_tag"`
+	TelemtVersion string    `json:"telemt_version"`
+	TelemtBuild   string    `json:"telemt_build"`
+	// TelemtCapabilities is the stored capability set; null means the panel has not worked
+	// it out yet, and a null inside it is one capability it could not settle.
+	TelemtCapabilities          json.RawMessage `json:"telemt_capabilities"`
+	TelemtCapabilitiesCheckedAt *time.Time      `json:"telemt_capabilities_checked_at"`
+	TProxyVersion               string          `json:"tproxy_version"`
+	AgentVersion                string          `json:"agent_version"`
+	MaxProfiles                 int             `json:"max_profiles"`
+	ProfileCount                int             `json:"profile_count"`
+	Dirty                       bool            `json:"dirty"`
+	LastSeenAt                  *time.Time      `json:"last_seen_at"`
+	LastApplyAt                 *time.Time      `json:"last_apply_at"`
+	CreatedAt                   time.Time       `json:"created_at"`
+	Health                      map[string]any  `json:"health,omitempty"`
+	LastCheck                   json.RawMessage `json:"last_check"`
 }
 
 func (s *Server) nodeJSON(r *http.Request, n db.Node) nodeJSON {
@@ -61,7 +66,9 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 		ID: n.ID, Name: n.Name, Hostname: n.Hostname, PublicIP: n.PublicIp, ACMEEmail: n.AcmeEmail, Status: string(n.Status),
 		Online: s.driver != nil && s.driver.Online(n.ID), Engine: string(n.Engine), TLSDomain: n.TlsDomain,
 		ClassicPort: int(n.ClassicPort), AdTag: n.AdTag, TelemtVersion: n.TelemtVersion,
-		TProxyVersion: n.TproxyVersion, AgentVersion: n.AgentVersion,
+		TelemtBuild: n.TelemtBuild, TelemtCapabilities: json.RawMessage(n.TelemtCapabilities),
+		TelemtCapabilitiesCheckedAt: n.TelemtCapabilitiesCheckedAt,
+		TProxyVersion:               n.TproxyVersion, AgentVersion: n.AgentVersion,
 		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,
 		CreatedAt: n.CreatedAt,
 	}
@@ -448,6 +455,7 @@ func healthJSON(h nodedriver.HealthReport) map[string]any {
 		"effective_latency_ms": h.EffectiveLatencyMs, "connect_success_total": h.ConnectSuccessTotal,
 		"connect_fail_total": h.ConnectFailTotal, "upstream_last_check_age_secs": h.UpstreamLastCheckAgeSecs,
 		"dc_data_available": h.DcDataAvailable,
+		"web_runtime":       webRuntimeJSON(h.Web),
 	}
 }
 

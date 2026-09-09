@@ -31,6 +31,8 @@ type fakeTelemt struct {
 	ready        bool
 	failOn       string // "METHOD path" prefix that must answer 500
 	upstreams    map[string]any
+	metricsText  string
+	webStatus    map[string]any
 	authSeen     map[string]bool
 	srv          *httptest.Server
 }
@@ -233,7 +235,17 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.ok(w, defaultUpstreams())
+	case route == "GET /v1/runtime/web/status":
+		if f.webStatus == nil {
+			f.fail(w, http.StatusNotFound, "not_found", "no web runtime")
+			return
+		}
+		f.ok(w, f.webStatus)
 	case r.URL.Path == "/metrics":
+		if f.metricsText != "" {
+			_, _ = w.Write([]byte(f.metricsText))
+			return
+		}
 		_, _ = w.Write([]byte("telemt_connections_total 5\n"))
 	default:
 		f.fail(w, http.StatusNotFound, "not_found", "no route")

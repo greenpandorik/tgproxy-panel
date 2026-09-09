@@ -285,8 +285,14 @@ type HealthReport struct {
 	ConnectFailTotal         int64                  `protobuf:"varint,18,opt,name=connect_fail_total,json=connectFailTotal,proto3" json:"connect_fail_total,omitempty"`
 	UpstreamLastCheckAgeSecs int64                  `protobuf:"varint,19,opt,name=upstream_last_check_age_secs,json=upstreamLastCheckAgeSecs,proto3" json:"upstream_last_check_age_secs,omitempty"`
 	DcDataAvailable          bool                   `protobuf:"varint,20,opt,name=dc_data_available,json=dcDataAvailable,proto3" json:"dc_data_available,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// web is the WEB transport telemetry; absent when the agent could not read it. An agent
+	// that never sets it and a panel that never reads it both keep working.
+	Web *WebTelemetry `protobuf:"bytes,21,opt,name=web,proto3" json:"web,omitempty"`
+	// capabilities is what the agent worked out the node's telemt can do; absent when the
+	// probe did not run or could not reach telemt.
+	Capabilities  *TelemtCapabilities `protobuf:"bytes,22,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *HealthReport) Reset() {
@@ -459,6 +465,673 @@ func (x *HealthReport) GetDcDataAvailable() bool {
 	return false
 }
 
+func (x *HealthReport) GetWeb() *WebTelemetry {
+	if x != nil {
+		return x.Web
+	}
+	return nil
+}
+
+func (x *HealthReport) GetCapabilities() *TelemtCapabilities {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+// WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
+// are the family's own labels and are empty for a family that does not carry them.
+type WebCounterSample struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Carrier       string                 `protobuf:"bytes,1,opt,name=carrier,proto3" json:"carrier,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Phase         string                 `protobuf:"bytes,3,opt,name=phase,proto3" json:"phase,omitempty"`
+	Value         float64                `protobuf:"fixed64,4,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WebCounterSample) Reset() {
+	*x = WebCounterSample{}
+	mi := &file_agent_v1_agent_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WebCounterSample) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WebCounterSample) ProtoMessage() {}
+
+func (x *WebCounterSample) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WebCounterSample.ProtoReflect.Descriptor instead.
+func (*WebCounterSample) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *WebCounterSample) GetCarrier() string {
+	if x != nil {
+		return x.Carrier
+	}
+	return ""
+}
+
+func (x *WebCounterSample) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *WebCounterSample) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *WebCounterSample) GetValue() float64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+// WebCounterFamily is one metric family. The message itself is the presence flag: a family the
+// node did not expose is a nil WebCounterFamily, never an empty one, so "not reported" can
+// never be read as zero. A present family with no samples is a family telemt declared but has
+// not yet incremented.
+type WebCounterFamily struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Samples       []*WebCounterSample    `protobuf:"bytes,1,rep,name=samples,proto3" json:"samples,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WebCounterFamily) Reset() {
+	*x = WebCounterFamily{}
+	mi := &file_agent_v1_agent_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WebCounterFamily) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WebCounterFamily) ProtoMessage() {}
+
+func (x *WebCounterFamily) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WebCounterFamily.ProtoReflect.Descriptor instead.
+func (*WebCounterFamily) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *WebCounterFamily) GetSamples() []*WebCounterSample {
+	if x != nil {
+		return x.Samples
+	}
+	return nil
+}
+
+type WebLearningState struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Enabled          bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	PolicyGeneration uint64                 `protobuf:"varint,2,opt,name=policy_generation,json=policyGeneration,proto3" json:"policy_generation,omitempty"`
+	Epoch            uint64                 `protobuf:"varint,3,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	Entries          int32                  `protobuf:"varint,4,opt,name=entries,proto3" json:"entries,omitempty"`
+	Capacity         int32                  `protobuf:"varint,5,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	LifetimeSecs     int64                  `protobuf:"varint,6,opt,name=lifetime_secs,json=lifetimeSecs,proto3" json:"lifetime_secs,omitempty"`
+	HealthSecs       int64                  `protobuf:"varint,7,opt,name=health_secs,json=healthSecs,proto3" json:"health_secs,omitempty"`
+	AgeMs            int64                  `protobuf:"varint,8,opt,name=age_ms,json=ageMs,proto3" json:"age_ms,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *WebLearningState) Reset() {
+	*x = WebLearningState{}
+	mi := &file_agent_v1_agent_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WebLearningState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WebLearningState) ProtoMessage() {}
+
+func (x *WebLearningState) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WebLearningState.ProtoReflect.Descriptor instead.
+func (*WebLearningState) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *WebLearningState) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *WebLearningState) GetPolicyGeneration() uint64 {
+	if x != nil {
+		return x.PolicyGeneration
+	}
+	return 0
+}
+
+func (x *WebLearningState) GetEpoch() uint64 {
+	if x != nil {
+		return x.Epoch
+	}
+	return 0
+}
+
+func (x *WebLearningState) GetEntries() int32 {
+	if x != nil {
+		return x.Entries
+	}
+	return 0
+}
+
+func (x *WebLearningState) GetCapacity() int32 {
+	if x != nil {
+		return x.Capacity
+	}
+	return 0
+}
+
+func (x *WebLearningState) GetLifetimeSecs() int64 {
+	if x != nil {
+		return x.LifetimeSecs
+	}
+	return 0
+}
+
+func (x *WebLearningState) GetHealthSecs() int64 {
+	if x != nil {
+		return x.HealthSecs
+	}
+	return 0
+}
+
+func (x *WebLearningState) GetAgeMs() int64 {
+	if x != nil {
+		return x.AgeMs
+	}
+	return 0
+}
+
+type WebDrainState struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	OperationId         string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	State               string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	Outcome             string                 `protobuf:"bytes,3,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	TimeoutSecs         int32                  `protobuf:"varint,4,opt,name=timeout_secs,json=timeoutSecs,proto3" json:"timeout_secs,omitempty"`
+	StartedEpochMillis  int64                  `protobuf:"varint,5,opt,name=started_epoch_millis,json=startedEpochMillis,proto3" json:"started_epoch_millis,omitempty"`
+	DeadlineEpochMillis int64                  `protobuf:"varint,6,opt,name=deadline_epoch_millis,json=deadlineEpochMillis,proto3" json:"deadline_epoch_millis,omitempty"`
+	RemainingSessions   uint64                 `protobuf:"varint,7,opt,name=remaining_sessions,json=remainingSessions,proto3" json:"remaining_sessions,omitempty"`
+	RemainingStreams    uint64                 `protobuf:"varint,8,opt,name=remaining_streams,json=remainingStreams,proto3" json:"remaining_streams,omitempty"`
+	RemainingWebsockets uint64                 `protobuf:"varint,9,opt,name=remaining_websockets,json=remainingWebsockets,proto3" json:"remaining_websockets,omitempty"`
+	ForceCloseSignalled bool                   `protobuf:"varint,10,opt,name=force_close_signalled,json=forceCloseSignalled,proto3" json:"force_close_signalled,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *WebDrainState) Reset() {
+	*x = WebDrainState{}
+	mi := &file_agent_v1_agent_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WebDrainState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WebDrainState) ProtoMessage() {}
+
+func (x *WebDrainState) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WebDrainState.ProtoReflect.Descriptor instead.
+func (*WebDrainState) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *WebDrainState) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *WebDrainState) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *WebDrainState) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *WebDrainState) GetTimeoutSecs() int32 {
+	if x != nil {
+		return x.TimeoutSecs
+	}
+	return 0
+}
+
+func (x *WebDrainState) GetStartedEpochMillis() int64 {
+	if x != nil {
+		return x.StartedEpochMillis
+	}
+	return 0
+}
+
+func (x *WebDrainState) GetDeadlineEpochMillis() int64 {
+	if x != nil {
+		return x.DeadlineEpochMillis
+	}
+	return 0
+}
+
+func (x *WebDrainState) GetRemainingSessions() uint64 {
+	if x != nil {
+		return x.RemainingSessions
+	}
+	return 0
+}
+
+func (x *WebDrainState) GetRemainingStreams() uint64 {
+	if x != nil {
+		return x.RemainingStreams
+	}
+	return 0
+}
+
+func (x *WebDrainState) GetRemainingWebsockets() uint64 {
+	if x != nil {
+		return x.RemainingWebsockets
+	}
+	return 0
+}
+
+func (x *WebDrainState) GetForceCloseSignalled() bool {
+	if x != nil {
+		return x.ForceCloseSignalled
+	}
+	return false
+}
+
+type WebLifecycleState struct {
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	State                     string                 `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	Epoch                     uint64                 `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	AgeMs                     int64                  `protobuf:"varint,3,opt,name=age_ms,json=ageMs,proto3" json:"age_ms,omitempty"`
+	AdmissionOpen             bool                   `protobuf:"varint,4,opt,name=admission_open,json=admissionOpen,proto3" json:"admission_open,omitempty"`
+	EffectiveNewWorkAdmission bool                   `protobuf:"varint,5,opt,name=effective_new_work_admission,json=effectiveNewWorkAdmission,proto3" json:"effective_new_work_admission,omitempty"`
+	Drain                     *WebDrainState         `protobuf:"bytes,6,opt,name=drain,proto3" json:"drain,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *WebLifecycleState) Reset() {
+	*x = WebLifecycleState{}
+	mi := &file_agent_v1_agent_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WebLifecycleState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WebLifecycleState) ProtoMessage() {}
+
+func (x *WebLifecycleState) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WebLifecycleState.ProtoReflect.Descriptor instead.
+func (*WebLifecycleState) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *WebLifecycleState) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *WebLifecycleState) GetEpoch() uint64 {
+	if x != nil {
+		return x.Epoch
+	}
+	return 0
+}
+
+func (x *WebLifecycleState) GetAgeMs() int64 {
+	if x != nil {
+		return x.AgeMs
+	}
+	return 0
+}
+
+func (x *WebLifecycleState) GetAdmissionOpen() bool {
+	if x != nil {
+		return x.AdmissionOpen
+	}
+	return false
+}
+
+func (x *WebLifecycleState) GetEffectiveNewWorkAdmission() bool {
+	if x != nil {
+		return x.EffectiveNewWorkAdmission
+	}
+	return false
+}
+
+func (x *WebLifecycleState) GetDrain() *WebDrainState {
+	if x != nil {
+		return x.Drain
+	}
+	return nil
+}
+
+// WebRuntimeState is GET /v1/runtime/web/status as the agent read it. learning and lifecycle
+// are nil when telemt's payload carried no such section.
+type WebRuntimeState struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	RuntimeInstance    string                 `protobuf:"bytes,1,opt,name=runtime_instance,json=runtimeInstance,proto3" json:"runtime_instance,omitempty"`
+	CarrierNegotiation bool                   `protobuf:"varint,2,opt,name=carrier_negotiation,json=carrierNegotiation,proto3" json:"carrier_negotiation,omitempty"`
+	Learning           *WebLearningState      `protobuf:"bytes,3,opt,name=learning,proto3" json:"learning,omitempty"`
+	Lifecycle          *WebLifecycleState     `protobuf:"bytes,4,opt,name=lifecycle,proto3" json:"lifecycle,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *WebRuntimeState) Reset() {
+	*x = WebRuntimeState{}
+	mi := &file_agent_v1_agent_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WebRuntimeState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WebRuntimeState) ProtoMessage() {}
+
+func (x *WebRuntimeState) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WebRuntimeState.ProtoReflect.Descriptor instead.
+func (*WebRuntimeState) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *WebRuntimeState) GetRuntimeInstance() string {
+	if x != nil {
+		return x.RuntimeInstance
+	}
+	return ""
+}
+
+func (x *WebRuntimeState) GetCarrierNegotiation() bool {
+	if x != nil {
+		return x.CarrierNegotiation
+	}
+	return false
+}
+
+func (x *WebRuntimeState) GetLearning() *WebLearningState {
+	if x != nil {
+		return x.Learning
+	}
+	return nil
+}
+
+func (x *WebRuntimeState) GetLifecycle() *WebLifecycleState {
+	if x != nil {
+		return x.Lifecycle
+	}
+	return nil
+}
+
+// WebTelemetry carries the telemt_web_* families and the WEB runtime state of one node.
+// Every family is a nullable message: nil means the node did not report it.
+type WebTelemetry struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	CarrierSelections *WebCounterFamily      `protobuf:"bytes,1,opt,name=carrier_selections,json=carrierSelections,proto3" json:"carrier_selections,omitempty"`
+	CarrierFailures   *WebCounterFamily      `protobuf:"bytes,2,opt,name=carrier_failures,json=carrierFailures,proto3" json:"carrier_failures,omitempty"`
+	LearningOutcomes  *WebCounterFamily      `protobuf:"bytes,3,opt,name=learning_outcomes,json=learningOutcomes,proto3" json:"learning_outcomes,omitempty"`
+	LearningEntries   *WebCounterFamily      `protobuf:"bytes,4,opt,name=learning_entries,json=learningEntries,proto3" json:"learning_entries,omitempty"`
+	Rejections        *WebCounterFamily      `protobuf:"bytes,5,opt,name=rejections,proto3" json:"rejections,omitempty"`
+	SessionClosures   *WebCounterFamily      `protobuf:"bytes,6,opt,name=session_closures,json=sessionClosures,proto3" json:"session_closures,omitempty"`
+	BridgeRecovery    *WebCounterFamily      `protobuf:"bytes,7,opt,name=bridge_recovery,json=bridgeRecovery,proto3" json:"bridge_recovery,omitempty"`
+	Runtime           *WebRuntimeState       `protobuf:"bytes,8,opt,name=runtime,proto3" json:"runtime,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *WebTelemetry) Reset() {
+	*x = WebTelemetry{}
+	mi := &file_agent_v1_agent_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WebTelemetry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WebTelemetry) ProtoMessage() {}
+
+func (x *WebTelemetry) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WebTelemetry.ProtoReflect.Descriptor instead.
+func (*WebTelemetry) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *WebTelemetry) GetCarrierSelections() *WebCounterFamily {
+	if x != nil {
+		return x.CarrierSelections
+	}
+	return nil
+}
+
+func (x *WebTelemetry) GetCarrierFailures() *WebCounterFamily {
+	if x != nil {
+		return x.CarrierFailures
+	}
+	return nil
+}
+
+func (x *WebTelemetry) GetLearningOutcomes() *WebCounterFamily {
+	if x != nil {
+		return x.LearningOutcomes
+	}
+	return nil
+}
+
+func (x *WebTelemetry) GetLearningEntries() *WebCounterFamily {
+	if x != nil {
+		return x.LearningEntries
+	}
+	return nil
+}
+
+func (x *WebTelemetry) GetRejections() *WebCounterFamily {
+	if x != nil {
+		return x.Rejections
+	}
+	return nil
+}
+
+func (x *WebTelemetry) GetSessionClosures() *WebCounterFamily {
+	if x != nil {
+		return x.SessionClosures
+	}
+	return nil
+}
+
+func (x *WebTelemetry) GetBridgeRecovery() *WebCounterFamily {
+	if x != nil {
+		return x.BridgeRecovery
+	}
+	return nil
+}
+
+func (x *WebTelemetry) GetRuntime() *WebRuntimeState {
+	if x != nil {
+		return x.Runtime
+	}
+	return nil
+}
+
+// TelemtCapabilities is the capability set the agent computed. supported holds only the
+// capabilities it settled; undetermined names the ones it could not, which the panel must keep
+// distinguishable from a capability the node answered "no" to.
+type TelemtCapabilities struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Supported     map[string]bool        `protobuf:"bytes,1,rep,name=supported,proto3" json:"supported,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	Undetermined  []string               `protobuf:"bytes,2,rep,name=undetermined,proto3" json:"undetermined,omitempty"`
+	Build         string                 `protobuf:"bytes,3,opt,name=build,proto3" json:"build,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TelemtCapabilities) Reset() {
+	*x = TelemtCapabilities{}
+	mi := &file_agent_v1_agent_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TelemtCapabilities) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TelemtCapabilities) ProtoMessage() {}
+
+func (x *TelemtCapabilities) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TelemtCapabilities.ProtoReflect.Descriptor instead.
+func (*TelemtCapabilities) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *TelemtCapabilities) GetSupported() map[string]bool {
+	if x != nil {
+		return x.Supported
+	}
+	return nil
+}
+
+func (x *TelemtCapabilities) GetUndetermined() []string {
+	if x != nil {
+		return x.Undetermined
+	}
+	return nil
+}
+
+func (x *TelemtCapabilities) GetBuild() string {
+	if x != nil {
+		return x.Build
+	}
+	return ""
+}
+
 // DcLatency is one Telegram datacenter as telemt's upstream health check sees it.
 type DcLatency struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -472,7 +1145,7 @@ type DcLatency struct {
 
 func (x *DcLatency) Reset() {
 	*x = DcLatency{}
-	mi := &file_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_agent_v1_agent_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -484,7 +1157,7 @@ func (x *DcLatency) String() string {
 func (*DcLatency) ProtoMessage() {}
 
 func (x *DcLatency) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_agent_v1_agent_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -497,7 +1170,7 @@ func (x *DcLatency) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DcLatency.ProtoReflect.Descriptor instead.
 func (*DcLatency) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{4}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DcLatency) GetDc() int32 {
@@ -545,7 +1218,7 @@ type ProfileLimits struct {
 
 func (x *ProfileLimits) Reset() {
 	*x = ProfileLimits{}
-	mi := &file_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_agent_v1_agent_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -557,7 +1230,7 @@ func (x *ProfileLimits) String() string {
 func (*ProfileLimits) ProtoMessage() {}
 
 func (x *ProfileLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_agent_v1_agent_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -570,7 +1243,7 @@ func (x *ProfileLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfileLimits.ProtoReflect.Descriptor instead.
 func (*ProfileLimits) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{5}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ProfileLimits) GetMaxSessions() int32 {
@@ -656,7 +1329,7 @@ type Profile struct {
 
 func (x *Profile) Reset() {
 	*x = Profile{}
-	mi := &file_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_agent_v1_agent_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -668,7 +1341,7 @@ func (x *Profile) String() string {
 func (*Profile) ProtoMessage() {}
 
 func (x *Profile) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_agent_v1_agent_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -681,7 +1354,7 @@ func (x *Profile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Profile.ProtoReflect.Descriptor instead.
 func (*Profile) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{6}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Profile) GetName() string {
@@ -777,7 +1450,7 @@ type ProfilesFile struct {
 
 func (x *ProfilesFile) Reset() {
 	*x = ProfilesFile{}
-	mi := &file_agent_v1_agent_proto_msgTypes[7]
+	mi := &file_agent_v1_agent_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -789,7 +1462,7 @@ func (x *ProfilesFile) String() string {
 func (*ProfilesFile) ProtoMessage() {}
 
 func (x *ProfilesFile) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[7]
+	mi := &file_agent_v1_agent_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -802,7 +1475,7 @@ func (x *ProfilesFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfilesFile.ProtoReflect.Descriptor instead.
 func (*ProfilesFile) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{7}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ProfilesFile) GetProfiles() []*Profile {
@@ -829,7 +1502,7 @@ type WebTimeouts struct {
 
 func (x *WebTimeouts) Reset() {
 	*x = WebTimeouts{}
-	mi := &file_agent_v1_agent_proto_msgTypes[8]
+	mi := &file_agent_v1_agent_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -841,7 +1514,7 @@ func (x *WebTimeouts) String() string {
 func (*WebTimeouts) ProtoMessage() {}
 
 func (x *WebTimeouts) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[8]
+	mi := &file_agent_v1_agent_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,7 +1527,7 @@ func (x *WebTimeouts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebTimeouts.ProtoReflect.Descriptor instead.
 func (*WebTimeouts) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{8}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *WebTimeouts) GetNegotiationDeadlinesSecs() []int32 {
@@ -913,7 +1586,7 @@ type WebPolicy struct {
 
 func (x *WebPolicy) Reset() {
 	*x = WebPolicy{}
-	mi := &file_agent_v1_agent_proto_msgTypes[9]
+	mi := &file_agent_v1_agent_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -925,7 +1598,7 @@ func (x *WebPolicy) String() string {
 func (*WebPolicy) ProtoMessage() {}
 
 func (x *WebPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[9]
+	mi := &file_agent_v1_agent_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +1611,7 @@ func (x *WebPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebPolicy.ProtoReflect.Descriptor instead.
 func (*WebPolicy) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{9}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *WebPolicy) GetCarrier() string {
@@ -986,7 +1659,7 @@ type SiteFile struct {
 
 func (x *SiteFile) Reset() {
 	*x = SiteFile{}
-	mi := &file_agent_v1_agent_proto_msgTypes[10]
+	mi := &file_agent_v1_agent_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -998,7 +1671,7 @@ func (x *SiteFile) String() string {
 func (*SiteFile) ProtoMessage() {}
 
 func (x *SiteFile) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[10]
+	mi := &file_agent_v1_agent_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1011,7 +1684,7 @@ func (x *SiteFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SiteFile.ProtoReflect.Descriptor instead.
 func (*SiteFile) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{10}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SiteFile) GetPath() string {
@@ -1037,7 +1710,7 @@ type SiteBundle struct {
 
 func (x *SiteBundle) Reset() {
 	*x = SiteBundle{}
-	mi := &file_agent_v1_agent_proto_msgTypes[11]
+	mi := &file_agent_v1_agent_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1049,7 +1722,7 @@ func (x *SiteBundle) String() string {
 func (*SiteBundle) ProtoMessage() {}
 
 func (x *SiteBundle) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[11]
+	mi := &file_agent_v1_agent_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1062,7 +1735,7 @@ func (x *SiteBundle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SiteBundle.ProtoReflect.Descriptor instead.
 func (*SiteBundle) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{11}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SiteBundle) GetFiles() []*SiteFile {
@@ -1091,7 +1764,7 @@ type Request struct {
 
 func (x *Request) Reset() {
 	*x = Request{}
-	mi := &file_agent_v1_agent_proto_msgTypes[12]
+	mi := &file_agent_v1_agent_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1103,7 +1776,7 @@ func (x *Request) String() string {
 func (*Request) ProtoMessage() {}
 
 func (x *Request) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[12]
+	mi := &file_agent_v1_agent_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1116,7 +1789,7 @@ func (x *Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Request.ProtoReflect.Descriptor instead.
 func (*Request) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{12}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Request) GetBody() isRequest_Body {
@@ -1258,7 +1931,7 @@ type HealthRequest struct {
 
 func (x *HealthRequest) Reset() {
 	*x = HealthRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[13]
+	mi := &file_agent_v1_agent_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1270,7 +1943,7 @@ func (x *HealthRequest) String() string {
 func (*HealthRequest) ProtoMessage() {}
 
 func (x *HealthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[13]
+	mi := &file_agent_v1_agent_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1283,7 +1956,7 @@ func (x *HealthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthRequest.ProtoReflect.Descriptor instead.
 func (*HealthRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{13}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{21}
 }
 
 type GetProfilesRequest struct {
@@ -1294,7 +1967,7 @@ type GetProfilesRequest struct {
 
 func (x *GetProfilesRequest) Reset() {
 	*x = GetProfilesRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[14]
+	mi := &file_agent_v1_agent_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1306,7 +1979,7 @@ func (x *GetProfilesRequest) String() string {
 func (*GetProfilesRequest) ProtoMessage() {}
 
 func (x *GetProfilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[14]
+	mi := &file_agent_v1_agent_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1319,7 +1992,7 @@ func (x *GetProfilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfilesRequest.ProtoReflect.Descriptor instead.
 func (*GetProfilesRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{14}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{22}
 }
 
 type ApplyRequest struct {
@@ -1339,7 +2012,7 @@ type ApplyRequest struct {
 
 func (x *ApplyRequest) Reset() {
 	*x = ApplyRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[15]
+	mi := &file_agent_v1_agent_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1351,7 +2024,7 @@ func (x *ApplyRequest) String() string {
 func (*ApplyRequest) ProtoMessage() {}
 
 func (x *ApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[15]
+	mi := &file_agent_v1_agent_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1364,7 +2037,7 @@ func (x *ApplyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyRequest.ProtoReflect.Descriptor instead.
 func (*ApplyRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{15}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ApplyRequest) GetApplyProfiles() bool {
@@ -1438,7 +2111,7 @@ type GetSiteRequest struct {
 
 func (x *GetSiteRequest) Reset() {
 	*x = GetSiteRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[16]
+	mi := &file_agent_v1_agent_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1450,7 +2123,7 @@ func (x *GetSiteRequest) String() string {
 func (*GetSiteRequest) ProtoMessage() {}
 
 func (x *GetSiteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[16]
+	mi := &file_agent_v1_agent_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1463,7 +2136,7 @@ func (x *GetSiteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSiteRequest.ProtoReflect.Descriptor instead.
 func (*GetSiteRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{16}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{24}
 }
 
 type MetricsRequest struct {
@@ -1474,7 +2147,7 @@ type MetricsRequest struct {
 
 func (x *MetricsRequest) Reset() {
 	*x = MetricsRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[17]
+	mi := &file_agent_v1_agent_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1486,7 +2159,7 @@ func (x *MetricsRequest) String() string {
 func (*MetricsRequest) ProtoMessage() {}
 
 func (x *MetricsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[17]
+	mi := &file_agent_v1_agent_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1499,7 +2172,7 @@ func (x *MetricsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricsRequest.ProtoReflect.Descriptor instead.
 func (*MetricsRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{17}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{25}
 }
 
 type StatsRequest struct {
@@ -1510,7 +2183,7 @@ type StatsRequest struct {
 
 func (x *StatsRequest) Reset() {
 	*x = StatsRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[18]
+	mi := &file_agent_v1_agent_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1522,7 +2195,7 @@ func (x *StatsRequest) String() string {
 func (*StatsRequest) ProtoMessage() {}
 
 func (x *StatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[18]
+	mi := &file_agent_v1_agent_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1535,7 +2208,7 @@ func (x *StatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatsRequest.ProtoReflect.Descriptor instead.
 func (*StatsRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{18}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{26}
 }
 
 type TailLogsRequest struct {
@@ -1549,7 +2222,7 @@ type TailLogsRequest struct {
 
 func (x *TailLogsRequest) Reset() {
 	*x = TailLogsRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[19]
+	mi := &file_agent_v1_agent_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1561,7 +2234,7 @@ func (x *TailLogsRequest) String() string {
 func (*TailLogsRequest) ProtoMessage() {}
 
 func (x *TailLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[19]
+	mi := &file_agent_v1_agent_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1574,7 +2247,7 @@ func (x *TailLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TailLogsRequest.ProtoReflect.Descriptor instead.
 func (*TailLogsRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{19}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *TailLogsRequest) GetServices() []string {
@@ -1606,7 +2279,7 @@ type RestartRelayRequest struct {
 
 func (x *RestartRelayRequest) Reset() {
 	*x = RestartRelayRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[20]
+	mi := &file_agent_v1_agent_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1618,7 +2291,7 @@ func (x *RestartRelayRequest) String() string {
 func (*RestartRelayRequest) ProtoMessage() {}
 
 func (x *RestartRelayRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[20]
+	mi := &file_agent_v1_agent_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1631,7 +2304,7 @@ func (x *RestartRelayRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestartRelayRequest.ProtoReflect.Descriptor instead.
 func (*RestartRelayRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{20}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{28}
 }
 
 type Response struct {
@@ -1653,7 +2326,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_agent_v1_agent_proto_msgTypes[21]
+	mi := &file_agent_v1_agent_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1665,7 +2338,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[21]
+	mi := &file_agent_v1_agent_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1678,7 +2351,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{21}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Response) GetError() string {
@@ -1822,7 +2495,7 @@ type ApplyResult struct {
 
 func (x *ApplyResult) Reset() {
 	*x = ApplyResult{}
-	mi := &file_agent_v1_agent_proto_msgTypes[22]
+	mi := &file_agent_v1_agent_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1834,7 +2507,7 @@ func (x *ApplyResult) String() string {
 func (*ApplyResult) ProtoMessage() {}
 
 func (x *ApplyResult) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[22]
+	mi := &file_agent_v1_agent_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1847,7 +2520,7 @@ func (x *ApplyResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyResult.ProtoReflect.Descriptor instead.
 func (*ApplyResult) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{22}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ApplyResult) GetOk() bool {
@@ -1908,7 +2581,7 @@ type MetricsText struct {
 
 func (x *MetricsText) Reset() {
 	*x = MetricsText{}
-	mi := &file_agent_v1_agent_proto_msgTypes[23]
+	mi := &file_agent_v1_agent_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1920,7 +2593,7 @@ func (x *MetricsText) String() string {
 func (*MetricsText) ProtoMessage() {}
 
 func (x *MetricsText) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[23]
+	mi := &file_agent_v1_agent_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1933,7 +2606,7 @@ func (x *MetricsText) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricsText.ProtoReflect.Descriptor instead.
 func (*MetricsText) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{23}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *MetricsText) GetText() string {
@@ -1952,7 +2625,7 @@ type StatsMap struct {
 
 func (x *StatsMap) Reset() {
 	*x = StatsMap{}
-	mi := &file_agent_v1_agent_proto_msgTypes[24]
+	mi := &file_agent_v1_agent_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1964,7 +2637,7 @@ func (x *StatsMap) String() string {
 func (*StatsMap) ProtoMessage() {}
 
 func (x *StatsMap) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[24]
+	mi := &file_agent_v1_agent_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1977,7 +2650,7 @@ func (x *StatsMap) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatsMap.ProtoReflect.Descriptor instead.
 func (*StatsMap) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{24}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *StatsMap) GetValues() map[string]string {
@@ -1995,7 +2668,7 @@ type Empty struct {
 
 func (x *Empty) Reset() {
 	*x = Empty{}
-	mi := &file_agent_v1_agent_proto_msgTypes[25]
+	mi := &file_agent_v1_agent_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2007,7 +2680,7 @@ func (x *Empty) String() string {
 func (*Empty) ProtoMessage() {}
 
 func (x *Empty) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[25]
+	mi := &file_agent_v1_agent_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2020,7 +2693,7 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Empty.ProtoReflect.Descriptor instead.
 func (*Empty) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{25}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{33}
 }
 
 type LogLine struct {
@@ -2034,7 +2707,7 @@ type LogLine struct {
 
 func (x *LogLine) Reset() {
 	*x = LogLine{}
-	mi := &file_agent_v1_agent_proto_msgTypes[26]
+	mi := &file_agent_v1_agent_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2046,7 +2719,7 @@ func (x *LogLine) String() string {
 func (*LogLine) ProtoMessage() {}
 
 func (x *LogLine) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[26]
+	mi := &file_agent_v1_agent_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2059,7 +2732,7 @@ func (x *LogLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogLine.ProtoReflect.Descriptor instead.
 func (*LogLine) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{26}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *LogLine) GetService() string {
@@ -2094,7 +2767,7 @@ type LogChunk struct {
 
 func (x *LogChunk) Reset() {
 	*x = LogChunk{}
-	mi := &file_agent_v1_agent_proto_msgTypes[27]
+	mi := &file_agent_v1_agent_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2106,7 +2779,7 @@ func (x *LogChunk) String() string {
 func (*LogChunk) ProtoMessage() {}
 
 func (x *LogChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[27]
+	mi := &file_agent_v1_agent_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2119,7 +2792,7 @@ func (x *LogChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogChunk.ProtoReflect.Descriptor instead.
 func (*LogChunk) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{27}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *LogChunk) GetLines() []*LogLine {
@@ -2162,7 +2835,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x0etproxy_version\x18\x02 \x01(\tR\rtproxyVersion\x12\x1a\n" +
 	"\bhostname\x18\x03 \x01(\tR\bhostname\";\n" +
 	"\tHeartbeat\x12.\n" +
-	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\xb5\x06\n" +
+	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\xa1\a\n" +
 	"\fHealthReport\x12!\n" +
 	"\frelay_active\x18\x01 \x01(\bR\vrelayActive\x12%\n" +
 	"\x0emtproxy_active\x18\x02 \x01(\bR\rmtproxyActive\x12!\n" +
@@ -2185,7 +2858,68 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x15connect_success_total\x18\x11 \x01(\x03R\x13connectSuccessTotal\x12,\n" +
 	"\x12connect_fail_total\x18\x12 \x01(\x03R\x10connectFailTotal\x12>\n" +
 	"\x1cupstream_last_check_age_secs\x18\x13 \x01(\x03R\x18upstreamLastCheckAgeSecs\x12*\n" +
-	"\x11dc_data_available\x18\x14 \x01(\bR\x0fdcDataAvailable\"u\n" +
+	"\x11dc_data_available\x18\x14 \x01(\bR\x0fdcDataAvailable\x12(\n" +
+	"\x03web\x18\x15 \x01(\v2\x16.agent.v1.WebTelemetryR\x03web\x12@\n" +
+	"\fcapabilities\x18\x16 \x01(\v2\x1c.agent.v1.TelemtCapabilitiesR\fcapabilities\"n\n" +
+	"\x10WebCounterSample\x12\x18\n" +
+	"\acarrier\x18\x01 \x01(\tR\acarrier\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
+	"\x05phase\x18\x03 \x01(\tR\x05phase\x12\x14\n" +
+	"\x05value\x18\x04 \x01(\x01R\x05value\"H\n" +
+	"\x10WebCounterFamily\x124\n" +
+	"\asamples\x18\x01 \x03(\v2\x1a.agent.v1.WebCounterSampleR\asamples\"\x82\x02\n" +
+	"\x10WebLearningState\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12+\n" +
+	"\x11policy_generation\x18\x02 \x01(\x04R\x10policyGeneration\x12\x14\n" +
+	"\x05epoch\x18\x03 \x01(\x04R\x05epoch\x12\x18\n" +
+	"\aentries\x18\x04 \x01(\x05R\aentries\x12\x1a\n" +
+	"\bcapacity\x18\x05 \x01(\x05R\bcapacity\x12#\n" +
+	"\rlifetime_secs\x18\x06 \x01(\x03R\flifetimeSecs\x12\x1f\n" +
+	"\vhealth_secs\x18\a \x01(\x03R\n" +
+	"healthSecs\x12\x15\n" +
+	"\x06age_ms\x18\b \x01(\x03R\x05ageMs\"\xae\x03\n" +
+	"\rWebDrainState\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\x12\x18\n" +
+	"\aoutcome\x18\x03 \x01(\tR\aoutcome\x12!\n" +
+	"\ftimeout_secs\x18\x04 \x01(\x05R\vtimeoutSecs\x120\n" +
+	"\x14started_epoch_millis\x18\x05 \x01(\x03R\x12startedEpochMillis\x122\n" +
+	"\x15deadline_epoch_millis\x18\x06 \x01(\x03R\x13deadlineEpochMillis\x12-\n" +
+	"\x12remaining_sessions\x18\a \x01(\x04R\x11remainingSessions\x12+\n" +
+	"\x11remaining_streams\x18\b \x01(\x04R\x10remainingStreams\x121\n" +
+	"\x14remaining_websockets\x18\t \x01(\x04R\x13remainingWebsockets\x122\n" +
+	"\x15force_close_signalled\x18\n" +
+	" \x01(\bR\x13forceCloseSignalled\"\xed\x01\n" +
+	"\x11WebLifecycleState\x12\x14\n" +
+	"\x05state\x18\x01 \x01(\tR\x05state\x12\x14\n" +
+	"\x05epoch\x18\x02 \x01(\x04R\x05epoch\x12\x15\n" +
+	"\x06age_ms\x18\x03 \x01(\x03R\x05ageMs\x12%\n" +
+	"\x0eadmission_open\x18\x04 \x01(\bR\radmissionOpen\x12?\n" +
+	"\x1ceffective_new_work_admission\x18\x05 \x01(\bR\x19effectiveNewWorkAdmission\x12-\n" +
+	"\x05drain\x18\x06 \x01(\v2\x17.agent.v1.WebDrainStateR\x05drain\"\xe0\x01\n" +
+	"\x0fWebRuntimeState\x12)\n" +
+	"\x10runtime_instance\x18\x01 \x01(\tR\x0fruntimeInstance\x12/\n" +
+	"\x13carrier_negotiation\x18\x02 \x01(\bR\x12carrierNegotiation\x126\n" +
+	"\blearning\x18\x03 \x01(\v2\x1a.agent.v1.WebLearningStateR\blearning\x129\n" +
+	"\tlifecycle\x18\x04 \x01(\v2\x1b.agent.v1.WebLifecycleStateR\tlifecycle\"\xad\x04\n" +
+	"\fWebTelemetry\x12I\n" +
+	"\x12carrier_selections\x18\x01 \x01(\v2\x1a.agent.v1.WebCounterFamilyR\x11carrierSelections\x12E\n" +
+	"\x10carrier_failures\x18\x02 \x01(\v2\x1a.agent.v1.WebCounterFamilyR\x0fcarrierFailures\x12G\n" +
+	"\x11learning_outcomes\x18\x03 \x01(\v2\x1a.agent.v1.WebCounterFamilyR\x10learningOutcomes\x12E\n" +
+	"\x10learning_entries\x18\x04 \x01(\v2\x1a.agent.v1.WebCounterFamilyR\x0flearningEntries\x12:\n" +
+	"\n" +
+	"rejections\x18\x05 \x01(\v2\x1a.agent.v1.WebCounterFamilyR\n" +
+	"rejections\x12E\n" +
+	"\x10session_closures\x18\x06 \x01(\v2\x1a.agent.v1.WebCounterFamilyR\x0fsessionClosures\x12C\n" +
+	"\x0fbridge_recovery\x18\a \x01(\v2\x1a.agent.v1.WebCounterFamilyR\x0ebridgeRecovery\x123\n" +
+	"\aruntime\x18\b \x01(\v2\x19.agent.v1.WebRuntimeStateR\aruntime\"\xd7\x01\n" +
+	"\x12TelemtCapabilities\x12I\n" +
+	"\tsupported\x18\x01 \x03(\v2+.agent.v1.TelemtCapabilities.SupportedEntryR\tsupported\x12\"\n" +
+	"\fundetermined\x18\x02 \x03(\tR\fundetermined\x12\x14\n" +
+	"\x05build\x18\x03 \x01(\tR\x05build\x1a<\n" +
+	"\x0eSupportedEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\bR\x05value:\x028\x01\"u\n" +
 	"\tDcLatency\x12\x0e\n" +
 	"\x02dc\x18\x01 \x01(\x05R\x02dc\x12\x1d\n" +
 	"\n" +
@@ -2320,77 +3054,101 @@ func file_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_agent_v1_agent_proto_rawDescData
 }
 
-var file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_agent_v1_agent_proto_goTypes = []any{
 	(*Envelope)(nil),            // 0: agent.v1.Envelope
 	(*Hello)(nil),               // 1: agent.v1.Hello
 	(*Heartbeat)(nil),           // 2: agent.v1.Heartbeat
 	(*HealthReport)(nil),        // 3: agent.v1.HealthReport
-	(*DcLatency)(nil),           // 4: agent.v1.DcLatency
-	(*ProfileLimits)(nil),       // 5: agent.v1.ProfileLimits
-	(*Profile)(nil),             // 6: agent.v1.Profile
-	(*ProfilesFile)(nil),        // 7: agent.v1.ProfilesFile
-	(*WebTimeouts)(nil),         // 8: agent.v1.WebTimeouts
-	(*WebPolicy)(nil),           // 9: agent.v1.WebPolicy
-	(*SiteFile)(nil),            // 10: agent.v1.SiteFile
-	(*SiteBundle)(nil),          // 11: agent.v1.SiteBundle
-	(*Request)(nil),             // 12: agent.v1.Request
-	(*HealthRequest)(nil),       // 13: agent.v1.HealthRequest
-	(*GetProfilesRequest)(nil),  // 14: agent.v1.GetProfilesRequest
-	(*ApplyRequest)(nil),        // 15: agent.v1.ApplyRequest
-	(*GetSiteRequest)(nil),      // 16: agent.v1.GetSiteRequest
-	(*MetricsRequest)(nil),      // 17: agent.v1.MetricsRequest
-	(*StatsRequest)(nil),        // 18: agent.v1.StatsRequest
-	(*TailLogsRequest)(nil),     // 19: agent.v1.TailLogsRequest
-	(*RestartRelayRequest)(nil), // 20: agent.v1.RestartRelayRequest
-	(*Response)(nil),            // 21: agent.v1.Response
-	(*ApplyResult)(nil),         // 22: agent.v1.ApplyResult
-	(*MetricsText)(nil),         // 23: agent.v1.MetricsText
-	(*StatsMap)(nil),            // 24: agent.v1.StatsMap
-	(*Empty)(nil),               // 25: agent.v1.Empty
-	(*LogLine)(nil),             // 26: agent.v1.LogLine
-	(*LogChunk)(nil),            // 27: agent.v1.LogChunk
-	nil,                         // 28: agent.v1.StatsMap.ValuesEntry
+	(*WebCounterSample)(nil),    // 4: agent.v1.WebCounterSample
+	(*WebCounterFamily)(nil),    // 5: agent.v1.WebCounterFamily
+	(*WebLearningState)(nil),    // 6: agent.v1.WebLearningState
+	(*WebDrainState)(nil),       // 7: agent.v1.WebDrainState
+	(*WebLifecycleState)(nil),   // 8: agent.v1.WebLifecycleState
+	(*WebRuntimeState)(nil),     // 9: agent.v1.WebRuntimeState
+	(*WebTelemetry)(nil),        // 10: agent.v1.WebTelemetry
+	(*TelemtCapabilities)(nil),  // 11: agent.v1.TelemtCapabilities
+	(*DcLatency)(nil),           // 12: agent.v1.DcLatency
+	(*ProfileLimits)(nil),       // 13: agent.v1.ProfileLimits
+	(*Profile)(nil),             // 14: agent.v1.Profile
+	(*ProfilesFile)(nil),        // 15: agent.v1.ProfilesFile
+	(*WebTimeouts)(nil),         // 16: agent.v1.WebTimeouts
+	(*WebPolicy)(nil),           // 17: agent.v1.WebPolicy
+	(*SiteFile)(nil),            // 18: agent.v1.SiteFile
+	(*SiteBundle)(nil),          // 19: agent.v1.SiteBundle
+	(*Request)(nil),             // 20: agent.v1.Request
+	(*HealthRequest)(nil),       // 21: agent.v1.HealthRequest
+	(*GetProfilesRequest)(nil),  // 22: agent.v1.GetProfilesRequest
+	(*ApplyRequest)(nil),        // 23: agent.v1.ApplyRequest
+	(*GetSiteRequest)(nil),      // 24: agent.v1.GetSiteRequest
+	(*MetricsRequest)(nil),      // 25: agent.v1.MetricsRequest
+	(*StatsRequest)(nil),        // 26: agent.v1.StatsRequest
+	(*TailLogsRequest)(nil),     // 27: agent.v1.TailLogsRequest
+	(*RestartRelayRequest)(nil), // 28: agent.v1.RestartRelayRequest
+	(*Response)(nil),            // 29: agent.v1.Response
+	(*ApplyResult)(nil),         // 30: agent.v1.ApplyResult
+	(*MetricsText)(nil),         // 31: agent.v1.MetricsText
+	(*StatsMap)(nil),            // 32: agent.v1.StatsMap
+	(*Empty)(nil),               // 33: agent.v1.Empty
+	(*LogLine)(nil),             // 34: agent.v1.LogLine
+	(*LogChunk)(nil),            // 35: agent.v1.LogChunk
+	nil,                         // 36: agent.v1.TelemtCapabilities.SupportedEntry
+	nil,                         // 37: agent.v1.StatsMap.ValuesEntry
 }
 var file_agent_v1_agent_proto_depIdxs = []int32{
 	1,  // 0: agent.v1.Envelope.hello:type_name -> agent.v1.Hello
 	2,  // 1: agent.v1.Envelope.heartbeat:type_name -> agent.v1.Heartbeat
-	12, // 2: agent.v1.Envelope.request:type_name -> agent.v1.Request
-	21, // 3: agent.v1.Envelope.response:type_name -> agent.v1.Response
-	27, // 4: agent.v1.Envelope.log_chunk:type_name -> agent.v1.LogChunk
+	20, // 2: agent.v1.Envelope.request:type_name -> agent.v1.Request
+	29, // 3: agent.v1.Envelope.response:type_name -> agent.v1.Response
+	35, // 4: agent.v1.Envelope.log_chunk:type_name -> agent.v1.LogChunk
 	3,  // 5: agent.v1.Heartbeat.health:type_name -> agent.v1.HealthReport
-	4,  // 6: agent.v1.HealthReport.dcs:type_name -> agent.v1.DcLatency
-	5,  // 7: agent.v1.Profile.limits:type_name -> agent.v1.ProfileLimits
-	6,  // 8: agent.v1.ProfilesFile.profiles:type_name -> agent.v1.Profile
-	8,  // 9: agent.v1.WebPolicy.timeouts:type_name -> agent.v1.WebTimeouts
-	10, // 10: agent.v1.SiteBundle.files:type_name -> agent.v1.SiteFile
-	13, // 11: agent.v1.Request.health:type_name -> agent.v1.HealthRequest
-	14, // 12: agent.v1.Request.get_profiles:type_name -> agent.v1.GetProfilesRequest
-	15, // 13: agent.v1.Request.apply:type_name -> agent.v1.ApplyRequest
-	16, // 14: agent.v1.Request.get_site:type_name -> agent.v1.GetSiteRequest
-	17, // 15: agent.v1.Request.metrics:type_name -> agent.v1.MetricsRequest
-	18, // 16: agent.v1.Request.stats:type_name -> agent.v1.StatsRequest
-	19, // 17: agent.v1.Request.tail_logs:type_name -> agent.v1.TailLogsRequest
-	20, // 18: agent.v1.Request.restart_relay:type_name -> agent.v1.RestartRelayRequest
-	6,  // 19: agent.v1.ApplyRequest.profiles:type_name -> agent.v1.Profile
-	11, // 20: agent.v1.ApplyRequest.site:type_name -> agent.v1.SiteBundle
-	9,  // 21: agent.v1.ApplyRequest.web_policy:type_name -> agent.v1.WebPolicy
-	3,  // 22: agent.v1.Response.health:type_name -> agent.v1.HealthReport
-	7,  // 23: agent.v1.Response.profiles:type_name -> agent.v1.ProfilesFile
-	22, // 24: agent.v1.Response.apply:type_name -> agent.v1.ApplyResult
-	11, // 25: agent.v1.Response.site:type_name -> agent.v1.SiteBundle
-	23, // 26: agent.v1.Response.metrics:type_name -> agent.v1.MetricsText
-	24, // 27: agent.v1.Response.stats:type_name -> agent.v1.StatsMap
-	25, // 28: agent.v1.Response.empty:type_name -> agent.v1.Empty
-	28, // 29: agent.v1.StatsMap.values:type_name -> agent.v1.StatsMap.ValuesEntry
-	26, // 30: agent.v1.LogChunk.lines:type_name -> agent.v1.LogLine
-	0,  // 31: agent.v1.AgentGateway.Session:input_type -> agent.v1.Envelope
-	0,  // 32: agent.v1.AgentGateway.Session:output_type -> agent.v1.Envelope
-	32, // [32:33] is the sub-list for method output_type
-	31, // [31:32] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	12, // 6: agent.v1.HealthReport.dcs:type_name -> agent.v1.DcLatency
+	10, // 7: agent.v1.HealthReport.web:type_name -> agent.v1.WebTelemetry
+	11, // 8: agent.v1.HealthReport.capabilities:type_name -> agent.v1.TelemtCapabilities
+	4,  // 9: agent.v1.WebCounterFamily.samples:type_name -> agent.v1.WebCounterSample
+	7,  // 10: agent.v1.WebLifecycleState.drain:type_name -> agent.v1.WebDrainState
+	6,  // 11: agent.v1.WebRuntimeState.learning:type_name -> agent.v1.WebLearningState
+	8,  // 12: agent.v1.WebRuntimeState.lifecycle:type_name -> agent.v1.WebLifecycleState
+	5,  // 13: agent.v1.WebTelemetry.carrier_selections:type_name -> agent.v1.WebCounterFamily
+	5,  // 14: agent.v1.WebTelemetry.carrier_failures:type_name -> agent.v1.WebCounterFamily
+	5,  // 15: agent.v1.WebTelemetry.learning_outcomes:type_name -> agent.v1.WebCounterFamily
+	5,  // 16: agent.v1.WebTelemetry.learning_entries:type_name -> agent.v1.WebCounterFamily
+	5,  // 17: agent.v1.WebTelemetry.rejections:type_name -> agent.v1.WebCounterFamily
+	5,  // 18: agent.v1.WebTelemetry.session_closures:type_name -> agent.v1.WebCounterFamily
+	5,  // 19: agent.v1.WebTelemetry.bridge_recovery:type_name -> agent.v1.WebCounterFamily
+	9,  // 20: agent.v1.WebTelemetry.runtime:type_name -> agent.v1.WebRuntimeState
+	36, // 21: agent.v1.TelemtCapabilities.supported:type_name -> agent.v1.TelemtCapabilities.SupportedEntry
+	13, // 22: agent.v1.Profile.limits:type_name -> agent.v1.ProfileLimits
+	14, // 23: agent.v1.ProfilesFile.profiles:type_name -> agent.v1.Profile
+	16, // 24: agent.v1.WebPolicy.timeouts:type_name -> agent.v1.WebTimeouts
+	18, // 25: agent.v1.SiteBundle.files:type_name -> agent.v1.SiteFile
+	21, // 26: agent.v1.Request.health:type_name -> agent.v1.HealthRequest
+	22, // 27: agent.v1.Request.get_profiles:type_name -> agent.v1.GetProfilesRequest
+	23, // 28: agent.v1.Request.apply:type_name -> agent.v1.ApplyRequest
+	24, // 29: agent.v1.Request.get_site:type_name -> agent.v1.GetSiteRequest
+	25, // 30: agent.v1.Request.metrics:type_name -> agent.v1.MetricsRequest
+	26, // 31: agent.v1.Request.stats:type_name -> agent.v1.StatsRequest
+	27, // 32: agent.v1.Request.tail_logs:type_name -> agent.v1.TailLogsRequest
+	28, // 33: agent.v1.Request.restart_relay:type_name -> agent.v1.RestartRelayRequest
+	14, // 34: agent.v1.ApplyRequest.profiles:type_name -> agent.v1.Profile
+	19, // 35: agent.v1.ApplyRequest.site:type_name -> agent.v1.SiteBundle
+	17, // 36: agent.v1.ApplyRequest.web_policy:type_name -> agent.v1.WebPolicy
+	3,  // 37: agent.v1.Response.health:type_name -> agent.v1.HealthReport
+	15, // 38: agent.v1.Response.profiles:type_name -> agent.v1.ProfilesFile
+	30, // 39: agent.v1.Response.apply:type_name -> agent.v1.ApplyResult
+	19, // 40: agent.v1.Response.site:type_name -> agent.v1.SiteBundle
+	31, // 41: agent.v1.Response.metrics:type_name -> agent.v1.MetricsText
+	32, // 42: agent.v1.Response.stats:type_name -> agent.v1.StatsMap
+	33, // 43: agent.v1.Response.empty:type_name -> agent.v1.Empty
+	37, // 44: agent.v1.StatsMap.values:type_name -> agent.v1.StatsMap.ValuesEntry
+	34, // 45: agent.v1.LogChunk.lines:type_name -> agent.v1.LogLine
+	0,  // 46: agent.v1.AgentGateway.Session:input_type -> agent.v1.Envelope
+	0,  // 47: agent.v1.AgentGateway.Session:output_type -> agent.v1.Envelope
+	47, // [47:48] is the sub-list for method output_type
+	46, // [46:47] is the sub-list for method input_type
+	46, // [46:46] is the sub-list for extension type_name
+	46, // [46:46] is the sub-list for extension extendee
+	0,  // [0:46] is the sub-list for field type_name
 }
 
 func init() { file_agent_v1_agent_proto_init() }
@@ -2405,7 +3163,7 @@ func file_agent_v1_agent_proto_init() {
 		(*Envelope_Response)(nil),
 		(*Envelope_LogChunk)(nil),
 	}
-	file_agent_v1_agent_proto_msgTypes[12].OneofWrappers = []any{
+	file_agent_v1_agent_proto_msgTypes[20].OneofWrappers = []any{
 		(*Request_Health)(nil),
 		(*Request_GetProfiles)(nil),
 		(*Request_Apply)(nil),
@@ -2415,7 +3173,7 @@ func file_agent_v1_agent_proto_init() {
 		(*Request_TailLogs)(nil),
 		(*Request_RestartRelay)(nil),
 	}
-	file_agent_v1_agent_proto_msgTypes[21].OneofWrappers = []any{
+	file_agent_v1_agent_proto_msgTypes[29].OneofWrappers = []any{
 		(*Response_Health)(nil),
 		(*Response_Profiles)(nil),
 		(*Response_Apply)(nil),
@@ -2430,7 +3188,7 @@ func file_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agent_v1_agent_proto_rawDesc), len(file_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

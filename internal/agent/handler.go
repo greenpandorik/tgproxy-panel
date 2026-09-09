@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"tgwebproxy/internal/telemt"
@@ -22,6 +23,10 @@ type Handler struct {
 	log   *slog.Logger
 	// tm is the telemt control API client; nil unless the node runs the telemt engine.
 	tm *telemt.Client
+
+	mu     sync.Mutex
+	caps   *agentv1.TelemtCapabilities
+	capsAt time.Time
 }
 
 func NewHandler(cfg Config, ex Exec, log *slog.Logger) *Handler {

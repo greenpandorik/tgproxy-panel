@@ -47,6 +47,92 @@ message HealthReport {
   int64 connect_fail_total = 18;
   int64 upstream_last_check_age_secs = 19;
   bool dc_data_available = 20;
+
+  // web is the WEB transport telemetry; absent when the agent could not read it. An agent
+  // that never sets it and a panel that never reads it both keep working.
+  WebTelemetry web = 21;
+  // capabilities is what the agent worked out the node's telemt can do; absent when the
+  // probe did not run or could not reach telemt.
+  TelemtCapabilities capabilities = 22;
+}
+
+// WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
+// are the family's own labels and are empty for a family that does not carry them.
+message WebCounterSample {
+  string carrier = 1;
+  string label = 2;
+  string phase = 3;
+  double value = 4;
+}
+
+// WebCounterFamily is one metric family. The message itself is the presence flag: a family the
+// node did not expose is a nil WebCounterFamily, never an empty one, so "not reported" can
+// never be read as zero. A present family with no samples is a family telemt declared but has
+// not yet incremented.
+message WebCounterFamily { repeated WebCounterSample samples = 1; }
+
+message WebLearningState {
+  bool enabled = 1;
+  uint64 policy_generation = 2;
+  uint64 epoch = 3;
+  int32 entries = 4;
+  int32 capacity = 5;
+  int64 lifetime_secs = 6;
+  int64 health_secs = 7;
+  int64 age_ms = 8;
+}
+
+message WebDrainState {
+  string operation_id = 1;
+  string state = 2;
+  string outcome = 3;
+  int32 timeout_secs = 4;
+  int64 started_epoch_millis = 5;
+  int64 deadline_epoch_millis = 6;
+  uint64 remaining_sessions = 7;
+  uint64 remaining_streams = 8;
+  uint64 remaining_websockets = 9;
+  bool force_close_signalled = 10;
+}
+
+message WebLifecycleState {
+  string state = 1;
+  uint64 epoch = 2;
+  int64 age_ms = 3;
+  bool admission_open = 4;
+  bool effective_new_work_admission = 5;
+  WebDrainState drain = 6;
+}
+
+// WebRuntimeState is GET /v1/runtime/web/status as the agent read it. learning and lifecycle
+// are nil when telemt's payload carried no such section.
+message WebRuntimeState {
+  string runtime_instance = 1;
+  bool carrier_negotiation = 2;
+  WebLearningState learning = 3;
+  WebLifecycleState lifecycle = 4;
+}
+
+// WebTelemetry carries the telemt_web_* families and the WEB runtime state of one node.
+// Every family is a nullable message: nil means the node did not report it.
+message WebTelemetry {
+  WebCounterFamily carrier_selections = 1;
+  WebCounterFamily carrier_failures = 2;
+  WebCounterFamily learning_outcomes = 3;
+  WebCounterFamily learning_entries = 4;
+  WebCounterFamily rejections = 5;
+  WebCounterFamily session_closures = 6;
+  WebCounterFamily bridge_recovery = 7;
+  WebRuntimeState runtime = 8;
+}
+
+// TelemtCapabilities is the capability set the agent computed. supported holds only the
+// capabilities it settled; undetermined names the ones it could not, which the panel must keep
+// distinguishable from a capability the node answered "no" to.
+message TelemtCapabilities {
+  map<string, bool> supported = 1;
+  repeated string undetermined = 2;
+  string build = 3;
 }
 
 // DcLatency is one Telegram datacenter as telemt's upstream health check sees it.

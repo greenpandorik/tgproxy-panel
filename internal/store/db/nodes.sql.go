@@ -545,21 +545,32 @@ UPDATE nodes SET status = $2, last_seen_at = now(), last_health = $3,
   tproxy_version = COALESCE(NULLIF($4::text, ''), tproxy_version),
   telemt_version = CASE WHEN engine = 'telemt'
     THEN COALESCE(NULLIF($5::text, ''), telemt_version)
-    ELSE telemt_version END
+    ELSE telemt_version END,
+  telemt_build = COALESCE(NULLIF($6::text, ''), telemt_build),
+  telemt_capabilities = COALESCE($7::jsonb, telemt_capabilities),
+  telemt_capabilities_checked_at = CASE WHEN $7::jsonb IS NOT NULL
+    THEN now() ELSE telemt_capabilities_checked_at END
 WHERE id = $1
 `
 
 type SetNodeHeartbeatParams struct {
-	ID            uuid.UUID  `json:"id"`
-	Status        NodeStatus `json:"status"`
-	LastHealth    []byte     `json:"last_health"`
-	TproxyVersion string     `json:"tproxy_version"`
-	TelemtVersion string     `json:"telemt_version"`
+	ID                 uuid.UUID  `json:"id"`
+	Status             NodeStatus `json:"status"`
+	LastHealth         []byte     `json:"last_health"`
+	TproxyVersion      string     `json:"tproxy_version"`
+	TelemtVersion      string     `json:"telemt_version"`
+	TelemtBuild        string     `json:"telemt_build"`
+	TelemtCapabilities []byte     `json:"telemt_capabilities"`
 }
 
 // SetNodeHeartbeat carries the versions too: a telemt node whose control API was down at
 // hello time reports its version on the first heartbeat that reaches it, and there is no
 // other moment at which the panel would learn it.
+//
+// telemt_capabilities is only written when the heartbeat carried a capability set: an agent
+// that could not probe the node sends none, and overwriting a known set with nothing would
+// turn "the node cannot do this" into "we never asked". checked_at moves with it for the same
+// reason - it dates the set that is stored, not the last heartbeat.
 func (q *Queries) SetNodeHeartbeat(ctx context.Context, arg SetNodeHeartbeatParams) error {
 	_, err := q.db.Exec(ctx, setNodeHeartbeat,
 		arg.ID,
@@ -567,6 +578,8 @@ func (q *Queries) SetNodeHeartbeat(ctx context.Context, arg SetNodeHeartbeatPara
 		arg.LastHealth,
 		arg.TproxyVersion,
 		arg.TelemtVersion,
+		arg.TelemtBuild,
+		arg.TelemtCapabilities,
 	)
 	return err
 }

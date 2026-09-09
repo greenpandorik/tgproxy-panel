@@ -1,9 +1,27 @@
 -- InsertSnapshot's dc_latency is coalesced so a caller with no DC data (a tproxy node, or a
 -- Go nil) lands the column's '{}' rather than a NULL the NOT NULL constraint would reject.
+--
+-- The web_* columns are the opposite case: they are the raw cumulative counters telemt
+-- reports, and a metric family the node did not expose is written as NULL rather than 0. A
+-- zero would read as a measurement ("no failures") where the truth is that nothing was
+-- measured, so every one of them is passed as a nullable argument and never coalesced.
 -- name: InsertSnapshot :exec
 INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw,
-  cpu_percent, mem_used_percent, disk_used_percent, dc_latency)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce(sqlc.narg('dc_latency')::jsonb, '{}'::jsonb));
+  cpu_percent, mem_used_percent, disk_used_percent, dc_latency,
+  web_carrier_selections_https, web_carrier_selections_https_lanes,
+  web_carrier_selections_websocket, web_carrier_selections_websocket_lanes,
+  web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries,
+  web_learning_entries)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce(sqlc.narg('dc_latency')::jsonb, '{}'::jsonb),
+  sqlc.narg('web_carrier_selections_https')::bigint,
+  sqlc.narg('web_carrier_selections_https_lanes')::bigint,
+  sqlc.narg('web_carrier_selections_websocket')::bigint,
+  sqlc.narg('web_carrier_selections_websocket_lanes')::bigint,
+  sqlc.narg('web_carrier_failures')::bigint,
+  sqlc.narg('web_rejected_attempts')::bigint,
+  sqlc.narg('web_evicted_sessions')::bigint,
+  sqlc.narg('web_bridge_recoveries')::bigint,
+  sqlc.narg('web_learning_entries')::int);
 
 -- name: ListSnapshots :many
 SELECT * FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at;
