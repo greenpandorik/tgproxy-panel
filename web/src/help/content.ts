@@ -1,4 +1,3 @@
-
 /** Which section of docs/setup.*.md a topic links to. Anchors are GitHub's heading slugs. */
 export const DOC_SECTIONS = {
   install: { ru: '6-подключение-ноды', en: '6-adding-a-node' },
@@ -74,6 +73,10 @@ export const HELP_TOPICS = {
   'keys.create': {
     fields: ['label', 'owner_label', 'nodes', 'carrier_mode', 'expires_at', 'limits', 'note'],
     docs: 'keys',
+  },
+  'keys.transport': {
+    fields: ['automatic', 'order', 'legacy'],
+    docs: 'engine',
   },
   'keys.batch': {
     fields: ['prefix', 'count', 'result'],

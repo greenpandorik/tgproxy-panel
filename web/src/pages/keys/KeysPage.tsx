@@ -197,6 +197,12 @@ export function KeysPage() {
 
   const [createRequested, setCreateRequested] = useState(false);
   const [linkKeyId, setLinkKeyId] = useState<string | null>(null);
+  const [linkHandover, setLinkHandover] = useState(false);
+
+  const showLink = (id: string) => {
+    setLinkHandover(false);
+    setLinkKeyId(id);
+  };
   const [editRequestedId, setEditRequestedId] = useState<string | null>(null);
   const [batchResult, setBatchResult] = useState<AccessKey[] | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AccessKey | null>(null);
@@ -300,7 +306,7 @@ export function KeysPage() {
     try {
       await rotateKey.mutateAsync(rotateTarget.id);
       toast.add({ description: t('keys.rotate_success'), type: 'success' });
-      setLinkKeyId(rotateTarget.id);
+      showLink(rotateTarget.id);
     } catch (err) {
       toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
     }
@@ -345,7 +351,7 @@ export function KeysPage() {
     isWriter ? (
       <RowActions
         keyRow={key}
-        onShowLink={setLinkKeyId}
+        onShowLink={showLink}
         onEdit={setEditKeyId}
         onRotate={setRotateTarget}
         onRevoke={setRevokeTarget}
@@ -616,11 +622,19 @@ export function KeysPage() {
       <CreateKeyDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onCreated={(created) => setLinkKeyId(created.id)}
+        onCreated={(created) => {
+          setLinkHandover(true);
+          setLinkKeyId(created.id);
+        }}
         onBatchCreated={(keys) => setBatchResult(keys)}
       />
 
-      <KeyLinkDialog open={!!linkKeyId} onOpenChange={(open) => !open && setLinkKeyId(null)} keyId={linkKeyId} />
+      <KeyLinkDialog
+        open={!!linkKeyId}
+        onOpenChange={(open) => !open && setLinkKeyId(null)}
+        keyId={linkKeyId}
+        handover={linkHandover}
+      />
 
       <KeyDetailDrawer open={!!editKeyId} onOpenChange={(open) => !open && setEditKeyId(null)} keyId={editKeyId} />
 
@@ -629,7 +643,7 @@ export function KeysPage() {
           open={!!batchResult}
           onOpenChange={(open) => !open && setBatchResult(null)}
           keys={batchResult}
-          onShowLink={(id) => setLinkKeyId(id)}
+          onShowLink={showLink}
         />
       )}
 

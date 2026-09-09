@@ -420,6 +420,20 @@
     "create_error": "Could not create the key",
     "create_submit": "Create key",
     "create_batch_submit": "Create batch",
+    "create_summary_title": "What you get",
+    "create_summary_shared": "Shared key “{{label}}”",
+    "create_summary_personal": "Personal key “{{label}}”",
+    "create_summary_batch": "Batch “{{prefix}}”, keys: {{count}}",
+    "create_summary_owner": "for {{owner}}",
+    "create_summary_no_name": "unnamed",
+    "create_summary_nodes": "nodes: {{count}}",
+    "create_summary_nodes_none": "no nodes picked",
+    "create_summary_expires": "until {{date}}",
+    "create_summary_no_expiry": "no expiry",
+    "create_summary_transport_auto": "transport automatic",
+    "create_summary_transport_mode": "carrier mode: {{mode}}",
+    "create_summary_limits_none": "no limits",
+    "create_summary_limits_set": "limits: {{count}}",
     "tab_shared": "Shared",
     "tab_personal": "Personal",
     "tab_batch": "Batch",
@@ -431,10 +445,24 @@
     "field_count": "Count",
     "field_nodes": "Nodes",
     "field_carrier_mode": "Carrier mode",
+    "field_carrier_mode_legacy": "Carrier mode (tproxy only)",
+    "field_carrier_mode_legacy_hint": "You picked both telemt and tproxy nodes. Only the tproxy ones get this mode; telemt nodes choose their transport themselves.",
+    "field_transport": "Transport",
+    "transport_auto": "Chosen automatically",
+    "transport_auto_hint": "telemt on the node finds a working transport for every connection, from the client's network rather than from the key.",
     "field_expires_at": "Expires at",
     "field_no_expiry": "No expiry",
     "field_optional": "optional",
     "field_limits_toggle": "Advanced limits",
+    "limits_entry_label": "Limits",
+    "limits_entry_none": "Standard · no limits",
+    "limits_entry_set": "Limits set: {{count}}",
+    "limits_entry_invalid": "Something is wrong in the limits - check them",
+    "limits_edit_title": "Key limits",
+    "limits_edit_description": "An empty field means no limit. All of this can be changed later on the key itself.",
+    "limits_edit_back": "Back to the key",
+    "limits_edit_reset": "Clear all",
+    "limits_edit_done": "Done",
     "telemt_limits_title": "Limits",
     "telemt_limits_hint": "An empty field means no limit. telemt enforces these on the node.",
     "telemt_limits_unavailable": "not available on this engine",
@@ -472,6 +500,8 @@
     "limit_max_pending_per_session": "Max pending per session",
     "link_title": "Link for \"{{label}}\"",
     "link_title_loading": "Loading link…",
+    "link_created_title": "Key “{{label}}” created",
+    "link_per_node_toggle": "Per-node links",
     "link_revoked": "This key is revoked and no longer has active links.",
     "link_no_permission": "You don't have permission to view this key's links.",
     "link_pending_hint": "The key will be active once applied on the node (usually within a minute).",
@@ -1202,9 +1232,9 @@
           },
           "carrier_mode": {
             "name": "Carrier mode",
-            "what": "How the WEB client talks to the node over HTTPS. HTTPS - one POST request plus long poll, the most compatible, fine as the default. WebSocket - one persistent connection, lower latency where WebSocket is not blocked along the way. The \"lanes\" variants open a separate connection per data stream: more connections, helps where a single connection is throttled. Does not affect the Fake-TLS link.",
+            "what": "Legacy tproxy nodes only: how the WEB client talks to the node over HTTPS. HTTPS - one POST request plus long poll, the most compatible. WebSocket - one persistent connection, lower latency. The \"lanes\" variants open a separate connection per stream. telemt nodes negotiate transport themselves, so the field is not shown for them.",
             "example": "HTTPS",
-            "tip": "Start with HTTPS. Change it only if users complain about speed or drops - and then try WebSocket."
+            "tip": "On tproxy start with HTTPS and change it only if users complain about speed or drops."
           },
           "expires_at": {
             "name": "Expires",
@@ -1225,6 +1255,30 @@
           "1": "A key created in \"Pending\" starts working after an apply on the node - automatically after the interval (45 seconds by default) or right away with \"Apply\" on the node.",
           "2": "On a telemt node the key gets two links: WEB and Fake-TLS. On a tproxy node only WEB (Telegram Desktop stable, Android experimental, iOS planned).",
           "3": "Closed the dialog half-way? The panel keeps a draft and offers to continue next time."
+        }
+      },
+      "keys.transport": {
+        "title": "Key transport",
+        "intro": "How the client talks to the node. On telemt this belongs to the node and the network, not to the key: nothing is pinned to a particular person.",
+        "fields": {
+          "automatic": {
+            "name": "Automatic choice",
+            "what": "On telemt nodes the transport is negotiated per connection. The node tries the options in order and remembers what worked on that network - so there is nothing to choose on the key.",
+            "tip": "If someone sees slow or dropping connections, it is the node and the network, not the key: start from the node check."
+          },
+          "order": {
+            "name": "Negotiation order",
+            "what": "Fastest first, most compatible last. Once an option works, the node remembers it instead of walking the list again for every connection.",
+            "example": "WebSocket lanes → WebSocket → HTTPS lanes → HTTPS"
+          },
+          "legacy": {
+            "name": "Legacy tproxy nodes",
+            "what": "tproxy negotiates nothing, so its carrier mode is set here and goes into the profile on the node. With nodes of both engines selected, only the tproxy ones get the mode.",
+            "tip": "For tproxy start with HTTPS and change it only if users complain about speed or drops."
+          }
+        },
+        "notes": {
+          "1": "None of this affects the Fake-TLS link: telemt only, and it works differently."
         }
       },
       "keys.batch": {

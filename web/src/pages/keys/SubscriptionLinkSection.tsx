@@ -17,9 +17,16 @@ interface SubscriptionLinkSectionProps {
   isWriter: boolean;
   /** True for a revoked key: creating or rotating a link for it makes no sense. */
   locked?: boolean;
+  className?: string;
 }
 
-export function SubscriptionLinkSection({ keyId, subscriptionActive, isWriter, locked }: SubscriptionLinkSectionProps) {
+export function SubscriptionLinkSection({
+  keyId,
+  subscriptionActive,
+  isWriter,
+  locked,
+  className,
+}: SubscriptionLinkSectionProps) {
   const { t } = useTranslation();
   const [created, setCreated] = useState<{ url: string; qrDataUri: string } | null>(null);
   const [rotateOpen, setRotateOpen] = useState(false);
@@ -47,7 +54,7 @@ export function SubscriptionLinkSection({ keyId, subscriptionActive, isWriter, l
   };
 
   return (
-    <section className="space-y-3 border-t border-hairline pt-4">
+    <section className={cn('space-y-3 border-t border-hairline pt-4', className)}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="micro text-mute">{t('keys.subscription_title')}</h3>
         {subscriptionActive && (

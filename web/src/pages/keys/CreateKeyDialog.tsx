@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronRight } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -12,33 +12,31 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
+import { formatDateTime } from '@/lib/format';
 import { EMPTY_TELEMT_LIMITS_FORM, telemtLimitsFromForm, validateTelemtLimitsForm } from '@/lib/units';
 import { cn } from '@/lib/utils';
 
-import { LimitsFields, ZERO_LIMITS } from './LimitsFields';
+import { countLimits } from './keyLimits';
+import { KeyLimitsPanel } from './KeyLimitsPanel';
+import { ZERO_LIMITS } from './LimitsFields';
 import { NodeCapacityList } from './NodeCapacityList';
-import { TelemtLimitsFields } from './TelemtLimitsFields';
+import { carrierSlug, transportScope } from './transport';
+import { TransportField } from './TransportField';
 
 import type { LimitFieldName } from './LimitsFields';
-import type { AccessKey, CarrierMode, KeyInput, ProfileLimits } from '@/api/types';
+import type { TransportScope } from './transport';
+import type { AccessKey, KeyInput, ProfileLimits } from '@/api/types';
 import type { TelemtLimitsForm } from '@/lib/units';
-
-const CARRIER_MODES: CarrierMode[] = ['https', 'https-lanes', 'websocket', 'websocket-lanes'];
 
 const FORM_ID = 'create-key-form';
 
 // The form is a stack of decisions, not a stack of fields.
 const GROUP_CLASS = 'space-y-3 py-4 first:pt-0 last:pb-0';
-
-function carrierSlug(mode: CarrierMode): string {
-  return mode.replace(/-/g, '_');
-}
 
 const limitsShape = {
   max_sessions: z.number().int().min(0),
@@ -122,6 +120,45 @@ const defaultValues: FormValues = {
   telemt_limits: { ...EMPTY_TELEMT_LIMITS_FORM },
 };
 
+function useSummary(values: FormValues, scope: TransportScope, limitCount: number): string {
+  const { t, i18n } = useTranslation();
+  const parts: string[] = [];
+  const name = values.label.trim() || t('keys.create_summary_no_name');
+
+  if (values.mode === 'batch') {
+    parts.push(t('keys.create_summary_batch', { prefix: values.prefix.trim() || name, count: values.count }));
+  } else if (values.mode === 'personal') {
+    parts.push(t('keys.create_summary_personal', { label: name }));
+    if (values.owner_label.trim()) parts.push(t('keys.create_summary_owner', { owner: values.owner_label.trim() }));
+  } else {
+    parts.push(t('keys.create_summary_shared', { label: name }));
+  }
+
+  parts.push(
+    values.node_ids.length === 0
+      ? t('keys.create_summary_nodes_none')
+      : t('keys.create_summary_nodes', { count: values.node_ids.length }),
+  );
+
+  const expires = values.expires_at.trim() ? new Date(values.expires_at) : null;
+  parts.push(
+    expires && !Number.isNaN(expires.getTime())
+      ? t('keys.create_summary_expires', { date: formatDateTime(expires, i18n.language) })
+      : t('keys.create_summary_no_expiry'),
+  );
+
+  if (scope === 'telemt') parts.push(t('keys.create_summary_transport_auto'));
+  else if (scope !== 'none') {
+    parts.push(t('keys.create_summary_transport_mode', { mode: t(`keys.carrier_${carrierSlug(values.carrier_mode)}`) }));
+  }
+
+  parts.push(
+    limitCount === 0 ? t('keys.create_summary_limits_none') : t('keys.create_summary_limits_set', { count: limitCount }),
+  );
+
+  return parts.join(' · ');
+}
+
 interface CreateKeyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -137,7 +174,7 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
   const nodesQuery = useNodes();
   const createKey = useCreateKey();
   const batchKeys = useBatchKeys();
-  const [showLimits, setShowLimits] = useState(false);
+  const [view, setView] = useState<'main' | 'limits'>('main');
 
   const {
     control,
@@ -155,26 +192,31 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
 
   const values = watch();
   const mode = values.mode;
-  const carrierMode = values.carrier_mode;
-  const selectedNodeIds = values.node_ids;
   const nodes = nodesQuery.data?.items ?? [];
+  const scope = transportScope(nodes, values.node_ids);
+  const limitCount = countLimits(values.limits, values.telemt_limits);
+  const summary = useSummary(values, scope, limitCount);
+  const limitsInvalid = !!errors.limits || !!errors.telemt_limits;
 
   // One draft for the whole dialog: the tab is a form value, so a batch left half-typed comes back as a batch.
   const draft = useDraft<FormValues>('key-create', values, { initial: defaultValues, open });
 
   const resumeDraft = () => {
     if (!draft.draft) return;
-    const saved = draft.draft.value;
-    reset(saved, { keepDefaultValues: true });
-    setShowLimits(Object.values(saved.limits ?? {}).some((v) => Number(v) > 0));
+    reset(draft.draft.value, { keepDefaultValues: true });
+    setView('main');
     draft.dismiss();
   };
-  const hasTelemtNode = nodes.some((n) => n.engine === 'telemt' && selectedNodeIds.includes(n.id));
 
   const close = () => {
     reset(defaultValues);
-    setShowLimits(false);
+    setView('main');
     onOpenChange(false);
+  };
+
+  const clearLimits = () => {
+    setValue('limits', { ...ZERO_LIMITS });
+    setValue('telemt_limits', { ...EMPTY_TELEMT_LIMITS_FORM });
   };
 
   const limitsError = (name: LimitFieldName): string | undefined => {
@@ -193,12 +235,13 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
 
   const onSubmit = async (values: FormValues) => {
     const limits: ProfileLimits = { ...values.limits };
+    const carrier = transportScope(nodes, values.node_ids) === 'telemt' ? 'https' : values.carrier_mode;
     const payload: KeyInput = {
       label: values.mode === 'batch' ? values.prefix.trim() : values.label.trim(),
       type: values.mode === 'personal' ? 'PERSONAL' : 'SHARED',
       owner_label: values.mode === 'personal' ? values.owner_label.trim() : undefined,
       note: values.note.trim() || undefined,
-      carrier_mode: values.carrier_mode,
+      carrier_mode: carrier,
       limits,
       telemt_limits: telemtLimitsFromForm(values.telemt_limits),
       expires_at: values.expires_at.trim() ? new Date(values.expires_at).toISOString() : undefined,
@@ -239,6 +282,10 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
     }
   };
 
+  const onInvalid = (failed: typeof errors) => {
+    if (failed.limits || failed.telemt_limits) setView('limits');
+  };
+
   return (
     <Dialog
       open={open}
@@ -256,160 +303,169 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
           <DialogDescription>{t('keys.create_description')}</DialogDescription>
         </DialogHeader>
 
-        {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
+        {view === 'main' && draft.draft && (
+          <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />
+        )}
 
-        <Controller
-          control={control}
-          name="mode"
-          render={({ field }) => (
-            <Tabs value={field.value} onValueChange={(v) => field.onChange(v as FormValues['mode'])}>
-              <TabsList>
-                <TabsTrigger value="shared">{t('keys.tab_shared')}</TabsTrigger>
-                <TabsTrigger value="personal">{t('keys.tab_personal')}</TabsTrigger>
-                <TabsTrigger value="batch">{t('keys.tab_batch')}</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
-        />
+        {view === 'main' && (
+          <Controller
+            control={control}
+            name="mode"
+            render={({ field }) => (
+              <Tabs value={field.value} onValueChange={(v) => field.onChange(v as FormValues['mode'])}>
+                <TabsList>
+                  <TabsTrigger value="shared">{t('keys.tab_shared')}</TabsTrigger>
+                  <TabsTrigger value="personal">{t('keys.tab_personal')}</TabsTrigger>
+                  <TabsTrigger value="batch">{t('keys.tab_batch')}</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          />
+        )}
 
         <form
           id={FORM_ID}
-          className="max-h-[60vh] divide-y divide-hairline overflow-y-auto pr-1"
-          onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+          className="max-h-[56vh] overflow-y-auto pr-1"
+          onSubmit={(e) => void handleSubmit(onSubmit, onInvalid)(e)}
           noValidate
         >
-          {/* What the key is called. */}
-          <section className={GROUP_CLASS}>
-            {mode === 'batch' ? (
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-[1fr_auto]">
-                <div className="space-y-2">
-                  <Label htmlFor="key-prefix">{t('keys.field_prefix')}</Label>
-                  <Input id="key-prefix" autoFocus placeholder="vip" {...register('prefix')} aria-invalid={!!errors.prefix} />
-                  <p className="text-label text-mute">{t('keys.field_prefix_hint')}</p>
-                  {errors.prefix && <p className="text-label text-destructive">{t('common.required')}</p>}
+          <div hidden={view !== 'main'} className="divide-y divide-hairline">
+            {/* Who it is for. */}
+            <section className={GROUP_CLASS}>
+              {mode === 'batch' ? (
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-[1fr_auto]">
+                  <div className="space-y-2">
+                    <Label htmlFor="key-prefix">{t('keys.field_prefix')}</Label>
+                    <Input id="key-prefix" autoFocus placeholder="vip" {...register('prefix')} aria-invalid={!!errors.prefix} />
+                    <p className="text-label text-mute">{t('keys.field_prefix_hint')}</p>
+                    {errors.prefix && <p className="text-label text-destructive">{t('common.required')}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="key-count">{t('keys.field_count')}</Label>
+                    <Input
+                      id="key-count"
+                      type="number"
+                      min={1}
+                      max={100}
+                      className="mono w-24 text-mono"
+                      {...register('count')}
+                      aria-invalid={!!errors.count}
+                    />
+                    {errors.count && <p className="text-label text-destructive">{t('keys.validation_count')}</p>}
+                  </div>
                 </div>
+              ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="key-count">{t('keys.field_count')}</Label>
-                  <Input
-                    id="key-count"
-                    type="number"
-                    min={1}
-                    max={100}
-                    className="mono w-24 text-mono"
-                    {...register('count')}
-                    aria-invalid={!!errors.count}
-                  />
-                  {errors.count && <p className="text-label text-destructive">{t('keys.validation_count')}</p>}
+                  <Label htmlFor="key-label">{t('keys.field_label')}</Label>
+                  <Input id="key-label" autoFocus {...register('label')} aria-invalid={!!errors.label} />
+                  {errors.label && <p className="text-label text-destructive">{t('common.required')}</p>}
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="key-label">{t('keys.field_label')}</Label>
-                <Input id="key-label" autoFocus {...register('label')} aria-invalid={!!errors.label} />
-                {errors.label && <p className="text-label text-destructive">{t('common.required')}</p>}
-              </div>
-            )}
-
-            {mode === 'personal' && (
-              <div className="space-y-2">
-                <Label htmlFor="key-owner">{t('keys.field_owner_label')}</Label>
-                <Input id="key-owner" {...register('owner_label')} aria-invalid={!!errors.owner_label} />
-                <p className="text-label text-mute">{t('keys.field_owner_label_hint')}</p>
-                {errors.owner_label && <p className="text-label text-destructive">{t('common.required')}</p>}
-              </div>
-            )}
-          </section>
-
-          {/* Where it lives, and how it travels. */}
-          <section className={GROUP_CLASS}>
-            <div className="space-y-2">
-              <Label>{t('keys.field_nodes')}</Label>
-              <Controller
-                control={control}
-                name="node_ids"
-                render={({ field }) => <NodeCapacityList nodes={nodes} selectedIds={field.value} onChange={field.onChange} />}
-              />
-              {errors.node_ids && <p className="text-label text-destructive">{t('keys.validation_node_ids')}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="key-carrier">{t('keys.field_carrier_mode')}</Label>
-              <Select value={carrierMode} onValueChange={(v) => setValue('carrier_mode', v as CarrierMode)}>
-                <SelectTrigger id="key-carrier" className="w-full">
-                  {/* Resolve the label explicitly - SelectValue only reflects a matched item's
-                      rendered label once the popup has mounted at least once, so it would
-                      otherwise show the raw value ("https-lanes"). */}
-                  <SelectValue>{(v: CarrierMode) => t(`keys.carrier_${carrierSlug(v ?? 'https')}`)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {CARRIER_MODES.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {t(`keys.carrier_${carrierSlug(m)}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-label text-mute">{t(`keys.carrier_${carrierSlug(carrierMode)}_desc`)}</p>
-            </div>
-          </section>
-
-          {/* How long it lasts. */}
-          <section className={GROUP_CLASS}>
-            <div className="space-y-2">
-              <Label htmlFor="key-expires">
-                {t('keys.field_expires_at')} <span className="font-normal text-mute">({t('keys.field_optional')})</span>
-              </Label>
-              <Input
-                id="key-expires"
-                type="datetime-local"
-                className="mono w-fit text-mono"
-                {...register('expires_at')}
-                aria-invalid={!!errors.expires_at}
-              />
-              {errors.expires_at && <p className="text-label text-destructive">{t('keys.validation_expires_future')}</p>}
-            </div>
-          </section>
-
-          {/* What it is allowed to do. Both blocks are limits, so they share one
-              group and the advanced set stays folded away inside it. */}
-          <section className={GROUP_CLASS}>
-            <div className="flex items-center gap-2">
-              <h3 className="micro text-mute">{t('keys.telemt_limits_title')}</h3>
-              <HelpButton topic="keys.limits" className="-my-1" />
-            </div>
-            <Controller
-              control={control}
-              name="telemt_limits"
-              render={({ field }) => (
-                <TelemtLimitsFields
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={!hasTelemtNode}
-                  errors={telemtLimitsErrors()}
-                />
               )}
-            />
 
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowLimits((v) => !v)}
-                aria-expanded={showLimits}
-                className="-my-1 flex w-full items-center gap-2 py-1 text-label text-mute transition-[color,scale] outline-none hover:text-foreground focus-visible:text-foreground active:scale-[0.985]"
-              >
-                <ChevronRight className={cn('size-3.5 transition-transform', showLimits && 'rotate-90')} />
-                {t('keys.field_limits_toggle')}
-              </button>
-              {showLimits && (
+              {mode === 'personal' && (
+                <div className="space-y-2">
+                  <Label htmlFor="key-owner">{t('keys.field_owner_label')}</Label>
+                  <Input id="key-owner" {...register('owner_label')} aria-invalid={!!errors.owner_label} />
+                  <p className="text-label text-mute">{t('keys.field_owner_label_hint')}</p>
+                  {errors.owner_label && <p className="text-label text-destructive">{t('common.required')}</p>}
+                </div>
+              )}
+            </section>
+
+            {/* Where it works. */}
+            <section className={GROUP_CLASS}>
+              <div className="space-y-2">
+                <Label>{t('keys.field_nodes')}</Label>
                 <Controller
                   control={control}
-                  name="limits"
-                  render={({ field }) => (
-                    <LimitsFields
-                      className="mt-4"
-                      value={field.value}
-                      onChange={field.onChange}
-                      errors={{
+                  name="node_ids"
+                  render={({ field }) => <NodeCapacityList nodes={nodes} selectedIds={field.value} onChange={field.onChange} />}
+                />
+                {errors.node_ids && <p className="text-label text-destructive">{t('keys.validation_node_ids')}</p>}
+              </div>
+
+              <Controller
+                control={control}
+                name="carrier_mode"
+                render={({ field }) => <TransportField scope={scope} value={field.value} onChange={field.onChange} />}
+              />
+            </section>
+
+            {/* How long it lasts. */}
+            <section className={GROUP_CLASS}>
+              <div className="space-y-2">
+                <Label htmlFor="key-expires">
+                  {t('keys.field_expires_at')} <span className="font-normal text-mute">({t('keys.field_optional')})</span>
+                </Label>
+                <Input
+                  id="key-expires"
+                  type="datetime-local"
+                  className="mono w-fit text-mono"
+                  {...register('expires_at')}
+                  aria-invalid={!!errors.expires_at}
+                />
+                {errors.expires_at && <p className="text-label text-destructive">{t('keys.validation_expires_future')}</p>}
+              </div>
+            </section>
+
+            {/* What it is allowed to do. */}
+            <section className={GROUP_CLASS}>
+              <button
+                type="button"
+                onClick={() => setView('limits')}
+                className={cn(
+                  'flex w-full items-center justify-between gap-4 rounded-control border border-hairline px-3 py-2 text-left transition-[background-color,scale] hover:bg-elevated active:scale-[0.99]',
+                  limitsInvalid && 'border-destructive',
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-body text-foreground">{t('keys.limits_entry_label')}</span>
+                  <span className={cn('block text-label', limitsInvalid ? 'text-destructive' : 'text-mute')}>
+                    {limitsInvalid
+                      ? t('keys.limits_entry_invalid')
+                      : limitCount === 0
+                        ? t('keys.limits_entry_none')
+                        : t('keys.limits_entry_set', { count: limitCount })}
+                  </span>
+                </span>
+                <SlidersHorizontal size={16} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-mute" />
+              </button>
+            </section>
+
+            {/* Anything the operator wants to remember about it. */}
+            <section className={GROUP_CLASS}>
+              <div className="space-y-2">
+                <Label htmlFor="key-note">
+                  {t('keys.field_note')} <span className="font-normal text-mute">({t('keys.field_optional')})</span>
+                </Label>
+                <Textarea id="key-note" rows={2} {...register('note')} />
+              </div>
+
+              {errors.root && (
+                <p role="alert" className="flex items-start gap-2 text-body text-destructive">
+                  <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-destructive" aria-hidden="true" />
+                  {errors.root.message}
+                </p>
+              )}
+            </section>
+          </div>
+
+          {view === 'limits' && (
+            <Controller
+              control={control}
+              name="limits"
+              render={({ field: limitsField }) => (
+                <Controller
+                  control={control}
+                  name="telemt_limits"
+                  render={({ field: telemtField }) => (
+                    <KeyLimitsPanel
+                      limits={limitsField.value}
+                      onLimitsChange={limitsField.onChange}
+                      telemt={telemtField.value}
+                      onTelemtChange={telemtField.onChange}
+                      telemtAvailable={scope === 'telemt' || scope === 'mixed'}
+                      limitsErrors={{
                         max_sessions: limitsError('max_sessions'),
                         max_streams: limitsError('max_streams'),
                         max_backend_dials_in_flight: limitsError('max_backend_dials_in_flight'),
@@ -420,37 +476,42 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
                         max_streams_per_session: limitsError('max_streams_per_session'),
                         max_pending_per_session: limitsError('max_pending_per_session'),
                       }}
+                      telemtErrors={telemtLimitsErrors()}
+                      onBack={() => setView('main')}
                     />
                   )}
                 />
               )}
-            </div>
-          </section>
-
-          {/* Anything the operator wants to remember about it. */}
-          <section className={GROUP_CLASS}>
-            <div className="space-y-2">
-              <Label htmlFor="key-note">{t('keys.field_note')}</Label>
-              <Textarea id="key-note" rows={2} {...register('note')} />
-            </div>
-
-            {errors.root && (
-              <p role="alert" className="flex items-start gap-2 text-body text-destructive">
-                <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-destructive" aria-hidden="true" />
-                {errors.root.message}
-              </p>
-            )}
-          </section>
+            />
+          )}
         </form>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={close} disabled={isSubmitting}>
-            {t('common.cancel')}
-          </Button>
-          <Button type="submit" form={FORM_ID} disabled={isSubmitting}>
-            {mode === 'batch' ? t('keys.create_batch_submit') : t('keys.create_submit')}
-          </Button>
-        </DialogFooter>
+        {view === 'main' && (
+          <div className="rounded-control bg-elevated px-3 py-2">
+            <p className="micro text-mute">{t('keys.create_summary_title')}</p>
+            <p className="mt-1 text-label text-foreground">{summary}</p>
+          </div>
+        )}
+
+        {view === 'limits' ? (
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={clearLimits}>
+              {t('keys.limits_edit_reset')}
+            </Button>
+            <Button type="button" onClick={() => setView('main')}>
+              {t('keys.limits_edit_done')}
+            </Button>
+          </DialogFooter>
+        ) : (
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={close} disabled={isSubmitting}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" form={FORM_ID} disabled={isSubmitting}>
+              {mode === 'batch' ? t('keys.create_batch_submit') : t('keys.create_submit')}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
