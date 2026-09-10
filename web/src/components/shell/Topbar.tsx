@@ -14,12 +14,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Lang } from '@/i18n';
 import { setLang } from '@/i18n';
+import { cn } from '@/lib/utils';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import { navItemForPath } from './nav';
-import { StatusMenuRows } from './StatusChips';
+import { StatusChips, StatusMenuRows } from './StatusChips';
 
 const ROLE_KEY: Record<string, string> = {
   owner: 'common.role_owner',
@@ -27,32 +29,31 @@ const ROLE_KEY: Record<string, string> = {
   viewer: 'common.role_viewer',
 };
 
-/** `ru | en`, a hairline pair rather than a dropdown - there are only two. */
-function LanguageSwitch() {
-  const { t, i18n } = useTranslation();
-  const current = (i18n.language?.startsWith('en') ? 'en' : 'ru') as Lang;
+/** One square in the header's control row. The chips next to it carry the same height and radius. */
+const SQUARE = 'size-9 rounded-surface border border-hairline-strong text-mute hover:text-foreground';
 
+function HeaderButton({
+  label,
+  onClick,
+  className,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div
-      className="mono flex h-7 items-stretch overflow-hidden rounded-control border border-hairline-strong text-micro"
-      role="group"
-      aria-label={t('common.language')}
-    >
-      {(['ru', 'en'] as const).map((lang) => (
-        <button
-          key={lang}
-          type="button"
-          onClick={() => setLang(lang)}
-          aria-pressed={current === lang}
-          className={
-            'flex h-full items-center px-2 transition-[background-color,color,scale] duration-fast ease-out active:scale-[0.985] ' +
-            (current === lang ? 'bg-elevated text-foreground' : 'text-mute hover:text-foreground')
-          }
-        >
-          {lang}
-        </button>
-      ))}
-    </div>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button type="button" variant="ghost" size="icon-sm" onClick={onClick} aria-label={label} className={cn(SQUARE, className)} />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -62,15 +63,16 @@ interface TopbarProps {
 }
 
 export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const location = useLocation();
   const section = navItemForPath(location.pathname);
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const lang = (i18n.language?.startsWith('en') ? 'en' : 'ru') as Lang;
 
   return (
-    <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-hairline bg-card px-3 sm:px-5">
+    <header className="flex min-h-16 shrink-0 items-center gap-2 border-b border-hairline bg-card px-3 sm:px-5">
       <Button
         type="button"
         variant="ghost"
@@ -92,49 +94,37 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
         )}
       </p>
 
-      {/*
-        Not an input: it is a button that opens the palette, so there is only
-        one search box in the product and one place typing goes.
-      */}
-      <button
-        type="button"
-        onClick={onOpenCommand}
-        className="hidden h-9 w-56 items-center gap-2 rounded-control border border-hairline-strong px-2.5 text-label text-mute transition-[background-color,color,scale] duration-fast ease-out hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985] md:flex xl:w-64"
-      >
-        <Search className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="truncate">{t('shell.command_placeholder')}</span>
-        <Badge render={<kbd />} className="ml-auto">
-          {isMac ? '⌘K' : 'Ctrl K'}
-        </Badge>
-      </button>
-
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="md:hidden"
-        onClick={onOpenCommand}
-        aria-label={t('shell.command_placeholder')}
-      >
+      {/* The palette is the only search in the product, so this opens it rather than taking text. */}
+      <HeaderButton label={`${t('shell.command_placeholder')} (${isMac ? '⌘K' : 'Ctrl K'})`} onClick={onOpenCommand}>
         <Search />
-      </Button>
+      </HeaderButton>
 
-      <LanguageSwitch />
+      {/* Below lg the row would not fit; the same facts are rows in the menu. */}
+      <StatusChips className="hidden lg:flex" />
 
-      <Button type="button" variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={t('common.theme')}>
+      <HeaderButton
+        label={t('common.language')}
+        onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}
+        className="mono text-micro"
+      >
+        {lang.toUpperCase()}
+      </HeaderButton>
+
+      <HeaderButton label={t('common.theme')} onClick={toggleTheme}>
         {theme === 'dark' ? <Sun /> : <Moon />}
-      </Button>
+      </HeaderButton>
 
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" className="gap-2 px-1.5" />}>
+        <DropdownMenuTrigger
+          render={<Button type="button" variant="ghost" size="sm" className="h-9 gap-2 rounded-surface border border-hairline-strong px-1.5 pr-2.5" />}
+        >
           <span className="flex size-5 items-center justify-center rounded-pill border border-hairline-strong text-micro font-medium text-foreground">
             {(user?.username ?? '?').charAt(0).toUpperCase()}
           </span>
           <span className="hidden max-w-28 truncate sm:inline">{user?.username}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          {/* Below md the topbar has no room for the status chips, so the
-              same facts open the menu as plain rows. */}
+          {/* Below lg the header has no room for the chips, so the same facts open the menu as rows. */}
           <StatusMenuRows />
           <DropdownMenuSeparator />
           <DropdownMenuGroup>

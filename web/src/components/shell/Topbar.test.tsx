@@ -21,14 +21,14 @@ function json(body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
 }
 
-function renderTopbar() {
+function renderTopbar({ onOpenCommand = () => {} }: { onOpenCommand?: () => void } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/']}>
         <ThemeProvider>
           <AuthProvider>
-            <Topbar onOpenMenu={() => {}} onOpenCommand={() => {}} />
+            <Topbar onOpenMenu={() => {}} onOpenCommand={onOpenCommand} />
           </AuthProvider>
         </ThemeProvider>
       </MemoryRouter>
@@ -66,14 +66,23 @@ describe('Topbar status chips', () => {
     } as unknown as ReturnType<typeof usePublicStatus>);
   });
 
-  it('keeps system details out of the header', () => {
+  it('shows version, stars and the fleet in the header', () => {
     renderTopbar();
-    expect(screen.queryByTestId('version-chip')).toBeNull();
-    expect(screen.queryByTestId('github-chip')).toBeNull();
-    expect(screen.queryByTestId('nodes-chip')).toBeNull();
+    expect(screen.getByTestId('version-chip')).toHaveTextContent('v1.2.0');
+    expect(screen.getByTestId('github-chip')).toHaveTextContent('12k');
+    expect(screen.getByTestId('nodes-chip')).toHaveTextContent('2/2');
   });
 
-  it('keeps version, update and fleet details accessible in the user menu', async () => {
+  it('opens the palette from a single search control', () => {
+    const onOpenCommand = vi.fn();
+    renderTopbar({ onOpenCommand });
+    const search = screen.getAllByRole('button', { name: /Поиск|Search/ });
+    expect(search).toHaveLength(1);
+    search[0].click();
+    expect(onOpenCommand).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the same details in the user menu, where narrow screens read them', async () => {
     renderTopbar();
     const user = userEvent.setup();
 
