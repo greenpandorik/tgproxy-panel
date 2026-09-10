@@ -16,9 +16,10 @@ their health. One panel manages many nodes; a node runs [telemt](https://github.
 or tproxy-server, and a small agent on the node takes instructions from the panel.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="49%" alt="Overview: fleet verdict, what needs attention, and every server at a glance">
-  <img src="docs/screenshots/websites.png" width="49%" alt="Websites: fifteen built-in decoy sites, each uniquified per node">
+  <img src="docs/screenshots/issue-a-key.gif" width="90%" alt="Issuing a key: name it, bind it to two nodes, and get a WEB link and a Fake-TLS link with QR codes">
 </p>
+
+<p align="center"><sub>Issuing a key: name it, bind it to two servers, and out come both links with QR codes.</sub></p>
 
 ## What it does differently
 
@@ -58,6 +59,11 @@ whether reopening actually succeeded.
 Beyond that: shared and personal keys with batch creation, public subscription pages, a fleet
 overview that leads with a verdict, Prometheus metrics and a Grafana dashboard, Telegram alerts,
 an audit log, TOTP with recovery codes, nightly backups and master-key rotation.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="49%" alt="Overview: fleet verdict, what needs attention, and every server at a glance">
+  <img src="docs/screenshots/websites.png" width="49%" alt="Websites: fifteen built-in decoy sites, each uniquified per node">
+</p>
 
 ## Quick start
 
