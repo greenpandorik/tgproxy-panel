@@ -9,6 +9,15 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
+// names renders a list of resource names. An empty list is an empty JSON array, never null:
+// "nothing is saturated" is an answer, and the UI reads these as arrays.
+func names(v []string) []string {
+	if v == nil {
+		return []string{}
+	}
+	return v
+}
+
 // webRuntimeJSON projects the WEB runtime state of the last heartbeat. It returns nil - a JSON
 // null - when the node reported none, which is "not available" and not a stopped runtime.
 func webRuntimeJSON(w *nodedriver.WebTelemetry) map[string]any {
@@ -62,8 +71,8 @@ func webRuntimeJSON(w *nodedriver.WebTelemetry) map[string]any {
 			"connection_capacity_action":    c.ConnectionCapacityAction,
 			"max_http_overload_connections": c.MaxHTTPOverloadConnections,
 			"http_overload_timeout_ms":      c.HTTPOverloadTimeoutMs,
-			"resources":                     resources, "saturated_resources": c.SaturatedResources,
-			"partial": c.Partial, "overload_outcomes": outcomes,
+			"resources":                     resources, "saturated_resources": names(c.SaturatedResources),
+			"partial": names(c.Partial), "overload_outcomes": outcomes,
 		}
 	}
 	return out

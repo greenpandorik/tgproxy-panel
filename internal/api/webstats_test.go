@@ -250,3 +250,66 @@ func TestNodeHealthCarriesTheWebRuntimeState(t *testing.T) {
 		t.Fatalf("overload outcomes = %+v", outcomes)
 	}
 }
+
+// A healthy node saturates nothing, and that is the common case: the list is empty, not absent.
+// It has to reach the browser as [] - the WEB tab reads its length - and a nil Go slice would
+// marshal to null and take the tab down.
+func TestWebCapacityNameListsAreArraysWhenEmpty(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	report := nodedriver.HealthReport{RelayActive: true, Web: &nodedriver.WebTelemetry{
+		Runtime: &nodedriver.WebRuntimeState{
+			RuntimeInstance: "inst-1",
+			Capacity: &nodedriver.WebCapacityState{
+				ConnectionCapacityAction: "wait",
+				Resources:                []nodedriver.WebCapacityResource{{Resource: "http_connections", Unit: "slots", Used: 7, Limit: 32, Available: 25}},
+			},
+		},
+	}}
+	raw, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Store.Q.SetNodeHeartbeat(t.Context(), db.SetNodeHeartbeatParams{ID: n.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	var out struct {
+		Health map[string]any `json:"health"`
+	}
+	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &out)
+	rt, _ := out.Health["web_runtime"].(map[string]any)
+	capacity, _ := rt["capacity"].(map[string]any)
+	if capacity == nil {
+		t.Fatalf("web_runtime = %+v", out.Health["web_runtime"])
+	}
+	for _, field := range []string{"saturated_resources", "partial"} {
+		v, ok := capacity[field]
+		if !ok {
+			t.Fatalf("%s is missing from capacity %+v", field, capacity)
+		}
+		list, isList := v.([]any)
+		if !isList {
+			t.Fatalf("%s = %v (%T), want an empty array", field, v, v)
+		}
+		if len(list) != 0 {
+			t.Fatalf("%s = %v, want empty", field, list)
+		}
+	}
+
+	report.Web.Runtime.Capacity.SaturatedResources = []string{"http_connections"}
+	report.Web.Runtime.Capacity.Partial = []string{"websockets"}
+	if raw, err = json.Marshal(report); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Store.Q.SetNodeHeartbeat(t.Context(), db.SetNodeHeartbeatParams{ID: n.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+		t.Fatal(err)
+	}
+	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &out)
+	rt, _ = out.Health["web_runtime"].(map[string]any)
+	capacity, _ = rt["capacity"].(map[string]any)
+	if got, _ := capacity["saturated_resources"].([]any); len(got) != 1 || got[0] != "http_connections" {
+		t.Fatalf("saturated_resources = %v", capacity["saturated_resources"])
+	}
+	if got, _ := capacity["partial"].([]any); len(got) != 1 || got[0] != "websockets" {
+		t.Fatalf("partial = %v", capacity["partial"])
+	}
+}
