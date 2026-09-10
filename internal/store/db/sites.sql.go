@@ -106,7 +106,9 @@ func (q *Queries) GetSiteTemplate(ctx context.Context, id uuid.UUID) (SiteTempla
 }
 
 const listSiteTemplates = `-- name: ListSiteTemplates :many
-SELECT id, name, is_preset, created_at, updated_at FROM site_templates ORDER BY is_preset DESC, name
+SELECT t.id, t.name, t.is_preset, t.created_at, t.updated_at,
+ (SELECT count(*) FROM node_sites n WHERE n.template_id = t.id) AS used_by
+FROM site_templates t ORDER BY t.is_preset DESC, t.name
 `
 
 type ListSiteTemplatesRow struct {
@@ -115,6 +117,7 @@ type ListSiteTemplatesRow struct {
 	IsPreset  bool      `json:"is_preset"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	UsedBy    int64     `json:"used_by"`
 }
 
 func (q *Queries) ListSiteTemplates(ctx context.Context) ([]ListSiteTemplatesRow, error) {
@@ -132,6 +135,7 @@ func (q *Queries) ListSiteTemplates(ctx context.Context) ([]ListSiteTemplatesRow
 			&i.IsPreset,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UsedBy,
 		); err != nil {
 			return nil, err
 		}

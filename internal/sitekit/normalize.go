@@ -114,7 +114,7 @@ func Normalize(src string, assets map[string][]byte) (Bundle, Report, error) {
 	files := map[string][]byte{}
 	for p, c := range assets {
 		clean, ok := sanitizeAssetPath(p)
-		if !ok {
+		if !ok || !StaticAssetPath(clean) {
 			rep.Errors = append(rep.Errors, "invalid asset path: "+p)
 			continue
 		}

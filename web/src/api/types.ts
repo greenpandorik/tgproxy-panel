@@ -67,6 +67,131 @@ export interface DcLatency {
   ip_preference: string;
 }
 
+/** telemt's carrier names, in the order the panel lists them. */
+export type Carrier = 'websocket-lanes' | 'websocket' | 'https-lanes' | 'https';
+
+export const CARRIERS: Carrier[] = ['websocket-lanes', 'websocket', 'https-lanes', 'https'];
+
+export interface WebLearningState {
+  enabled: boolean;
+  entries: number;
+  capacity: number;
+  policy_generation: number;
+  epoch: number;
+  lifetime_secs: number;
+  health_secs: number;
+  age_ms: number;
+}
+
+export interface WebDrainState {
+  operation_id: string;
+  state: string;
+  outcome: string;
+  timeout_secs: number;
+  started_epoch_millis: number;
+  deadline_epoch_millis: number;
+  remaining_sessions: number;
+  remaining_streams: number;
+  remaining_websockets: number;
+  force_close_signalled: boolean;
+}
+
+export interface WebLifecycleState {
+  state: string;
+  epoch: number;
+  age_ms: number;
+  admission_open: boolean;
+  effective_new_work_admission: boolean;
+  drain: WebDrainState | null;
+}
+
+export interface WebCapacityResource {
+  resource: string;
+  unit: 'slots' | 'bytes' | 'items' | string;
+  used: number;
+  available: number;
+  limit: number;
+  closed: boolean;
+}
+
+export interface WebCapacityState {
+  connection_capacity_action: 'drop' | 'wait' | 'respond' | string;
+  max_http_overload_connections: number;
+  http_overload_timeout_ms: number;
+  resources: WebCapacityResource[];
+  saturated_resources: string[];
+  partial: string[];
+  overload_outcomes: Record<string, number>;
+}
+
+/** The WEB runtime telemt reported. Learning and lifecycle are null when its status carried none. */
+export interface WebRuntime {
+  runtime_instance: string;
+  carrier_negotiation: boolean;
+  learning: WebLearningState | null;
+  lifecycle: WebLifecycleState | null;
+  capacity: WebCapacityState | null;
+}
+
+/**
+ * One carrier's slice of the selection distribution. `selections` and `share` are null for a
+ * carrier no node reported - absent, never a measured zero.
+ */
+export interface WebCarrierShare {
+  carrier: string;
+  selections: number | null;
+  share: number | null;
+}
+
+/**
+ * The WEB counters over one window. Every counter is nullable: null means telemt exposed no
+ * such metric family, which is not the same as a reading of zero.
+ */
+export interface WebCarrierStats {
+  from: string;
+  to: string;
+  samples: number;
+  counter_resets: number;
+  carrier_selections: number | null;
+  carrier_failures: number | null;
+  rejected_attempts: number | null;
+  evicted_sessions: number | null;
+  bridge_recoveries: number | null;
+  learning_entries: number | null;
+  carrier_selection_distribution: WebCarrierShare[];
+}
+
+/** A capability set the panel worked out for itself. A null value is one it could not settle. */
+export type TelemtCapabilities = Record<string, boolean | null>;
+
+export type CheckStatus = 'ok' | 'warn' | 'fail' | 'not_available';
+
+export interface DiagnosticCheck {
+  key: string;
+  status: CheckStatus;
+  value: string | null;
+  detail: string | null;
+}
+
+export interface DiagnosticGroup {
+  key: string;
+  checks: DiagnosticCheck[];
+}
+
+/** One diagnostics pass. `passed`/`total` exclude the checks that could not run. */
+export interface DiagnosticsRun {
+  id: number;
+  node_id: string;
+  started_at: string;
+  finished_at: string | null;
+  overall_status: 'healthy' | 'degraded' | 'offline' | 'unknown';
+  trigger: string;
+  groups: DiagnosticGroup[];
+  passed: number;
+  total: number;
+  not_run: number;
+}
+
 export interface NodeHealth {
   relay_active: boolean;
   mtproxy_active: boolean;
@@ -90,6 +215,8 @@ export interface NodeHealth {
   upstream_last_check_age_secs?: number;
   /** False on tproxy, and when telemt reported its upstreams as disabled or the call failed. */
   dc_data_available?: boolean;
+  /** The WEB runtime as the last heartbeat carried it. Null when the node reported none. */
+  web_runtime?: WebRuntime | null;
 }
 
 export interface NodeCheckResult {
@@ -122,6 +249,10 @@ export interface Node {
   /** Sponsor-channel tag from @MTProxybot, or empty. telemt only. */
   ad_tag: string;
   telemt_version: string;
+  telemt_build?: string;
+  /** What the panel worked out this node's telemt can do. Null: it has not determined them yet. */
+  telemt_capabilities?: TelemtCapabilities | null;
+  telemt_capabilities_checked_at?: string | null;
   tproxy_version: string;
   agent_version: string;
   max_profiles: number;
@@ -387,6 +518,11 @@ export interface KeyStats {
 // --- site templates ---------------------------------------------------
 
 export interface SiteTemplate {
+  display_name?: string;
+  category?: string;
+  used_by?: number;
+  screenshot_url?: string;
+  variables?: Record<string, string>;
   id: string;
   name: string;
   is_preset: boolean;
@@ -418,6 +554,8 @@ export interface NodeSite {
   bundle_hash: string;
   deployed_hash: string | null;
   files: string[];
+  mode?: 'static' | 'upstream';
+  origin?: string;
   updated_at?: string;
 }
 

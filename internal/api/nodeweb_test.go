@@ -50,12 +50,13 @@ func TestNodeWebPolicyUpdateMarksTheNodeDirty(t *testing.T) {
 		"preset":                             "prefer_websocket",
 		"carriers":                           []string{"websocket-lanes", "websocket"},
 		"carrier_negotiation_aggressiveness": "balanced",
+		"overload":                           map[string]any{"preset": "high_load", "connection_capacity_action": "respond"},
 	})
 	if resp.StatusCode != 200 {
 		t.Fatalf("put %d", resp.StatusCode)
 	}
 	c.JSON(resp, &got)
-	if !got.Overridden || len(got.Policy.Carriers) != 2 || got.Policy.Aggressiveness != domain.AggressivenessBalanced {
+	if !got.Overridden || len(got.Policy.Carriers) != 2 || got.Policy.Aggressiveness != domain.AggressivenessBalanced || got.Policy.Overload.ConnectionCapacityAction != domain.WebCapacityRespond {
 		t.Fatalf("policy %+v", got.Policy)
 	}
 	if got.Policy.Timeouts.BridgeRetrySecs != domain.DefaultWebPolicy().Timeouts.BridgeRetrySecs {
@@ -76,6 +77,7 @@ func TestNodeWebPolicyUpdateMarksTheNodeDirty(t *testing.T) {
 		"preset":                             "prefer_websocket",
 		"carriers":                           []string{"websocket-lanes", "websocket"},
 		"carrier_negotiation_aggressiveness": "balanced",
+		"overload":                           map[string]any{"preset": "high_load", "connection_capacity_action": "respond"},
 	}), &got)
 	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &node)
 	if node.Dirty {
@@ -99,6 +101,7 @@ func TestNodeWebPolicyRejectsWhatTelemtWouldRefuse(t *testing.T) {
 		"empty carriers":   {"carriers": []string{}},
 		"duplicate":        {"carriers": []string{"websocket", "websocket"}},
 		"aggressiveness":   {"carrier_negotiation_aggressiveness": "reckless"},
+		"capacity action":  {"overload": map[string]any{"connection_capacity_action": "queue"}},
 	} {
 		resp := c.Put(path, body)
 		if resp.StatusCode != 422 {

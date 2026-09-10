@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -48,6 +50,37 @@ const (
 	PresetCustom        WebPreset = "custom"
 )
 
+// WebCapacityAction is what telemt does after accepting a private WEB socket while
+// its ordinary HTTP connection pool is full.
+type WebCapacityAction string
+
+const (
+	WebCapacityDrop    WebCapacityAction = "drop"
+	WebCapacityWait    WebCapacityAction = "wait"
+	WebCapacityRespond WebCapacityAction = "respond"
+)
+
+func (a WebCapacityAction) Valid() bool {
+	switch a {
+	case WebCapacityDrop, WebCapacityWait, WebCapacityRespond:
+		return true
+	}
+	return false
+}
+
+type WebOverloadPreset string
+
+const (
+	OverloadBalanced WebOverloadPreset = "balanced"
+	OverloadHighLoad WebOverloadPreset = "high_load"
+	OverloadCustom   WebOverloadPreset = "custom"
+)
+
+type WebOverloadPolicy struct {
+	Preset                   WebOverloadPreset `json:"preset"`
+	ConnectionCapacityAction WebCapacityAction `json:"connection_capacity_action"`
+}
+
 // WebTimeouts mirrors telemt's [web.timeouts]. Every bound below is telemt's own; sending a
 // value outside them is not clamped by telemt, it refuses the config.
 type WebTimeouts struct {
@@ -60,12 +93,13 @@ type WebTimeouts struct {
 }
 
 type WebPolicy struct {
-	Preset          WebPreset      `json:"preset"`
-	Carrier         Carrier        `json:"carrier"`
-	Carriers        []Carrier      `json:"carriers"`
-	CarrierLearning bool           `json:"carrier_learning"`
-	Aggressiveness  Aggressiveness `json:"carrier_negotiation_aggressiveness"`
-	Timeouts        WebTimeouts    `json:"timeouts"`
+	Preset          WebPreset         `json:"preset"`
+	Carrier         Carrier           `json:"carrier"`
+	Carriers        CarrierList       `json:"carriers"`
+	CarrierLearning bool              `json:"carrier_learning"`
+	Aggressiveness  Aggressiveness    `json:"carrier_negotiation_aggressiveness"`
+	Overload        WebOverloadPolicy `json:"overload"`
+	Timeouts        WebTimeouts       `json:"timeouts"`
 }
 
 func DefaultWebPolicy() WebPolicy {
@@ -75,6 +109,10 @@ func DefaultWebPolicy() WebPolicy {
 		Carriers:        []Carrier{CarrierWebSocketLanes, CarrierWebSocket, CarrierHTTPSLanes},
 		CarrierLearning: true,
 		Aggressiveness:  AggressivenessConservative,
+		Overload: WebOverloadPolicy{
+			Preset:                   OverloadBalanced,
+			ConnectionCapacityAction: WebCapacityWait,
+		},
 		Timeouts: WebTimeouts{
 			NegotiationDeadlinesSecs: []int{3, 5, 8, 12},
 			CarrierHealthSecs:        30,
@@ -129,7 +167,13 @@ func (p WebPolicy) Validate() error {
 	if !p.Aggressiveness.Valid() {
 		return fmt.Errorf("carrier_negotiation_aggressiveness %q is not one of conservative, balanced, aggressive", p.Aggressiveness)
 	}
-	if len(p.Carriers) == 0 {
+	if p.Overload.Preset != OverloadBalanced && p.Overload.Preset != OverloadHighLoad && p.Overload.Preset != OverloadCustom {
+		return fmt.Errorf("overload.preset: %q is not one of balanced, high_load, custom", p.Overload.Preset)
+	}
+	if !p.Overload.ConnectionCapacityAction.Valid() {
+		return fmt.Errorf("overload.connection_capacity_action: %q is not one of drop, wait, respond", p.Overload.ConnectionCapacityAction)
+	}
+	if p.Carriers != nil && len(p.Carriers) == 0 {
 		return errors.New("carriers: must not be empty; disable negotiation instead of sending an empty list")
 	}
 	seen := map[Carrier]bool{}
@@ -187,4 +231,34 @@ func (l WebProfileLimits) Validate(g WebGlobalLimits) error {
 		return err
 	}
 	return check("max_streams_per_session", l.MaxStreamsPerSession, g.MaxStreamsPerSession)
+}
+
+// CarrierList preserves Telemt's distinction between false (disabled) and [] (invalid).
+type CarrierList []Carrier
+
+func (c CarrierList) MarshalJSON() ([]byte, error) {
+	if c == nil {
+		return []byte("false"), nil
+	}
+	return json.Marshal([]Carrier(c))
+}
+
+func (c *CarrierList) UnmarshalJSON(raw []byte) error {
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("false")) {
+		*c = nil
+		return nil
+	}
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		*c = CarrierList{}
+		return nil
+	}
+	var values []Carrier
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return err
+	}
+	if values == nil {
+		values = []Carrier{}
+	}
+	*c = values
+	return nil
 }

@@ -289,14 +289,14 @@ export function NodesPage() {
   const deleteNode = useDeleteNode();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [installResult, setInstallResult] = useState<{ command: string; expires_at: string } | null>(null);
+  const [installResult, setInstallResult] = useState<{ command: string; expires_at: string; nodeId?: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Node | null>(null);
 
   const nodes = data?.items ?? [];
   const online = nodes.filter((n) => nodeStatus(n) === 'online').length;
 
   const handleCreated = (result: CreateNodeResult) => {
-    setInstallResult({ command: result.install_command, expires_at: result.expires_at });
+    setInstallResult({ command: result.install_command, expires_at: result.expires_at, nodeId: result.node.id });
   };
 
   const handleDelete = async () => {
@@ -391,6 +391,7 @@ export function NodesPage() {
         <InstallCommandDialog
           open={!!installResult}
           onOpenChange={(open) => !open && setInstallResult(null)}
+          nodeId={installResult.nodeId}
           command={installResult.command}
           expiresAt={installResult.expires_at}
         />

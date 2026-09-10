@@ -18,7 +18,7 @@ func webRuntimeJSON(w *nodedriver.WebTelemetry) map[string]any {
 	r := w.Runtime
 	out := map[string]any{
 		"runtime_instance": r.RuntimeInstance, "carrier_negotiation": r.CarrierNegotiation,
-		"learning": nil, "lifecycle": nil,
+		"learning": nil, "lifecycle": nil, "capacity": nil,
 	}
 	if l := r.Learning; l != nil {
 		out["learning"] = map[string]any{
@@ -43,6 +43,28 @@ func webRuntimeJSON(w *nodedriver.WebTelemetry) map[string]any {
 			}
 		}
 		out["lifecycle"] = m
+	}
+	if c := r.Capacity; c != nil {
+		resources := make([]map[string]any, 0, len(c.Resources))
+		for _, resource := range c.Resources {
+			resources = append(resources, map[string]any{
+				"resource": resource.Resource, "unit": resource.Unit, "used": resource.Used,
+				"available": resource.Available, "limit": resource.Limit, "closed": resource.Closed,
+			})
+		}
+		outcomes := map[string]float64{}
+		if c.OverloadOutcomes != nil {
+			for _, sample := range c.OverloadOutcomes.Samples {
+				outcomes[sample.Label] = sample.Value
+			}
+		}
+		out["capacity"] = map[string]any{
+			"connection_capacity_action":    c.ConnectionCapacityAction,
+			"max_http_overload_connections": c.MaxHTTPOverloadConnections,
+			"http_overload_timeout_ms":      c.HTTPOverloadTimeoutMs,
+			"resources":                     resources, "saturated_resources": c.SaturatedResources,
+			"partial": c.Partial, "overload_outcomes": outcomes,
+		}
 	}
 	return out
 }

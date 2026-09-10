@@ -1,11 +1,16 @@
 import { useTranslation } from 'react-i18next';
 
+import { Link } from 'react-router-dom';
+import { useNode, useNodeHealth } from '@/api/nodes';
+import { Button } from '@/components/ui/button';
+import { WebDiagnosticsCard } from '@/components/web/WebDiagnosticsCard';
 import { CopyButton } from '@/components/common/CopyButton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { HelpButton } from '@/help';
 import { formatDateTime } from '@/lib/format';
 
 interface InstallCommandDialogProps {
+  nodeId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   command: string;
@@ -17,12 +22,14 @@ interface InstallCommandDialogProps {
 const STEPS = ['nodes.install_step1', 'nodes.install_step2', 'nodes.install_step3'] as const;
 
 // The one line that turns a bare server into a node.
-export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, regenerated }: InstallCommandDialogProps) {
+export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, regenerated, nodeId }: InstallCommandDialogProps) {
   const { t, i18n } = useTranslation();
+  const node = useNode(open ? nodeId ?? '' : '');
+  const health = useNodeHealth(nodeId ?? '', open && !!node.data?.online);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <div className="flex items-center gap-1.5">
             <DialogTitle>{t('nodes.install_title')}</DialogTitle>
@@ -30,6 +37,15 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
           </div>
           <DialogDescription>{t('nodes.install_description')}</DialogDescription>
         </DialogHeader>
+
+        <ol className="flex gap-4 border-b border-hairline pb-3 text-label">
+          {[1, 2].map((step) => (
+            <li key={step} className="flex items-center gap-1.5 text-ok">
+              <span aria-hidden="true">✓</span>{step}. {t(`nodes.wizard_step_${step}`)}
+            </li>
+          ))}
+          <li aria-current="step" className="font-semibold text-foreground">3. {t('nodes.wizard_step_3')}</li>
+        </ol>
 
         <div>
           <div className="flex items-start gap-2 rounded-surface border border-hairline-strong bg-background p-3">
@@ -54,6 +70,12 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
           ))}
         </ol>
 
+        {nodeId && <div className="space-y-3 border-t border-hairline pt-4">
+          <p role="status" className="font-medium">{t(node.data?.online ? 'nodes.install_connected' : 'nodes.install_waiting')}</p>
+          {(node.isError || health.isError) && <p role="alert" className="text-destructive">{node.error?.message ?? health.error?.message}</p>}
+          {health.data && <ul className="grid grid-cols-1 gap-2 text-label sm:grid-cols-2">{[['engine', health.data.relay_active], ['caddy', health.data.caddy_active], ['ready', health.data.readyz]].map(([name, ok]) => <li key={String(name)} className={ok ? 'text-ok' : 'text-warn'}>{ok ? '✓' : '○'} {t(`nodes.install_health_${name}`)}</li>)}</ul>}
+          {node.data?.online && <><WebDiagnosticsCard nodeId={nodeId} /><Button nativeButton={false} render={<Link to={`/nodes/${nodeId}`} />}>{t('nodes.install_open')}</Button></>}
+        </div>}
         {regenerated && (
           <p role="alert" className="flex items-start gap-2 text-label text-warn">
             <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />

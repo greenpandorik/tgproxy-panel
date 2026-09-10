@@ -10,7 +10,6 @@ import (
 )
 
 const webStatusBody = `{
-  "runtime_instance": "0123456789abcdef0123456789abcdef",
   "operator_lifecycle": {
     "state": "draining", "epoch": 4, "age_ms": 1200,
     "admission_open": false, "effective_new_work_admission": false,
@@ -21,7 +20,14 @@ const webStatusBody = `{
       "force_close_signalled": false
     }
   },
-  "runtime": {"learning": {"enabled": true, "policy_generation": 2, "epoch": 9, "entries": 12, "capacity": 4096, "lifetime_secs": 600, "health_secs": 30, "age_ms": 55}},
+  "runtime": {"runtime_instance": "0123456789abcdef0123456789abcdef", "learning": {"enabled": true, "policy_generation": 2, "epoch": 9, "entries": 12, "capacity": 4096, "lifetime_secs": 600, "health_secs": 30, "age_ms": 55}},
+  "capacity": {
+    "http_connection_capacity_action": "wait", "max_http_overload_connections": 64,
+    "http_overload_timeout_ms": 1000,
+    "resources": [{"resource":"http_connections","unit":"slots","used":7,"available":25,"limit":32,"closed":false}],
+    "saturated_resources": [], "partial": [],
+    "http_connection_overload_outcomes": [{"outcome":"wait_admitted","total":3}]
+  },
   "carrier_negotiation": {"selection": {"https": {"applied": 4}}, "failure": {}}
 }`
 
@@ -50,6 +56,12 @@ func TestWebStatusDecodesLifecycleLearningAndInstance(t *testing.T) {
 	if st.Runtime.Learning == nil || !st.Runtime.Learning.Enabled || st.Runtime.Learning.Entries != 12 {
 		t.Fatalf("learning: %+v", st.Runtime.Learning)
 	}
+	if st.Capacity == nil || st.Capacity.HTTPConnectionCapacityAction != "wait" || len(st.Capacity.Resources) != 1 || st.Capacity.Resources[0].Available != 25 {
+		t.Fatalf("capacity: %+v", st.Capacity)
+	}
+	if len(st.Capacity.HTTPConnectionOverloadOutcomes) != 1 || st.Capacity.HTTPConnectionOverloadOutcomes[0].Total != 3 {
+		t.Fatalf("overload outcomes: %+v", st.Capacity)
+	}
 	if !st.HasCarrierNegotiation() {
 		t.Fatal("carrier negotiation section lost")
 	}
@@ -63,7 +75,7 @@ func TestWebStatusWithoutOptionalSectionsStaysNil(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if st.OperatorLifecycle != nil || st.Runtime.Learning != nil || st.HasCarrierNegotiation() {
+	if st.OperatorLifecycle != nil || st.Runtime.Learning != nil || st.Capacity != nil || st.HasCarrierNegotiation() {
 		t.Fatalf("absent sections must stay nil: %+v", st)
 	}
 }

@@ -201,6 +201,25 @@ Operational status is a small dot plus readable text. Online, active and degrade
 
 Light/dark/system theme, density and sidebar controls are personal, locally persisted choices with pressed states and immediate feedback. Shared branding uses the existing profile API. Text, colors and CSS preview until saved or discarded; image uploads save immediately, with that behavior stated beside uploads. Preserve this distinction when extending settings.
 
+### WEB operations and websites
+
+Runtime, carrier and policy surfaces reuse the existing panels. Unsupported,
+undetermined, offline and missing-metric states stay distinct; missing is not zero.
+Diagnostics group checks, preserve timestamps/history/export, and separate passed,
+failed, warning and not-run counts. Not-run checks use a quiet dashed treatment
+and are excluded from the executed-check total.
+
+Update progress uses a chronological step list, readable outcomes, expandable
+details and drain session/stream counts. Success, refusal, rollback and unresolved
+recovery require distinct copy. The node wizard marks identity, proxy settings and
+installation stages; installation shows connection/readiness instead of assuming
+the copied command succeeded.
+
+The website gallery pairs previews and category filters with explicit preview,
+customize, import and assign actions. The 15 deployed websites have independent
+visual identities; panel tokens do not prescribe their layouts. Static previews
+and capability-gated HTTP-upstream configuration remain separate surfaces.
+
 ## Do's and Don'ts
 
 - Do reuse semantic tokens and test both themes, densities and narrow layouts.

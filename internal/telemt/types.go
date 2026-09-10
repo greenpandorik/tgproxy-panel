@@ -313,8 +313,33 @@ type WebStatus struct {
 	RuntimeInstance   string        `json:"runtime_instance"`
 	OperatorLifecycle *WebLifecycle `json:"operator_lifecycle"`
 	Runtime           WebRuntime    `json:"runtime"`
+	Capacity          *WebCapacity  `json:"capacity"`
 	// CarrierNegotiation stays raw: its selection and failure matrices are telemt's own shape.
 	CarrierNegotiation json.RawMessage `json:"carrier_negotiation"`
+}
+
+type WebCapacityResource struct {
+	Resource  string `json:"resource"`
+	Unit      string `json:"unit"`
+	Used      uint64 `json:"used"`
+	Available uint64 `json:"available"`
+	Limit     uint64 `json:"limit"`
+	Closed    bool   `json:"closed"`
+}
+
+type WebCapacityCounter struct {
+	Outcome string `json:"outcome"`
+	Total   uint64 `json:"total"`
+}
+
+type WebCapacity struct {
+	HTTPConnectionCapacityAction   string                `json:"http_connection_capacity_action"`
+	MaxHTTPOverloadConnections     uint64                `json:"max_http_overload_connections"`
+	HTTPOverloadTimeoutMs          uint64                `json:"http_overload_timeout_ms"`
+	Resources                      []WebCapacityResource `json:"resources"`
+	SaturatedResources             []string              `json:"saturated_resources"`
+	Partial                        []string              `json:"partial"`
+	HTTPConnectionOverloadOutcomes []WebCapacityCounter  `json:"http_connection_overload_outcomes"`
 }
 
 // HasCarrierNegotiation reports whether the payload carried a carrier negotiation section.
@@ -323,7 +348,8 @@ func (s WebStatus) HasCarrierNegotiation() bool {
 }
 
 type WebRuntime struct {
-	Learning *WebLearning `json:"learning"`
+	RuntimeInstance string       `json:"runtime_instance"`
+	Learning        *WebLearning `json:"learning"`
 }
 
 type WebLearning struct {

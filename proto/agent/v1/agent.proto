@@ -104,6 +104,25 @@ message WebLifecycleState {
   WebDrainState drain = 6;
 }
 
+message WebCapacityResource {
+  string resource = 1;
+  string unit = 2;
+  uint64 used = 3;
+  uint64 available = 4;
+  uint64 limit = 5;
+  bool closed = 6;
+}
+
+message WebCapacityState {
+  string connection_capacity_action = 1;
+  uint64 max_http_overload_connections = 2;
+  uint64 http_overload_timeout_ms = 3;
+  repeated WebCapacityResource resources = 4;
+  repeated string saturated_resources = 5;
+  repeated string partial = 6;
+  WebCounterFamily overload_outcomes = 7;
+}
+
 // WebRuntimeState is GET /v1/runtime/web/status as the agent read it. learning and lifecycle
 // are nil when telemt's payload carried no such section.
 message WebRuntimeState {
@@ -111,6 +130,7 @@ message WebRuntimeState {
   bool carrier_negotiation = 2;
   WebLearningState learning = 3;
   WebLifecycleState lifecycle = 4;
+  WebCapacityState capacity = 5;
 }
 
 // WebTelemetry carries the telemt_web_* families and the WEB runtime state of one node.
@@ -192,6 +212,7 @@ message WebPolicy {
   bool carrier_learning = 3;
   string aggressiveness = 4;
   WebTimeouts timeouts = 5;
+  string connection_capacity_action = 6;
 }
 
 message SiteFile { string path = 1; bytes content = 2; }
@@ -207,6 +228,9 @@ message Request {
     StatsRequest stats = 6;
     TailLogsRequest tail_logs = 7;
     RestartRelayRequest restart_relay = 8;
+    UpdateTelemtRequest update_telemt = 9;
+    TelemtUpdateStatusRequest telemt_update_status = 10;
+ WebControlRequest web_control = 11;
   }
 }
 message HealthRequest {}
@@ -223,6 +247,50 @@ message ApplyRequest {
   string ad_tag = 8;
   WebPolicy web_policy = 9;   // nil = leave the node's WEB policy untouched
 }
+// UpdateTelemtRequest asks the node to replace its telemt binary with the build the panel
+// pinned. sha256 is the panel's pin for the artifact at url and the node refuses a download
+// that does not match it. require_drain says an undetermined drain capability must stop the
+// update rather than be treated as "cannot drain".
+message UpdateTelemtRequest {
+  string version = 1;
+  string sha256 = 2;
+  string url = 3;
+  int32 drain_timeout_secs = 4;
+  bool require_drain = 5;
+}
+
+// TelemtUpdateStatusRequest reads the state of the update the node is running or last ran.
+message TelemtUpdateStatusRequest {}
+
+// UpdateStep is one step of the maintenance sequence as the node actually performed it.
+// remaining_sessions and remaining_streams carry the drain's live counters.
+message UpdateStep {
+  string key = 1;
+  string state = 2;
+  string message = 3;
+  uint64 remaining_sessions = 4;
+  uint64 remaining_streams = 5;
+  int64 started_unix_ms = 6;
+  int64 finished_unix_ms = 7;
+}
+
+// TelemtUpdate is the state of one update: the steps taken so far and, once phase is
+// "done", the outcome the node ended in.
+message TelemtUpdate {
+  string job_id = 1;
+  string phase = 2;
+  string outcome = 3;
+  bool ok = 4;
+  string from_version = 5;
+  string to_version = 6;
+  string error = 7;
+  bool drained = 8;
+  bool rolled_back = 9;
+  repeated UpdateStep steps = 10;
+  int64 started_unix_ms = 11;
+  int64 finished_unix_ms = 12;
+}
+
 message GetSiteRequest {}
 message MetricsRequest {}
 message StatsRequest {}
@@ -239,6 +307,7 @@ message Response {
     MetricsText metrics = 6;
     StatsMap stats = 7;
     Empty empty = 8;
+    TelemtUpdate telemt_update = 9;
   }
 }
 message ApplyResult {
@@ -259,3 +328,5 @@ message Empty {}
 
 message LogLine { string service = 1; string line = 2; int64 unix_ms = 3; }
 message LogChunk { repeated LogLine lines = 1; bool done = 2; string error = 3; }
+
+message WebControlRequest { string action = 1; int32 timeout_secs = 2; }

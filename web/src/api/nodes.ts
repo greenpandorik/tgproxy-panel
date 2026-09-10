@@ -87,7 +87,7 @@ export const useNodeHealth = (id: string, enabled = true) =>
   useQuery({
     queryKey: nodeKeys.health(id),
     queryFn: () => api.get<NodeHealth>(`/api/v1/nodes/${id}/health`),
-    refetchInterval: REFRESH_MS,
+    refetchInterval: (q) => ['draining', 'force_closing'].includes(q.state.data?.web_runtime?.lifecycle?.state ?? '') ? 2000 : REFRESH_MS,
     enabled: !!id && enabled,
     retry: false,
   });
@@ -146,12 +146,23 @@ export const useRunNodeCheck = (id: string) => {
 };
 
 export const useNodeSite = (id: string) =>
-  useQuery({ queryKey: nodeKeys.site(id), queryFn: () => api.get<NodeSite>(`/api/v1/nodes/${id}/site`), enabled: !!id });
+  useQuery({ queryKey: nodeKeys.site(id), queryFn: () => api.get<NodeSite>(`/api/v1/nodes/${id}/site`), enabled: !!id, refetchInterval: (q) => q.state.data?.bundle_hash !== q.state.data?.deployed_hash ? 3000 : false });
 
 export const useAssignSite = (id: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (templateId: string) => api.post<NodeSite>(`/api/v1/nodes/${id}/site`, { template_id: templateId }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: nodeKeys.site(id) });
+      void qc.invalidateQueries({ queryKey: nodeKeys.one(id) });
+    },
+  });
+};
+
+export const useAssignUpstreamSite = (id: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (origin: string) => api.post<NodeSite>(`/api/v1/nodes/${id}/site/upstream`, { origin }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: nodeKeys.site(id) });
       void qc.invalidateQueries({ queryKey: nodeKeys.one(id) });

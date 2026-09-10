@@ -485,6 +485,9 @@ func telemtGroup(t Target, n nodeFacts) domain.DiagnosticGroup {
 		g.add(na("control_api", detail))
 		g.add(na("readiness", detail))
 		g.add(na("build", detail))
+		g.add(na("tls_emulation", detail))
+		g.add(na("tls_front_cache", detail))
+		g.add(na("tls_front_errors", detail))
 		return g.group()
 	}
 	engine := "telemt"
@@ -511,7 +514,60 @@ func telemtGroup(t Target, n nodeFacts) domain.DiagnosticGroup {
 	} else {
 		g.add(na("build", "the node did not report a build"))
 	}
+	for _, tlsCheck := range tlsEmulationChecks(t, n) {
+		g.add(tlsCheck)
+	}
 	return g.group()
+}
+
+func tlsEmulationChecks(t Target, n nodeFacts) []domain.DiagnosticCheck {
+	if !t.Telemt {
+		detail := "this node does not run telemt"
+		return []domain.DiagnosticCheck{na("tls_emulation", detail), na("tls_front_cache", detail), na("tls_front_errors", detail)}
+	}
+	if supported, known := n.health.Capabilities.Determined(telemt.CapTLSEmulation); known && !supported {
+		detail := "this telemt version does not support TLS emulation"
+		return []domain.DiagnosticCheck{na("tls_emulation", detail), na("tls_front_cache", detail), na("tls_front_errors", detail)}
+	} else if !known {
+		detail := "the node did not report whether TLS emulation is supported"
+		return []domain.DiagnosticCheck{na("tls_emulation", detail), na("tls_front_cache", detail), na("tls_front_errors", detail)}
+	}
+	if n.metricsErr != nil || !n.metrics.TLSFrontDomains.Present {
+		detail := "the node reports no " + telemt.MetricTLSFrontDomains + " family"
+		return []domain.DiagnosticCheck{na("tls_emulation", detail), na("tls_front_cache", detail), tlsFrontErrors(n.metrics)}
+	}
+	configured, _ := n.metrics.TLSFrontDomains.Get("configured")
+	emitted, _ := n.metrics.TLSFrontDomains.Get("emitted")
+	suppressed, _ := n.metrics.TLSFrontDomains.Get("suppressed")
+	var enabled domain.DiagnosticCheck
+	switch {
+	case configured == 0:
+		enabled = warn("tls_emulation", "no domains", "TLS emulation is supported, but no TLS-front domain is configured")
+	case emitted > 0:
+		enabled = ok("tls_emulation", "enabled", "Telemt exports active TLS-front profiles")
+	default:
+		enabled = fail("tls_emulation", "inactive", "no TLS-front profile is active; emulation may be disabled or bootstrap failed")
+	}
+	var cache domain.DiagnosticCheck
+	if configured > 0 && emitted >= configured && suppressed == 0 {
+		cache = ok("tls_front_cache", formatCount(emitted), "every configured TLS-front profile is available")
+	} else if configured > 0 {
+		cache = fail("tls_front_cache", formatCount(emitted)+" / "+formatCount(configured), "one or more TLS-front profiles are missing from the runtime cache")
+	} else {
+		cache = na("tls_front_cache", "there is no configured TLS-front domain to cache")
+	}
+	return []domain.DiagnosticCheck{enabled, cache, tlsFrontErrors(n.metrics)}
+}
+
+func tlsFrontErrors(metrics telemt.WebMetrics) domain.DiagnosticCheck {
+	if !metrics.HandshakeFailures.Present {
+		return na("tls_front_errors", "the node reports no "+telemt.MetricHandshakeFailures+" family")
+	}
+	total := metrics.HandshakeFailures.Total()
+	if total == 0 {
+		return ok("tls_front_errors", "0", "no TLS handshake failures have been recorded in this process")
+	}
+	return warn("tls_front_errors", formatCount(total), "process-lifetime TLS handshake failures: "+joinStrings(metrics.HandshakeFailures.Labels()))
 }
 
 func telegramGroup(n nodeFacts) domain.DiagnosticGroup {

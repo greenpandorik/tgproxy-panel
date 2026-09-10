@@ -216,6 +216,11 @@ func TestNodeHealthCarriesTheWebRuntimeState(t *testing.T) {
 	report.Web = &nodedriver.WebTelemetry{Runtime: &nodedriver.WebRuntimeState{
 		RuntimeInstance: "inst-1",
 		Lifecycle:       &nodedriver.WebLifecycleState{State: "draining"},
+		Capacity: &nodedriver.WebCapacityState{
+			ConnectionCapacityAction: "wait",
+			Resources:                []nodedriver.WebCapacityResource{{Resource: "http_connections", Unit: "slots", Used: 7, Limit: 32, Available: 25}},
+			OverloadOutcomes:         &nodedriver.WebCounterFamily{Samples: []nodedriver.WebCounterSample{{Label: "wait_admitted", Value: 3}}},
+		},
 	}}
 	raw, err = json.Marshal(report)
 	if err != nil {
@@ -235,5 +240,13 @@ func TestNodeHealthCarriesTheWebRuntimeState(t *testing.T) {
 	lc, _ := rt["lifecycle"].(map[string]any)
 	if lc == nil || lc["state"] != "draining" || lc["drain"] != nil {
 		t.Fatalf("lifecycle = %+v", rt["lifecycle"])
+	}
+	capacity, _ := rt["capacity"].(map[string]any)
+	if capacity == nil || capacity["connection_capacity_action"] != "wait" {
+		t.Fatalf("capacity = %+v", rt["capacity"])
+	}
+	outcomes, _ := capacity["overload_outcomes"].(map[string]any)
+	if outcomes["wait_admitted"] != float64(3) {
+		t.Fatalf("overload outcomes = %+v", outcomes)
 	}
 }

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"io"
+	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"tgwebproxy/internal/sitekit"
+	"tgwebproxy/internal/store/db"
 )
 
 const goodHTML = `<!doctype html><html><head><title>t</title><style>p{color:#333}</style></head><body><p>hello</p></body></html>`
@@ -103,6 +105,40 @@ func TestAssignSiteToNode(t *testing.T) {
 	files, err := h.Deps.SiteProvider(t.Context(), n.ID)
 	if err != nil || len(files) != 2 {
 		t.Fatalf("site provider %v %d", err, len(files))
+	}
+}
+
+func TestAssignPrivateHTTPWebsiteToTelemtNode(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	if err := h.Store.Q.SetNodeHeartbeat(t.Context(), db.SetNodeHeartbeatParams{
+		ID: n.ID, Status: db.NodeStatusOnline, TelemtCapabilities: []byte(`{"HttpUpstreamDecoy":true}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	resp := c.Post("/api/v1/nodes/"+n.ID.String()+"/site/upstream", map[string]any{"origin": "http://127.0.0.1:3000"})
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("assign upstream %d: %s", resp.StatusCode, body)
+	}
+	var site struct {
+		Mode   string   `json:"mode"`
+		Origin string   `json:"origin"`
+		Files  []string `json:"files"`
+	}
+	c.JSON(resp, &site)
+	if site.Mode != "upstream" || site.Origin != "http://127.0.0.1:3000" || len(site.Files) != 0 {
+		t.Fatalf("upstream site response: %+v", site)
+	}
+	files, err := h.Deps.SiteProvider(t.Context(), n.ID)
+	if err != nil || files != nil {
+		t.Fatalf("installer must use its static fallback for an upstream assignment: %v %#v", err, files)
+	}
+	if preview := c.Get("/api/v1/nodes/" + n.ID.String() + "/site/preview"); preview.StatusCode != http.StatusConflict {
+		t.Fatalf("upstream preview status %d", preview.StatusCode)
+	}
+	unsafe := c.Post("/api/v1/nodes/"+n.ID.String()+"/site/upstream", map[string]any{"origin": "http://8.8.8.8:3000"})
+	if unsafe.StatusCode != 422 {
+		t.Fatalf("public origin status %d", unsafe.StatusCode)
 	}
 }
 

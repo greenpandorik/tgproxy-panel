@@ -237,6 +237,9 @@ func configHasHTTPUpstreamDecoy(cfg map[string]any) bool {
 		if _, ok := decoy["http_upstream"]; ok {
 			return true
 		}
+		if _, ok := decoy["upstream"]; ok {
+			return true
+		}
 		if mode, ok := decoy["mode"].(string); ok && mode == "http_upstream" {
 			return true
 		}

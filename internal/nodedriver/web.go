@@ -73,6 +73,25 @@ type WebLifecycleState struct {
 	Drain                     *WebDrainState
 }
 
+type WebCapacityResource struct {
+	Resource  string
+	Unit      string
+	Used      uint64
+	Available uint64
+	Limit     uint64
+	Closed    bool
+}
+
+type WebCapacityState struct {
+	ConnectionCapacityAction   string
+	MaxHTTPOverloadConnections uint64
+	HTTPOverloadTimeoutMs      uint64
+	Resources                  []WebCapacityResource
+	SaturatedResources         []string
+	Partial                    []string
+	OverloadOutcomes           *WebCounterFamily
+}
+
 // WebRuntimeState is the node's WEB runtime as the agent read it. Learning and Lifecycle are
 // nil when telemt's status carried no such section.
 type WebRuntimeState struct {
@@ -80,6 +99,7 @@ type WebRuntimeState struct {
 	CarrierNegotiation bool
 	Learning           *WebLearningState
 	Lifecycle          *WebLifecycleState
+	Capacity           *WebCapacityState
 }
 
 // WebTelemetry is one heartbeat's view of the WEB transport. Every field is a pointer so that

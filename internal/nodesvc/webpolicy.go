@@ -40,6 +40,9 @@ func WebPolicyOverrides(p domain.WebPolicy) ([]byte, error) {
 	if p.Aggressiveness != d.Aggressiveness {
 		out["carrier_negotiation_aggressiveness"] = p.Aggressiveness
 	}
+	if p.Overload != d.Overload {
+		out["overload"] = p.Overload
+	}
 	timeouts := map[string]any{}
 	if !sameInts(p.Timeouts.NegotiationDeadlinesSecs, d.Timeouts.NegotiationDeadlinesSecs) {
 		timeouts["carrier_negotiation_deadlines_secs"] = p.Timeouts.NegotiationDeadlinesSecs

@@ -220,6 +220,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
   const allNodes = nodesQuery.data?.items ?? [];
   const addableNodes = allNodes.filter((n) => !boundNodeIds.has(n.id));
   const hasTelemtNode = allNodes.some((n) => n.engine === 'telemt' && boundNodeIds.has(n.id));
+  const hasTproxyNode = allNodes.some((n) => n.engine === 'tproxy' && boundNodeIds.has(n.id));
 
   const limitsError = (name: LimitFieldName): string | undefined => {
     const msg = errors.limits?.[name]?.message;
@@ -448,6 +449,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
                     <LimitsFields
                       value={field.value}
                       onChange={field.onChange}
+                      telemtOnly={hasTelemtNode && !hasTproxyNode}
                       errors={{
                         max_sessions: limitsError('max_sessions'),
                         max_streams: limitsError('max_streams'),

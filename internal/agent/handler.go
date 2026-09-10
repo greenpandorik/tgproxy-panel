@@ -17,16 +17,25 @@ import (
 )
 
 type Handler struct {
-	cfg   Config
-	exec  Exec
-	httpc *http.Client
-	log   *slog.Logger
+	maintenance sync.Mutex
+	cfg         Config
+	exec        Exec
+	httpc       *http.Client
+	log         *slog.Logger
 	// tm is the telemt control API client; nil unless the node runs the telemt engine.
 	tm *telemt.Client
 
 	mu     sync.Mutex
 	caps   *agentv1.TelemtCapabilities
 	capsAt time.Time
+
+	// updateHTTP downloads update artifacts; nil falls back to a long-timeout client.
+	updateHTTP *http.Client
+	decoyHTTP  *http.Client
+	// updatePoll is the drain progress poll interval; 0 means defaultUpdatePoll.
+	updatePoll time.Duration
+	updMu      sync.Mutex
+	upd        *telemtUpdate
 }
 
 func NewHandler(cfg Config, ex Exec, log *slog.Logger) *Handler {
@@ -97,8 +106,45 @@ func (h *Handler) Handle(ctx context.Context, req *agentv1.Request) *agentv1.Res
 			return errResp(err)
 		}
 		return &agentv1.Response{Body: &agentv1.Response_Stats{Stats: &agentv1.StatsMap{Values: parseStats(text)}}}
+	case *agentv1.Request_WebControl:
+		if h.tm == nil {
+			return errResp(errorf("telemt is unavailable"))
+		}
+		if !h.maintenance.TryLock() {
+			return errResp(errorf("node maintenance is already in progress"))
+		}
+		defer h.maintenance.Unlock()
+		var err error
+		switch b.WebControl.Action {
+		case "pause":
+			err = h.tm.WebPause(ctx)
+		case "resume":
+			err = h.tm.WebResume(ctx)
+		case "drain":
+			_, err = h.tm.WebDrain(ctx, int(b.WebControl.TimeoutSecs))
+		case "reset_learning":
+			_, err = h.tm.ResetCarrierLearning(ctx)
+		default:
+			return errResp(errorf("unknown WEB action"))
+		}
+		if err != nil {
+			return errResp(err)
+		}
+		return &agentv1.Response{Body: &agentv1.Response_Empty{Empty: &agentv1.Empty{}}}
 	case *agentv1.Request_RestartRelay:
+		if !h.maintenance.TryLock() {
+			return errResp(errorf("node maintenance is already in progress"))
+		}
+		defer h.maintenance.Unlock()
 		return h.restartRelay(ctx)
+	case *agentv1.Request_UpdateTelemt:
+		st, err := h.StartTelemtUpdate(ctx, b.UpdateTelemt)
+		if err != nil {
+			return errResp(err)
+		}
+		return &agentv1.Response{Body: &agentv1.Response_TelemtUpdate{TelemtUpdate: st}}
+	case *agentv1.Request_TelemtUpdateStatus:
+		return &agentv1.Response{Body: &agentv1.Response_TelemtUpdate{TelemtUpdate: h.TelemtUpdateStatus()}}
 	}
 	return errResp(errorf("unsupported request"))
 }

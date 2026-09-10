@@ -137,6 +137,10 @@ func (h *Handler) chownLogged(ctx context.Context, lg *applyLog, path, owner str
 
 // Apply validates, backs up, writes, restarts and verifies; on failure it restores the backup.
 func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1.ApplyResult {
+	if !h.maintenance.TryLock() {
+		return &agentv1.ApplyResult{Ok: false, Log: "node maintenance is already in progress"}
+	}
+	defer h.maintenance.Unlock()
 	if h.cfg.Engine == EngineTelemt {
 		return h.applyTelemt(ctx, req)
 	}
@@ -397,37 +401,25 @@ func (h *Handler) readSite() map[string][]byte {
 	return out
 }
 
-// swapSiteDir replaces SiteDir with src (a directory) via renames.
+// swapSiteDir fully prepares a sibling directory before one atomic exchange.
+// On unsupported filesystems the existing site stays untouched and apply fails.
 func (h *Handler) swapSiteDir(src string) error {
 	dir := h.siteDir()
-	old := dir + ".old"
-	_ = os.RemoveAll(old)
-	moved := false
-	if _, err := os.Stat(dir); err == nil {
-		if err := os.Rename(dir, old); err != nil {
-			return err
-		}
-		moved = true
-	}
-	// restore puts the previous site back on any failure after the rename above.
-	restore := func() {
-		if moved {
-			_ = os.Rename(old, dir)
-		}
-	}
 	tmp := dir + ".swap"
 	_ = os.RemoveAll(tmp)
+	defer func() { _ = os.RemoveAll(tmp) }()
 	if err := copyDir(src, tmp); err != nil {
-		_ = os.RemoveAll(tmp)
-		restore()
 		return err
 	}
-	if err := os.Rename(tmp, dir); err != nil {
-		_ = os.RemoveAll(tmp)
-		restore()
+	if _, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) {
+		if err := os.Rename(tmp, dir); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
+	} else if err := exchangeDirectories(tmp, dir); err != nil {
+		return fmt.Errorf("atomic website exchange: %w", err)
 	}
-	_ = os.RemoveAll(old)
 	if strings.HasSuffix(src, ".new") {
 		_ = os.RemoveAll(src)
 	}

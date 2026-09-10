@@ -23,6 +23,9 @@ func (c *Client) WebStatus(ctx context.Context) (WebStatus, error) {
 	if _, err := c.do(ctx, http.MethodGet, webBasePath+"/status", nil, &out); err != nil {
 		return WebStatus{}, err
 	}
+	if out.Runtime.RuntimeInstance != "" {
+		out.RuntimeInstance = out.Runtime.RuntimeInstance
+	}
 	if out.RuntimeInstance != "" {
 		c.mu.Lock()
 		c.runtimeInstance = out.RuntimeInstance

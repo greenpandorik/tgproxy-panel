@@ -10,11 +10,13 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/sitekit"
 	"tgwebproxy/internal/telemt"
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
@@ -23,9 +25,10 @@ import (
 const telemtSecretMode = "plain"
 
 type telemtDesired struct {
-	name   string
-	secret string
-	policy telemtPolicy
+	name      string
+	secret    string
+	policy    telemtPolicy
+	webLimits domain.WebProfileLimits
 }
 
 // telemtPolicy is the per-user state the panel owns, in telemt's own units.
@@ -157,7 +160,14 @@ func telemtDesiredFrom(req *agentv1.ApplyRequest) ([]telemtDesired, error) {
 		seen[p.Name] = true
 		policy := telemtPolicyFrom(p)
 		policy.AdTag = req.AdTag
-		out = append(out, telemtDesired{name: p.Name, secret: p.Secret, policy: policy})
+		webLimits := domain.WebProfileLimits{}
+		if limits := p.GetLimits(); limits != nil {
+			webLimits = domain.WebProfileLimits{
+				MaxSessions: int(limits.GetMaxSessions()), MaxStreams: int(limits.GetMaxStreams()),
+				MaxStreamsPerSession: int(limits.GetMaxStreamsPerSession()),
+			}
+		}
+		out = append(out, telemtDesired{name: p.Name, secret: p.Secret, policy: policy, webLimits: webLimits})
 	}
 	return out, nil
 }
@@ -224,18 +234,6 @@ func telemtVhosts(cfg map[string]any) ([]any, error) {
 	return vhosts, nil
 }
 
-func vhostProfileUsers(vhost map[string]any) []string {
-	profiles, _ := vhost["profiles"].([]any)
-	out := make([]string, 0, len(profiles))
-	for _, p := range profiles {
-		m, _ := p.(map[string]any)
-		if u, ok := m["user"].(string); ok {
-			out = append(out, u)
-		}
-	}
-	return out
-}
-
 func copyVhosts(vhosts []any) ([]any, error) {
 	raw, err := json.Marshal(vhosts)
 	if err != nil {
@@ -252,23 +250,6 @@ func copyVhosts(vhosts []any) ([]any, error) {
 		return nil, errors.New("telemt config web.vhosts[0] is not a table")
 	}
 	return out, nil
-}
-
-func sameSet(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	m := make(map[string]int, len(a))
-	for _, s := range a {
-		m[s]++
-	}
-	for _, s := range b {
-		m[s]--
-		if m[s] < 0 {
-			return false
-		}
-	}
-	return true
 }
 
 // telemtRollback tracks what an apply changed so a failure can undo as much as possible.
@@ -526,9 +507,15 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		lg.f("note: telemt serves Fake-TLS from the same users; mtproxy secrets ignored")
 	}
 
-	newSite, siteChanged, err := h.telemtSitePlan(req)
+	sitePlan, err := h.telemtSitePlan(req)
 	if err != nil {
 		return fail(err)
+	}
+	if sitePlan.upstream != "" {
+		if err := h.probeHTTPWebsite(ctx, sitePlan.upstream, ""); err != nil {
+			return fail(fmt.Errorf("HTTP website origin %s is not ready: %w; nothing was changed", sitePlan.upstream, err))
+		}
+		lg.f("HTTP website origin reachable: %s", sitePlan.upstream)
 	}
 
 	rb := &telemtRollback{}
@@ -545,10 +532,13 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 				restored = false
 			}
 		}
+		reloadAfterRestore := false
 		if rb.prevVhosts != nil {
 			patch := map[string]any{"web": map[string]any{"vhosts": rb.prevVhosts}}
 			if _, err := h.tm.PatchConfig(ctx, patch, false); err != nil {
 				step("restore web profiles", err)
+			} else {
+				reloadAfterRestore = true
 			}
 		}
 		if rb.prevMiddleProxy != nil {
@@ -560,6 +550,8 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		if rb.prevWebPolicy != nil {
 			if _, err := h.tm.PatchConfig(ctx, map[string]any{"web": rb.prevWebPolicy}, false); err != nil {
 				step("restore web policy", err)
+			} else {
+				reloadAfterRestore = true
 			}
 		}
 		for _, name := range rb.created {
@@ -570,6 +562,8 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 			step("restore decoy site", h.swapSiteDir(rb.siteBackup))
 			if _, err := h.tm.Reload(ctx, telemt.ReloadRequest{}); err != nil {
 				step("reload after site restore", err)
+			} else {
+				reloadAfterRestore = false
 			}
 		}
 		restart := rb.publicAddrChanged
@@ -582,6 +576,9 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		}
 		if restart {
 			step("restart telemt after listener restore", h.restartTelemt(ctx))
+		} else if reloadAfterRestore {
+			_, err := h.tm.Reload(ctx, telemt.ReloadRequest{})
+			step("reload restored WEB configuration", err)
 		}
 		res.Ok, res.RolledBack = false, restored
 		res.DeferredFields, res.RestartRequired = nil, false
@@ -603,7 +600,8 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		reloadNeeded = reloadNeeded || reload
 	}
 
-	if siteChanged {
+	staticSiteChanged := sitePlan.supplied && sitePlan.upstream == "" && !h.siteEquals(sitePlan.files)
+	if staticSiteChanged {
 		backup := filepath.Join(h.cfg.StateDir, "backup", time.Now().UTC().Format("20060102T150405Z")+"-"+randSuffix())
 		if err := os.MkdirAll(backup, 0o700); err != nil {
 			return rollback(err)
@@ -611,13 +609,19 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		if err := copyDir(h.siteDir(), filepath.Join(backup, "site")); err != nil {
 			return rollback(fmt.Errorf("backup: %w", err))
 		}
-		if err := h.writeSiteDir(newSite); err != nil {
+		if err := h.writeSiteDir(sitePlan.files); err != nil {
 			return rollback(err)
 		}
 		rb.siteBackup = filepath.Join(backup, "site")
-		lg.f("decoy site deployed (%d files)", len(newSite))
+		lg.f("decoy site deployed (%d files)", len(sitePlan.files))
 		changed, reloadNeeded = true, true
 	}
+	decoyChanged, err := h.reconcileTelemtDecoy(ctx, lg, sitePlan, rb)
+	if err != nil {
+		return rollback(err)
+	}
+	changed = changed || decoyChanged
+	reloadNeeded = reloadNeeded || decoyChanged
 
 	listenersChanged, err := h.reconcileTelemtListeners(ctx, lg, req, rb)
 	if err != nil {
@@ -641,6 +645,12 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	changed = changed || restartNeeded || mpChanged || webChanged
 
 	if !changed {
+		if sitePlan.supplied {
+			if err := h.verifyDesiredDecoy(ctx, sitePlan); err != nil {
+				return rollback(err)
+			}
+			lg.f("decoy verified through its origin and public HTTPS")
+		}
 		lg.f("nothing changed (no restart)")
 		res.Ok, res.Log = true, lg.b.String()
 		return res
@@ -664,6 +674,12 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		}
 		lg.f("telemt ready (no restart)")
 	}
+	if sitePlan.supplied {
+		if err := h.verifyDesiredDecoy(ctx, sitePlan); err != nil {
+			return rollback(err)
+		}
+		lg.f("decoy verified through its origin and public HTTPS")
+	}
 	if n, err := h.pruneBackups(keptBackups); err != nil {
 		lg.f("backup prune failed: %v", err)
 	} else if n > 0 {
@@ -673,23 +689,90 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	return res
 }
 
-// telemtSitePlan validates the requested bundle and reports whether the decoy differs from it.
-func (h *Handler) telemtSitePlan(req *agentv1.ApplyRequest) (map[string][]byte, bool, error) {
+type telemtDecoyPlan struct {
+	files    map[string][]byte
+	upstream string
+	supplied bool
+}
+
+// telemtSitePlan validates the internal bundle used for either a static or HTTP-upstream decoy.
+func (h *Handler) telemtSitePlan(req *agentv1.ApplyRequest) (telemtDecoyPlan, error) {
 	if req.Site == nil {
-		return nil, false, nil
+		return telemtDecoyPlan{}, nil
 	}
 	site := map[string][]byte{}
 	for _, f := range req.Site.Files {
+		if f.Path == sitekit.UpstreamMarkerPath {
+			site[f.Path] = f.Content
+			continue
+		}
 		p, err := safeSitePath(f.Path)
 		if err != nil {
-			return nil, false, err
+			return telemtDecoyPlan{}, err
 		}
 		site[p] = f.Content
 	}
-	if _, ok := site["index.html"]; !ok {
-		return nil, false, errors.New("site bundle must contain index.html")
+	bundle := sitekit.Bundle{Files: site}
+	if upstream, ok, err := sitekit.UpstreamFromBundle(bundle); ok {
+		return telemtDecoyPlan{upstream: upstream, supplied: true}, err
 	}
-	return site, !h.siteEquals(site), nil
+	if _, ok := site["index.html"]; !ok {
+		return telemtDecoyPlan{}, errors.New("site bundle must contain index.html")
+	}
+	return telemtDecoyPlan{files: site, supplied: true}, nil
+}
+
+func (h *Handler) reconcileTelemtDecoy(ctx context.Context, lg *applyLog, plan telemtDecoyPlan, rb *telemtRollback) (bool, error) {
+	if !plan.supplied {
+		return false, nil
+	}
+	cfg, _, err := h.tm.GetConfig(ctx)
+	if err != nil {
+		return false, err
+	}
+	web, _ := cfg["web"].(map[string]any)
+	vhosts, _ := web["vhosts"].([]any)
+	if len(vhosts) == 0 {
+		return false, errors.New("telemt config has no web vhost")
+	}
+	current, _ := vhosts[0].(map[string]any)
+	currentDecoy, _ := current["decoy"].(map[string]any)
+	desired := map[string]any{"mode": "static_directory", "directory": h.siteDir(), "index": "index.html"}
+	if plan.upstream != "" {
+		desired = map[string]any{"mode": "http_upstream", "upstream": plan.upstream}
+	}
+	if reflect.DeepEqual(currentDecoy, desired) {
+		return false, nil
+	}
+	prev, err := copyVhosts(vhosts)
+	if err != nil {
+		return false, err
+	}
+	next, err := copyVhosts(vhosts)
+	if err != nil {
+		return false, err
+	}
+	target, _ := next[0].(map[string]any)
+	target["decoy"] = desired
+	if rb.prevVhosts == nil {
+		rb.prevVhosts = prev
+	}
+	if _, err := h.tm.PatchConfig(ctx, map[string]any{"web": map[string]any{"vhosts": next}}, false); err != nil {
+		return false, fmt.Errorf("patch web.vhosts.decoy: %w", err)
+	}
+	if plan.upstream != "" {
+		lg.f("decoy mode -> HTTP upstream %s", plan.upstream)
+	} else {
+		lg.f("decoy mode -> static directory")
+	}
+	return true, nil
+}
+
+func (h *Handler) verifyDesiredDecoy(ctx context.Context, plan telemtDecoyPlan) error {
+	if plan.upstream != "" {
+		return h.verifyUpstreamDecoy(ctx, plan.upstream)
+	}
+	return h.verifyDecoy(ctx, plan.files["index.html"])
 }
 
 func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desired []telemtDesired, rb *telemtRollback) (changed, reload bool, err error) {
@@ -704,6 +787,12 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 	vhosts, err := telemtVhosts(cfg)
 	if err != nil {
 		return false, false, err
+	}
+	globalLimits := telemtGlobalWebLimits(cfg)
+	for _, d := range desired {
+		if err := d.webLimits.Validate(globalLimits); err != nil {
+			return false, false, fmt.Errorf("profile %q WEB limits: %w", d.name, err)
+		}
 	}
 
 	existing := make(map[string]telemt.User, len(users))
@@ -764,8 +853,27 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 		}
 	}
 
+	profiles := make([]any, 0, len(names))
+	for _, d := range desired {
+		profile := map[string]any{"user": d.name, "secret_mode": telemtSecretMode}
+		if d.webLimits.MaxSessions > 0 {
+			profile["max_sessions"] = d.webLimits.MaxSessions
+		}
+		if d.webLimits.MaxStreams > 0 {
+			profile["max_streams"] = d.webLimits.MaxStreams
+		}
+		if d.webLimits.MaxStreamsPerSession > 0 {
+			profile["max_streams_per_session"] = d.webLimits.MaxStreamsPerSession
+		}
+		profiles = append(profiles, profile)
+	}
+	normalizedProfiles, err := cloneJSON(profiles)
+	if err != nil {
+		return changed, reload, err
+	}
 	vhost, _ := vhosts[0].(map[string]any)
-	if !sameSet(vhostProfileUsers(vhost), names) {
+	currentProfiles, _ := vhost["profiles"].([]any)
+	if !reflect.DeepEqual(currentProfiles, normalizedProfiles) {
 		prev, err := copyVhosts(vhosts)
 		if err != nil {
 			return changed, reload, err
@@ -775,11 +883,7 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 			return changed, reload, err
 		}
 		target, _ := list[0].(map[string]any)
-		profiles := make([]any, 0, len(names))
-		for _, n := range names {
-			profiles = append(profiles, map[string]any{"user": n, "secret_mode": telemtSecretMode})
-		}
-		target["profiles"] = profiles
+		target["profiles"] = normalizedProfiles
 		out, err := h.tm.PatchConfig(ctx, map[string]any{"web": map[string]any{"vhosts": list}}, false)
 		if err != nil {
 			return changed, reload, err
@@ -811,6 +915,29 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 		}
 	}
 	return changed, reload, nil
+}
+
+func telemtGlobalWebLimits(cfg map[string]any) domain.WebGlobalLimits {
+	out := domain.DefaultWebGlobalLimits()
+	web, _ := cfg["web"].(map[string]any)
+	limits, _ := web["limits"].(map[string]any)
+	read := func(key string, fallback int) int {
+		switch value := limits[key].(type) {
+		case float64:
+			if value > 0 {
+				return int(value)
+			}
+		case json.Number:
+			if parsed, err := value.Int64(); err == nil && parsed > 0 {
+				return int(parsed)
+			}
+		}
+		return fallback
+	}
+	out.MaxSessions = read("max_sessions_global", out.MaxSessions)
+	out.MaxStreams = read("max_streams_global", out.MaxStreams)
+	out.MaxStreamsPerSession = read("max_streams_per_session", out.MaxStreamsPerSession)
+	return out
 }
 
 // writeSiteDir stages the bundle next to the decoy directory and swaps it in atomically.
@@ -1003,10 +1130,18 @@ func webPolicyFromProto(p *agentv1.WebPolicy) *domain.WebPolicy {
 		return nil
 	}
 	t := p.GetTimeouts()
+	capacityAction := domain.WebCapacityAction(p.GetConnectionCapacityAction())
+	if capacityAction == "" {
+		capacityAction = domain.DefaultWebPolicy().Overload.ConnectionCapacityAction
+	}
 	out := &domain.WebPolicy{
 		Carrier:         domain.Carrier(p.GetCarrier()),
 		CarrierLearning: p.GetCarrierLearning(),
 		Aggressiveness:  domain.Aggressiveness(p.GetAggressiveness()),
+		Overload: domain.WebOverloadPolicy{
+			Preset:                   domain.OverloadCustom,
+			ConnectionCapacityAction: capacityAction,
+		},
 		Timeouts: domain.WebTimeouts{
 			CarrierHealthSecs:   int(t.GetCarrierHealthSecs()),
 			CarrierLearningSecs: int(t.GetCarrierLearningSecs()),
@@ -1124,7 +1259,12 @@ func telemtWebPolicyPatch(web map[string]any, p domain.WebPolicy) (map[string]an
 	}
 	want := carrierStrings(p.Carriers)
 	cur, ok := anyStrings(web["carriers"])
-	if !ok || !carriersSatisfied(cur, want, string(p.Carrier)) {
+	if p.Carriers == nil {
+		if disabled, ok := web["carriers"].(bool); !ok || disabled {
+			patch["carriers"] = false
+			changes = append(changes, "web.carriers disabled")
+		}
+	} else if !ok || !carriersSatisfied(cur, want, string(p.Carrier)) {
 		patch["carriers"] = want
 		changes = append(changes, fmt.Sprintf("web.carriers %v -> %v", cur, want))
 	}
@@ -1136,6 +1276,10 @@ func telemtWebPolicyPatch(web map[string]any, p domain.WebPolicy) (map[string]an
 	if agg, _ := web["carrier_negotiation_aggressiveness"].(string); agg != string(p.Aggressiveness) {
 		patch["carrier_negotiation_aggressiveness"] = string(p.Aggressiveness)
 		changes = append(changes, fmt.Sprintf("web.carrier_negotiation_aggressiveness %q -> %q", agg, p.Aggressiveness))
+	}
+	if action, _ := web["http_connection_capacity_action"].(string); action != string(p.Overload.ConnectionCapacityAction) {
+		patch["http_connection_capacity_action"] = string(p.Overload.ConnectionCapacityAction)
+		changes = append(changes, fmt.Sprintf("web.http_connection_capacity_action %q -> %q", action, p.Overload.ConnectionCapacityAction))
 	}
 	timeouts, _ := web["timeouts"].(map[string]any)
 	next := map[string]any{}

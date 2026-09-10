@@ -107,6 +107,7 @@ func TestWebPolicyProtoRoundTrip(t *testing.T) {
 	want.Carriers = []domain.Carrier{domain.CarrierWebSocket, domain.CarrierHTTPSLanes}
 	want.CarrierLearning = false
 	want.Timeouts.ProbeCoalesceMs = 7
+	want.Overload.ConnectionCapacityAction = domain.WebCapacityRespond
 	got := WebPolicyFromProto(WebPolicyToProto(&want))
 	if got == nil {
 		t.Fatal("nil round trip")
@@ -116,5 +117,8 @@ func TestWebPolicyProtoRoundTrip(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got.Carriers, want.Carriers) || !reflect.DeepEqual(got.Timeouts, want.Timeouts) {
 		t.Fatalf("carriers %+v timeouts %+v", got.Carriers, got.Timeouts)
+	}
+	if got.Overload.ConnectionCapacityAction != domain.WebCapacityRespond {
+		t.Fatalf("overload policy lost: %+v", got.Overload)
 	}
 }

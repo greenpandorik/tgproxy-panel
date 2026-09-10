@@ -19,12 +19,14 @@ func TestWebPolicyRejectsWhatTelemtRejects(t *testing.T) {
 		"probe coalesce above 10ms":   func(p *WebPolicy) { p.Timeouts.ProbeCoalesceMs = 250 },
 		"learning window above a day": func(p *WebPolicy) { p.Timeouts.CarrierLearningSecs = 90000 },
 		"bridge retry below request":  func(p *WebPolicy) { p.Timeouts.BridgeRetrySecs = 5 },
-		"empty carrier list":          func(p *WebPolicy) { p.Carriers = nil },
+		"empty carrier list":          func(p *WebPolicy) { p.Carriers = []Carrier{} },
 		"duplicate carrier": func(p *WebPolicy) {
 			p.Carriers = []Carrier{CarrierHTTPS, CarrierHTTPS}
 		},
 		"carrier telemt does not know": func(p *WebPolicy) { p.Carriers = []Carrier{"quic"} },
 		"unknown aggressiveness":       func(p *WebPolicy) { p.Aggressiveness = "reckless" },
+		"unknown overload preset":      func(p *WebPolicy) { p.Overload.Preset = "maximum" },
+		"unknown capacity action":      func(p *WebPolicy) { p.Overload.ConnectionCapacityAction = "queue" },
 	}
 	for name, break_ := range cases {
 		t.Run(name, func(t *testing.T) {

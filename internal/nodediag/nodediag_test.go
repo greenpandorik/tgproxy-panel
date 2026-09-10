@@ -18,6 +18,7 @@ import (
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodecheck"
 	"tgwebproxy/internal/nodedriver"
+	"tgwebproxy/internal/telemt"
 )
 
 const webMetricsText = `# TYPE telemt_web_carrier_selections_total counter
@@ -26,6 +27,10 @@ telemt_web_carrier_selections_total{carrier="https",disposition="learned"} 12
 telemt_web_carrier_reported_failures_total{carrier="https",phase="dial",reason="timeout"} 0
 # TYPE telemt_web_rejections_total counter
 telemt_web_rejections_total{reason="quota"} 0
+telemt_tls_front_profile_domains{status="configured"} 1
+telemt_tls_front_profile_domains{status="emitted"} 1
+telemt_tls_front_profile_domains{status="suppressed"} 0
+telemt_handshake_failures_by_class_total{class="timeout"} 0
 `
 
 type fakeNode struct {
@@ -56,11 +61,13 @@ func (f fakeResolver) LookupIPAddr(context.Context, string) ([]net.IPAddr, error
 }
 
 func healthyHealth() nodedriver.HealthReport {
+	yes := true
 	return nodedriver.HealthReport{
 		RelayActive: true, MTProxyActive: true, CaddyActive: true, Healthz: true, Readyz: true,
 		TProxyVersion: "telemt 3.5.7", UpstreamHealthy: true, EffectiveLatencyMs: 42,
 		ConnectSuccessTotal: 100, DcDataAvailable: true,
-		DCs: []nodedriver.DcLatency{{DC: 1, LatencyMs: 40, Known: true}, {DC: 2}},
+		DCs:          []nodedriver.DcLatency{{DC: 1, LatencyMs: 40, Known: true}, {DC: 2}},
+		Capabilities: nodedriver.TelemtCapabilities{telemt.CapTLSEmulation: &yes},
 	}
 }
 
@@ -192,6 +199,9 @@ func TestRunHealthyNode(t *testing.T) {
 		{domain.GroupWebTransport, "web_upstream"},
 		{domain.GroupTelemt, "control_api"},
 		{domain.GroupTelemt, "readiness"},
+		{domain.GroupTelemt, "tls_emulation"},
+		{domain.GroupTelemt, "tls_front_cache"},
+		{domain.GroupTelemt, "tls_front_errors"},
 		{domain.GroupTelegram, "upstream_health"},
 		{domain.GroupTelegram, "datacenters"},
 	} {
@@ -201,6 +211,19 @@ func TestRunHealthyNode(t *testing.T) {
 	}
 	if h2 := checkIn(t, run, domain.GroupWebTransport, "http2"); h2.Value == nil || *h2.Value != "h2" {
 		t.Fatalf("http2 = %+v, want the negotiated h2", h2)
+	}
+}
+
+func TestTLSFrontCacheFailureIsVisible(t *testing.T) {
+	_, checker := frontServer(t)
+	metrics := strings.Replace(webMetricsText, `telemt_tls_front_profile_domains{status="emitted"} 1`, `telemt_tls_front_profile_domains{status="emitted"} 0`, 1)
+	e := &Engine{Checker: checker, Node: fakeNode{online: true, health: healthyHealth(), metrics: metrics}, Timeout: 10 * time.Second}
+	run := e.Run(t.Context(), telemtTarget(), domain.TriggerManual)
+	if c := checkIn(t, run, domain.GroupTelemt, "tls_emulation"); c.Status != domain.CheckFail {
+		t.Fatalf("tls_emulation = %+v, want fail", c)
+	}
+	if c := checkIn(t, run, domain.GroupTelemt, "tls_front_cache"); c.Status != domain.CheckFail {
+		t.Fatalf("tls_front_cache = %+v, want fail", c)
 	}
 }
 

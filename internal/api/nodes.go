@@ -39,6 +39,9 @@ type nodeJSON struct {
 	AdTag         string    `json:"ad_tag"`
 	TelemtVersion string    `json:"telemt_version"`
 	TelemtBuild   string    `json:"telemt_build"`
+	// TelemtUpdateAvailable is the pinned build this node is not running; empty means it is
+	// on the build the panel pins.
+	TelemtUpdateAvailable string `json:"telemt_update_available"`
 	// TelemtCapabilities is the stored capability set; null means the panel has not worked
 	// it out yet, and a null inside it is one capability it could not settle.
 	TelemtCapabilities          json.RawMessage `json:"telemt_capabilities"`
@@ -66,7 +69,8 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 		ID: n.ID, Name: n.Name, Hostname: n.Hostname, PublicIP: n.PublicIp, ACMEEmail: n.AcmeEmail, Status: string(n.Status),
 		Online: s.driver != nil && s.driver.Online(n.ID), Engine: string(n.Engine), TLSDomain: n.TlsDomain,
 		ClassicPort: int(n.ClassicPort), AdTag: n.AdTag, TelemtVersion: n.TelemtVersion,
-		TelemtBuild: n.TelemtBuild, TelemtCapabilities: json.RawMessage(n.TelemtCapabilities),
+		TelemtBuild: n.TelemtBuild, TelemtUpdateAvailable: n.TelemtUpdateAvailable,
+		TelemtCapabilities:          json.RawMessage(n.TelemtCapabilities),
 		TelemtCapabilitiesCheckedAt: n.TelemtCapabilitiesCheckedAt,
 		TProxyVersion:               n.TproxyVersion, AgentVersion: n.AgentVersion,
 		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,

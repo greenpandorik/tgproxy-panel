@@ -133,7 +133,23 @@ func (g *Gateway) TailLogs(ctx context.Context, id uuid.UUID, services []string,
 	return out, nil
 }
 
+// UpdateTelemt hands the node the pinned build; the node runs the sequence in the background.
+func (g *Gateway) UpdateTelemt(ctx context.Context, id uuid.UUID, req TelemtUpdateRequest) (TelemtUpdate, error) {
+	body := &agentv1.Request_UpdateTelemt{UpdateTelemt: TelemtUpdateRequestToProto(req)}
+	return telemtUpdateFrom(g.call(ctx, id, &agentv1.Request{Body: body}, g.timeout))
+}
+
+func (g *Gateway) TelemtUpdateStatus(ctx context.Context, id uuid.UUID) (TelemtUpdate, error) {
+	body := &agentv1.Request_TelemtUpdateStatus{TelemtUpdateStatus: &agentv1.TelemtUpdateStatusRequest{}}
+	return telemtUpdateFrom(g.call(ctx, id, &agentv1.Request{Body: body}, g.timeout))
+}
+
 func (g *Gateway) RestartRelay(ctx context.Context, id uuid.UUID) error {
 	_, err := g.call(ctx, id, &agentv1.Request{Body: &agentv1.Request_RestartRelay{RestartRelay: &agentv1.RestartRelayRequest{}}}, 60*time.Second)
+	return err
+}
+
+func (g *Gateway) ControlWeb(ctx context.Context, id uuid.UUID, action string, timeoutSecs int) error {
+	_, err := g.call(ctx, id, &agentv1.Request{Body: &agentv1.Request_WebControl{WebControl: &agentv1.WebControlRequest{Action: action, TimeoutSecs: int32(timeoutSecs)}}}, 30*time.Second)
 	return err
 }

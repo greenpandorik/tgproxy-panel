@@ -37,10 +37,16 @@ interface LimitsFieldsProps {
   onChange: (next: ProfileLimits) => void;
   errors?: Partial<Record<LimitFieldName, string>>;
   className?: string;
+  /** Telemt accepts exactly the three WEB vhost limits; legacy-only fields stay out of this form. */
+  telemtOnly?: boolean;
 }
 
-export function LimitsFields({ value, onChange, errors, className }: LimitsFieldsProps) {
+export function LimitsFields({ value, onChange, errors, className, telemtOnly = false }: LimitsFieldsProps) {
   const { t } = useTranslation();
+
+  const fields = telemtOnly
+    ? LIMIT_FIELD_NAMES.filter((name) => name === 'max_sessions' || name === 'max_streams' || name === 'max_streams_per_session')
+    : LIMIT_FIELD_NAMES;
 
   const setField = (name: LimitFieldName, raw: string) => {
     const n = raw.trim() === '' ? 0 : Math.max(0, Math.trunc(Number(raw)));
@@ -49,7 +55,7 @@ export function LimitsFields({ value, onChange, errors, className }: LimitsField
 
   return (
     <div className={cn('grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2', className)}>
-      {LIMIT_FIELD_NAMES.map((name) => (
+      {fields.map((name) => (
         <div key={name} className="space-y-2">
           <Label htmlFor={`limit-${name}`} className="font-normal text-mute">
             {t(`keys.limit_${name}`)}

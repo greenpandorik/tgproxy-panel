@@ -1,5 +1,31 @@
 # Operations runbook
 
+## WEB diagnostics and Telemt update manager
+
+Open WEB Transport and run diagnostics before changing policy or restarting a
+service. Reports combine public probes with agent/runtime readings and retain
+timestamps, history and JSON export. `not_available` means not run and is excluded
+from the executed-check total. A green report does not replace Telegram-client
+carrier and reconnect tests.
+
+The Telemt update card starts a per-node update to the panel-pinned release. The UI
+requires drain support and requests a 120-second drain timeout. The agent checks
+capabilities, verifies the download SHA256, pauses/drains, keeps the previous
+binary/configuration, swaps/restarts/verifies Telemt and reopens admission. Required
+drain is refused when support cannot be established. Inspect every step and final
+outcome: a restarted process alone does not confirm working WEB admission.
+
+Only `ok` means successful completion. `refused` means the update was declined;
+`failed` requires reading the failed step; `rolled_back` records recovery to the
+previous build. `rollback_failed` and `needs_attention` require operator attention.
+Preserve job details, inspect service/agent logs and admission, then rerun diagnostics.
+See [the acceptance matrix](vnext-acceptance.md) for real-host recovery scenarios.
+
+Website changes also require apply followed by public root/asset checks. The
+catalogue now contains 15 built-ins plus separate custom templates. Review assigned
+legacy bundles when upgrading an existing panel. Use HTTP upstream only on a node
+reporting support, with a permitted local/private IP origin through Telemt's front.
+
 ## Upgrading the panel
 
 The panel container has no state of its own — everything lives in Postgres and the `paneldata` volume (which only holds the agent binary staged for node installs/upgrades). To upgrade:

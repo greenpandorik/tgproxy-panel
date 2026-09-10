@@ -1,5 +1,24 @@
 # Monitoring
 
+The panel UI groups monitoring by operator task: **Overview** for fleet health,
+**Problems** for active alerts and their next action, **Nodes** for historical series,
+and **WEB Transport** for carrier and overload observations. The Problems view uses
+the same alert actions as the dashboard, so resolving or retrying an issue is consistent.
+
+## WEB runtime and carriers
+
+WEB Transport reports runtime/admission, endpoint, last certificate check and
+supported negotiation/learning state. The UI carrier window is 24 hours, backed by
+`GET /api/v1/nodes/{id}/web/carriers?from&to`; fleet data uses
+`GET /api/v1/monitoring/web/carriers?from&to`.
+
+Selections are not unique users. Reported failures/rejections are counters, not a
+general client failure percentage. Missing metric families, offline nodes and
+unsupported capabilities stay distinct from zero. Do not derive setup-latency
+P50/P95 from panel-to-node probe timings. Diagnostics history/JSON preserves
+executed and not-run results, but does not certify all Telegram clients and
+fallback paths; see [the acceptance matrix](vnext-acceptance.md).
+
 The panel exposes fleet-level metrics for Prometheus at `/metrics`, and the Monitoring
 page in the UI (`/monitoring`) already covers per-node charts without any of this setup
 — read this doc only if you want the panel's own metrics in Grafana/Prometheus, or want

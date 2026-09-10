@@ -24,6 +24,7 @@ import (
 	"tgwebproxy/internal/notify"
 	"tgwebproxy/internal/store"
 	"tgwebproxy/internal/updates"
+	"tgwebproxy/internal/worker"
 	"tgwebproxy/web"
 )
 
@@ -44,6 +45,9 @@ type Deps struct {
 	Backups      *backup.Runner
 	NodeChecker  *nodecheck.Checker
 	Updates      *updates.Checker
+	// NodeVerifier confirms a node after a telemt update; nil uses the panel's own
+	// diagnostics pass.
+	NodeVerifier worker.Verifier
 }
 
 type Server struct {
@@ -70,7 +74,8 @@ type Server struct {
 	diagSlots      chan struct{}
 	publicStatus   publicStatusCache
 	// updates is nil when the update check is disabled.
-	updates *updates.Checker
+	updates       *updates.Checker
+	telemtUpdater *worker.TelemtUpdater
 }
 
 func New(d Deps) *Server {
@@ -98,6 +103,12 @@ func New(d Deps) *Server {
 		s.tg = notify.NewTelegram(http.DefaultClient, "")
 	}
 	s.metricsHandler = newMetricsHandler(d.Store)
+	s.telemtUpdater = worker.NewTelemtUpdater(d.Store, d.Driver, d.Log)
+	if d.NodeVerifier != nil {
+		s.telemtUpdater.SetVerifier(d.NodeVerifier)
+	} else {
+		s.telemtUpdater.SetVerifier(s)
+	}
 	return s
 }
 
@@ -147,6 +158,7 @@ func (s *Server) Handler() chi.Router {
 // mountProtected is extended in later tasks (keys, sites, branding, dashboard).
 func (s *Server) mountProtected(r chi.Router) {
 	r.Get("/nodes", s.handleListNodes)
+	r.With(RequireRole(writers...)).Post("/nodes/preflight/dns", s.handleNodeDNS)
 	r.With(RequireRole(writers...)).Post("/nodes", s.handleCreateNode)
 	r.Route("/nodes/{id}", func(r chi.Router) {
 		r.Get("/", s.handleGetNode)
@@ -164,11 +176,15 @@ func (s *Server) mountProtected(r chi.Router) {
 		r.With(RequireRole(writers...)).Post("/apply", s.handleNodeApply)
 		r.Get("/web-policy", s.handleGetNodeWebPolicy)
 		r.Get("/web/carriers", s.handleNodeWebCarriers)
+		r.With(RequireRole(writers...)).Post("/web/lifecycle", s.handleWebLifecycle)
 		r.With(RequireRole(writers...)).Put("/web-policy", s.handlePutNodeWebPolicy)
 		r.With(RequireRole(writers...)).Post("/check", s.handleNodeCheck)
+		r.With(RequireRole(writers...)).Post("/telemt-update", s.handleStartNodeTelemtUpdate)
+		r.Get("/telemt-update", s.handleListNodeTelemtUpdates)
 		r.Get("/diagnostics", s.handleListNodeDiagnostics)
 		r.With(RequireRole(writers...)).Post("/diagnostics/web", s.handleNodeWebDiagnostics)
 		r.With(RequireRole(writers...)).Post("/site", s.handleAssignSite)
+		r.With(RequireRole(writers...)).Post("/site/upstream", s.handleAssignUpstreamSite)
 		r.Get("/site", s.handleGetNodeSite)
 		r.Get("/site/preview", s.handleSitePreview)
 	})

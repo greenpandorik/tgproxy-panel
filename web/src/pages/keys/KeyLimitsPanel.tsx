@@ -19,6 +19,7 @@ interface KeyLimitsPanelProps {
   onTelemtChange: (next: TelemtLimitsForm) => void;
   /** False when no telemt node is selected: the per-user limits have nothing to enforce them. */
   telemtAvailable: boolean;
+  legacyAvailable: boolean;
   limitsErrors: Partial<Record<LimitFieldName, string>>;
   telemtErrors: Partial<Record<keyof TelemtLimitsForm, string>>;
   onBack: () => void;
@@ -31,6 +32,7 @@ export function KeyLimitsPanel({
   telemt,
   onTelemtChange,
   telemtAvailable,
+  legacyAvailable,
   limitsErrors,
   telemtErrors,
   onBack,
@@ -55,7 +57,8 @@ export function KeyLimitsPanel({
       <TelemtLimitsFields value={telemt} onChange={onTelemtChange} disabled={!telemtAvailable} errors={telemtErrors} />
 
       <AdvancedSettings label={t('keys.field_limits_toggle')} defaultOpen={advancedCount > 0}>
-        <LimitsFields value={limits} onChange={onLimitsChange} errors={limitsErrors} />
+        <p className="mb-3 text-label text-mute">{t(telemtAvailable && !legacyAvailable ? 'keys.web_limits_hint' : 'keys.legacy_limits_hint')}</p>
+        <LimitsFields value={limits} onChange={onLimitsChange} errors={limitsErrors} telemtOnly={telemtAvailable && !legacyAvailable} />
       </AdvancedSettings>
     </div>
   );

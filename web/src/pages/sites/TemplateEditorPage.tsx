@@ -29,7 +29,7 @@ import { LineNumberedTextarea } from './LineNumberedTextarea';
 import { base64ByteSize, buildPreviewSrcdoc, fileToBase64 } from './templatePreview';
 
 const DEFAULT_HTML = `<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>Site</title>

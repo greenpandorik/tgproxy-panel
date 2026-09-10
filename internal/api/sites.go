@@ -18,9 +18,11 @@ import (
 
 func (s *Server) mountSites(r chi.Router) {
 	r.Get("/site-templates", s.handleListTemplates)
+	r.With(RequireRole(writers...)).Post("/site-templates/import", s.handleImportWebsite)
 	r.With(RequireRole(writers...)).Post("/site-templates", s.handleCreateTemplate)
 	r.With(RequireRole(writers...)).Post("/site-templates/validate", s.handleValidateTemplate)
 	r.Get("/site-templates/{id}", s.handleGetTemplate)
+	r.With(RequireRole(writers...)).Post("/site-templates/{id}/customize", s.handleCustomizeWebsite)
 	r.With(RequireRole(writers...)).Put("/site-templates/{id}", s.handleUpdateTemplate)
 	r.With(RequireRole(writers...)).Delete("/site-templates/{id}", s.handleDeleteTemplate)
 }
@@ -53,6 +55,7 @@ func encodeAssets(in map[string][]byte) map[string]string {
 
 func templateJSON(t db.SiteTemplate, full bool) map[string]any {
 	out := map[string]any{"id": t.ID, "name": t.Name, "is_preset": t.IsPreset, "created_at": t.CreatedAt, "updated_at": t.UpdatedAt}
+	addPresetMetadata(out, t.Name, t.IsPreset)
 	if full {
 		var assets map[string]string
 		_ = json.Unmarshal(t.Assets, &assets)
@@ -68,7 +71,13 @@ func (s *Server) handleListTemplates(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": rows, "total": len(rows)})
+	items := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		item := map[string]any{"id": row.ID, "name": row.Name, "is_preset": row.IsPreset, "created_at": row.CreatedAt, "updated_at": row.UpdatedAt, "used_by": row.UsedBy}
+		addPresetMetadata(item, row.Name, row.IsPreset)
+		items = append(items, item)
+	}
+	writeJSON(w, 200, map[string]any{"items": items, "total": len(items)})
 }
 
 // maxBundleBytes caps a site template's total decoded size (HTML plus every asset).
@@ -288,6 +297,55 @@ func (s *Server) handleAssignSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Audit(r.Context(), "node.site_assign", "node", n.ID.String(), map[string]any{"template_id": t.ID})
+	if s.applyNow != nil {
+		s.applyNow(context.WithoutCancel(r.Context()), n.ID)
+	}
+	s.handleGetNodeSite(w, r)
+}
+
+func (s *Server) handleAssignUpstreamSite(w http.ResponseWriter, r *http.Request) {
+	n, ok := s.loadNode(w, r)
+	if !ok {
+		return
+	}
+	if n.Engine != db.NodeEngineTelemt {
+		conflict(w, "HTTP upstream websites are supported on Telemt nodes only")
+		return
+	}
+	var caps map[string]*bool
+	_ = json.Unmarshal(n.TelemtCapabilities, &caps)
+	if caps["HttpUpstreamDecoy"] == nil || !*caps["HttpUpstreamDecoy"] {
+		conflict(w, "HTTP upstream decoy support is unavailable or has not been determined; refresh node health")
+		return
+	}
+	var in struct {
+		Origin string `json:"origin"`
+	}
+	if err := decodeJSON(r, &in); err != nil {
+		badRequest(w, err.Error())
+		return
+	}
+	bundle, err := sitekit.UpstreamBundle(in.Origin)
+	if err != nil {
+		validation(w, map[string]string{"origin": err.Error()})
+		return
+	}
+	err = s.store.Tx(r.Context(), func(q *db.Queries) error {
+		if err := q.UpsertNodeSite(r.Context(), db.UpsertNodeSiteParams{
+			NodeID: n.ID, TemplateID: uuid.NullUUID{}, Bundle: bundle.JSON(), BundleHash: bundle.Hash(),
+		}); err != nil {
+			return err
+		}
+		return q.SetNodeDirty(r.Context(), db.SetNodeDirtyParams{ID: n.ID, Dirty: true})
+	})
+	if err != nil {
+		internal(w)
+		return
+	}
+	s.Audit(r.Context(), "node.site_upstream_assign", "node", n.ID.String(), map[string]any{"origin": in.Origin})
+	if s.applyNow != nil {
+		s.applyNow(context.WithoutCancel(r.Context()), n.ID)
+	}
 	s.handleGetNodeSite(w, r)
 }
 
@@ -302,7 +360,13 @@ func (s *Server) handleGetNodeSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bundle, _ := sitekit.BundleFromJSON(site.Bundle)
-	writeJSON(w, 200, map[string]any{"template_id": site.TemplateID, "bundle_hash": site.BundleHash, "deployed_hash": site.DeployedHash, "files": bundle.Paths(), "updated_at": site.UpdatedAt})
+	origin, upstream, _ := sitekit.UpstreamFromBundle(bundle)
+	mode := "static"
+	files := bundle.Paths()
+	if upstream {
+		mode, files = "upstream", []string{}
+	}
+	writeJSON(w, 200, map[string]any{"template_id": site.TemplateID, "bundle_hash": site.BundleHash, "deployed_hash": site.DeployedHash, "files": files, "mode": mode, "origin": origin, "updated_at": site.UpdatedAt})
 }
 
 // handleSitePreview inlines the bundle's stylesheets so the admin can preview without deploying.
@@ -319,6 +383,10 @@ func (s *Server) handleSitePreview(w http.ResponseWriter, r *http.Request) {
 	bundle, err := sitekit.BundleFromJSON(site.Bundle)
 	if err != nil {
 		internal(w)
+		return
+	}
+	if _, upstream, _ := sitekit.UpstreamFromBundle(bundle); upstream {
+		writeError(w, http.StatusConflict, "upstream_preview", "the upstream website is previewed at the node's public URL", nil)
 		return
 	}
 	page := string(bundle.Files["index.html"])
@@ -344,5 +412,28 @@ func (s *Server) NodeSiteFiles(ctx context.Context, nodeID uuid.UUID) (map[strin
 	if err != nil {
 		return nil, err
 	}
+	if _, upstream, err := sitekit.UpstreamFromBundle(b); err != nil {
+		return nil, err
+	} else if upstream {
+		// The initial installer still needs a static fallback. The first agent apply
+		// switches Telemt to the stored upstream after it has registered.
+		return nil, nil
+	}
 	return b.Files, nil
+}
+
+func addPresetMetadata(out map[string]any, name string, preset bool) {
+	out["category"] = "custom"
+	if !preset {
+		return
+	}
+	for _, p := range sitekit.Presets() {
+		if p.Name == name {
+			out["display_name"] = p.Manifest.Name
+			out["category"] = p.Manifest.Category
+			out["variables"] = p.Manifest.Variables
+			out["screenshot_url"] = "/websites/" + name + ".png"
+			return
+		}
+	}
 }

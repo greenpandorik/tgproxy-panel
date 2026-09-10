@@ -23,6 +23,11 @@ type mockNode struct {
 	classicPort uint32
 	publicIP    string
 	deferred    []string
+
+	updateReqs    []TelemtUpdateRequest
+	updateErr     string
+	updateStates  []TelemtUpdate
+	updateVersion string
 }
 
 // Mock is an in-memory Driver for tests and NODE_DRIVER=mock.
@@ -229,6 +234,63 @@ func (m *Mock) TailLogs(ctx context.Context, id uuid.UUID, services []string, li
 	return out, nil
 }
 
+// ScriptTelemtUpdate fixes what TelemtUpdateStatus reports, one state per call; the last
+// state repeats. Without a script the node reports the update finished and healthy.
+func (m *Mock) ScriptTelemtUpdate(id uuid.UUID, states ...TelemtUpdate) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.node(id).updateStates = states
+}
+
+// FailTelemtUpdateStart makes the node refuse to accept an update at all.
+func (m *Mock) FailTelemtUpdateStart(id uuid.UUID, msg string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.node(id).updateErr = msg
+}
+
+// TelemtUpdateRequests returns the update requests this node was sent.
+func (m *Mock) TelemtUpdateRequests(id uuid.UUID) []TelemtUpdateRequest {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]TelemtUpdateRequest(nil), m.node(id).updateReqs...)
+}
+
+func (m *Mock) UpdateTelemt(_ context.Context, id uuid.UUID, req TelemtUpdateRequest) (TelemtUpdate, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n, err := m.get(id)
+	if err != nil {
+		return TelemtUpdate{}, err
+	}
+	if n.updateErr != "" {
+		return TelemtUpdate{}, errors.New(n.updateErr)
+	}
+	n.updateReqs = append(n.updateReqs, req)
+	n.updateVersion = req.Version
+	return TelemtUpdate{JobID: uuid.NewString(), Phase: "running", ToVersion: req.Version}, nil
+}
+
+func (m *Mock) TelemtUpdateStatus(_ context.Context, id uuid.UUID) (TelemtUpdate, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n, err := m.get(id)
+	if err != nil {
+		return TelemtUpdate{}, err
+	}
+	if len(n.updateStates) > 0 {
+		st := n.updateStates[0]
+		if len(n.updateStates) > 1 {
+			n.updateStates = n.updateStates[1:]
+		}
+		return st, nil
+	}
+	return TelemtUpdate{
+		Phase: "done", Outcome: "updated", OK: true, ToVersion: n.updateVersion, Drained: true,
+		Steps: []UpdateStep{{Key: "verify", State: "ok", Message: "telemt " + n.updateVersion + " is running"}},
+	}, nil
+}
+
 func (m *Mock) RestartRelay(_ context.Context, id uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -238,4 +300,11 @@ func (m *Mock) RestartRelay(_ context.Context, id uuid.UUID) error {
 	}
 	n.restarts++
 	return nil
+}
+
+func (m *Mock) ControlWeb(_ context.Context, id uuid.UUID, action string, timeoutSecs int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_, err := m.get(id)
+	return err
 }

@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"tgwebproxy/internal/telemt"
@@ -443,6 +444,12 @@ func insideUnit(unit string) bool {
 
 // download fetches the artifact into dir and verifies the panel's sha256 before returning the file.
 func (u *upgrader) download(ctx context.Context, a UpgradeArtifact, dir, pattern string) (string, error) {
+	return downloadArtifact(ctx, u.o.HTTP, a, dir, pattern)
+}
+
+// downloadArtifact fetches the artifact into dir and verifies the panel's sha256 before
+// returning the file; a download that does not match is deleted and nothing is installed.
+func downloadArtifact(ctx context.Context, httpc *http.Client, a UpgradeArtifact, dir, pattern string) (string, error) {
 	if a.SHA256 == "" {
 		return "", fmt.Errorf("the panel published no sha256 for %s; refusing to install an unverified download", a.URL)
 	}
@@ -450,7 +457,7 @@ func (u *upgrader) download(ctx context.Context, a UpgradeArtifact, dir, pattern
 	if err != nil {
 		return "", err
 	}
-	resp, err := u.o.HTTP.Do(req)
+	resp, err := httpc.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("download %s: %w", a.URL, err)
 	}
@@ -525,7 +532,11 @@ func extractTelemtBinary(tgz, dst string) error {
 }
 
 // backupBinary copies path to path+".prev" and returns it.
-func backupBinary(path string) (string, error) {
+func backupBinary(path string) (string, error) { return backupFile(path, 0o755) }
+
+// backupFile copies path to path+".prev" with mode and returns it; a file that does not
+// exist yields an empty name, which restoreFile reads as "there was nothing to put back".
+func backupFile(path string, mode os.FileMode) (string, error) {
 	prev := path + ".prev"
 	src, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -535,7 +546,11 @@ func backupBinary(path string) (string, error) {
 		return "", fmt.Errorf("read %s: %w", path, err)
 	}
 	defer func() { _ = src.Close() }()
-	dst, err := os.OpenFile(prev, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
+	info, err := src.Stat()
+	if err != nil {
+		return "", fmt.Errorf("stat %s: %w", path, err)
+	}
+	dst, err := os.OpenFile(prev, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
 		return "", err
 	}
@@ -546,6 +561,12 @@ func backupBinary(path string) (string, error) {
 	if err != nil {
 		_ = os.Remove(prev)
 		return "", fmt.Errorf("keep a copy of %s: %w", path, err)
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		if err := os.Chown(prev, int(stat.Uid), int(stat.Gid)); err != nil {
+			_ = os.Remove(prev)
+			return "", fmt.Errorf("preserve owner of %s: %w", path, err)
+		}
 	}
 	return prev, nil
 }
@@ -567,7 +588,10 @@ func keptAs(prev string) string {
 }
 
 // restoreBinary puts the kept copy back.
-func restoreBinary(prev, path string) error {
+func restoreBinary(prev, path string) error { return restoreFile(prev, path, 0o755) }
+
+// restoreFile puts the kept copy back; with nothing kept it removes what was installed.
+func restoreFile(prev, path string, mode os.FileMode) error {
 	if prev == "" {
 		return os.Remove(path)
 	}
@@ -577,5 +601,5 @@ func restoreBinary(prev, path string) error {
 	if err := os.Rename(prev, path); err != nil {
 		return err
 	}
-	return os.Chmod(path, 0o755)
+	return os.Chmod(path, mode)
 }

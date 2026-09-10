@@ -270,7 +270,19 @@ Link format: `https://t.me/webproxy?server=<node-domain>&secret=<secret>`. Clien
 
 ## 9. Node cover site
 
-The node's domain must serve an ordinary website so the traffic looks like a visit to a site. The panel installs a template during setup and lets you change it: Site templates → pick a preset or write your own → Assign to node.
+The node's domain must serve an ordinary website. Open Websites to preview one of
+15 built-in sites, customize a copy or import a static ZIP containing `index.html`.
+Assign from the gallery or node Website tab and wait for apply. Supported telemt
+nodes can use a local/private HTTP upstream. Verify the public root, assets and
+WEB proxy afterwards; editor preview does not confirm deployment.
+
+Node creation guides identity/DNS and proxy settings before the install command.
+The installation dialog tracks agent connection/readiness and offers diagnostics
+once connected. Execute the command on the node: a panel record is not an install.
+WEB Transport provides runtime/carrier information and supported controls;
+diagnostics retain history and export JSON. Missing checks are not successes.
+The Telemt update card targets the panel-pinned build and shows progress and recovery
+outcomes. See [the runbook](runbook.md) and [acceptance matrix](vnext-acceptance.md).
 
 ![Templates](screenshots/sites.png)
 

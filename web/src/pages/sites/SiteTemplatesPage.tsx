@@ -1,7 +1,7 @@
-import { Copy, LayoutTemplate, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { Copy, LayoutTemplate, MoreHorizontal, Plus, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { useCreateSiteTemplate, useDeleteSiteTemplate, useSiteTemplates } from '@/api/sites';
 import { useAuth } from '@/auth/AuthProvider';
@@ -9,59 +9,32 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { api, ApiError } from '@/lib/api';
-import { formatRelativeTime } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
-import type { CSSProperties } from 'react';
+import { CustomizeWebsiteDialog } from './CustomizeWebsiteDialog';
+import { WebsiteGallery } from './WebsiteGallery';
+import { WebsitePreview } from './WebsitePreview';
+import { AssignTemplateDialog } from './AssignTemplateDialog';
+import { ImportWebsiteDialog } from './ImportWebsiteDialog';
 import type { SiteTemplate } from '@/api/types';
 
-/** The grid the list lays its cards out on - shared by the cards, their skeletons and nothing else. */
-const CARD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
-
-function TemplatePlate() {
-  return (
-    <span
-      className="tgwp-tone-tint flex size-7 shrink-0 items-center justify-center rounded-control border"
-      style={{ '--tone': 'var(--mute)' } as CSSProperties}
-      aria-hidden="true"
-    >
-      <LayoutTemplate size={16} strokeWidth={1.8} />
-    </span>
-  );
-}
-
-/** The card in silhouette: the plate and name line, then the badge and stamp that sit at its foot. */
-function TemplateCardSkeleton() {
-  return (
-    <li className="flex min-h-24 flex-col gap-2 rounded-surface border border-hairline bg-card p-4">
-      <div className="flex items-center gap-2.5">
-        <Skeleton className="size-7 rounded-control" />
-        <Skeleton className="h-4 w-40" />
-      </div>
-      <div className="mt-auto flex items-center gap-2">
-        <Skeleton className="h-5 w-14" />
-        <Skeleton className="h-3 w-28" />
-      </div>
-    </li>
-  );
-}
-
 export function SiteTemplatesPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { isWriter } = useAuth();
   const navigate = useNavigate();
   const templatesQuery = useSiteTemplates();
   const createTemplate = useCreateSiteTemplate();
   const deleteTemplate = useDeleteSiteTemplate();
 
+  const [customize, setCustomize] = useState<SiteTemplate | null>(null);
+  const [preview, setPreview] = useState<SiteTemplate | null>(null);
+  const [assign, setAssign] = useState<SiteTemplate | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SiteTemplate | null>(null);
 
   const templates = templatesQuery.data?.items ?? [];
@@ -100,6 +73,7 @@ export function SiteTemplatesPage() {
         actions={
           <>
             <HelpButton topic="sites.templates" />
+            {isWriter && <Button variant="outline" onClick={() => setImportOpen(true)}><Upload />{t('sites.import_zip')}</Button>}
             {isWriter && (
               <Button type="button" onClick={() => navigate('/sites/new')}>
                 <Plus />
@@ -111,11 +85,7 @@ export function SiteTemplatesPage() {
       />
 
       {templatesQuery.isLoading ? (
-        <ul className={CARD_GRID}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <TemplateCardSkeleton key={i} />
-          ))}
-        </ul>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">{Array.from({length: 6}, (_, i) => <Skeleton key={i} className="h-80" />)}</div>
       ) : templatesQuery.isError ? (
         <ErrorState
           message={templatesQuery.error instanceof ApiError ? templatesQuery.error.message : t('common.error_generic')}
@@ -137,61 +107,20 @@ export function SiteTemplatesPage() {
           }
         />
       ) : (
-        <ul className={CARD_GRID}>
-          {templates.map((tpl, i) => (
-            <li
-              key={tpl.id}
-              style={enterDelay(i)}
-              className={cn(
-                ENTER_CLASS,
-                'flex min-h-24 flex-col gap-2 rounded-surface border border-hairline bg-card p-4 transition-colors hover:border-hairline-strong',
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <TemplatePlate />
-                  <Link
-                    to={`/sites/${tpl.id}`}
-                    className="min-w-0 truncate text-body font-medium text-foreground hover:underline"
-                  >
-                    {tpl.name}
-                  </Link>
-                </span>
-                {isWriter && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={<Button type="button" variant="ghost" size="icon-sm" className="-mt-0.5 -mr-1" />}
-                    >
-                      <MoreHorizontal />
-                      <span className="sr-only">{t('common.actions')}</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => navigate(`/sites/${tpl.id}`)}>{t('common.edit')}</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => void handleDuplicate(tpl)}>
-                        <Copy />
-                        {t('sites.action_duplicate')}
-                      </DropdownMenuItem>
-                      {!tpl.is_preset && (
-                        <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(tpl)}>
-                          <Trash2 />
-                          {t('common.delete')}
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-
-              <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1">
-                {tpl.is_preset && <Badge>{t('sites.preset_badge')}</Badge>}
-                <span className="mono text-mono text-mute">
-                  {t('sites.card_updated', { time: formatRelativeTime(tpl.updated_at, i18n.language) })}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <WebsiteGallery websites={templates} onPreview={setPreview} onUse={isWriter ? setAssign : undefined} actions={isWriter ? (tpl) => <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t('common.actions')} />}><MoreHorizontal /></DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {tpl.is_preset && <DropdownMenuItem onClick={() => setCustomize(tpl)}>{t('sites.customize')}</DropdownMenuItem>}
+            <DropdownMenuItem onClick={() => navigate(`/sites/${tpl.id}`)}>{t('common.edit')}</DropdownMenuItem>
+            <DropdownMenuItem disabled={createTemplate.isPending} onClick={() => void handleDuplicate(tpl)}><Copy />{t('sites.action_duplicate')}</DropdownMenuItem>
+            {!tpl.is_preset && <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(tpl)}><Trash2 />{t('common.delete')}</DropdownMenuItem>}
+          </DropdownMenuContent>
+        </DropdownMenu> : undefined} />
       )}
+      <WebsitePreview website={preview} onClose={() => setPreview(null)} onUse={isWriter ? (tpl) => { setPreview(null); setAssign(tpl); } : undefined} />
+      {assign && <AssignTemplateDialog open onOpenChange={(open) => { if (!open) setAssign(null); }} templateId={assign.id} templateName={assign.display_name ?? assign.name} />}
+      {customize && <CustomizeWebsiteDialog key={customize.id} website={customize} onClose={() => setCustomize(null)} />}
+      <ImportWebsiteDialog open={importOpen} onOpenChange={setImportOpen} />
 
       <ConfirmDialog
         open={!!deleteTarget}

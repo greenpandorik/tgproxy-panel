@@ -140,6 +140,26 @@ func webRuntimeState(st telemt.WebStatus) *agentv1.WebRuntimeState {
 			}
 		}
 	}
+	if capacity := st.Capacity; capacity != nil {
+		out.Capacity = &agentv1.WebCapacityState{
+			ConnectionCapacityAction:   capacity.HTTPConnectionCapacityAction,
+			MaxHttpOverloadConnections: capacity.MaxHTTPOverloadConnections,
+			HttpOverloadTimeoutMs:      capacity.HTTPOverloadTimeoutMs,
+			SaturatedResources:         append([]string(nil), capacity.SaturatedResources...),
+			Partial:                    append([]string(nil), capacity.Partial...),
+			OverloadOutcomes:           &agentv1.WebCounterFamily{},
+		}
+		for _, resource := range capacity.Resources {
+			out.Capacity.Resources = append(out.Capacity.Resources, &agentv1.WebCapacityResource{
+				Resource: resource.Resource, Unit: resource.Unit, Used: resource.Used,
+				Available: resource.Available, Limit: resource.Limit, Closed: resource.Closed,
+			})
+		}
+		for _, outcome := range capacity.HTTPConnectionOverloadOutcomes {
+			out.Capacity.OverloadOutcomes.Samples = append(out.Capacity.OverloadOutcomes.Samples,
+				&agentv1.WebCounterSample{Label: outcome.Outcome, Value: float64(outcome.Total)})
+		}
+	}
 	return out
 }
 

@@ -23,6 +23,10 @@ telemt_web_rejections_total{reason="admission_closed"} 5
 telemt_web_session_closures_total{carrier="https",reason="evicted"} 2
 # TYPE telemt_web_bridge_recovery_events_total counter
 telemt_web_bridge_recovery_events_total{event="recovered"} 4
+telemt_tls_front_profile_domains{status="configured"} 1
+telemt_tls_front_profile_domains{status="emitted"} 1
+telemt_tls_front_profile_domains{status="suppressed"} 0
+telemt_handshake_failures_by_class_total{class="timeout"} 0
 telemt_connections_total 99
 `
 
@@ -66,6 +70,12 @@ func TestParseWebMetricsKeepsCarriersAndLabels(t *testing.T) {
 	if v, ok := m.BridgeRecovery.Get("recovered"); !ok || v != 4 {
 		t.Fatalf("bridge recovery: %v %v", v, ok)
 	}
+	if v, ok := m.TLSFrontDomains.Get("emitted"); !ok || v != 1 {
+		t.Fatalf("TLS front domains: %v %v", v, ok)
+	}
+	if v, ok := m.HandshakeFailures.Get("timeout"); !ok || v != 0 {
+		t.Fatalf("handshake failures: %v %v", v, ok)
+	}
 	if got := m.CarrierSelections.Carriers(); len(got) != 2 || got[0] != CarrierHTTPS {
 		t.Fatalf("carriers: %+v", got)
 	}
@@ -76,7 +86,7 @@ func TestAbsentFamilyIsAbsentAndNotZero(t *testing.T) {
 	if m.CarrierSelections.Present || m.CarrierFailures.Present || m.LearningOutcomes.Present {
 		t.Fatalf("families invented out of nothing: %+v", m)
 	}
-	if m.LearningEntries.Present || m.Rejections.Present || m.SessionClosures.Present || m.BridgeRecovery.Present {
+	if m.LearningEntries.Present || m.Rejections.Present || m.SessionClosures.Present || m.BridgeRecovery.Present || m.TLSFrontDomains.Present || m.HandshakeFailures.Present {
 		t.Fatalf("families invented out of nothing: %+v", m)
 	}
 	if v, ok := m.Rejections.Get("admission_closed"); ok || v != 0 {

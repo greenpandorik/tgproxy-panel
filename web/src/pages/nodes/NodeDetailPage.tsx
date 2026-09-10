@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TelemtUpdateCard } from '@/components/web/TelemtUpdateCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -24,6 +25,7 @@ import { NodeOverviewTab } from './NodeOverviewTab';
 import { NodeProfilesTab } from './NodeProfilesTab';
 import { NodeSiteTab } from './NodeSiteTab';
 import { NodeStatsTab } from './NodeStatsTab';
+import { NodeWebTab } from './NodeWebTab';
 import { DASH, fakeTlsEndpoint, nodeStatus, shortVersion, telemtVersion } from './nodeDisplay';
 
 /** One machine fact about the node, as a hairline tag beside the hostname. */
@@ -193,9 +195,11 @@ export function NodeDetailPage() {
           <TabsList variant="line" className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="overview">{t('nodes.tab_overview')}</TabsTrigger>
             <TabsTrigger value="profiles">{t('nodes.tab_profiles')}</TabsTrigger>
+            <TabsTrigger value="web">{t('nodes.tab_web')}</TabsTrigger>
             <TabsTrigger value="logs">{t('nodes.tab_logs')}</TabsTrigger>
             <TabsTrigger value="site">{t('nodes.tab_site')}</TabsTrigger>
             <TabsTrigger value="stats">{t('nodes.tab_stats')}</TabsTrigger>
+            {node.engine === 'telemt' && <TabsTrigger value="settings">{t('nodes.tab_settings')}</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="overview">
@@ -204,12 +208,16 @@ export function NodeDetailPage() {
           <TabsContent value="profiles">
             <NodeProfilesTab nodeId={node.id} online={node.online} engine={node.engine} />
           </TabsContent>
+          <TabsContent value="web">
+            <NodeWebTab node={node} />
+          </TabsContent>
           <TabsContent value="logs">
             <NodeLogs nodeId={node.id} online={node.online} />
           </TabsContent>
           <TabsContent value="site">
             <NodeSiteTab nodeId={node.id} />
           </TabsContent>
+          {node.engine === 'telemt' && <TabsContent value="settings"><TelemtUpdateCard node={node} /></TabsContent>}
           <TabsContent value="stats">
             <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />
           </TabsContent>
@@ -240,6 +248,7 @@ export function NodeDetailPage() {
         <InstallCommandDialog
           open={!!installResult}
           onOpenChange={(open) => !open && setInstallResult(null)}
+          nodeId={node.id}
           command={installResult.command}
           expiresAt={installResult.expires_at}
           regenerated

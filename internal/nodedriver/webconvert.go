@@ -94,6 +94,22 @@ func webRuntimeFromProto(r *agentv1.WebRuntimeState) *WebRuntimeState {
 			}
 		}
 	}
+	if c := r.GetCapacity(); c != nil {
+		out.Capacity = &WebCapacityState{
+			ConnectionCapacityAction:   c.GetConnectionCapacityAction(),
+			MaxHTTPOverloadConnections: c.GetMaxHttpOverloadConnections(),
+			HTTPOverloadTimeoutMs:      c.GetHttpOverloadTimeoutMs(),
+			SaturatedResources:         append([]string(nil), c.GetSaturatedResources()...),
+			Partial:                    append([]string(nil), c.GetPartial()...),
+			OverloadOutcomes:           webFamilyFromProto(c.GetOverloadOutcomes()),
+		}
+		for _, resource := range c.GetResources() {
+			out.Capacity.Resources = append(out.Capacity.Resources, WebCapacityResource{
+				Resource: resource.GetResource(), Unit: resource.GetUnit(), Used: resource.GetUsed(),
+				Available: resource.GetAvailable(), Limit: resource.GetLimit(), Closed: resource.GetClosed(),
+			})
+		}
+	}
 	return out
 }
 
@@ -122,6 +138,22 @@ func webRuntimeToProto(r *WebRuntimeState) *agentv1.WebRuntimeState {
 				RemainingStreams: d.RemainingStreams, RemainingWebsockets: d.RemainingWebsockets,
 				ForceCloseSignalled: d.ForceCloseSignalled,
 			}
+		}
+	}
+	if c := r.Capacity; c != nil {
+		out.Capacity = &agentv1.WebCapacityState{
+			ConnectionCapacityAction:   c.ConnectionCapacityAction,
+			MaxHttpOverloadConnections: c.MaxHTTPOverloadConnections,
+			HttpOverloadTimeoutMs:      c.HTTPOverloadTimeoutMs,
+			SaturatedResources:         append([]string(nil), c.SaturatedResources...),
+			Partial:                    append([]string(nil), c.Partial...),
+			OverloadOutcomes:           webFamilyToProto(c.OverloadOutcomes),
+		}
+		for _, resource := range c.Resources {
+			out.Capacity.Resources = append(out.Capacity.Resources, &agentv1.WebCapacityResource{
+				Resource: resource.Resource, Unit: resource.Unit, Used: resource.Used,
+				Available: resource.Available, Limit: resource.Limit, Closed: resource.Closed,
+			})
 		}
 	}
 	return out

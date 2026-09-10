@@ -1,4 +1,4 @@
-import { Plug, Server } from 'lucide-react';
+import { Activity, Plug, Server } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -20,10 +20,14 @@ import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { seriesPalette } from '@/lib/chart';
 
+import { FleetCarriersCard } from './FleetCarriersCard';
+import { AttentionSection } from '@/pages/dashboard/AttentionSection';
+
 import type { ReactNode } from 'react';
 import type { MonitoringRange } from '@/api/monitoring';
 import type { Status } from '@/components/common/StatusBadge';
 import type { MonitoringNode, MonitoringPoint, NodeEngine } from '@/api/types';
+import { formatBytes, formatNumber } from '@/lib/format';
 
 // recharts stays out of the shell bundle - only NodeSeriesChart.tsx imports it.
 const NodeSeriesChart = lazy(() => import('./NodeSeriesChart').then((m) => ({ default: m.NodeSeriesChart })));
@@ -115,10 +119,36 @@ function NodeCardSkeleton() {
   );
 }
 
+type MonitoringView = 'overview' | 'problems' | 'nodes' | 'web';
+
+function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Record<string, MonitoringPoint[]> }) {
+  const { t, i18n } = useTranslation();
+  const online = nodes.filter((node) => node.status === 'online' || node.status === 'degraded').length;
+  const healthy = nodes.filter((node) => node.status === 'online').length;
+  const degraded = nodes.filter((node) => node.status === 'degraded').length;
+  let sessions = 0;
+  let throughput = 0;
+  for (const points of Object.values(series)) {
+    const last = points.at(-1);
+    if (!last) continue;
+    sessions += last.sessions_live;
+    throughput += last.bytes_up_rate + last.bytes_down_rate;
+  }
+  const items = [
+    [t('monitoring.fleet_online'), `${formatNumber(online, i18n.language)} / ${formatNumber(nodes.length, i18n.language)}`],
+    [t('monitoring.fleet_healthy'), formatNumber(healthy, i18n.language)],
+    [t('monitoring.fleet_degraded'), formatNumber(degraded, i18n.language)],
+    [t('monitoring.fleet_sessions'), formatNumber(sessions, i18n.language)],
+    [t('monitoring.fleet_traffic'), `${formatBytes(throughput)}/s`],
+  ];
+  return <Panel><PanelHeader icon={Activity} title={t('monitoring.fleet_title')} /><div className="grid grid-cols-2 gap-px bg-hairline sm:grid-cols-3 xl:grid-cols-5">{items.map(([label,value])=><div key={label} className="bg-card px-5 py-4"><p className="text-micro text-mute">{label}</p><p className="mt-1 text-title text-foreground">{value}</p></div>)}</div></Panel>;
+}
+
 export function MonitoringPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [range, setRange] = useState<MonitoringRange>('24h');
+  const [view, setView] = useState<MonitoringView>('overview');
   const overviewQuery = useMonitoringOverview(range);
   const { data: branding } = useBranding();
   const nodesQuery = useNodes();
@@ -154,7 +184,15 @@ export function MonitoringPage() {
         }
       />
 
-      {loading ? (
+      <SegmentedControl
+        label={t('monitoring.view_label')}
+        value={view}
+        onChange={setView}
+        className="mb-4 max-w-full overflow-x-auto"
+        options={(['overview', 'problems', 'nodes', 'web'] as const).map((value) => ({ value, label: t(`monitoring.view_${value}`) }))}
+      />
+
+      {loading && view !== 'problems' ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <NodeCardSkeleton />
           <NodeCardSkeleton />
@@ -167,7 +205,7 @@ export function MonitoringPage() {
           retryLabel={t('common.refresh')}
           onRetry={() => void overviewQuery.refetch()}
         />
-      ) : nodes.length === 0 ? (
+      ) : view !== 'problems' && nodes.length === 0 ? (
         <EmptyState
           icon={Server}
           title={t('monitoring.empty_no_nodes')}
@@ -177,7 +215,11 @@ export function MonitoringPage() {
             </Button>
           }
         />
-      ) : (
+      ) : view === 'overview' ? (
+        <FleetOverview nodes={nodes} series={series} />
+      ) : view === 'problems' ? (
+        <AttentionSection />
+      ) : view === 'nodes' ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {nodes.map((node, i) => (
             <Arriving key={node.node_id} index={i}>
@@ -190,9 +232,11 @@ export function MonitoringPage() {
             </Arriving>
           ))}
         </div>
+      ) : (
+        <FleetCarriersCard nodes={nodesQuery.data?.items ?? []} />
       )}
 
-      <Arriving index={nodes.length}>
+      {view === 'overview' && <Arriving index={nodes.length + 1}>
         <Panel>
           <PanelHeader icon={Plug} title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
           <PanelBody className="space-y-4">
@@ -206,7 +250,7 @@ export function MonitoringPage() {
             </p>
           </PanelBody>
         </Panel>
-      </Arriving>
+      </Arriving>}
     </>
   );
 }

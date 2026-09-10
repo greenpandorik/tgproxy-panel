@@ -28,6 +28,7 @@ func settleWebPolicy(f *fakeTelemt, p domain.WebPolicy) {
 	web["carriers"] = carriers
 	web["carrier_learning"] = p.CarrierLearning
 	web["carrier_negotiation_aggressiveness"] = string(p.Aggressiveness)
+	web["http_connection_capacity_action"] = string(p.Overload.ConnectionCapacityAction)
 	web["timeouts"] = map[string]any{
 		"carrier_negotiation_deadlines_secs": deadlines,
 		"carrier_health_secs":                float64(p.Timeouts.CarrierHealthSecs),
@@ -86,6 +87,9 @@ func TestTelemtApplyWritesTheWebPolicy(t *testing.T) {
 	}
 	if patch.Web["carrier_learning"] != true || patch.Web["carrier_negotiation_aggressiveness"] != "conservative" {
 		t.Fatalf("negotiation keys: %s", patches[0])
+	}
+	if patch.Web["http_connection_capacity_action"] != "wait" {
+		t.Fatalf("overload action: %s", patches[0])
 	}
 	timeouts, _ := patch.Web["timeouts"].(map[string]any)
 	if len(timeouts) != 6 || timeouts["carrier_health_secs"] != 30.0 || timeouts["bridge_retry_secs"] != 90.0 {

@@ -8,7 +8,9 @@ SELECT * FROM site_templates WHERE id = $1;
 SELECT * FROM site_templates WHERE is_preset = true AND name = $1;
 
 -- name: ListSiteTemplates :many
-SELECT id, name, is_preset, created_at, updated_at FROM site_templates ORDER BY is_preset DESC, name;
+SELECT t.id, t.name, t.is_preset, t.created_at, t.updated_at,
+ (SELECT count(*) FROM node_sites n WHERE n.template_id = t.id) AS used_by
+FROM site_templates t ORDER BY t.is_preset DESC, t.name;
 
 -- name: UpdateSiteTemplate :one
 UPDATE site_templates SET name = $2, html = $3, assets = $4, updated_at = now() WHERE id = $1 RETURNING *;

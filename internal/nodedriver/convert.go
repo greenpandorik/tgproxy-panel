@@ -121,9 +121,10 @@ func WebPolicyToProto(p *domain.WebPolicy) *agentv1.WebPolicy {
 		return nil
 	}
 	out := &agentv1.WebPolicy{
-		Carrier:         string(p.Carrier),
-		CarrierLearning: p.CarrierLearning,
-		Aggressiveness:  string(p.Aggressiveness),
+		Carrier:                  string(p.Carrier),
+		CarrierLearning:          p.CarrierLearning,
+		Aggressiveness:           string(p.Aggressiveness),
+		ConnectionCapacityAction: string(p.Overload.ConnectionCapacityAction),
 		Timeouts: &agentv1.WebTimeouts{
 			CarrierHealthSecs:   int32(p.Timeouts.CarrierHealthSecs),
 			CarrierLearningSecs: int32(p.Timeouts.CarrierLearningSecs),
@@ -147,11 +148,19 @@ func WebPolicyFromProto(p *agentv1.WebPolicy) *domain.WebPolicy {
 		return nil
 	}
 	t := p.GetTimeouts()
+	capacityAction := domain.WebCapacityAction(p.GetConnectionCapacityAction())
+	if capacityAction == "" {
+		capacityAction = domain.DefaultWebPolicy().Overload.ConnectionCapacityAction
+	}
 	out := &domain.WebPolicy{
 		Preset:          domain.PresetCustom,
 		Carrier:         domain.Carrier(p.GetCarrier()),
 		CarrierLearning: p.GetCarrierLearning(),
 		Aggressiveness:  domain.Aggressiveness(p.GetAggressiveness()),
+		Overload: domain.WebOverloadPolicy{
+			Preset:                   domain.OverloadCustom,
+			ConnectionCapacityAction: capacityAction,
+		},
 		Timeouts: domain.WebTimeouts{
 			CarrierHealthSecs:   int(t.GetCarrierHealthSecs()),
 			CarrierLearningSecs: int(t.GetCarrierLearningSecs()),

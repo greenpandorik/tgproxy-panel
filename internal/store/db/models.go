@@ -634,3 +634,17 @@ type SubscriptionToken struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	RevokedAt   *time.Time `json:"revoked_at"`
 }
+
+type TelemtUpdateJob struct {
+	ID           uuid.UUID  `json:"id"`
+	NodeID       uuid.UUID  `json:"node_id"`
+	Status       string     `json:"status"`
+	Outcome      string     `json:"outcome"`
+	FromVersion  string     `json:"from_version"`
+	ToVersion    string     `json:"to_version"`
+	Error        string     `json:"error"`
+	Steps        []byte     `json:"steps"`
+	Verification []byte     `json:"verification"`
+	StartedAt    time.Time  `json:"started_at"`
+	FinishedAt   *time.Time `json:"finished_at"`
+}

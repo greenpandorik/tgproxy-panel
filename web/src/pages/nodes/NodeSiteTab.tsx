@@ -1,16 +1,20 @@
-import { Eye, LayoutTemplate } from 'lucide-react';
+import { Eye, LayoutTemplate, Network } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useAssignSite, useNodeSite } from '@/api/nodes';
+import { useAssignSite, useAssignUpstreamSite, useNodeSite, useNode, useNodeJobs } from '@/api/nodes';
 import { nodeSitePreviewUrl, useSiteTemplates } from '@/api/sites';
 import { useAuth } from '@/auth/AuthProvider';
 import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ENTER_CLASS } from '@/components/ui/motion';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { WebsiteGallery } from '@/pages/sites/WebsiteGallery';
+import { WebsitePreview } from '@/pages/sites/WebsitePreview';
+import type { SiteTemplate } from '@/api/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
@@ -24,21 +28,39 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
   const siteQuery = useNodeSite(nodeId);
   const templatesQuery = useSiteTemplates();
   const assignSite = useAssignSite(nodeId);
-  const [selected, setSelected] = useState<string>('');
+  const assignUpstream = useAssignUpstreamSite(nodeId);
+  const [picker, setPicker] = useState(false);
+  const [upstreamOpen, setUpstreamOpen] = useState(false);
+  const [origin, setOrigin] = useState('http://127.0.0.1:3000');
+  const [preview, setPreview] = useState<SiteTemplate | null>(null);
+  const nodeQuery = useNode(nodeId);
+  const jobsQuery = useNodeJobs(nodeId, 1);
 
   const site = siteQuery.data;
   const templates = templatesQuery.data?.items ?? [];
   const currentTemplate = templates.find((tpl) => tpl.id === site?.template_id);
   const deployed = !!site?.deployed_hash && site.deployed_hash === site.bundle_hash;
+  const isUpstream = site?.mode === 'upstream';
+  const upstreamSupported = nodeQuery.data?.engine === 'telemt' && nodeQuery.data.telemt_capabilities?.HttpUpstreamDecoy === true;
 
-  const handleAssign = async () => {
-    if (!selected) return;
+  const handleAssign = async (selected: SiteTemplate) => {
     try {
-      await assignSite.mutateAsync(selected);
+      await assignSite.mutateAsync(selected.id);
       toast.add({ description: t('nodes.site_assign_success'), type: 'success' });
-      setSelected('');
+      setPicker(false);
     } catch {
       toast.add({ description: t('common.error_generic'), type: 'error' });
+    }
+  };
+
+  const handleAssignUpstream = async () => {
+    try {
+      await assignUpstream.mutateAsync(origin);
+      toast.add({ description: t('sites.upstream_queued'), type: 'success' });
+      setPicker(false);
+      setUpstreamOpen(false);
+    } catch (err) {
+      toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
     }
   };
 
@@ -78,9 +100,9 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
           <span className="text-body text-foreground">
-            {site?.template_id ? (currentTemplate?.name ?? site.template_id) : t('nodes.site_none')}
+            {isUpstream ? t('sites.upstream_title') : currentTemplate?.display_name ?? currentTemplate?.name ?? (site?.bundle_hash ? t('sites.legacy') : t('nodes.site_none'))}
           </span>
-          {site?.template_id && (
+          {site?.bundle_hash && (
             <>
               <span className="inline-flex items-center gap-1.5 text-micro">
                 <span className={cn('size-[7px] shrink-0 rounded-pill', deployed ? 'bg-ok' : 'bg-warn')} aria-hidden="true" />
@@ -93,44 +115,41 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
           )}
 
           {isWriter && (
-            <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-              <Select value={selected} onValueChange={(v) => setSelected(v ?? '')}>
-                <SelectTrigger size="sm" className="min-w-44">
-                  {/* Resolve the label explicitly - SelectValue would otherwise show the raw
-                      template id (a UUID) until the popup has mounted at least once. */}
-                  <SelectValue placeholder={t('nodes.site_assign_label')}>
-                    {(v: string) => templates.find((tpl) => tpl.id === v)?.name ?? t('nodes.site_assign_label')}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((tpl) => (
-                    <SelectItem key={tpl.id} value={tpl.id}>
-                      {tpl.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" size="sm" onClick={() => void handleAssign()} disabled={!selected || assignSite.isPending}>
-                {t('nodes.site_assign_button')}
-              </Button>
+            <div className="flex flex-wrap gap-2 sm:ml-auto">
+              <Button variant="outline" onClick={() => { setPicker(!picker); setUpstreamOpen(false); }} disabled={assignSite.isPending}>{t('sites.change')}</Button>
+              {nodeQuery.data?.engine === 'telemt' && <Button variant="outline" onClick={() => { setUpstreamOpen(!upstreamOpen); setPicker(false); }} disabled={!upstreamSupported || assignUpstream.isPending}><Network />{t('sites.upstream_action')}</Button>}
             </div>
           )}
         </div>
 
-        {site?.files && site.files.length > 0 && (
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t border-hairline px-4 py-3">
-            {site.files.map((f) => (
-              <li key={f} className="mono text-mono text-mute">
-                {f}
-              </li>
-            ))}
-          </ul>
-        )}
+        {nodeQuery.data && <div className="border-t border-hairline px-4 py-3"><a className="text-brand-ink underline underline-offset-4" href={`https://${nodeQuery.data.hostname}`} target="_blank" rel="noreferrer">https://{nodeQuery.data.hostname}</a></div>}
+        {isUpstream && site.origin && <div className="border-t border-hairline px-4 py-3"><span className="text-label text-mute">{t('sites.upstream_origin')} </span><span className="mono text-mono">{site.origin}</span></div>}
+        {!deployed && site?.bundle_hash && <p className="px-4 pb-4 text-label text-mute" role="status">{t('sites.deploy_pending')}</p>}
+        {jobsQuery.data?.items[0]?.status === 'failed' && !deployed && <p className="px-4 pb-4 text-destructive" role="alert">{t('sites.deploy_failed')}</p>}
+        <details className="border-t border-hairline p-4"><summary className="cursor-pointer text-label text-mute">{t('sites.files')}</summary><ul className="mt-2 text-mono text-mute">{site?.files?.map((f) => <li key={f}>{f}</li>)}</ul></details>
       </Panel>
 
+      {upstreamOpen && <Panel>
+        <PanelHeader icon={Network} title={t('sites.upstream_title')} />
+        <form className="space-y-4 p-4" onSubmit={(event) => { event.preventDefault(); void handleAssignUpstream(); }}>
+          <p className="max-w-3xl text-label text-mute">{t('sites.upstream_hint')}</p>
+          <div className="max-w-xl space-y-2">
+            <Label htmlFor="site-upstream-origin">{t('sites.upstream_origin')}</Label>
+            <Input id="site-upstream-origin" className="mono" type="url" required pattern="http://.*" value={origin} onChange={(event) => setOrigin(event.target.value)} aria-describedby="site-upstream-security" />
+            <p id="site-upstream-security" className="text-micro text-mute">{t(upstreamSupported ? 'sites.upstream_security' : 'sites.upstream_unsupported')}</p>
+          </div>
+          {assignUpstream.isError && <p role="alert" className="text-destructive">{assignUpstream.error.message}</p>}
+          <div className="flex flex-wrap gap-2"><Button type="submit" disabled={!upstreamSupported || assignUpstream.isPending}>{t('sites.upstream_test_apply')}</Button><Button type="button" variant="ghost" onClick={() => setUpstreamOpen(false)}>{t('common.cancel')}</Button></div>
+        </form>
+      </Panel>}
+
+      {picker && <div className="space-y-4">
+        {templatesQuery.isError ? <ErrorState message={templatesQuery.error.message} onRetry={() => void templatesQuery.refetch()} retryLabel={t('common.refresh')} /> : <WebsiteGallery websites={templates} currentId={site?.template_id} onPreview={setPreview} onUse={assignSite.isPending ? undefined : (tpl) => void handleAssign(tpl)} />}
+      </div>}
+      <WebsitePreview website={preview} onClose={() => setPreview(null)} onUse={isWriter ? (tpl) => { setPreview(null); void handleAssign(tpl); } : undefined} />
       <Panel>
         <PanelHeader icon={Eye} title={t('nodes.site_preview')} />
-        {site?.template_id ? (
+        {site?.bundle_hash && !isUpstream ? (
           <iframe
             key={site.bundle_hash}
             sandbox=""
@@ -139,7 +158,7 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
             className="m-4 h-96 w-[calc(100%-2rem)] rounded-surface border border-hairline bg-white"
           />
         ) : (
-          <PanelEmpty>{t('nodes.site_no_preview')}</PanelEmpty>
+          <PanelEmpty>{isUpstream ? t('sites.upstream_preview_hint') : t('nodes.site_no_preview')}</PanelEmpty>
         )}
       </Panel>
     </div>

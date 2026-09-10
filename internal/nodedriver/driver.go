@@ -88,6 +88,7 @@ type LogLine struct {
 }
 
 type Driver interface {
+	ControlWeb(ctx context.Context, nodeID uuid.UUID, action string, timeoutSecs int) error
 	Online(nodeID uuid.UUID) bool
 	Health(ctx context.Context, nodeID uuid.UUID) (HealthReport, error)
 	GetProfiles(ctx context.Context, nodeID uuid.UUID) ([]Profile, error)
@@ -97,4 +98,8 @@ type Driver interface {
 	Stats(ctx context.Context, nodeID uuid.UUID) (map[string]string, error)
 	TailLogs(ctx context.Context, nodeID uuid.UUID, services []string, lines int, follow bool) (<-chan LogLine, error)
 	RestartRelay(ctx context.Context, nodeID uuid.UUID) error
+	// UpdateTelemt starts the node's maintenance sequence and returns as soon as the node
+	// accepts it; progress is read with TelemtUpdateStatus.
+	UpdateTelemt(ctx context.Context, nodeID uuid.UUID, req TelemtUpdateRequest) (TelemtUpdate, error)
+	TelemtUpdateStatus(ctx context.Context, nodeID uuid.UUID) (TelemtUpdate, error)
 }

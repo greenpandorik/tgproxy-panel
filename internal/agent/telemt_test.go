@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"tgwebproxy/internal/sitekit"
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
 
@@ -365,7 +367,11 @@ func telemtHandler(t *testing.T, ex *fakeExec) (*Handler, Config, *fakeTelemt) {
 	if err := writeTelemtState(cfg.StateDir, telemtState{SecretHashes: map[string]string{"node": secretFingerprint(secretNode)}}); err != nil {
 		t.Fatal(err)
 	}
-	return NewHandler(cfg, ex, slog.New(slog.DiscardHandler)), cfg, ft
+	h := NewHandler(cfg, ex, slog.New(slog.DiscardHandler))
+	decoy := httptest.NewServer(http.FileServer(http.Dir(siteDir)))
+	t.Cleanup(decoy.Close)
+	h.decoyHTTP = &http.Client{Transport: decoyRoundTripper{target: decoy.URL}}
+	return h, cfg, ft
 }
 
 func profiles(pairs ...string) []*agentv1.Profile {
@@ -633,6 +639,96 @@ func TestTelemtApplyRejectsBadProfiles(t *testing.T) {
 		if res := h.Apply(context.Background(), req); res.Ok {
 			t.Fatalf("%s: expected failure", name)
 		}
+	}
+}
+
+func TestTelemtApplyHTTPUpstreamDecoy(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("upstream website"))
+	}))
+	defer origin.Close()
+	h.decoyHTTP = &http.Client{Transport: decoyRoundTripper{target: origin.URL}}
+	bundle, err := sitekit.UpstreamBundle("http://127.0.0.1:3000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := []*agentv1.SiteFile{}
+	for path, content := range bundle.Files {
+		files = append(files, &agentv1.SiteFile{Path: path, Content: content})
+	}
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{Site: &agentv1.SiteBundle{Files: files}})
+	if !res.Ok {
+		t.Fatalf("upstream decoy apply: %s", res.Log)
+	}
+	web := ft.section("web")
+	vhosts, _ := web["vhosts"].([]any)
+	vhost, _ := vhosts[0].(map[string]any)
+	decoy, _ := vhost["decoy"].(map[string]any)
+	if decoy["mode"] != "http_upstream" || decoy["upstream"] != "http://127.0.0.1:3000" {
+		t.Fatalf("unexpected decoy config: %#v", decoy)
+	}
+}
+
+func TestConfiguredDecoyVerificationUsesHTTPOriginMode(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("dynamic origin"))
+	}))
+	defer origin.Close()
+	h.decoyHTTP = &http.Client{Transport: decoyRoundTripper{target: origin.URL}}
+	web := ft.section("web")
+	vhosts, _ := web["vhosts"].([]any)
+	vhost, _ := vhosts[0].(map[string]any)
+	vhost["decoy"] = map[string]any{"mode": "http_upstream", "upstream": "http://127.0.0.1:3000"}
+	if err := h.verifyConfiguredDecoy(context.Background()); err != nil {
+		t.Fatalf("configured HTTP decoy verification: %v", err)
+	}
+}
+
+func TestTelemtApplyRejectsPublicHTTPUpstream(t *testing.T) {
+	h, _, _ := telemtHandler(t, &fakeExec{})
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{Site: &agentv1.SiteBundle{Files: []*agentv1.SiteFile{{
+		Path: sitekit.UpstreamMarkerPath, Content: []byte("http://8.8.8.8:3000"),
+	}}}})
+	if res.Ok || !strings.Contains(res.Log, "private IP") {
+		t.Fatalf("unsafe upstream accepted: %s", res.Log)
+	}
+}
+
+func TestTelemtAppliesOnlySupportedWEBProfileLimits(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{ApplyProfiles: true, Profiles: []*agentv1.Profile{{
+		Name: "node", Secret: secretNode, Enabled: true,
+		Limits: &agentv1.ProfileLimits{MaxSessions: 8, MaxStreams: 512, MaxStreamsPerSession: 64, MaxPendingPerSession: 99},
+	}}})
+	if !res.Ok {
+		t.Fatalf("apply WEB profile limits: %s", res.Log)
+	}
+	web := ft.section("web")
+	vhosts, _ := web["vhosts"].([]any)
+	vhost, _ := vhosts[0].(map[string]any)
+	profiles, _ := vhost["profiles"].([]any)
+	profile, _ := profiles[0].(map[string]any)
+	if profile["max_sessions"] != float64(8) || profile["max_streams"] != float64(512) || profile["max_streams_per_session"] != float64(64) {
+		t.Fatalf("WEB limits missing: %#v", profile)
+	}
+	if _, exists := profile["max_pending_per_session"]; exists {
+		t.Fatalf("unsupported Telemt limit leaked into config: %#v", profile)
+	}
+}
+
+func TestTelemtRejectsWEBProfileLimitAboveRunningGlobal(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.resetWrites()
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{ApplyProfiles: true, Profiles: []*agentv1.Profile{{
+		Name: "node", Secret: secretNode, Enabled: true, Limits: &agentv1.ProfileLimits{MaxSessions: 129},
+	}}})
+	if res.Ok || !strings.Contains(res.Log, "ceiling of 128") {
+		t.Fatalf("limit above global accepted: %s", res.Log)
+	}
+	if len(ft.writes) != 0 {
+		t.Fatalf("validation ran after mutation: %v", ft.writes)
 	}
 }
 
@@ -1431,4 +1527,16 @@ func TestTelemtApplyRejectsBadAdTag(t *testing.T) {
 	if _, _, patches, _ := ft.snapshot(); len(patches) != 0 {
 		t.Fatalf("no config patch expected, got %v", patches)
 	}
+}
+
+type decoyRoundTripper struct{ target string }
+
+func (d decoyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	clone := req.Clone(req.Context())
+	u, err := url.Parse(d.target + req.URL.Path)
+	if err != nil {
+		return nil, err
+	}
+	clone.URL = u
+	return http.DefaultTransport.RoundTrip(clone)
 }

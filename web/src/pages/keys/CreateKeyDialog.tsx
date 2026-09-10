@@ -465,6 +465,7 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
                       telemt={telemtField.value}
                       onTelemtChange={telemtField.onChange}
                       telemtAvailable={scope === 'telemt' || scope === 'mixed'}
+                      legacyAvailable={scope === 'tproxy' || scope === 'mixed'}
                       limitsErrors={{
                         max_sessions: limitsError('max_sessions'),
                         max_streams: limitsError('max_streams'),
