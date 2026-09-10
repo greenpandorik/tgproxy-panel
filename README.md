@@ -114,6 +114,11 @@ writes to `/etc/sysctl.d/90-tgwp.conf` is taken from that project.
 [tproxy-server](https://github.com/telegramdesktop/tproxy-server) and MTProxy are what the tproxy
 engine runs: Telegram's WEB proxy relay and the official MTProxy behind it.
 
+## Star it
+
+If you run this, [give it a star](https://github.com/greenpandorik/tgproxy-panel) — it is how
+other people running Telegram proxies find the project.
+
 ## License
 
 [AGPL-3.0](LICENSE).
