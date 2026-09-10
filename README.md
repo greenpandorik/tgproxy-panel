@@ -23,12 +23,12 @@ Setup guides with screenshots: [English](docs/setup.en.md), [Русский](doc
 | [Security](SECURITY.md) | Reporting a vulnerability, and what the panel does to protect a deployment |
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="49%" alt="Dashboard">
-  <img src="docs/screenshots/keys.png" width="49%" alt="Keys">
+  <img src="docs/screenshots/dashboard.png" width="49%" alt="Overview: fleet verdict, what needs attention, and every server at a glance">
+  <img src="docs/screenshots/websites.png" width="49%" alt="Websites: fifteen built-in decoy sites, each uniquified per node">
 </p>
 <p align="center">
-  <img src="docs/screenshots/login.png" width="49%" alt="Login">
-  <img src="docs/screenshots/node-detail.png" width="49%" alt="Node page">
+  <img src="docs/screenshots/keys.png" width="49%" alt="Keys: shared and personal, bound to nodes, revoked individually">
+  <img src="docs/screenshots/node-stats.png" width="49%" alt="Per-node load and latency to each Telegram datacenter">
 </p>
 
 ## What it does
@@ -38,8 +38,10 @@ Setup guides with screenshots: [English](docs/setup.en.md), [Русский](doc
 - Subscription pages: a public per-key URL that shows every node the key is bound to as links and QR codes, without exposing the panel.
 - Per-key limits on telemt nodes: traffic quota, up/down rate, max unique IPs, max connections, enforced by telemt itself, plus per-key traffic stats.
 - Nodes: installed with one command pasted into a root shell; the engine (`telemt` or `tproxy`) is chosen per node at creation.
-- Decoy sites: five built-in presets and an editor; every node gets a uniquified copy so nodes do not share a fingerprint.
-- Monitoring: live sessions, streams and traffic per node over 1h/6h/24h/7d; a Prometheus `/metrics` endpoint and a Grafana dashboard.
+- Websites: 15 built-in sites with previews/customization, static ZIP import and capability-gated HTTP upstream decoys on telemt nodes. Static bundles are uniquified per node.
+- WEB operations: runtime/carrier monitoring, supported policy/lifecycle controls, grouped diagnostics with history and JSON export, and a Telemt update manager with drain progress and rollback outcomes.
+- Node wizard: identity/DNS, proxy settings, then an install command with agent connection/readiness and diagnostics.
+- Monitoring: fleet overview, actionable problems, per-node sessions/streams/traffic over 1h/6h/24h/7d, WEB transport health, a Prometheus `/metrics` endpoint and a Grafana dashboard.
 - Alerts to Telegram when a node goes offline, comes back, or an apply fails.
 - Audit log of every mutating action with filters by action, user and date.
 - Access control: `owner`, `admin` and `viewer` roles, TOTP second factor with recovery codes.
@@ -170,7 +172,7 @@ The panel is one Go binary with the SPA embedded; it keeps everything in Postgre
 
 ## Monitoring
 
-The Monitoring page (`/monitoring`) shows every node's live sessions/streams and up/down traffic rate over a selectable window (1h/6h/24h/7d), backed by `GET /api/v1/monitoring/overview?from&to&step`:
+The Monitoring page (`/monitoring`) separates the fleet overview, actionable problems, per-node charts and WEB transport into four operator-focused views. Node charts show live sessions/streams and up/down traffic rate over a selectable window (1h/6h/24h/7d), backed by `GET /api/v1/monitoring/overview?from&to&step`:
 
 ```
 GET /api/v1/monitoring/overview?from=2026-09-04T00:00:00Z&to=2026-09-05T00:00:00Z&step=60
@@ -211,7 +213,19 @@ Any authenticated role can read the audit log; only owner/admin actions ever app
 
 ## Site presets
 
-`GET /api/v1/site-templates` ships five built-in presets alongside any templates you create: `blog`, `docs`, `portfolio`, `product`, `studio`. Each is a small, self-contained static site (no forms, images, scripts, or external resources) meant to look like an ordinary small-business or personal page in front of the proxy.
+`GET /api/v1/site-templates` ships 15 built-in sites alongside custom templates:
+`acorn`, `atlasdocs`, `cloudmetrics`, `corporate`, `dailybrief`, `frame`,
+`kansocoffee`, `lumanotes`, `maison`, `nomad`, `northstar`, `orbitcdn`,
+`personal`, `pixelforge`, and `status`. The gallery supports category filtering,
+preview and customization into an editable copy. Import a static ZIP with a
+non-empty root `index.html` (one enclosing directory is accepted). Archive paths,
+file types, entry count and compressed/expanded size are validated; the import
+does not execute server-side applications.
+
+A telemt node reporting `HttpUpstreamDecoy` can use a local/private HTTP upstream
+from its Website tab, subject to API origin validation. Test/apply it and verify
+the deployed hostname. Keep the website and WEB proxy through Telemt's shared
+front. See [the implementation and infrastructure acceptance matrix](docs/vnext-acceptance.md).
 
 Assigning a preset to a node runs it through **uniquification** first: block order, CSS class names, asset filenames, and any wording marked as having variants are all re-randomized per node, deterministically seeded from the node's ID. Class renaming skips `url(...)` bodies, quoted strings and comments in the CSS, so a stylesheet that references an asset (`background: url(/logo.png)`, `@font-face { src: ... }`) keeps working. Two nodes running the same preset therefore serve byte-different HTML/CSS, and the same node re-assigned the same preset without any change to the template gets the exact same output back (no accidental redeploy). The point is to defeat simple probing: an outside observer fingerprinting what a proxy's cover site looks like across your fleet by diffing HTML/class names/asset names will not find a repeating signature.
 

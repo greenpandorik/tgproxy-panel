@@ -25,3 +25,4 @@ tgwp-agent*
 # every run, not source.
 .impeccable/
 /output/
+.playwright-cli/
