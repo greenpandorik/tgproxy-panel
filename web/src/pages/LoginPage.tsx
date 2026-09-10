@@ -19,7 +19,7 @@ import { ApiError } from '@/lib/api';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { cn } from '@/lib/utils';
 
-import { LoginStatusLine, LoginStatusPanel, LoginWordmark } from './LoginStatusPanel';
+import { LoginStatusPanel, LoginWordmark } from './LoginStatusPanel';
 
 const schema = z.object({
   username: z.string().min(1),
@@ -289,8 +289,6 @@ export function LoginPage() {
             )}
             <span className="mono shrink-0">{branding?.footer_text || `© ${new Date().getFullYear()}`}</span>
           </div>
-
-          {!wide && <LoginStatusLine className="mt-8 border-t border-hairline pt-4" />}
         </div>
       </main>
     </div>

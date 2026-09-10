@@ -1,87 +1,66 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/i18n';
 import { setLang } from '@/i18n';
 
+import { ThemeProvider } from '@/theme/ThemeProvider';
+
 import { LoginStatusPanel } from './LoginStatusPanel';
 
-function renderPanel() {
+function renderPanel(branding: Record<string, unknown> = { panel_name: 'Panel' }) {
+  const calls: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: RequestInfo | URL) => {
+      calls.push(String(input));
+      return Promise.resolve(
+        new Response(JSON.stringify(branding), { status: 200, headers: { 'content-type': 'application/json' } }),
+      );
+    }) as typeof fetch,
+  );
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={qc}>
-      <LoginStatusPanel />
+      <ThemeProvider>
+        <LoginStatusPanel />
+      </ThemeProvider>
     </QueryClientProvider>,
   );
-}
-
-const STATUS = { version: '1.0.0', nodes_total: 3, nodes_online: 2, relay_commit: '52a5feb' };
-
-function stubFetch(status: () => { status: number; body: unknown } | 'hang') {
-  return vi.fn((input: RequestInfo | URL) => {
-    const path = String(input);
-    if (path.endsWith('/status/public')) {
-      const answer = status();
-      if (answer === 'hang') return new Promise<Response>(() => {});
-      return Promise.resolve(
-        new Response(JSON.stringify(answer.body), {
-          status: answer.status,
-          headers: { 'content-type': 'application/json' },
-        }),
-      );
-    }
-    return Promise.resolve(
-      new Response(JSON.stringify({ panel_name: 'Panel' }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    );
-  }) as typeof fetch;
+  return calls;
 }
 
 describe('LoginStatusPanel', () => {
   beforeEach(() => {
     setLang('en');
+    vi.unstubAllGlobals();
   });
 
-  it('shows the four public facts and nothing else about the fleet', async () => {
-    globalThis.fetch = stubFetch(() => ({ status: 200, body: STATUS }));
-
-    renderPanel();
-
-    expect(await screen.findByText('2 / 3')).toBeInTheDocument();
-    expect(screen.getByText('nodes online')).toBeInTheDocument();
-    expect(screen.getByText('52a5feb')).toBeInTheDocument();
-    // The version appears in the card and again in the panel footer.
-    expect(screen.getAllByText('v1.0.0').length).toBe(2);
-    // "api ok" is inferred from the answer arriving at all.
-    expect(screen.getByText('api')).toBeInTheDocument();
-    expect(screen.getAllByText('ok').length).toBeGreaterThan(0);
-    // The footer repeats the version and the node count, still without names.
-    expect(screen.getByText('3 nodes')).toBeInTheDocument();
+  it('shows the operator mark', async () => {
+    renderPanel({ panel_name: 'Acme proxies' });
+    const mark = await screen.findByTestId('login-brand-mark');
+    await waitFor(() => expect(mark).toHaveTextContent('Acme proxies'));
   });
 
-  it('holds the shape of the card with skeleton rows while the status is loading', async () => {
-    globalThis.fetch = stubFetch(() => 'hang');
-
-    renderPanel();
-
-    expect(await screen.findByText('Network status')).toBeInTheDocument();
-    expect(screen.getByTestId('login-status-skeleton')).toBeInTheDocument();
-    expect(screen.queryByText('nodes online')).toBeNull();
+  it('shows the uploaded logo instead of the built-in mark when there is one', async () => {
+    renderPanel({ panel_name: 'Acme proxies', logo_url: '/api/v1/branding/assets/x/logo.png?v=1' });
+    const mark = await screen.findByTestId('login-brand-mark');
+    await waitFor(() => expect(mark.querySelector('img')).toHaveAttribute('src', '/api/v1/branding/assets/x/logo.png?v=1'));
   });
 
-  it('says the status is unavailable rather than showing an empty card', async () => {
-    globalThis.fetch = stubFetch(() => ({
-      status: 503,
-      body: { error: { code: 'unavailable', message: 'down' } },
-    }));
+  /*
+   * The login page answers anyone who reaches the address. The size of the fleet, how much of
+   * it is up and which version is running are facts about the deployment, useful to whoever is
+   * probing it and useless to the operator, who owns it and can read them once inside.
+   */
+  it('says nothing about the fleet, and does not even ask', async () => {
+    const calls = renderPanel({ panel_name: 'Acme proxies' });
+    await screen.findByTestId('login-brand-mark');
 
-    renderPanel();
-
-    expect((await screen.findAllByText('status unavailable')).length).toBeGreaterThan(0);
-    expect(screen.queryByTestId('login-status-skeleton')).toBeNull();
-    expect(screen.queryByText('nodes online')).toBeNull();
+    const panel = screen.getByTestId('login-status-panel');
+    expect(panel.textContent).not.toMatch(/\d+\s*\/\s*\d+/);
+    expect(panel.textContent).not.toMatch(/v?\d+\.\d+\.\d+/);
+    expect(calls.some((c) => c.includes('/status'))).toBe(false);
   });
 });

@@ -1,14 +1,10 @@
 import type { CSSProperties } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import { useBranding } from '@/api/branding';
 import { useBrandingIdentity } from '@/theme/ThemeProvider';
-import { usePublicStatus } from '@/api/status';
-import type { PublicStatus } from '@/api/status';
 import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
 import { Logo } from '@/components/brand/Logo';
 import { ENTER_CLASS } from '@/components/ui/motion';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 /** `--line` grid, 48px, faded out by a radial mask so it never reaches an edge. */
@@ -24,90 +20,6 @@ const BRAND_GLOW: CSSProperties = {
   backgroundImage:
     'radial-gradient(1200px 600px at 20% -10%, color-mix(in oklab, var(--brand-primary) 10%, transparent), transparent 60%)',
 };
-
-/** ok while every node reports in, warn while some do, err once none do. */
-function nodesTone(status: PublicStatus): string {
-  if (status.nodes_total === 0) return 'bg-pending';
-  if (status.nodes_online >= status.nodes_total) return 'bg-ok';
-  return status.nodes_online > 0 ? 'bg-degraded' : 'bg-offline';
-}
-
-function Dot({ className }: { className: string }) {
-  return <span aria-hidden="true" className={cn('size-[7px] shrink-0 rounded-pill', className)} />;
-}
-
-function Row({ label, value, dot }: { label: string; value: string; dot?: string }) {
-  return (
-    <div className="flex items-center gap-4 border-b border-hairline px-4 py-3 last:border-b-0">
-      <dt className="flex min-w-0 items-center gap-2.5 text-mute">
-        {dot ? <Dot className={dot} /> : <span aria-hidden="true" className="size-[7px] shrink-0" />}
-        <span className="truncate">{label}</span>
-      </dt>
-      <dd className="tabular ml-auto shrink-0 text-foreground">{value}</dd>
-    </div>
-  );
-}
-
-/** Four bars in the shape of the four rows, using the panel's own skeleton. */
-function SkeletonRows() {
-  return (
-    <div aria-hidden="true" data-testid="login-status-skeleton">
-      {[36, 28, 32, 20].map((w, i) => (
-        <div key={w} className="flex items-center gap-4 border-b border-hairline px-4 py-3 last:border-b-0">
-          <Skeleton className="h-2.5" style={{ width: `${w * 2.6}px` }} />
-          <Skeleton className="ml-auto h-2.5" style={{ width: `${44 + i * 8}px` }} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StatusCard() {
-  const { t } = useTranslation();
-  const { data, isLoading, isError } = usePublicStatus();
-
-  return (
-    <section
-      className={cn(
-        ENTER_CLASS,
-        'mono relative w-full max-w-[560px] rounded-surface border border-hairline-strong bg-surface/85 text-mono backdrop-blur-md',
-      )}
-    >
-      <h2 className="border-b border-hairline px-4 py-3 text-title text-foreground">{t('login.status_title')}</h2>
-      {isLoading && <SkeletonRows />}
-      {!isLoading && (isError || !data) && <p className="px-4 py-3 text-mute">{t('login.status_unavailable')}</p>}
-      {!isLoading && !isError && data && (
-        <dl>
-          <Row label={t('login.status_nodes')} value={`${data.nodes_online} / ${data.nodes_total}`} dot={nodesTone(data)} />
-          <Row label={t('login.status_relay')} value={data.relay_commit || '—'} />
-          <Row label={t('login.status_panel')} value={data.version ? `v${data.version}` : '—'} />
-          {/* The answer arriving at all is what "api ok" means here. */}
-          <Row label={t('login.status_api')} value={t('login.status_ok')} dot="bg-ok" />
-        </dl>
-      )}
-    </section>
-  );
-}
-
-// `v1.0.0 api ok 3 нод`.
-export function LoginStatusLine({ className }: { className?: string }) {
-  const { t } = useTranslation();
-  const { data, isError } = usePublicStatus();
-
-  if (isError || !data) {
-    return isError ? <p className={cn('mono text-micro text-mute', className)}>{t('login.status_unavailable')}</p> : null;
-  }
-
-  return (
-    <p className={cn('mono flex flex-wrap gap-x-6 gap-y-1 text-micro text-mute', className)}>
-      <span>v{data.version}</span>
-      <span>
-        {t('login.status_api')} {t('login.status_ok')}
-      </span>
-      <span>{t('login.footer_nodes', { count: data.nodes_total })}</span>
-    </p>
-  );
-}
 
 // The operator's mark: their uploaded logo, or the brand mark and the panel name.
 export function LoginWordmark({ className }: { className?: string }) {
@@ -129,17 +41,41 @@ export function LoginWordmark({ className }: { className?: string }) {
   );
 }
 
-/** Wordmark, status card and footer on the patterned ground: the whole left column. */
+/**
+ * The same mark the operator set, at the size the column can afford. Nothing about the
+ * deployment is said here: the login page is served to anyone who finds the address, and
+ * the fleet's size, health and version are the operator's business, not a visitor's.
+ */
+function BrandMark() {
+  const { branding, theme } = useBrandingIdentity();
+  const logoUrl = theme === 'dark' ? branding?.logo_dark_url || branding?.logo_url : branding?.logo_url;
+  const name = branding?.panel_name || DEFAULT_PANEL_NAME;
+
+  return (
+    <div data-testid="login-brand-mark" className={cn(ENTER_CLASS, 'flex flex-col items-center gap-6 text-center')}>
+      {logoUrl ? (
+        <img src={logoUrl} alt={name} className="max-h-24 max-w-[320px] object-contain" />
+      ) : (
+        <>
+          <Logo size={72} />
+          <span className="max-w-[420px] truncate text-heading text-foreground">{name}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Wordmark and mark on the patterned ground: the whole left column. */
 export function LoginStatusPanel() {
   const { data: branding } = useBranding();
 
   return (
     <aside
       data-testid="login-status-panel"
-      className="relative flex flex-col justify-between overflow-hidden border-r border-hairline bg-background px-12 py-10"
+      className="relative flex flex-col overflow-hidden border-r border-hairline bg-background px-12 py-10"
     >
       {/* Operator-supplied backdrop, kept behind the pattern and dimmed to 22%
-          so a photo can never take contrast away from the card in front of it. */}
+          so a photo can never take contrast away from the mark in front of it. */}
       {branding?.login_bg_url && (
         <div
           aria-hidden="true"
@@ -155,10 +91,8 @@ export function LoginStatusPanel() {
       <LoginWordmark className="relative" />
 
       <div className="relative flex flex-1 items-center justify-center py-10">
-        <StatusCard />
+        <BrandMark />
       </div>
-
-      <LoginStatusLine className="relative" />
     </aside>
   );
 }

@@ -943,10 +943,10 @@
     "branding_logo": "Логотип",
     "branding_favicon": "Favicon",
     "branding_login_bg": "Фон страницы входа",
-    "branding_upload_hint": "PNG, JPEG, ICO или SVG, до 1,5 МБ — или перетащите файл сюда",
+    "branding_upload_hint": "PNG, JPEG, ICO или SVG, до 2 МБ — или перетащите файл сюда",
     "branding_upload_drop": "Отпустите, чтобы загрузить",
     "branding_upload_busy": "Загружаем…",
-    "branding_upload_too_large": "Файл больше 1,5 МБ — уменьшите его и попробуйте снова",
+    "branding_upload_too_large": "Файл больше 2 МБ — уменьшите его и попробуйте снова",
     "branding_upload_bad_type": "Подходят только PNG, JPEG, ICO и SVG",
     "branding_upload_success": "Файл загружен",
     "branding_primary_color": "Основной цвет",
@@ -1085,7 +1085,7 @@
     "admins_add": "Добавить",
     "panel_section_intervals": "Интервалы",
     "branding_logo_dark": "Логотип для тёмной темы",
-    "branding_logo_dark_hint": "Необязательно — иначе берётся основной логотип. PNG, JPEG, ICO или SVG, до 1,5 МБ.",
+    "branding_logo_dark_hint": "Необязательно — иначе берётся основной логотип. PNG, JPEG, ICO или SVG, до 2 МБ.",
     "branding_assets_immediate": "Изображения сохраняются сразу после загрузки. Название, цвета и тексты — кнопкой «Сохранить».",
     "branding_advanced": "Дополнительно: собственные стили CSS",
     "branding_preview": "Предпросмотр",
@@ -2021,7 +2021,7 @@
           },
           "logo": {
             "name": "Логотип",
-            "what": "PNG, JPEG, ICO или SVG до 1,5 МБ. SVG очищается от скриптов. Показывается в боковой панели и на странице входа. Пусто — встроенный знак."
+            "what": "PNG, JPEG, ICO или SVG до 2 МБ. SVG очищается от скриптов. Показывается в боковой панели и на странице входа. Пусто — встроенный знак."
           },
           "favicon": {
             "name": "Favicon",

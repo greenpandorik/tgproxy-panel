@@ -56,7 +56,7 @@ function valuesFromProfile(p: BrandingProfile): FormValues {
 const ASSET_ACCEPT = 'image/png,image/jpeg,image/x-icon,image/svg+xml,.ico,.svg';
 
 /** Mirrors maxBrandingAssetSize in internal/api/branding.go. */
-const MAX_ASSET_BYTES = 1.5 * 1024 * 1024;
+const MAX_ASSET_BYTES = 2 * 1024 * 1024;
 
 const ASSET_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.ico', '.svg'];
 
