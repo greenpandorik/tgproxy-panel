@@ -26,6 +26,5 @@ network, scenario, expected/observed result and timestamp. Attach diagnostics JS
 and update outcomes after removing credentials/user identifiers. Mark each scenario
 passed, failed or not run; leave unexecuted criteria open.
 
-The two supplied specifications remain requirements. Historical files under
-`docs/superpowers` remain design/planning records. Current guidance lives in README,
-PRODUCT, DESIGN, setup guides, monitoring and the runbook.
+The two supplied specifications remain requirements. Current guidance lives in
+README, PRODUCT, DESIGN, setup guides, monitoring and the runbook.

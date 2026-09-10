@@ -4,10 +4,6 @@ The three scales every part of the panel is built from. They are defined once in
 `web/src/index.css` and reached through Tailwind utilities. Nothing in `src/**`
 sets a font size, a corner radius or a duration of its own.
 
-Source of the rules: `docs/superpowers/specs/2026-09-07-ui-refit.md` (the refit
-contract), on top of the visual language in
-`docs/superpowers/specs/2026-09-05-ui-redesign.md`.
-
 ## 1. Type scale
 
 Six roles. Colour is not hierarchy: before a role is chosen by tone, it is

@@ -40,7 +40,7 @@ box, add gradients or a shadow, or use the Telegram paper plane next to it.
 ## Colours
 
 The panel stays almost colourless - three near-black surfaces, hairlines,
-three text weights (see `docs/superpowers/specs/2026-09-05-ui-redesign.md`).
+three text weights.
 Two hues carry the brand:
 
 | Role | Hex | Hue | on `--bg` `#09090b` | on `--bg-2` `#0f0f11` | on `--bg-3` `#151517` | on light `#fafafa` |
