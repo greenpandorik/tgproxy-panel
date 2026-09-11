@@ -9,7 +9,7 @@ import (
 	"tgwebproxy/internal/version"
 )
 
-// publicStatusTTL caps how often an anonymous caller can make the panel count nodes.
+// publicStatusTTL caps how often a caller can make the panel count nodes.
 const publicStatusTTL = 10 * time.Second
 
 // relayCommitShort is how many characters of the pinned MTProxy commit the public status shows.
@@ -59,7 +59,9 @@ func (s *Server) handlePublicStatus(w http.ResponseWriter, r *http.Request) {
 		s.publicStatus.cachedAt = time.Now()
 	}
 
-	w.Header().Set("Cache-Control", "public, max-age=10")
+	// private: the answer needs a session, so a shared cache in front of the panel must not
+	// keep a copy and hand it to the next caller.
+	w.Header().Set("Cache-Control", "private, max-age=10")
 	writeJSON(w, http.StatusOK, s.publicStatus.body)
 }
 

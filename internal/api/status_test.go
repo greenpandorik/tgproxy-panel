@@ -35,6 +35,10 @@ func TestStatusRequiresASession(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Fatalf("signed-in status: %d", resp.StatusCode)
 	}
+	// A shared cache between the panel and the browser must not keep this and serve it on.
+	if cc := resp.Header.Get("Cache-Control"); !strings.HasPrefix(cc, "private") {
+		t.Fatalf("Cache-Control = %q, want it private", cc)
+	}
 	var got publicStatusResp
 	owner.JSON(resp, &got)
 
