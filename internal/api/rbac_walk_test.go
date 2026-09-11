@@ -33,7 +33,6 @@ var publicReads = map[string]bool{
 	"GET /api/v1/branding/assets/{id}/{file}": true,
 	"GET /api/v1/install/{token}.sh":          true,
 	"GET /api/v1/install/agent/{platform}":    true,
-	"GET /api/v1/status/public":               true,
 	"GET /s/{token}":                          true,
 	"GET /s/{token}.json":                     true,
 }

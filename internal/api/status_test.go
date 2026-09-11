@@ -17,20 +17,26 @@ type publicStatusResp struct {
 	RelayCommit string `json:"relay_commit"`
 }
 
-func TestPublicStatusIsAnonymous(t *testing.T) {
+// The fleet's size, its health and the running version are the operator's business. The login
+// page no longer shows them, and an anonymous caller cannot read them either: the address of a
+// panel reaches people it was not meant for, and this is the answer they would have got.
+func TestStatusRequiresASession(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
 	owner := h.Login("root", "pass-123456")
 	createNode(t, owner, "ams1.example.test")
 	createNode(t, owner, "fra1.example.test")
 
-	anon := h.Anonymous()
-	resp := anon.Get("/api/v1/status/public")
+	if resp := h.Anonymous().Get("/api/v1/status/public"); resp.StatusCode != 401 {
+		t.Fatalf("anonymous status: %d, want 401", resp.StatusCode)
+	}
+
+	resp := owner.Get("/api/v1/status/public")
 	if resp.StatusCode != 200 {
-		t.Fatalf("anonymous status: %d", resp.StatusCode)
+		t.Fatalf("signed-in status: %d", resp.StatusCode)
 	}
 	var got publicStatusResp
-	anon.JSON(resp, &got)
+	owner.JSON(resp, &got)
 
 	if got.Version != version.Version {
 		t.Fatalf("version = %q, want %q", got.Version, version.Version)
@@ -53,9 +59,9 @@ func TestPublicStatusLeaksNoHostnames(t *testing.T) {
 	owner := h.Login("root", "pass-123456")
 	node, _ := createNode(t, owner, "secret-host.example.test")
 
-	resp := h.Anonymous().Get("/api/v1/status/public")
+	resp := owner.Get("/api/v1/status/public")
 	if resp.StatusCode != 200 {
-		t.Fatalf("anonymous status: %d", resp.StatusCode)
+		t.Fatalf("signed-in status: %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()

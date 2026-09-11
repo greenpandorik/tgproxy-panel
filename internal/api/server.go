@@ -130,10 +130,10 @@ func (s *Server) Handler() chi.Router {
 		r.Get("/node/upgrade", s.handleNodeUpgrade)
 		r.Get("/branding", s.handleGetActiveBranding)
 		r.Get("/branding/assets/{id}/{file}", s.handleBrandingAsset)
-		r.Get("/status/public", s.handlePublicStatus)
 		r.Group(func(r chi.Router) {
 			r.Use(requireAuth, csrfCheck)
 			r.Get("/auth/me", s.handleMe)
+			r.Get("/status/public", s.handlePublicStatus)
 			r.Post("/auth/logout", s.handleLogout)
 			r.Get("/status/update", s.handleUpdateStatus)
 			r.Post("/me/password", s.handleChangePassword)
