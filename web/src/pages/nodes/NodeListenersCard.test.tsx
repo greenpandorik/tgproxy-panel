@@ -57,7 +57,7 @@ describe('NodeListenersCard', () => {
     mutateAsync.mockReset().mockResolvedValue(node);
     vi.mocked(usePatchNode).mockReturnValue({ mutateAsync } as unknown as ReturnType<typeof usePatchNode>);
     vi.mocked(useNodeRegistrationSecret).mockReturnValue({
-      data: { secret: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+      data: { secret: 'ee' + 'a'.repeat(32) + '6e312e74657374', address: 'n1.test:8443' },
     } as unknown as ReturnType<typeof useNodeRegistrationSecret>);
   });
 
@@ -152,7 +152,10 @@ describe('NodeListenersCard', () => {
   it('offers a link to @MTProxybot and a way to copy what it needs', () => {
     render(wrap(<NodeListenersCard node={node} canEdit />));
     expect(screen.getByRole('link', { name: /Open @MTProxybot/ })).toHaveAttribute('href', 'https://t.me/MTProxybot');
-    expect(screen.getByRole('button', { name: 'Copy 104.239.66.187:8443 for the bot' })).toBeInTheDocument();
+    // The node's public IP is 104.239.66.187, and registering that would have the bot hand out a
+    // link nobody can use: clients dial the hostname, which is what the panel's own links carry.
+    expect(screen.getByRole('button', { name: 'Copy n1.test:8443 for the bot' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /104\.239\.66\.187/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Copy the secret for the bot' })).toBeInTheDocument();
   });
 

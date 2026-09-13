@@ -160,11 +160,11 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
                 {t('nodes.field_ad_tag_open_bot')}
                 <ExternalLink className="size-3" aria-hidden="true" />
               </a>
-              {node.public_ip && (
+              {registrationSecret.data?.address && (
                 <CopyButton
-                  value={`${node.public_ip}:${node.classic_port}`}
+                  value={registrationSecret.data.address}
                   showLabel
-                  label={t('nodes.field_ad_tag_copy_address', { address: `${node.public_ip}:${node.classic_port}` })}
+                  label={t('nodes.field_ad_tag_copy_address', { address: registrationSecret.data.address })}
                   className="h-6 px-2 text-label"
                 />
               )}

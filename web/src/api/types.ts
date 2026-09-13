@@ -297,7 +297,10 @@ export interface InstallCommandResult {
 }
 
 export interface RegistrationSecretResult {
+  /** The secret in the form this node's listener accepts: ee-prefixed on a Fake-TLS node. */
   secret: string;
+  /** host:port as clients dial it, which is what @MTProxybot must be registered with. */
+  address: string;
 }
 
 export type SyncState = 'in_sync' | 'pending' | 'db_only' | 'node_only' | string;
