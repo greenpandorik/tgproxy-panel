@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -559,6 +560,13 @@ func tlsEmulationChecks(t Target, n nodeFacts) []domain.DiagnosticCheck {
 	return []domain.DiagnosticCheck{enabled, cache, tlsFrontErrors(n.metrics)}
 }
 
+// handshakeSilence is a failure class where the peer sent nothing at all - telemt wanted the
+// handshake's first bytes and read zero before the connection went away. Anything that opens a
+// TCP connection to a public port and closes it produces one: scanners, uptime probes, Telegram's
+// own proxy checker, a client whose network dropped. Nothing was served wrongly, because nothing
+// was ever asked for, so these are counted and named but do not make the node look unhealthy.
+func handshakeSilence(class string) bool { return strings.Contains(class, "got_0") }
+
 func tlsFrontErrors(metrics telemt.WebMetrics) domain.DiagnosticCheck {
 	if !metrics.HandshakeFailures.Present {
 		return na("tls_front_errors", "the node reports no "+telemt.MetricHandshakeFailures+" family")
@@ -567,7 +575,18 @@ func tlsFrontErrors(metrics telemt.WebMetrics) domain.DiagnosticCheck {
 	if total == 0 {
 		return ok("tls_front_errors", "0", "no TLS handshake failures have been recorded in this process")
 	}
-	return warn("tls_front_errors", formatCount(total), "process-lifetime TLS handshake failures: "+joinStrings(metrics.HandshakeFailures.Labels()))
+	var real []string
+	for _, class := range metrics.HandshakeFailures.Labels() {
+		if !handshakeSilence(class) {
+			real = append(real, class)
+		}
+	}
+	if len(real) == 0 {
+		return ok("tls_front_errors", formatCount(total),
+			"every handshake failure in this process ended before the peer sent anything, which is what a public port collects from scanners and probes")
+	}
+	return warn("tls_front_errors", formatCount(total),
+		"process-lifetime TLS handshake failures worth reading: "+joinStrings(real))
 }
 
 func telegramGroup(n nodeFacts) domain.DiagnosticGroup {

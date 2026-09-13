@@ -389,3 +389,40 @@ func TestRunStaysInsideItsBudget(t *testing.T) {
 		t.Fatalf("a timed-out pass still reports every group, got %d", len(run.Groups))
 	}
 }
+
+// A public port collects connections that open and close without sending a byte: scanners, uptime
+// probes, clients whose network dropped. telemt counts each as a handshake failure, the counter
+// never resets, and warning on it would paint every long-running node yellow for doing nothing
+// wrong. Only a class where the peer actually said something is worth the operator's attention.
+func TestSilentConnectionsAreNotAHandshakeProblem(t *testing.T) {
+	_, checker := frontServer(t)
+	silence := strings.Replace(webMetricsText,
+		`telemt_handshake_failures_by_class_total{class="timeout"} 0`,
+		`telemt_handshake_failures_by_class_total{class="expected_64_got_0_connection_reset"} 918
+telemt_handshake_failures_by_class_total{class="expected_64_got_0_unexpected_eof"} 204`, 1)
+
+	e := &Engine{Checker: checker, Node: fakeNode{online: true, health: healthyHealth(), metrics: silence}, Timeout: 10 * time.Second}
+	c := checkIn(t, e.Run(t.Context(), telemtTarget(), domain.TriggerManual), domain.GroupTelemt, "tls_front_errors")
+	if c.Status != domain.CheckOK {
+		t.Fatalf("tls_front_errors = %+v, want ok: nothing reached the handshake", c)
+	}
+	if c.Value == nil || *c.Value != "1122" {
+		t.Fatalf("value = %v, want the count still reported", c.Value)
+	}
+
+	real := strings.Replace(silence,
+		`telemt_handshake_failures_by_class_total{class="expected_64_got_0_unexpected_eof"} 204`,
+		`telemt_handshake_failures_by_class_total{class="bad_padding"} 7`, 1)
+	e = &Engine{Checker: checker, Node: fakeNode{online: true, health: healthyHealth(), metrics: real}, Timeout: 10 * time.Second}
+	c = checkIn(t, e.Run(t.Context(), telemtTarget(), domain.TriggerManual), domain.GroupTelemt, "tls_front_errors")
+	if c.Status != domain.CheckWarn {
+		t.Fatalf("tls_front_errors = %+v, want warn: a peer sent something telemt refused", c)
+	}
+	detail := ""
+	if c.Detail != nil {
+		detail = *c.Detail
+	}
+	if !strings.Contains(detail, "bad_padding") || strings.Contains(detail, "got_0") {
+		t.Fatalf("detail = %q, want only the class worth reading", detail)
+	}
+}
