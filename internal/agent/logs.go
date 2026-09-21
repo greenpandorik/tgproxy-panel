@@ -38,9 +38,14 @@ func (h *Handler) TailLogs(ctx context.Context, req *agentv1.TailLogsRequest, se
 	sc := bufio.NewScanner(rd)
 	sc.Buffer(make([]byte, 64*1024), 1024*1024)
 	batch := &agentv1.LogChunk{}
+	// A send that fails means the session is gone. Reading on would keep journalctl -f alive to
+	// write into a closed stream, which is how a node ends up with one process per page visit.
+	sendFailed := false
 	flush := func() {
 		if len(batch.Lines) > 0 {
-			_ = send(batch)
+			if err := send(batch); err != nil {
+				sendFailed = true
+			}
 			batch = &agentv1.LogChunk{}
 		}
 	}
@@ -49,11 +54,14 @@ func (h *Handler) TailLogs(ctx context.Context, req *agentv1.TailLogsRequest, se
 		if len(batch.Lines) >= 50 || req.Follow {
 			flush()
 		}
-		if ctx.Err() != nil {
+		if sendFailed || ctx.Err() != nil {
 			break
 		}
 	}
 	flush()
+	if sendFailed {
+		return
+	}
 	done := &agentv1.LogChunk{Done: true}
 	// A scan that stopped on an error (a line past the buffer, a read that failed) would
 	// otherwise reach the operator as a clean end of the log.

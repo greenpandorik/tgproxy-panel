@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -106,6 +107,9 @@ func session(ctx context.Context, target string, creds credentials.TransportCred
 		}
 	}()
 
+	tails := &tailRegistry{cancels: map[string]context.CancelFunc{}}
+	defer tails.cancelAll()
+
 	for {
 		env, err := stream.Recv()
 		if err != nil {
@@ -115,9 +119,21 @@ func session(ctx context.Context, target string, creds credentials.TransportCred
 		if req == nil {
 			continue
 		}
+		if c, ok := req.Body.(*agentv1.Request_Cancel); ok {
+			tails.cancel(c.Cancel.GetRequestId())
+			continue
+		}
 		go func(rid string, req *agentv1.Request) {
 			if tl, ok := req.Body.(*agentv1.Request_TailLogs); ok {
-				h.TailLogs(ctx, tl.TailLogs, func(c *agentv1.LogChunk) error {
+				tailCtx, release, ok := tails.start(ctx, rid)
+				if !ok {
+					_ = send(&agentv1.Envelope{RequestId: rid, Body: &agentv1.Envelope_LogChunk{
+						LogChunk: &agentv1.LogChunk{Done: true, Error: "too many log subscriptions on this node"},
+					}})
+					return
+				}
+				defer release()
+				h.TailLogs(tailCtx, tl.TailLogs, func(c *agentv1.LogChunk) error {
 					return send(&agentv1.Envelope{RequestId: rid, Body: &agentv1.Envelope_LogChunk{LogChunk: c}})
 				})
 				return
@@ -125,6 +141,52 @@ func session(ctx context.Context, target string, creds credentials.TransportCred
 			resp := h.Handle(ctx, req)
 			_ = send(&agentv1.Envelope{RequestId: rid, Body: &agentv1.Envelope_Response{Response: resp}})
 		}(env.RequestId, req)
+	}
+}
+
+// maxTailSubscriptions caps the journalctl processes one panel session can leave running here.
+const maxTailSubscriptions = 8
+
+// tailRegistry gives every log subscription a context of its own, so the panel can end one
+// without ending the session, and so a session that drops takes all of them with it.
+type tailRegistry struct {
+	mu      sync.Mutex
+	cancels map[string]context.CancelFunc
+}
+
+func (t *tailRegistry) start(parent context.Context, rid string) (context.Context, func(), bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if len(t.cancels) >= maxTailSubscriptions {
+		return nil, nil, false
+	}
+	ctx, cancel := context.WithCancel(parent)
+	t.cancels[rid] = cancel
+	return ctx, func() {
+		t.mu.Lock()
+		delete(t.cancels, rid)
+		t.mu.Unlock()
+		cancel()
+	}, true
+}
+
+func (t *tailRegistry) cancel(rid string) {
+	t.mu.Lock()
+	cancel := t.cancels[rid]
+	delete(t.cancels, rid)
+	t.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (t *tailRegistry) cancelAll() {
+	t.mu.Lock()
+	cancels := t.cancels
+	t.cancels = map[string]context.CancelFunc{}
+	t.mu.Unlock()
+	for _, cancel := range cancels {
+		cancel()
 	}
 }
 

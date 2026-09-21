@@ -184,6 +184,9 @@ func (r *Registry) Call(ctx context.Context, id uuid.UUID, req *agentv1.Request)
 	}
 }
 
+// streamCancelTimeout bounds the "stop tailing" notice sent after a stream ends.
+const streamCancelTimeout = 5 * time.Second
+
 // Stream sends a request and yields LogChunks until one with Done or ctx ends.
 func (r *Registry) Stream(ctx context.Context, id uuid.UUID, req *agentv1.Request) (<-chan *agentv1.LogChunk, error) {
 	c := r.get(id)
@@ -200,6 +203,19 @@ func (r *Registry) Stream(ctx context.Context, id uuid.UUID, req *agentv1.Reques
 	go func() {
 		defer close(out)
 		defer c.unregister(rid)
+		// Telling the agent to stop is the whole point of this: unregistering only stops the
+		// panel from listening, and the node would keep a journalctl -f running for a page
+		// nobody has open. The notice needs its own deadline because the context that ended
+		// the stream is, by this point, exactly the one that is already cancelled.
+		defer func() {
+			cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), streamCancelTimeout)
+			defer cancel()
+			_ = r.send(cancelCtx, c, &agentv1.Envelope{Body: &agentv1.Envelope_Request{
+				Request: &agentv1.Request{Body: &agentv1.Request_Cancel{
+					Cancel: &agentv1.CancelRequest{RequestId: rid},
+				}},
+			}})
+		}()
 		for {
 			select {
 			case env := <-ch:

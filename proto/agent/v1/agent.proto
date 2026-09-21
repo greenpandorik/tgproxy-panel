@@ -230,9 +230,15 @@ message Request {
     RestartRelayRequest restart_relay = 8;
     UpdateTelemtRequest update_telemt = 9;
     TelemtUpdateStatusRequest telemt_update_status = 10;
- WebControlRequest web_control = 11;
+    WebControlRequest web_control = 11;
+    CancelRequest cancel = 12;
   }
 }
+
+// CancelRequest ends a streaming request the panel no longer reads. It carries no response: the
+// stream it names answers for itself by finishing. Only log tailing is cancellable - an apply or
+// an update must finish what it started even if nobody is watching.
+message CancelRequest { string request_id = 1; }
 message HealthRequest {}
 message GetProfilesRequest {}
 message ApplyRequest {
