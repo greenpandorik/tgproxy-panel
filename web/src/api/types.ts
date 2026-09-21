@@ -1,3 +1,5 @@
+import type { Metric } from '@/components/common/metric';
+
 
 export interface Paginated<T> {
   items: T[];
@@ -644,10 +646,13 @@ export interface DashboardSummary {
   recent_jobs: ApplyJob[];
 }
 
-/** Server load at one sample, as percentages of the node's CPU, memory and site disk. */
+/** Server load at one sample. Null where the node did not report that reading. */
 export interface LoadPoint {
   t: string;
-  cpu_percent: number;
+  /** Load average over core count, under its original name. Not processor utilisation. */
+  cpu_percent: Metric<number>;
+  /** Processor utilisation. Null for history and for agents that do not measure it. */
+  cpu_utilisation_percent: Metric<number>;
   mem_used_percent: number;
   disk_used_percent: number;
 }
@@ -673,8 +678,9 @@ export interface MonitoringNode {
 export interface MonitoringPoint extends LoadPoint {
   sessions_live: number;
   streams_live: number;
-  bytes_up_rate: number;
-  bytes_down_rate: number;
+  /** Null where a rate could not be worked out: a rate between a reading and a gap is unknown. */
+  bytes_up_rate: Metric<number>;
+  bytes_down_rate: Metric<number>;
   /** Mean latency to each Telegram DC over the bucket, keyed by DC number. Absent on an older panel. */
   dc_latency?: Record<string, number>;
 }

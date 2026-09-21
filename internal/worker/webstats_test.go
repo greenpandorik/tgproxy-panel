@@ -81,7 +81,7 @@ func TestSnapshotWritesTheReportedWebCounters(t *testing.T) {
 
 func TestSnapshotLeavesEveryWebColumnNullWithoutTelemetry(t *testing.T) {
 	got := webSnapshot(t, nodedriver.HealthReport{RelayActive: true, CPUPercent: 5})
-	if got.CpuPercent != 5 {
+	if got.CpuPercent.Float32 != 5 {
 		t.Fatalf("the rest of the heartbeat must still land: %+v", got.CpuPercent)
 	}
 	for name, valid := range map[string]bool{

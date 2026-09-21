@@ -7,12 +7,17 @@
 -- measured, so every one of them is passed as a nullable argument and never coalesced.
 -- name: InsertSnapshot :exec
 INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw,
-  cpu_percent, mem_used_percent, disk_used_percent, dc_latency,
+  cpu_percent, mem_used_percent, disk_used_percent, cpu_utilisation_percent, load_average_1, dc_latency,
   web_carrier_selections_https, web_carrier_selections_https_lanes,
   web_carrier_selections_websocket, web_carrier_selections_websocket_lanes,
   web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries,
   web_learning_entries)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce(sqlc.narg('dc_latency')::jsonb, '{}'::jsonb),
+VALUES (sqlc.arg('node_id'), sqlc.arg('sessions_live'), sqlc.arg('streams_live'),
+  sqlc.narg('bytes_up')::bigint, sqlc.narg('bytes_down')::bigint,
+  sqlc.arg('sessions_created'), sqlc.arg('limit_hits'), sqlc.arg('mtproxy_raw'), sqlc.arg('relay_raw'),
+  sqlc.narg('cpu_percent')::real, sqlc.arg('mem_used_percent'), sqlc.arg('disk_used_percent'),
+  sqlc.narg('cpu_utilisation_percent')::real, sqlc.narg('load_average_1')::real,
+  coalesce(sqlc.narg('dc_latency')::jsonb, '{}'::jsonb),
   sqlc.narg('web_carrier_selections_https')::bigint,
   sqlc.narg('web_carrier_selections_https_lanes')::bigint,
   sqlc.narg('web_carrier_selections_websocket')::bigint,
@@ -27,7 +32,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce(sqlc.narg('d
 SELECT * FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at;
 
 -- name: ListSnapshotsAllNodes :many
-SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent, mem_used_percent, disk_used_percent, dc_latency
+SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent,
+       cpu_utilisation_percent, mem_used_percent, disk_used_percent, dc_latency
 FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_id, taken_at;
 
 -- ListSnapshotsAllNodesBucketed collapses snapshots into fixed-width time buckets in the
@@ -35,6 +41,11 @@ FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_
 -- bounded only by retention (30 days x 1440/day x N nodes) and the whole set has to be
 -- materialised in Go before it can be thinned. Bucketing first makes the result size
 -- O(range/step) per node instead.
+--
+-- A bucket whose rows all say "not measured" has no value to report, and an aggregate over
+-- nothing is NULL. Rather than widen every column, each nullable series carries a count of the
+-- readings that went into it: zero readings means the number beside it is filler, not a zero
+-- anyone measured.
 --
 -- sessions_live/streams_live are gauges, so the bucket's average is the honest summary;
 -- bytes_up/bytes_down are monotonic counters, so the bucket's max is its closing value and
@@ -58,9 +69,12 @@ WITH scalars AS (
          max(r.taken_at)::timestamptz AS taken_at,
          round(avg(r.sessions_live))::int AS sessions_live,
          round(avg(r.streams_live))::int AS streams_live,
-         max(r.bytes_up)::bigint AS bytes_up,
-         max(r.bytes_down)::bigint AS bytes_down,
-         avg(r.cpu_percent)::real AS cpu_percent,
+         coalesce(max(r.bytes_up), 0)::bigint AS bytes_up,
+         count(r.bytes_up)::bigint AS bytes_readings,
+         coalesce(max(r.bytes_down), 0)::bigint AS bytes_down,
+         coalesce(avg(r.cpu_percent), 0)::real AS cpu_percent,
+         coalesce(avg(r.cpu_utilisation_percent), 0)::real AS cpu_utilisation_percent,
+         count(r.cpu_utilisation_percent)::bigint AS cpu_utilisation_readings,
          avg(r.mem_used_percent)::real AS mem_used_percent,
          avg(r.disk_used_percent)::real AS disk_used_percent
   FROM node_stats_snapshots r
@@ -83,8 +97,11 @@ SELECT scalars.node_id,
        scalars.sessions_live,
        scalars.streams_live,
        scalars.bytes_up,
+       scalars.bytes_readings,
        scalars.bytes_down,
        scalars.cpu_percent,
+       scalars.cpu_utilisation_percent,
+       scalars.cpu_utilisation_readings,
        scalars.mem_used_percent,
        scalars.disk_used_percent,
        coalesce(dc.dc_latency, '{}'::jsonb)::jsonb AS dc_latency
@@ -115,9 +132,13 @@ UPDATE alerts SET resolved_at = now() WHERE id = $1;
 
 -- key_stats_snapshots hold per-key traffic/connection counters read from telemt
 -- nodes. They are written by the stats worker and read by the key drawer.
+-- total_octets and quota_used_bytes are nullable: a user the node listed but did not count is a
+-- reading that was not taken. Storing zero there is charged as a full session's consumption by the
+-- next reading, while the connection count beside it is known and worth keeping.
 -- name: InsertKeyStatsSnapshot :exec
 INSERT INTO key_stats_snapshots (access_key_id, node_id, connections, total_octets, quota_used_bytes, active_ips)
-VALUES ($1, $2, $3, $4, $5, $6);
+VALUES (sqlc.arg('access_key_id'), sqlc.arg('node_id'), sqlc.arg('connections'),
+  sqlc.narg('total_octets')::bigint, sqlc.narg('quota_used_bytes')::bigint, sqlc.arg('active_ips'));
 
 -- name: ListKeyStatsSnapshots :many
 SELECT s.*, n.name AS node_name FROM key_stats_snapshots s JOIN nodes n ON n.id = s.node_id

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"tgwebproxy/internal/store/db"
 )
 
@@ -11,7 +13,7 @@ func TestMonitoringOverviewRates(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	base := time.Now().Add(-10 * time.Minute)
 	for i, up := range []int64{1000, 4000, 2000} { // third point simulates a counter reset
-		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{NodeID: n.ID, SessionsLive: int32(i + 1), StreamsLive: 2, BytesUp: up, BytesDown: up * 2, MtproxyRaw: []byte("{}")})
+		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{NodeID: n.ID, SessionsLive: int32(i + 1), StreamsLive: 2, BytesUp: pgtype.Int8{Int64: up, Valid: true}, BytesDown: pgtype.Int8{Int64: up * 2, Valid: true}, MtproxyRaw: []byte("{}")})
 		_, _ = h.Store.Pool.Exec(t.Context(), `UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`, base.Add(time.Duration(i)*time.Minute), n.ID)
 	}
 	var out struct {
@@ -66,7 +68,7 @@ func TestMonitoringOverviewBucketsInSQL(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{
 			NodeID: n.ID, SessionsLive: 4, StreamsLive: 8,
-			BytesUp: int64(i) * 60, BytesDown: int64(i) * 120, MtproxyRaw: []byte("{}"),
+			BytesUp: pgtype.Int8{Int64: int64(i) * 60, Valid: true}, BytesDown: pgtype.Int8{Int64: int64(i) * 120, Valid: true}, MtproxyRaw: []byte("{}"),
 		})
 		_, _ = h.Store.Pool.Exec(t.Context(),
 			`UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`,
@@ -115,7 +117,7 @@ func TestMonitoringLoadSeries(t *testing.T) {
 	for i, cpu := range []float32{20, 40} {
 		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{
 			NodeID: n.ID, SessionsLive: 1, MtproxyRaw: []byte("{}"),
-			CpuPercent: cpu, MemUsedPercent: cpu + 10, DiskUsedPercent: 5,
+			CpuPercent: pgtype.Float4{Float32: cpu, Valid: true}, MemUsedPercent: cpu + 10, DiskUsedPercent: 5,
 		})
 		_, _ = h.Store.Pool.Exec(t.Context(),
 			`UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`,
@@ -225,5 +227,49 @@ func TestMonitoringDcLatencyEmptyBucket(t *testing.T) {
 	pts := overview.Series[n.ID.String()]
 	if len(pts) != 1 || pts[0].DcLatency == nil || len(pts[0].DcLatency) != 0 {
 		t.Fatalf("overview bucket without DC data %+v", pts)
+	}
+}
+
+// The whole point of the nullable counters: a reading that never happened must not be charged to
+// the reading after it. 100 -> not measured -> 110 is 10 bytes of traffic and one interval nobody
+// can speak for, not 110 bytes arriving at once.
+func TestMonitoringRatesSkipIntervalsWithAMissingReading(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	base := time.Now().Add(-10 * time.Minute)
+	readings := []struct {
+		up    int64
+		known bool
+	}{{100, true}, {0, false}, {110, true}}
+	for i, r := range readings {
+		row := db.InsertSnapshotParams{NodeID: n.ID, SessionsLive: 1, StreamsLive: 1, MtproxyRaw: []byte("{}")}
+		if r.known {
+			row.BytesUp = pgtype.Int8{Int64: r.up, Valid: true}
+			row.BytesDown = pgtype.Int8{Int64: r.up, Valid: true}
+		}
+		_ = h.Store.Q.InsertSnapshot(t.Context(), row)
+		_, _ = h.Store.Pool.Exec(t.Context(),
+			`UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`,
+			base.Add(time.Duration(i)*time.Minute), n.ID)
+	}
+
+	var out struct {
+		Series map[string][]struct {
+			BytesUpRate *float64 `json:"bytes_up_rate"`
+		} `json:"series"`
+	}
+	c.JSON(c.Get("/api/v1/monitoring/overview?from="+base.Add(-time.Minute).Format(time.RFC3339)+
+		"&to="+time.Now().Format(time.RFC3339)), &out)
+
+	points := out.Series[n.ID.String()]
+	if len(points) < 3 {
+		t.Fatalf("points = %+v", points)
+	}
+	for i, p := range points {
+		if p.BytesUpRate == nil {
+			continue
+		}
+		if *p.BytesUpRate > 1 {
+			t.Fatalf("point %d reports %v bytes/s: the gap was charged as traffic", i, *p.BytesUpRate)
+		}
 	}
 }

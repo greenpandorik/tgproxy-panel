@@ -5,13 +5,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"tgwebproxy/internal/store/db"
 )
 
 func TestDashboardSummaryAndMetrics(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	c.Post("/api/v1/keys", map[string]any{"label": "k", "type": "SHARED", "carrier_mode": "https", "node_ids": []string{n.ID.String()}})
-	_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{NodeID: n.ID, SessionsLive: 3, StreamsLive: 9, BytesUp: 10, BytesDown: 20, MtproxyRaw: []byte("{}")})
+	_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{NodeID: n.ID, SessionsLive: 3, StreamsLive: 9, BytesUp: pgtype.Int8{Int64: 10, Valid: true}, BytesDown: pgtype.Int8{Int64: 20, Valid: true}, MtproxyRaw: []byte("{}")})
 	var sum struct {
 		Nodes        map[string]int `json:"nodes"`
 		Keys         map[string]int `json:"keys"`

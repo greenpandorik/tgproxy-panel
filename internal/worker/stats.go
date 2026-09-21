@@ -292,17 +292,12 @@ func (s *Stats) collectNode(ctx context.Context, n db.Node) bool {
 	if statsErr != nil {
 		s.log.Warn("stats", "node", n.ID, "err", statsErr)
 	}
+	// On telemt the byte counters come only from that endpoint. Elsewhere they are parsed out of
+	// the metrics text, which was read above or this function has already returned.
+	trafficKnown := statsErr == nil || n.Engine != db.NodeEngineTelemt
 	m := ParseRelayMetrics(text)
 	var telemtM TelemtMetrics
 	if n.Engine == db.NodeEngineTelemt {
-		// On telemt the byte counters come only from this endpoint. Recording a zero for a
-		// fetch that failed would not just lose a reading: consumption is the difference
-		// between snapshots, so 100 -> 0 -> 110 is charged as 110 rather than 10. A missing
-		// tick is a gap in the series, which is what actually happened.
-		if statsErr != nil {
-			s.log.Warn("snapshot skipped: the traffic counters could not be read", "node", n.ID)
-			return false
-		}
 		telemtM = ParseTelemtMetrics(text)
 		m = telemtRelayMetrics(telemtM, stats)
 	}
@@ -313,8 +308,10 @@ func (s *Stats) collectNode(ctx context.Context, n db.Node) bool {
 	load := nodeLoad(n.LastHealth)
 	if err := s.st.Q.InsertSnapshot(ctx, db.InsertSnapshotParams{
 		NodeID: n.ID, SessionsLive: int32(m.SessionsLive), StreamsLive: int32(m.StreamsLive),
-		BytesUp: m.BytesUp, BytesDown: m.BytesDown, SessionsCreated: m.SessionsCreated, LimitHits: m.LimitHits,
+		BytesUp: measuredBytes(m.BytesUp, trafficKnown), BytesDown: measuredBytes(m.BytesDown, trafficKnown),
+		SessionsCreated: m.SessionsCreated, LimitHits: m.LimitHits,
 		CpuPercent: load.CpuPercent, MemUsedPercent: load.MemUsedPercent, DiskUsedPercent: load.DiskUsedPercent,
+		CpuUtilisationPercent: load.CpuUtilisationPercent, LoadAverage1: load.LoadAverage1,
 		DcLatency:  load.DcLatency,
 		MtproxyRaw: raw, RelayRaw: "",
 		WebCarrierSelectionsHttps:          load.WebCarrierSelectionsHttps,
@@ -352,8 +349,17 @@ func nodeLoad(lastHealth []byte) db.InsertSnapshotParams {
 		return db.InsertSnapshotParams{DcLatency: []byte("{}")}
 	}
 	out := db.InsertSnapshotParams{
-		CpuPercent: float32(h.CPUPercent), MemUsedPercent: float32(h.MemUsedPercent), DiskUsedPercent: float32(h.DiskUsedPercent),
+		CpuPercent:     pgtype.Float4{Float32: float32(h.CPUPercent), Valid: true},
+		MemUsedPercent: float32(h.MemUsedPercent), DiskUsedPercent: float32(h.DiskUsedPercent),
 		DcLatency: dcLatencyJSON(h),
+	}
+	// Absent from an agent that does not measure utilisation, and from the first heartbeat after
+	// one restarts: a single reading of /proc/stat cannot say how busy the processor has been.
+	if h.CPUUtilisationPercent != nil {
+		out.CpuUtilisationPercent = pgtype.Float4{Float32: float32(*h.CPUUtilisationPercent), Valid: true}
+	}
+	if h.LoadAverage1 != nil {
+		out.LoadAverage1 = pgtype.Float4{Float32: float32(*h.LoadAverage1), Valid: true}
 	}
 	fillWebCounters(&out, h.Web)
 	return out
@@ -478,6 +484,16 @@ func (s *Stats) sweepHistory(ctx context.Context) {
 }
 
 // keySnapshots writes one key_stats_snapshots row per key that telemt reported on this node.
+// measuredBytes carries a byte counter as measured, or as not measured at all. Zero is a reading
+// like any other and must not stand in for one that never happened: consumption is the difference
+// between rows, so an invented zero is charged back in full by the row after it.
+func measuredBytes(v int64, known bool) pgtype.Int8 {
+	if !known {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: v, Valid: true}
+}
+
 func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetrics, stats map[string]string) error {
 	profiles, err := s.st.Q.ListNodeProfilesWithKey(ctx, nodeID)
 	if err != nil {
@@ -493,16 +509,12 @@ func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetr
 		if !haveConns && !haveOctets && !inMetrics {
 			continue
 		}
-		// A user present in the metrics but absent from the traffic counters used to be written
-		// with zero octets, which the next reading then charged as a whole session's worth of
-		// consumption. Until the column can hold "not measured", the row is left out.
-		if !haveOctets {
-			continue
-		}
+		// The connection count is known from the metrics whether or not the traffic counters were
+		// read, so the row is kept and only the octets say they were not measured.
 		row := db.InsertKeyStatsSnapshotParams{
 			AccessKeyID: p.AccessKeyID.UUID, NodeID: nodeID,
 			Connections: int32(parseIntOr(conns, int64(user.Connections))),
-			TotalOctets: parseIntOr(octets, 0),
+			TotalOctets: measuredBytes(parseIntOr(octets, 0), haveOctets),
 			ActiveIps:   int32(parseIntOr(stats["user."+p.Name+".active_ips"], int64(user.UniqueIPs))),
 		}
 		var limits domain.TelemtLimits

@@ -74,20 +74,24 @@ func (q *Queries) InsertAlert(ctx context.Context, arg InsertAlertParams) (Alert
 
 const insertKeyStatsSnapshot = `-- name: InsertKeyStatsSnapshot :exec
 INSERT INTO key_stats_snapshots (access_key_id, node_id, connections, total_octets, quota_used_bytes, active_ips)
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3,
+  $4::bigint, $5::bigint, $6)
 `
 
 type InsertKeyStatsSnapshotParams struct {
-	AccessKeyID    uuid.UUID `json:"access_key_id"`
-	NodeID         uuid.UUID `json:"node_id"`
-	Connections    int32     `json:"connections"`
-	TotalOctets    int64     `json:"total_octets"`
-	QuotaUsedBytes int64     `json:"quota_used_bytes"`
-	ActiveIps      int32     `json:"active_ips"`
+	AccessKeyID    uuid.UUID   `json:"access_key_id"`
+	NodeID         uuid.UUID   `json:"node_id"`
+	Connections    int32       `json:"connections"`
+	TotalOctets    pgtype.Int8 `json:"total_octets"`
+	QuotaUsedBytes pgtype.Int8 `json:"quota_used_bytes"`
+	ActiveIps      int32       `json:"active_ips"`
 }
 
 // key_stats_snapshots hold per-key traffic/connection counters read from telemt
 // nodes. They are written by the stats worker and read by the key drawer.
+// total_octets and quota_used_bytes are nullable: a user the node listed but did not count is a
+// reading that was not taken. Storing zero there is charged as a full session's consumption by the
+// next reading, while the connection count beside it is known and worth keeping.
 func (q *Queries) InsertKeyStatsSnapshot(ctx context.Context, arg InsertKeyStatsSnapshotParams) error {
 	_, err := q.db.Exec(ctx, insertKeyStatsSnapshot,
 		arg.AccessKeyID,
@@ -102,46 +106,53 @@ func (q *Queries) InsertKeyStatsSnapshot(ctx context.Context, arg InsertKeyStats
 
 const insertSnapshot = `-- name: InsertSnapshot :exec
 INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw,
-  cpu_percent, mem_used_percent, disk_used_percent, dc_latency,
+  cpu_percent, mem_used_percent, disk_used_percent, cpu_utilisation_percent, load_average_1, dc_latency,
   web_carrier_selections_https, web_carrier_selections_https_lanes,
   web_carrier_selections_websocket, web_carrier_selections_websocket_lanes,
   web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries,
   web_learning_entries)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce($13::jsonb, '{}'::jsonb),
-  $14::bigint,
-  $15::bigint,
+VALUES ($1, $2, $3,
+  $4::bigint, $5::bigint,
+  $6, $7, $8, $9,
+  $10::real, $11, $12,
+  $13::real, $14::real,
+  coalesce($15::jsonb, '{}'::jsonb),
   $16::bigint,
   $17::bigint,
   $18::bigint,
   $19::bigint,
   $20::bigint,
   $21::bigint,
-  $22::int)
+  $22::bigint,
+  $23::bigint,
+  $24::int)
 `
 
 type InsertSnapshotParams struct {
-	NodeID                             uuid.UUID   `json:"node_id"`
-	SessionsLive                       int32       `json:"sessions_live"`
-	StreamsLive                        int32       `json:"streams_live"`
-	BytesUp                            int64       `json:"bytes_up"`
-	BytesDown                          int64       `json:"bytes_down"`
-	SessionsCreated                    int64       `json:"sessions_created"`
-	LimitHits                          int64       `json:"limit_hits"`
-	MtproxyRaw                         []byte      `json:"mtproxy_raw"`
-	RelayRaw                           string      `json:"relay_raw"`
-	CpuPercent                         float32     `json:"cpu_percent"`
-	MemUsedPercent                     float32     `json:"mem_used_percent"`
-	DiskUsedPercent                    float32     `json:"disk_used_percent"`
-	DcLatency                          []byte      `json:"dc_latency"`
-	WebCarrierSelectionsHttps          pgtype.Int8 `json:"web_carrier_selections_https"`
-	WebCarrierSelectionsHttpsLanes     pgtype.Int8 `json:"web_carrier_selections_https_lanes"`
-	WebCarrierSelectionsWebsocket      pgtype.Int8 `json:"web_carrier_selections_websocket"`
-	WebCarrierSelectionsWebsocketLanes pgtype.Int8 `json:"web_carrier_selections_websocket_lanes"`
-	WebCarrierFailures                 pgtype.Int8 `json:"web_carrier_failures"`
-	WebRejectedAttempts                pgtype.Int8 `json:"web_rejected_attempts"`
-	WebEvictedSessions                 pgtype.Int8 `json:"web_evicted_sessions"`
-	WebBridgeRecoveries                pgtype.Int8 `json:"web_bridge_recoveries"`
-	WebLearningEntries                 pgtype.Int4 `json:"web_learning_entries"`
+	NodeID                             uuid.UUID     `json:"node_id"`
+	SessionsLive                       int32         `json:"sessions_live"`
+	StreamsLive                        int32         `json:"streams_live"`
+	BytesUp                            pgtype.Int8   `json:"bytes_up"`
+	BytesDown                          pgtype.Int8   `json:"bytes_down"`
+	SessionsCreated                    int64         `json:"sessions_created"`
+	LimitHits                          int64         `json:"limit_hits"`
+	MtproxyRaw                         []byte        `json:"mtproxy_raw"`
+	RelayRaw                           string        `json:"relay_raw"`
+	CpuPercent                         pgtype.Float4 `json:"cpu_percent"`
+	MemUsedPercent                     float32       `json:"mem_used_percent"`
+	DiskUsedPercent                    float32       `json:"disk_used_percent"`
+	CpuUtilisationPercent              pgtype.Float4 `json:"cpu_utilisation_percent"`
+	LoadAverage1                       pgtype.Float4 `json:"load_average_1"`
+	DcLatency                          []byte        `json:"dc_latency"`
+	WebCarrierSelectionsHttps          pgtype.Int8   `json:"web_carrier_selections_https"`
+	WebCarrierSelectionsHttpsLanes     pgtype.Int8   `json:"web_carrier_selections_https_lanes"`
+	WebCarrierSelectionsWebsocket      pgtype.Int8   `json:"web_carrier_selections_websocket"`
+	WebCarrierSelectionsWebsocketLanes pgtype.Int8   `json:"web_carrier_selections_websocket_lanes"`
+	WebCarrierFailures                 pgtype.Int8   `json:"web_carrier_failures"`
+	WebRejectedAttempts                pgtype.Int8   `json:"web_rejected_attempts"`
+	WebEvictedSessions                 pgtype.Int8   `json:"web_evicted_sessions"`
+	WebBridgeRecoveries                pgtype.Int8   `json:"web_bridge_recoveries"`
+	WebLearningEntries                 pgtype.Int4   `json:"web_learning_entries"`
 }
 
 // InsertSnapshot's dc_latency is coalesced so a caller with no DC data (a tproxy node, or a
@@ -165,6 +176,8 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 		arg.CpuPercent,
 		arg.MemUsedPercent,
 		arg.DiskUsedPercent,
+		arg.CpuUtilisationPercent,
+		arg.LoadAverage1,
 		arg.DcLatency,
 		arg.WebCarrierSelectionsHttps,
 		arg.WebCarrierSelectionsHttpsLanes,
@@ -265,7 +278,7 @@ func (q *Queries) LatestKeyStatsSnapshots(ctx context.Context, accessKeyID uuid.
 }
 
 const latestSnapshots = `-- name: LatestSnapshots :many
-SELECT DISTINCT ON (node_id) id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries FROM node_stats_snapshots ORDER BY node_id, taken_at DESC
+SELECT DISTINCT ON (node_id) id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1 FROM node_stats_snapshots ORDER BY node_id, taken_at DESC
 `
 
 func (q *Queries) LatestSnapshots(ctx context.Context) ([]NodeStatsSnapshot, error) {
@@ -302,6 +315,8 @@ func (q *Queries) LatestSnapshots(ctx context.Context) ([]NodeStatsSnapshot, err
 			&i.WebEvictedSessions,
 			&i.WebBridgeRecoveries,
 			&i.WebLearningEntries,
+			&i.CpuUtilisationPercent,
+			&i.LoadAverage1,
 		); err != nil {
 			return nil, err
 		}
@@ -326,15 +341,15 @@ type ListKeyStatsSnapshotsParams struct {
 }
 
 type ListKeyStatsSnapshotsRow struct {
-	ID             uuid.UUID `json:"id"`
-	AccessKeyID    uuid.UUID `json:"access_key_id"`
-	NodeID         uuid.UUID `json:"node_id"`
-	TakenAt        time.Time `json:"taken_at"`
-	Connections    int32     `json:"connections"`
-	TotalOctets    int64     `json:"total_octets"`
-	QuotaUsedBytes int64     `json:"quota_used_bytes"`
-	ActiveIps      int32     `json:"active_ips"`
-	NodeName       string    `json:"node_name"`
+	ID             uuid.UUID   `json:"id"`
+	AccessKeyID    uuid.UUID   `json:"access_key_id"`
+	NodeID         uuid.UUID   `json:"node_id"`
+	TakenAt        time.Time   `json:"taken_at"`
+	Connections    int32       `json:"connections"`
+	TotalOctets    pgtype.Int8 `json:"total_octets"`
+	QuotaUsedBytes pgtype.Int8 `json:"quota_used_bytes"`
+	ActiveIps      int32       `json:"active_ips"`
+	NodeName       string      `json:"node_name"`
 }
 
 func (q *Queries) ListKeyStatsSnapshots(ctx context.Context, arg ListKeyStatsSnapshotsParams) ([]ListKeyStatsSnapshotsRow, error) {
@@ -478,7 +493,7 @@ func (q *Queries) ListOpenAlerts(ctx context.Context) ([]ListOpenAlertsRow, erro
 }
 
 const listSnapshots = `-- name: ListSnapshots :many
-SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at
+SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1 FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at
 `
 
 type ListSnapshotsParams struct {
@@ -521,6 +536,8 @@ func (q *Queries) ListSnapshots(ctx context.Context, arg ListSnapshotsParams) ([
 			&i.WebEvictedSessions,
 			&i.WebBridgeRecoveries,
 			&i.WebLearningEntries,
+			&i.CpuUtilisationPercent,
+			&i.LoadAverage1,
 		); err != nil {
 			return nil, err
 		}
@@ -533,7 +550,8 @@ func (q *Queries) ListSnapshots(ctx context.Context, arg ListSnapshotsParams) ([
 }
 
 const listSnapshotsAllNodes = `-- name: ListSnapshotsAllNodes :many
-SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent, mem_used_percent, disk_used_percent, dc_latency
+SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent,
+       cpu_utilisation_percent, mem_used_percent, disk_used_percent, dc_latency
 FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_id, taken_at
 `
 
@@ -543,16 +561,17 @@ type ListSnapshotsAllNodesParams struct {
 }
 
 type ListSnapshotsAllNodesRow struct {
-	NodeID          uuid.UUID `json:"node_id"`
-	TakenAt         time.Time `json:"taken_at"`
-	SessionsLive    int32     `json:"sessions_live"`
-	StreamsLive     int32     `json:"streams_live"`
-	BytesUp         int64     `json:"bytes_up"`
-	BytesDown       int64     `json:"bytes_down"`
-	CpuPercent      float32   `json:"cpu_percent"`
-	MemUsedPercent  float32   `json:"mem_used_percent"`
-	DiskUsedPercent float32   `json:"disk_used_percent"`
-	DcLatency       []byte    `json:"dc_latency"`
+	NodeID                uuid.UUID     `json:"node_id"`
+	TakenAt               time.Time     `json:"taken_at"`
+	SessionsLive          int32         `json:"sessions_live"`
+	StreamsLive           int32         `json:"streams_live"`
+	BytesUp               pgtype.Int8   `json:"bytes_up"`
+	BytesDown             pgtype.Int8   `json:"bytes_down"`
+	CpuPercent            pgtype.Float4 `json:"cpu_percent"`
+	CpuUtilisationPercent pgtype.Float4 `json:"cpu_utilisation_percent"`
+	MemUsedPercent        float32       `json:"mem_used_percent"`
+	DiskUsedPercent       float32       `json:"disk_used_percent"`
+	DcLatency             []byte        `json:"dc_latency"`
 }
 
 func (q *Queries) ListSnapshotsAllNodes(ctx context.Context, arg ListSnapshotsAllNodesParams) ([]ListSnapshotsAllNodesRow, error) {
@@ -572,6 +591,7 @@ func (q *Queries) ListSnapshotsAllNodes(ctx context.Context, arg ListSnapshotsAl
 			&i.BytesUp,
 			&i.BytesDown,
 			&i.CpuPercent,
+			&i.CpuUtilisationPercent,
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
 			&i.DcLatency,
@@ -593,9 +613,12 @@ WITH scalars AS (
          max(r.taken_at)::timestamptz AS taken_at,
          round(avg(r.sessions_live))::int AS sessions_live,
          round(avg(r.streams_live))::int AS streams_live,
-         max(r.bytes_up)::bigint AS bytes_up,
-         max(r.bytes_down)::bigint AS bytes_down,
-         avg(r.cpu_percent)::real AS cpu_percent,
+         coalesce(max(r.bytes_up), 0)::bigint AS bytes_up,
+         count(r.bytes_up)::bigint AS bytes_readings,
+         coalesce(max(r.bytes_down), 0)::bigint AS bytes_down,
+         coalesce(avg(r.cpu_percent), 0)::real AS cpu_percent,
+         coalesce(avg(r.cpu_utilisation_percent), 0)::real AS cpu_utilisation_percent,
+         count(r.cpu_utilisation_percent)::bigint AS cpu_utilisation_readings,
          avg(r.mem_used_percent)::real AS mem_used_percent,
          avg(r.disk_used_percent)::real AS disk_used_percent
   FROM node_stats_snapshots r
@@ -618,8 +641,11 @@ SELECT scalars.node_id,
        scalars.sessions_live,
        scalars.streams_live,
        scalars.bytes_up,
+       scalars.bytes_readings,
        scalars.bytes_down,
        scalars.cpu_percent,
+       scalars.cpu_utilisation_percent,
+       scalars.cpu_utilisation_readings,
        scalars.mem_used_percent,
        scalars.disk_used_percent,
        coalesce(dc.dc_latency, '{}'::jsonb)::jsonb AS dc_latency
@@ -635,16 +661,19 @@ type ListSnapshotsAllNodesBucketedParams struct {
 }
 
 type ListSnapshotsAllNodesBucketedRow struct {
-	NodeID          uuid.UUID `json:"node_id"`
-	TakenAt         time.Time `json:"taken_at"`
-	SessionsLive    int32     `json:"sessions_live"`
-	StreamsLive     int32     `json:"streams_live"`
-	BytesUp         int64     `json:"bytes_up"`
-	BytesDown       int64     `json:"bytes_down"`
-	CpuPercent      float32   `json:"cpu_percent"`
-	MemUsedPercent  float32   `json:"mem_used_percent"`
-	DiskUsedPercent float32   `json:"disk_used_percent"`
-	DcLatency       []byte    `json:"dc_latency"`
+	NodeID                 uuid.UUID `json:"node_id"`
+	TakenAt                time.Time `json:"taken_at"`
+	SessionsLive           int32     `json:"sessions_live"`
+	StreamsLive            int32     `json:"streams_live"`
+	BytesUp                int64     `json:"bytes_up"`
+	BytesReadings          int64     `json:"bytes_readings"`
+	BytesDown              int64     `json:"bytes_down"`
+	CpuPercent             float32   `json:"cpu_percent"`
+	CpuUtilisationPercent  float32   `json:"cpu_utilisation_percent"`
+	CpuUtilisationReadings int64     `json:"cpu_utilisation_readings"`
+	MemUsedPercent         float32   `json:"mem_used_percent"`
+	DiskUsedPercent        float32   `json:"disk_used_percent"`
+	DcLatency              []byte    `json:"dc_latency"`
 }
 
 // ListSnapshotsAllNodesBucketed collapses snapshots into fixed-width time buckets in the
@@ -652,6 +681,11 @@ type ListSnapshotsAllNodesBucketedRow struct {
 // bounded only by retention (30 days x 1440/day x N nodes) and the whole set has to be
 // materialised in Go before it can be thinned. Bucketing first makes the result size
 // O(range/step) per node instead.
+//
+// A bucket whose rows all say "not measured" has no value to report, and an aggregate over
+// nothing is NULL. Rather than widen every column, each nullable series carries a count of the
+// readings that went into it: zero readings means the number beside it is filler, not a zero
+// anyone measured.
 //
 // sessions_live/streams_live are gauges, so the bucket's average is the honest summary;
 // bytes_up/bytes_down are monotonic counters, so the bucket's max is its closing value and
@@ -683,8 +717,11 @@ func (q *Queries) ListSnapshotsAllNodesBucketed(ctx context.Context, arg ListSna
 			&i.SessionsLive,
 			&i.StreamsLive,
 			&i.BytesUp,
+			&i.BytesReadings,
 			&i.BytesDown,
 			&i.CpuPercent,
+			&i.CpuUtilisationPercent,
+			&i.CpuUtilisationReadings,
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
 			&i.DcLatency,

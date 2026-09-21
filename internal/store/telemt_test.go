@@ -116,7 +116,7 @@ func TestAccessKeyTelemtLimitsAndKeyStatsSnapshots(t *testing.T) {
 	}
 
 	if err := st.Q.InsertKeyStatsSnapshot(ctx, db.InsertKeyStatsSnapshotParams{
-		AccessKeyID: key.ID, NodeID: node.ID, Connections: 3, TotalOctets: 4096, QuotaUsedBytes: 4096, ActiveIps: 2,
+		AccessKeyID: key.ID, NodeID: node.ID, Connections: 3, TotalOctets: pgtype.Int8{Int64: 4096, Valid: true}, QuotaUsedBytes: pgtype.Int8{Int64: 4096, Valid: true}, ActiveIps: 2,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestAccessKeyTelemtLimitsAndKeyStatsSnapshots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 1 || rows[0].Connections != 3 || rows[0].TotalOctets != 4096 || rows[0].ActiveIps != 2 {
+	if len(rows) != 1 || rows[0].Connections != 3 || rows[0].TotalOctets.Int64 != 4096 || rows[0].ActiveIps != 2 {
 		t.Fatalf("snapshots %+v", rows)
 	}
 	latest, err := st.Q.LatestKeyStatsSnapshots(ctx, key.ID)

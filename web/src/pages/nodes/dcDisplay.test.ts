@@ -26,6 +26,7 @@ function health(extra: Partial<NodeHealth> = {}): NodeHealth {
     agent_version: '1',
     uptime_seconds: 10,
     cpu_percent: 1,
+  cpu_utilisation_percent: 1,
     mem_used_percent: 1,
     disk_used_percent: 1,
     profile_count: 0,
@@ -41,6 +42,7 @@ function point(t: string, dc_latency?: Record<string, number>): SeriesPoint {
   return {
     t,
     cpu_percent: 0,
+  cpu_utilisation_percent: 0,
     mem_used_percent: 0,
     disk_used_percent: 0,
     sessions_live: 0,

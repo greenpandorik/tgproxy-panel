@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/google/uuid"
 
 	"tgwebproxy/internal/domain"
@@ -228,7 +230,7 @@ func TestStatsTelemtNodeWritesNodeAndKeySnapshots(t *testing.T) {
 	if snaps[0].SessionsLive != 3 || snaps[0].StreamsLive != 3 {
 		t.Fatalf("live connections: %+v", snaps[0])
 	}
-	if snaps[0].BytesDown != 8192 || snaps[0].BytesUp != 0 || snaps[0].SessionsCreated != 41 {
+	if snaps[0].BytesDown.Int64 != 8192 || snaps[0].BytesUp.Int64 != 0 || snaps[0].SessionsCreated != 41 {
 		t.Fatalf("node snapshot: %+v", snaps[0])
 	}
 
@@ -240,10 +242,10 @@ func TestStatsTelemtNodeWritesNodeAndKeySnapshots(t *testing.T) {
 		t.Fatalf("key snapshots: %+v", rows)
 	}
 	r := rows[0]
-	if r.NodeID != f.node.ID || r.Connections != 3 || r.TotalOctets != 8192 || r.ActiveIps != 2 {
+	if r.NodeID != f.node.ID || r.Connections != 3 || r.TotalOctets.Int64 != 8192 || r.ActiveIps != 2 {
 		t.Fatalf("key snapshot: %+v", r)
 	}
-	if r.QuotaUsedBytes != 8192 {
+	if r.QuotaUsedBytes.Int64 != 8192 {
 		t.Fatalf("a key with a quota must record its usage: %+v", r)
 	}
 }
@@ -262,7 +264,7 @@ func TestStatsTelemtKeySnapshotWithoutQuota(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows, _ := f.st.Q.LatestKeyStatsSnapshots(ctx, k.ID)
-	if len(rows) != 1 || rows[0].QuotaUsedBytes != 0 || rows[0].TotalOctets != 8192 {
+	if len(rows) != 1 || rows[0].QuotaUsedBytes.Int64 != 0 || rows[0].TotalOctets.Int64 != 8192 {
 		t.Fatalf("key snapshot: %+v", rows)
 	}
 	// With no per-user gauge in the metrics the live count falls back to the agent's summary.
@@ -287,7 +289,7 @@ func TestStatsTproxyNodeWritesNoKeyStats(t *testing.T) {
 		t.Fatal(err)
 	}
 	snaps, _ := f.st.Q.LatestSnapshots(ctx)
-	if len(snaps) != 1 || snaps[0].SessionsLive != 2 || snaps[0].BytesUp != 10 || snaps[0].BytesDown != 20 {
+	if len(snaps) != 1 || snaps[0].SessionsLive != 2 || snaps[0].BytesUp.Int64 != 10 || snaps[0].BytesDown.Int64 != 20 {
 		t.Fatalf("tproxy snapshot: %+v", snaps)
 	}
 	if rows, _ := f.st.Q.LatestKeyStatsSnapshots(ctx, k.ID); len(rows) != 0 {
@@ -299,7 +301,7 @@ func TestStatsPrunesOldKeyStats(t *testing.T) {
 	f := newTelemtFixture(t)
 	ctx := context.Background()
 	k, _ := f.keys.Create(ctx, keys.CreateInput{Label: "a", Type: domain.KeyPersonal, CarrierMode: "https", NodeIDs: []uuid.UUID{f.node.ID}})
-	if err := f.st.Q.InsertKeyStatsSnapshot(ctx, db.InsertKeyStatsSnapshotParams{AccessKeyID: k.ID, NodeID: f.node.ID, Connections: 1, TotalOctets: 1}); err != nil {
+	if err := f.st.Q.InsertKeyStatsSnapshot(ctx, db.InsertKeyStatsSnapshotParams{AccessKeyID: k.ID, NodeID: f.node.ID, Connections: 1, TotalOctets: pgtype.Int8{Int64: 1, Valid: true}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.st.Pool.Exec(ctx, `UPDATE key_stats_snapshots SET taken_at = now() - interval '31 days'`); err != nil {
@@ -334,7 +336,7 @@ func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
 	if len(snaps) != 1 {
 		t.Fatalf("snapshots %+v", snaps)
 	}
-	if got := snaps[0]; got.CpuPercent != 42.5 || got.MemUsedPercent != 61 || got.DiskUsedPercent != 12.25 {
+	if got := snaps[0]; got.CpuPercent.Float32 != 42.5 || got.MemUsedPercent != 61 || got.DiskUsedPercent != 12.25 {
 		t.Fatalf("load not carried into the snapshot: cpu=%v mem=%v disk=%v", got.CpuPercent, got.MemUsedPercent, got.DiskUsedPercent)
 	}
 
@@ -344,7 +346,7 @@ func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	snaps, _ = f.st.Q.LatestSnapshots(ctx)
-	if len(snaps) != 1 || snaps[0].CpuPercent != 0 {
+	if len(snaps) != 1 || snaps[0].CpuPercent.Float32 != 0 {
 		t.Fatalf("snapshot without health: %+v", snaps)
 	}
 }
@@ -401,8 +403,9 @@ func TestStatsSnapshotCarriesDcLatency(t *testing.T) {
 
 // Consumption is the difference between two snapshots. A reading that failed used to be stored as
 // zero, so 100 -> failed -> 110 was charged as 110 bytes instead of 10, on both the node's chart
-// and the key's quota. A tick with no reading has to stay a gap.
-func TestStatsSkipsTheTickWhenTrafficCannotBeRead(t *testing.T) {
+// and the key's quota. The row is still written - the gauges beside the counters were read fine -
+// but the counters say they were not measured.
+func TestStatsRecordsTrafficThatCouldNotBeReadAsNotMeasured(t *testing.T) {
 	f := newTelemtFixture(t)
 	ctx := context.Background()
 	k, err := f.keys.Create(ctx, keys.CreateInput{
@@ -434,16 +437,27 @@ func TestStatsSkipsTheTickWhenTrafficCannotBeRead(t *testing.T) {
 	if len(snaps) != 1 {
 		t.Fatalf("snapshots: %+v", snaps)
 	}
-	if snaps[0].BytesDown != 8192 {
-		t.Fatalf("bytes_down = %d, want the last real reading rather than a zero", snaps[0].BytesDown)
+	if snaps[0].BytesDown.Valid || snaps[0].BytesUp.Valid {
+		t.Fatalf("bytes = %+v/%+v, want them marked as not measured rather than zero",
+			snaps[0].BytesUp, snaps[0].BytesDown)
+	}
+	// The gauges came from the metrics text, which was read: only the counters are missing.
+	if snaps[0].SessionsLive == 0 {
+		t.Fatalf("the readings that did succeed were thrown away with the ones that did not: %+v", snaps[0])
 	}
 
 	rows, err := f.st.Q.LatestKeyStatsSnapshots(ctx, k.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 1 || rows[0].TotalOctets != 8192 {
-		t.Fatalf("key rows = %+v, want the last real reading and no fabricated zero", rows)
+	if len(rows) != 1 {
+		t.Fatalf("key rows = %+v", rows)
+	}
+	if rows[0].TotalOctets.Valid {
+		t.Fatalf("key octets = %+v, want them marked as not measured", rows[0].TotalOctets)
+	}
+	if rows[0].Connections == 0 {
+		t.Fatal("the connection count was known and should have been kept")
 	}
 }
 

@@ -56,8 +56,14 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 	for _, snap := range snaps {
 		sessionsLive += int64(snap.SessionsLive)
 		streamsLive += int64(snap.StreamsLive)
-		bytesUp += snap.BytesUp
-		bytesDown += snap.BytesDown
+		// A node that did not report its counters contributes nothing to the total rather than a
+		// zero, which would read as "this node moved no traffic".
+		if snap.BytesUp.Valid {
+			bytesUp += snap.BytesUp.Int64
+		}
+		if snap.BytesDown.Valid {
+			bytesDown += snap.BytesDown.Int64
+		}
 	}
 
 	openAlerts, err := s.store.Q.ListOpenAlerts(ctx)

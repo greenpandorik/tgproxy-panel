@@ -27,6 +27,7 @@ import type { ReactNode } from 'react';
 import type { MonitoringRange } from '@/api/monitoring';
 import type { Status } from '@/components/common/StatusBadge';
 import type { MonitoringNode, MonitoringPoint, NodeEngine } from '@/api/types';
+import { isMetricPresent } from '@/components/common/metric';
 import { formatBytes, formatNumber } from '@/lib/format';
 
 // recharts stays out of the shell bundle - only NodeSeriesChart.tsx imports it.
@@ -128,18 +129,24 @@ function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Rec
   const degraded = nodes.filter((node) => node.status === 'degraded').length;
   let sessions = 0;
   let throughput = 0;
+  // A node whose counters were not read contributes nothing rather than a zero, and if none of
+  // them were read the total is not zero traffic but an unknown, which the tile says outright.
+  let measuredThroughput = false;
   for (const points of Object.values(series)) {
     const last = points.at(-1);
     if (!last) continue;
     sessions += last.sessions_live;
-    throughput += last.bytes_up_rate + last.bytes_down_rate;
+    if (isMetricPresent(last.bytes_up_rate) && isMetricPresent(last.bytes_down_rate)) {
+      throughput += last.bytes_up_rate + last.bytes_down_rate;
+      measuredThroughput = true;
+    }
   }
   const items = [
     [t('monitoring.fleet_online'), `${formatNumber(online, i18n.language)} / ${formatNumber(nodes.length, i18n.language)}`],
     [t('monitoring.fleet_healthy'), formatNumber(healthy, i18n.language)],
     [t('monitoring.fleet_degraded'), formatNumber(degraded, i18n.language)],
     [t('monitoring.fleet_sessions'), formatNumber(sessions, i18n.language)],
-    [t('monitoring.fleet_traffic'), `${formatBytes(throughput)}/s`],
+    [t('monitoring.fleet_traffic'), measuredThroughput ? `${formatBytes(throughput)}/s` : t('common.not_available')],
   ];
   return <Panel><PanelHeader icon={Activity} title={t('monitoring.fleet_title')} /><div className="grid grid-cols-2 gap-px bg-hairline sm:grid-cols-3 xl:grid-cols-5">{items.map(([label,value])=><div key={label} className="bg-card px-5 py-4"><p className="text-micro text-mute">{label}</p><p className="mt-1 text-title text-foreground">{value}</p></div>)}</div></Panel>;
 }

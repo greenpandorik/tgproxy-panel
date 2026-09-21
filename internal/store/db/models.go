@@ -496,14 +496,14 @@ type KeyBinding struct {
 }
 
 type KeyStatsSnapshot struct {
-	ID             uuid.UUID `json:"id"`
-	AccessKeyID    uuid.UUID `json:"access_key_id"`
-	NodeID         uuid.UUID `json:"node_id"`
-	TakenAt        time.Time `json:"taken_at"`
-	Connections    int32     `json:"connections"`
-	TotalOctets    int64     `json:"total_octets"`
-	QuotaUsedBytes int64     `json:"quota_used_bytes"`
-	ActiveIps      int32     `json:"active_ips"`
+	ID             uuid.UUID   `json:"id"`
+	AccessKeyID    uuid.UUID   `json:"access_key_id"`
+	NodeID         uuid.UUID   `json:"node_id"`
+	TakenAt        time.Time   `json:"taken_at"`
+	Connections    int32       `json:"connections"`
+	TotalOctets    pgtype.Int8 `json:"total_octets"`
+	QuotaUsedBytes pgtype.Int8 `json:"quota_used_bytes"`
+	ActiveIps      int32       `json:"active_ips"`
 }
 
 type Node struct {
@@ -558,30 +558,32 @@ type NodeSite struct {
 }
 
 type NodeStatsSnapshot struct {
-	ID                                 int64       `json:"id"`
-	NodeID                             uuid.UUID   `json:"node_id"`
-	TakenAt                            time.Time   `json:"taken_at"`
-	SessionsLive                       int32       `json:"sessions_live"`
-	StreamsLive                        int32       `json:"streams_live"`
-	BytesUp                            int64       `json:"bytes_up"`
-	BytesDown                          int64       `json:"bytes_down"`
-	SessionsCreated                    int64       `json:"sessions_created"`
-	LimitHits                          int64       `json:"limit_hits"`
-	MtproxyRaw                         []byte      `json:"mtproxy_raw"`
-	RelayRaw                           string      `json:"relay_raw"`
-	CpuPercent                         float32     `json:"cpu_percent"`
-	MemUsedPercent                     float32     `json:"mem_used_percent"`
-	DiskUsedPercent                    float32     `json:"disk_used_percent"`
-	DcLatency                          []byte      `json:"dc_latency"`
-	WebCarrierSelectionsHttps          pgtype.Int8 `json:"web_carrier_selections_https"`
-	WebCarrierSelectionsHttpsLanes     pgtype.Int8 `json:"web_carrier_selections_https_lanes"`
-	WebCarrierSelectionsWebsocket      pgtype.Int8 `json:"web_carrier_selections_websocket"`
-	WebCarrierSelectionsWebsocketLanes pgtype.Int8 `json:"web_carrier_selections_websocket_lanes"`
-	WebCarrierFailures                 pgtype.Int8 `json:"web_carrier_failures"`
-	WebRejectedAttempts                pgtype.Int8 `json:"web_rejected_attempts"`
-	WebEvictedSessions                 pgtype.Int8 `json:"web_evicted_sessions"`
-	WebBridgeRecoveries                pgtype.Int8 `json:"web_bridge_recoveries"`
-	WebLearningEntries                 pgtype.Int4 `json:"web_learning_entries"`
+	ID                                 int64         `json:"id"`
+	NodeID                             uuid.UUID     `json:"node_id"`
+	TakenAt                            time.Time     `json:"taken_at"`
+	SessionsLive                       int32         `json:"sessions_live"`
+	StreamsLive                        int32         `json:"streams_live"`
+	BytesUp                            pgtype.Int8   `json:"bytes_up"`
+	BytesDown                          pgtype.Int8   `json:"bytes_down"`
+	SessionsCreated                    int64         `json:"sessions_created"`
+	LimitHits                          int64         `json:"limit_hits"`
+	MtproxyRaw                         []byte        `json:"mtproxy_raw"`
+	RelayRaw                           string        `json:"relay_raw"`
+	CpuPercent                         pgtype.Float4 `json:"cpu_percent"`
+	MemUsedPercent                     float32       `json:"mem_used_percent"`
+	DiskUsedPercent                    float32       `json:"disk_used_percent"`
+	DcLatency                          []byte        `json:"dc_latency"`
+	WebCarrierSelectionsHttps          pgtype.Int8   `json:"web_carrier_selections_https"`
+	WebCarrierSelectionsHttpsLanes     pgtype.Int8   `json:"web_carrier_selections_https_lanes"`
+	WebCarrierSelectionsWebsocket      pgtype.Int8   `json:"web_carrier_selections_websocket"`
+	WebCarrierSelectionsWebsocketLanes pgtype.Int8   `json:"web_carrier_selections_websocket_lanes"`
+	WebCarrierFailures                 pgtype.Int8   `json:"web_carrier_failures"`
+	WebRejectedAttempts                pgtype.Int8   `json:"web_rejected_attempts"`
+	WebEvictedSessions                 pgtype.Int8   `json:"web_evicted_sessions"`
+	WebBridgeRecoveries                pgtype.Int8   `json:"web_bridge_recoveries"`
+	WebLearningEntries                 pgtype.Int4   `json:"web_learning_entries"`
+	CpuUtilisationPercent              pgtype.Float4 `json:"cpu_utilisation_percent"`
+	LoadAverage1                       pgtype.Float4 `json:"load_average_1"`
 }
 
 type Profile struct {

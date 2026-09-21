@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
@@ -113,17 +115,37 @@ type monitoringNodeJSON struct {
 }
 
 type monitoringPointJSON struct {
-	T             time.Time `json:"t"`
-	SessionsLive  int32     `json:"sessions_live"`
-	StreamsLive   int32     `json:"streams_live"`
-	BytesUpRate   float64   `json:"bytes_up_rate"`
-	BytesDownRate float64   `json:"bytes_down_rate"`
-	// Server load, averaged over the bucket like the gauges above.
-	CPUPercent      float32 `json:"cpu_percent"`
-	MemUsedPercent  float32 `json:"mem_used_percent"`
-	DiskUsedPercent float32 `json:"disk_used_percent"`
+	T            time.Time `json:"t"`
+	SessionsLive int32     `json:"sessions_live"`
+	StreamsLive  int32     `json:"streams_live"`
+	// Null where a rate could not be worked out: the counters are nullable now, and a rate
+	// between a reading and a gap is not zero traffic, it is an unknown.
+	BytesUpRate   *float64 `json:"bytes_up_rate"`
+	BytesDownRate *float64 `json:"bytes_down_rate"`
+	// CPUPercent is a load average over core count; CPUUtilisationPercent is the measured thing
+	// and is null for nodes and history that never reported it.
+	CPUPercent            *float32 `json:"cpu_percent"`
+	CPUUtilisationPercent *float32 `json:"cpu_utilisation_percent"`
+	MemUsedPercent        float32  `json:"mem_used_percent"`
+	DiskUsedPercent       float32  `json:"disk_used_percent"`
 	// DcLatency is {"<dc>": <ms>}, per DC the mean over the bucket's rows that measured it.
 	DcLatency json.RawMessage `json:"dc_latency"`
+}
+
+// int8Ptr and float4Ptr turn a column that may be NULL into something a JSON encoder can render
+// as null, so "not measured" survives all the way to the chart instead of arriving as a zero.
+func int8Ptr(v pgtype.Int8) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Int64
+}
+
+func float4Ptr(v pgtype.Float4) *float32 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Float32
 }
 
 type overviewSample struct {
@@ -131,11 +153,16 @@ type overviewSample struct {
 	T            time.Time
 	SessionsLive int32
 	StreamsLive  int32
-	BytesUp      int64
-	BytesDown    int64
+	// Nil where the node did not report the counter. A rate is the difference between two
+	// samples, so a zero standing in for a missing reading is charged back by the next one.
+	BytesUp   *int64
+	BytesDown *int64
 
-	CPUPercent, MemUsedPercent, DiskUsedPercent float32
-	DcLatency                                   []byte
+	CPUPercent            *float32
+	MemUsedPercent        float32
+	DiskUsedPercent       float32
+	CPUUtilisationPercent *float32
+	DcLatency             []byte
 }
 
 // overviewSamples reads the snapshots backing the overview.
@@ -149,12 +176,24 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 		}
 		out := make([]overviewSample, 0, len(rows))
 		for _, row := range rows {
-			out = append(out, overviewSample{
+			sample := overviewSample{
 				NodeID: row.NodeID, T: row.TakenAt, SessionsLive: row.SessionsLive,
-				StreamsLive: row.StreamsLive, BytesUp: row.BytesUp, BytesDown: row.BytesDown,
-				CPUPercent: row.CpuPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
-				DcLatency: row.DcLatency,
-			})
+				StreamsLive: row.StreamsLive, MemUsedPercent: row.MemUsedPercent,
+				DiskUsedPercent: row.DiskUsedPercent, DcLatency: row.DcLatency,
+			}
+			// The counts say how many real readings went into the bucket. None means the value
+			// beside them is filler and must not travel any further.
+			if row.BytesReadings > 0 {
+				up, down := row.BytesUp, row.BytesDown
+				sample.BytesUp, sample.BytesDown = &up, &down
+			}
+			cpu := row.CpuPercent
+			sample.CPUPercent = &cpu
+			if row.CpuUtilisationReadings > 0 {
+				util := row.CpuUtilisationPercent
+				sample.CPUUtilisationPercent = &util
+			}
+			out = append(out, sample)
 		}
 		return out, nil
 	}
@@ -166,8 +205,9 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 	for _, row := range rows {
 		out = append(out, overviewSample{
 			NodeID: row.NodeID, T: row.TakenAt, SessionsLive: row.SessionsLive,
-			StreamsLive: row.StreamsLive, BytesUp: row.BytesUp, BytesDown: row.BytesDown,
-			CPUPercent: row.CpuPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
+			StreamsLive: row.StreamsLive, BytesUp: int8Ptr(row.BytesUp), BytesDown: int8Ptr(row.BytesDown),
+			CPUPercent: float4Ptr(row.CpuPercent), CPUUtilisationPercent: float4Ptr(row.CpuUtilisationPercent),
+			MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
 			DcLatency: row.DcLatency,
 		})
 	}
@@ -221,7 +261,8 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 		for i, row := range rows {
 			p := monitoringPointJSON{
 				T: row.T, SessionsLive: row.SessionsLive, StreamsLive: row.StreamsLive,
-				CPUPercent: row.CPUPercent, MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
+				CPUPercent: row.CPUPercent, CPUUtilisationPercent: row.CPUUtilisationPercent,
+				MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
 				DcLatency: dcLatencyRaw(row.DcLatency),
 			}
 			if i > 0 {
@@ -240,12 +281,18 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 	writeJSON(w, 200, map[string]any{"nodes": nodes, "series": series})
 }
 
-func rate(prev, cur int64, seconds float64) float64 {
-	delta := cur - prev
-	if delta < 0 {
-		return 0
+// rate is the traffic between two readings. Either one missing means there is no rate to state:
+// pretending the gap was zero bytes charges the whole interval to the reading that follows it.
+func rate(prev, cur *int64, seconds float64) *float64 {
+	if prev == nil || cur == nil {
+		return nil
 	}
-	return float64(delta) / seconds
+	delta := *cur - *prev
+	if delta < 0 {
+		return nil // the counter restarted; the interval spans a reset and says nothing
+	}
+	v := float64(delta) / seconds
+	return &v
 }
 
 func sampleOverviewPoints(points []monitoringPointJSON, stepSeconds, maxPoints int) []monitoringPointJSON {
