@@ -229,6 +229,9 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 
 	// rollback restores the pre-apply backup and reports whether every restore step actually succeeded.
 	rollback := func(cause error) *agentv1.ApplyResult {
+		// See the telemt branch: recovery outlives the connection that asked for the apply.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), rollbackTimeout)
+		defer cancel()
 		lg.f("rolling back: %v", cause)
 		restored := true
 		step := func(desc string, err error) {
@@ -267,9 +270,9 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 		if out, err := h.exec.Run(ctx, "systemctl", "restart", "tproxy-server"); err != nil {
 			step("restart tproxy-server", fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err))
 		}
-		if err := h.waitHealthy(ctx); err != nil {
-			lg.f("rollback step failed: wait healthy: %v", err)
-		}
+		// A restore that does not come back healthy is not a restore: reporting it as one tells
+		// the panel the node is fine and stops it from trying again.
+		step("wait healthy", h.waitHealthy(ctx))
 
 		res.Ok, res.RolledBack = false, restored
 		if !restored {
@@ -326,6 +329,10 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 }
 
 // keptBackups is how many per-apply backup directories survive a successful apply.
+// rollbackTimeout bounds recovery once it has been detached from the caller's context. It is the
+// same budget the telemt binary rollback works to, and covers a restart plus the readiness wait.
+const rollbackTimeout = 2 * time.Minute
+
 const keptBackups = 5
 
 func randSuffix() string {

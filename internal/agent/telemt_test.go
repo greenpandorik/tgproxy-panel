@@ -1540,3 +1540,36 @@ func (d decoyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	clone.URL = u
 	return http.DefaultTransport.RoundTrip(clone)
 }
+
+// The apply's context belongs to the gRPC stream from the panel, and that stream dropping is one
+// of the ways an apply fails. If recovery ran on the same context it would be cancelled before it
+// could undo anything, leaving the node half-applied until someone noticed - which is the opposite
+// of what a rollback is for.
+func TestTelemtRollbackSurvivesTheConnectionThatAskedForIt(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ex := &fakeExec{failNth: "restart telemt", failNthCount: 1, failMsg: "job failed"}
+	ex.onCall = func(cmd string) {
+		if strings.Contains(cmd, "restart telemt") {
+			cancel() // the panel goes away at the same moment the restart fails
+		}
+	}
+	h, _, ft := telemtHandler(t, ex)
+
+	res := h.Apply(ctx, &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode), PublicIp: "104.239.66.129",
+	})
+
+	if res.Ok {
+		t.Fatalf("a failed restart must fail the apply: %s", res.Log)
+	}
+	if !res.RolledBack {
+		t.Fatalf("rollback must complete without the panel: %s", res.Log)
+	}
+	live, _ := ft.section("web")["vhosts"].([]any)
+	liveVhost, _ := live[0].(map[string]any)
+	if liveVhost["public_addr"] != "203.0.113.7:443" {
+		t.Fatalf("public_addr not restored after the connection dropped: %#v", liveVhost)
+	}
+}

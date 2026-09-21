@@ -520,6 +520,11 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 
 	rb := &telemtRollback{}
 	rollback := func(cause error) *agentv1.ApplyResult {
+		// Detached from the caller: the apply's context is the gRPC stream's, and the stream
+		// dropping is one of the reasons an apply fails. Undoing a half-applied node must not
+		// depend on the panel still being there to watch.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), rollbackTimeout)
+		defer cancel()
 		lg.f("error: %v", cause)
 		lg.f("rolling back")
 		restored := len(rb.irreversible) == 0

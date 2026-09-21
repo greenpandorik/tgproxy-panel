@@ -28,10 +28,21 @@ type fakeExec struct {
 	failNth      string
 	failNthCount int
 	nthSeen      map[string]int
+
+	// onCall runs before the command's result is decided, so a test can make something else
+	// happen at that exact moment - the panel's connection dropping, for instance.
+	onCall func(cmd string)
 }
 
-func (f *fakeExec) Run(_ context.Context, name string, args ...string) ([]byte, error) {
+func (f *fakeExec) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
 	cmd := name + " " + strings.Join(args, " ")
+	// The real exec runs the command with this context, so a cancelled one never starts a unit.
+	if err := ctx.Err(); err != nil {
+		f.mu.Lock()
+		f.calls = append(f.calls, cmd+" [ctx cancelled]")
+		f.mu.Unlock()
+		return nil, err
+	}
 	f.mu.Lock()
 	f.calls = append(f.calls, cmd)
 	failStatic := f.failOn != "" && strings.Contains(cmd, f.failOn)
@@ -44,8 +55,12 @@ func (f *fakeExec) Run(_ context.Context, name string, args ...string) ([]byte, 
 		failNth = f.nthSeen[f.failNth] == f.failNthCount
 	}
 	active := f.active
+	hook := f.onCall
 	f.mu.Unlock()
 
+	if hook != nil {
+		hook(cmd)
+	}
 	if failStatic || failNth {
 		return []byte(f.failMsg), errors.New("exit 1")
 	}
@@ -184,13 +199,18 @@ func TestApplyRollsBackWhenHealthFails(t *testing.T) {
 		Profiles:       []*agentv1.Profile{{Name: "n", Secret: "11111111111111111111111111111111", Backend: "127.0.0.1:2398"}},
 		MtproxySecrets: []string{"11111111111111111111111111111111"},
 	})
-	if res.Ok || !res.RolledBack {
-		t.Fatalf("expected rollback, got %+v", res)
+	if res.Ok {
+		t.Fatalf("expected the apply to fail, got %+v", res)
 	}
 	prof, _ := os.ReadFile(cfg.ProfilesPath)
 	env, _ := os.ReadFile(cfg.MTProxyEnvPath)
 	if !strings.Contains(string(prof), `"name":"default"`) || !strings.Contains(string(env), "MTPROXY_SECRET=00000000000000000000000000000000") {
 		t.Fatalf("rollback did not restore files: %s / %s", prof, env)
+	}
+	// The files are back, but this relay answers 503 throughout, so it is still not serving.
+	// RolledBack says the node is in a state the panel can leave alone, and this is not one.
+	if res.RolledBack {
+		t.Fatalf("a relay that never came back healthy must not be reported as restored: %s", res.Log)
 	}
 }
 
@@ -323,5 +343,56 @@ func TestApplyLogsChownFailure(t *testing.T) {
 	}
 	if !strings.Contains(res.Log, "chown") || !strings.Contains(res.Log, "warning") {
 		t.Fatalf("chown failure not reported in the apply log:\n%s", res.Log)
+	}
+}
+
+// Every restore step can succeed and the node still not come back. Reporting that as a completed
+// rollback tells the panel the node is fine, so it stops re-applying and nobody goes to look.
+func TestRollbackThatDoesNotComeBackHealthyIsNotRestored(t *testing.T) {
+	ex := &fakeExec{failOn: "systemctl reload tproxy-server", failMsg: "no such job"}
+	h, _ := testHandler(t, ex, false) // the relay answers 503 throughout
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles:  true,
+		Profiles:       []*agentv1.Profile{{Name: "n", Secret: "11111111111111111111111111111111", Backend: "127.0.0.1:2398"}},
+		MtproxySecrets: []string{"11111111111111111111111111111111"},
+	})
+	if res.Ok {
+		t.Fatalf("expected the apply to fail: %+v", res)
+	}
+	if res.RolledBack {
+		t.Fatalf("a node that never became healthy again is not restored: %s", res.Log)
+	}
+	if !strings.Contains(res.Log, "wait healthy") {
+		t.Fatalf("the log must name the step that failed: %s", res.Log)
+	}
+}
+
+// The tproxy branch recovers on its own context too: restoring files and restarting units cannot
+// depend on the panel still holding the stream that asked for the apply.
+func TestTproxyRollbackSurvivesTheConnectionThatAskedForIt(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ex := &fakeExec{failNth: "systemctl restart tproxy-server", failNthCount: 1, failMsg: "job failed"}
+	ex.onCall = func(cmd string) {
+		if strings.Contains(cmd, "restart tproxy-server") {
+			cancel()
+		}
+	}
+	h, cfg := testHandler(t, ex, true)
+	res := h.Apply(ctx, &agentv1.ApplyRequest{
+		ApplyProfiles:  true,
+		Profiles:       []*agentv1.Profile{{Name: "n", Secret: "11111111111111111111111111111111", Backend: "127.0.0.1:2398"}},
+		MtproxySecrets: []string{"11111111111111111111111111111111"},
+	})
+	if res.Ok {
+		t.Fatalf("expected the apply to fail: %+v", res)
+	}
+	if !res.RolledBack {
+		t.Fatalf("rollback must restart the units without the panel: %s", res.Log)
+	}
+	prof, _ := os.ReadFile(cfg.ProfilesPath)
+	if !strings.Contains(string(prof), `"name":"default"`) {
+		t.Fatalf("profiles.json not restored after the connection dropped: %s", prof)
 	}
 }
