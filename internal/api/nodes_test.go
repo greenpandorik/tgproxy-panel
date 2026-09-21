@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bufio"
-	"encoding/hex"
 	"encoding/json"
 	"regexp"
 	"strconv"
@@ -141,9 +140,8 @@ func TestNodeRegistrationSecret(t *testing.T) {
 		t.Fatalf("registration-secret: %d", resp.StatusCode)
 	}
 	c.JSON(resp, &got)
-	// ee, the 32-hex profile secret, then the masked domain: the form the listener accepts.
-	if !regexp.MustCompile(`^ee[0-9a-f]{32}[0-9a-f]+$`).MatchString(got.Secret) {
-		t.Fatalf("secret %q is not the Fake-TLS form", got.Secret)
+	if !regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(got.Secret) {
+		t.Fatalf("secret %q is not 32 lowercase hex characters", got.Secret)
 	}
 
 	h.CreateAdmin("v", "pass-123456", "viewer")
@@ -346,17 +344,18 @@ func TestNodeListHealthTproxyHasNoDcData(t *testing.T) {
 	}
 }
 
-// What the operator hands @MTProxybot has to be what this node actually serves. The bot echoes a
-// share link built from the address and secret it is given, so if those differ from the link the
-// panel itself issues for the same node, everyone the bot's link reaches fails to connect.
-func TestRegistrationDetailsMatchTheNodesOwnFakeTLSLink(t *testing.T) {
+// @MTProxybot asks for host:port and then a secret of exactly 32 hex characters; it rejects the
+// ee form outright, so registration carries the bare secret. What it must not carry is the public
+// IP: clients dial the hostname, and behind a provider's NAT the public IP is not even the address
+// the node listens on, which is how this node was first registered somewhere it does not answer.
+func TestRegistrationCarriesTheDialledHostAndABareSecret(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
 	c := h.Login("root", "pass-123456")
 	n, _ := createNode(t, c, "n1.test")
 
-	if resp := c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"tls_domain": "mask.example.com"}); resp.StatusCode != 200 {
-		t.Fatalf("set tls_domain: %d", resp.StatusCode)
+	if resp := c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"public_ip": "203.0.113.7"}); resp.StatusCode != 200 {
+		t.Fatalf("set public_ip: %d", resp.StatusCode)
 	}
 
 	var reg struct {
@@ -366,12 +365,12 @@ func TestRegistrationDetailsMatchTheNodesOwnFakeTLSLink(t *testing.T) {
 	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()+"/registration-secret"), &reg)
 
 	if want := "n1.test:" + strconv.Itoa(int(n.ClassicPort)); reg.Address != want {
-		t.Fatalf("address = %q, want the address clients dial, %q", reg.Address, want)
+		t.Fatalf("address = %q, want the host clients dial, %q", reg.Address, want)
 	}
-	if !strings.HasPrefix(reg.Secret, "ee") {
-		t.Fatalf("secret = %q, want the Fake-TLS form this listener accepts", reg.Secret)
+	if strings.Contains(reg.Address, "203.0.113.7") {
+		t.Fatalf("address = %q, want the hostname rather than the public IP", reg.Address)
 	}
-	if !strings.HasSuffix(reg.Secret, hex.EncodeToString([]byte("mask.example.com"))) {
-		t.Fatalf("secret = %q, want the masked domain encoded into it", reg.Secret)
+	if !regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(reg.Secret) {
+		t.Fatalf("secret = %q, want the 32 hex characters the bot accepts", reg.Secret)
 	}
 }

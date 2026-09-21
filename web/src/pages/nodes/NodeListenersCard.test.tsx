@@ -57,7 +57,7 @@ describe('NodeListenersCard', () => {
     mutateAsync.mockReset().mockResolvedValue(node);
     vi.mocked(usePatchNode).mockReturnValue({ mutateAsync } as unknown as ReturnType<typeof usePatchNode>);
     vi.mocked(useNodeRegistrationSecret).mockReturnValue({
-      data: { secret: 'ee' + 'a'.repeat(32) + '6e312e74657374', address: 'n1.test:8443' },
+      data: { secret: 'a'.repeat(32), address: 'n1.test:8443' },
     } as unknown as ReturnType<typeof useNodeRegistrationSecret>);
   });
 

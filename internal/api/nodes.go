@@ -20,7 +20,6 @@ import (
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodecheck"
 	"tgwebproxy/internal/nodedriver"
-	"tgwebproxy/internal/qrlink"
 	"tgwebproxy/internal/store/db"
 )
 
@@ -401,13 +400,11 @@ func (s *Server) handleNodeRegistrationSecret(w http.ResponseWriter, r *http.Req
 		internal(w)
 		return
 	}
-	// @MTProxybot echoes back a share link built from exactly what it is given, so it has to be
-	// given what this node actually serves: the address clients dial and, on a Fake-TLS node, the
-	// secret in its ee form. Registering the bare secret hands out a plain MTProto link for a
-	// listener that speaks Fake-TLS, and nobody it is sent to can connect.
-	if n.Engine == db.NodeEngineTelemt && n.TlsDomain != "" {
-		secret = qrlink.FakeTLSSecret(secret, n.TlsDomain)
-	}
+	// @MTProxybot takes the bare 32-hex secret and refuses anything else, including the ee form
+	// a Fake-TLS client uses - registration is only how the ad tag is issued, and the share link
+	// the bot prints afterwards is not the link to hand out. The address is the hostname, because
+	// that is what clients dial and what the panel's own links carry; the public IP is not always
+	// even the address the node listens on, behind a provider's NAT it is not.
 	writeJSON(w, 200, map[string]any{
 		"secret":  secret,
 		"address": net.JoinHostPort(n.Hostname, strconv.Itoa(int(n.ClassicPort))),
