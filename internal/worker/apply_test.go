@@ -605,3 +605,61 @@ func TestApplyNodeRaisesAnAlertForDeferredConfig(t *testing.T) {
 		}
 	}
 }
+
+// An apply carries the values that were current when it was built. If the operator rotates the
+// secret while it is in flight, the success that comes back is a success for the old secret: the
+// node is serving the previous one. Marking the profile synced on that basis lets the key go
+// active while every link issued for it is wrong.
+func TestApplySuccessDoesNotSyncAProfileEditedMidApply(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	k, err := f.keys.Create(ctx, keys.CreateInput{
+		Label: "rotated", Type: domain.KeyPersonal, CarrierMode: "https", NodeIDs: []uuid.UUID{f.node.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := domain.ProfileName(k.ID)
+
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	_ = f.st.Q.SetNodeStatus(ctx, db.SetNodeStatusParams{ID: f.node.ID, Status: db.NodeStatusOnline})
+	drv := newBlockingDriver(mock)
+
+	a := worker.NewApply(f.st, f.box, drv, time.Hour, slog.New(slog.DiscardHandler))
+	done := make(chan error, 1)
+	go func() { done <- a.ApplyNode(ctx, f.node.ID) }()
+
+	select {
+	case <-drv.entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("apply never reached the driver")
+	}
+
+	if _, err := f.keys.Rotate(ctx, k.ID); err != nil { // the secret changes under the in-flight apply
+		t.Fatal(err)
+	}
+	close(drv.release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+
+	profiles, _ := f.st.Q.ListNodeProfiles(ctx, f.node.ID)
+	var found bool
+	for _, p := range profiles {
+		if p.Name != name {
+			continue
+		}
+		found = true
+		if p.SyncState != db.SyncStatePending {
+			t.Fatalf("profile rotated mid-apply marked %s; the node still has the previous secret", p.SyncState)
+		}
+	}
+	if !found {
+		t.Fatalf("profile %s missing from %+v", name, profiles)
+	}
+	n, _ := f.st.Q.GetNode(ctx, f.node.ID)
+	if !n.Dirty {
+		t.Fatal("the rotated secret would never reach the node")
+	}
+}

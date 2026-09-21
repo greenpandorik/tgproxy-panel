@@ -3,7 +3,9 @@ package worker
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,8 +25,62 @@ import (
 type Desired struct {
 	Req        nodedriver.ApplyRequest
 	ProfileIDs []uuid.UUID
+	Revisions  map[uuid.UUID]string
 	DirtySeq   int64
 	SiteHash   string
+}
+
+// profileRevision fingerprints everything about a profile that reaches the node, including the
+// parts it inherits from its key. An apply carries the values that were current when it was built;
+// by the time it finishes the operator may have changed the secret or the limits, and a success
+// that reports the old values as synced would leave the key looking active while the node is still
+// serving what it was serving before.
+//
+// It is derived rather than maintained on purpose: a counter has to be bumped at every write, and
+// the write nobody remembers to bump is the one that causes this.
+func profileRevision(p db.ListNodeProfilesWithKeyRow) string {
+	h := sha256.New()
+	write := func(parts ...any) {
+		for _, v := range parts {
+			_, _ = fmt.Fprintf(h, "%v\x00", v)
+		}
+	}
+	write(p.Name, p.Backend, p.CarrierMode)
+	// The ciphertext, not the secret: re-encrypting the same secret only makes a profile look
+	// changed, which costs one more apply. Reading a changed secret as unchanged would not.
+	h.Write(p.SecretEnc)
+	h.Write(p.Limits)
+	h.Write(p.KeyTelemtLimits)
+	if p.KeyExpiresAt != nil {
+		write(p.KeyExpiresAt.UTC().UnixNano())
+	} else {
+		write("no-expiry")
+	}
+	if p.KeyStatus.Valid {
+		write(string(p.KeyStatus.KeyStatus))
+	} else {
+		write("no-key")
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// ProfilesStillAtRevision returns the profiles whose configuration is unchanged since the apply
+// that carried it was built. Anything else has been edited in the meantime and stays pending.
+func ProfilesStillAtRevision(ctx context.Context, q interface {
+	ListNodeProfilesWithKey(ctx context.Context, nodeID uuid.UUID) ([]db.ListNodeProfilesWithKeyRow, error)
+}, nodeID uuid.UUID, sent map[uuid.UUID]string,
+) ([]uuid.UUID, error) {
+	rows, err := q.ListNodeProfilesWithKey(ctx, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]uuid.UUID, 0, len(sent))
+	for _, p := range rows {
+		if rev, ok := sent[p.ID]; ok && rev == profileRevision(p) {
+			out = append(out, p.ID)
+		}
+	}
+	return out, nil
 }
 
 // desiredQuerier is the slice of the store that DesiredState reads.
@@ -44,7 +100,7 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 	if err != nil {
 		return Desired{}, err
 	}
-	out := Desired{DirtySeq: node.DirtySeq, ProfileIDs: []uuid.UUID{}}
+	out := Desired{DirtySeq: node.DirtySeq, ProfileIDs: []uuid.UUID{}, Revisions: map[uuid.UUID]string{}}
 	rows, err := q.ListNodeProfilesWithKey(ctx, nodeID)
 	if err != nil {
 		return Desired{}, err
@@ -65,6 +121,7 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 			return out, fmt.Errorf("decrypt profile %s: %w", p.Name, err)
 		}
 		out.ProfileIDs = append(out.ProfileIDs, p.ID)
+		out.Revisions[p.ID] = profileRevision(p)
 		prof := nodedriver.Profile{
 			Name: p.Name, Secret: secret, Backend: p.Backend, CarrierMode: p.CarrierMode,
 			ExpiresAt: p.KeyExpiresAt,

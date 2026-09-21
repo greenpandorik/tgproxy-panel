@@ -178,10 +178,14 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 			if err := q.FinishApplyJob(ctx, db.FinishApplyJobParams{ID: job.ID, Status: status, Error: errMsg, Log: res.Log}); err != nil {
 				return err
 			}
-			if err := q.SetProfilesSyncByIDs(ctx, db.SetProfilesSyncByIDsParams{Ids: des.ProfileIDs, SyncState: db.SyncStateFailed}); err != nil {
+			unchanged, err := ProfilesStillAtRevision(ctx, q, nodeID, des.Revisions)
+			if err != nil {
 				return err
 			}
-			_, err := q.InsertAlert(ctx, db.InsertAlertParams{NodeID: nullUUID(nodeID), Kind: "apply_failed", Message: firstLine})
+			if err := q.SetProfilesSyncByIDs(ctx, db.SetProfilesSyncByIDsParams{Ids: unchanged, SyncState: db.SyncStateFailed}); err != nil {
+				return err
+			}
+			_, err = q.InsertAlert(ctx, db.InsertAlertParams{NodeID: nullUUID(nodeID), Kind: "apply_failed", Message: firstLine})
 			return err
 		}); txErr != nil {
 			a.log.Error("record apply failure", "node", nodeID, "err", txErr)
@@ -196,7 +200,14 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		if err := q.FinishApplyJob(ctx, db.FinishApplyJobParams{ID: job.ID, Status: db.ApplyStatusOk, Log: res.Log}); err != nil {
 			return err
 		}
-		if err := q.SetProfilesSyncByIDs(ctx, db.SetProfilesSyncByIDsParams{Ids: des.ProfileIDs, SyncState: db.SyncStateSynced}); err != nil {
+		// Only the profiles the node was actually given. One edited while this apply was in
+		// flight is still pending: dirty_seq already has the re-apply queued, and saying
+		// "synced" here would let its key go active on the strength of the previous values.
+		unchanged, err := ProfilesStillAtRevision(ctx, q, nodeID, des.Revisions)
+		if err != nil {
+			return err
+		}
+		if err := q.SetProfilesSyncByIDs(ctx, db.SetProfilesSyncByIDsParams{Ids: unchanged, SyncState: db.SyncStateSynced}); err != nil {
 			return err
 		}
 		if des.Req.Site != nil {
