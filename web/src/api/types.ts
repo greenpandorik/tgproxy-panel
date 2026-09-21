@@ -201,7 +201,13 @@ export interface NodeHealth {
   tproxy_version: string;
   agent_version: string;
   uptime_seconds: number;
+  /** Load average over core count, kept under its original name. Not processor utilisation. */
   cpu_percent: number;
+  /** Processor utilisation, measured on the node between two readings. Absent until it has two. */
+  cpu_utilisation_percent?: number;
+  load_average_1?: number;
+  load_average_5?: number;
+  load_average_15?: number;
   mem_used_percent: number;
   disk_used_percent: number;
   profile_count: number;

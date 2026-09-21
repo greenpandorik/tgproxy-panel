@@ -391,7 +391,8 @@
     "install_health_ready": "Control API ready",
     "install_open": "Open server",
     "logs_service_telemt": "telemt",
-    "logs_service_agent": "Agent"
+    "logs_service_agent": "Agent",
+    "overview_load": "Load average"
   },
   "keys": {
     "title": "Keys",

@@ -1,4 +1,5 @@
 import {
+  Activity,
   ChevronDown,
   ChevronRight,
   Cpu,
@@ -14,6 +15,7 @@ import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useNodeHealth, useNodeJobs } from '@/api/nodes';
+import { isMetricPresent } from '@/components/common/metric';
 import { useAuth } from '@/auth/AuthProvider';
 import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -90,7 +92,27 @@ function healthTiles(health: NodeHealth | undefined, t: TFunction, language: str
       value: formatCompactDuration(health?.uptime_seconds ?? 0, language),
       loading,
     },
-    resource('cpu', Cpu, t('nodes.overview_cpu'), health?.cpu_percent),
+    // Utilisation only, and only when the node measured it. The old cpu_percent is a load average
+    // over core count: showing it under a CPU label sends an operator hunting a busy processor
+    // that is not busy, so a node that has not reported utilisation says so instead.
+    isMetricPresent(health?.cpu_utilisation_percent)
+      ? resource('cpu', Cpu, t('nodes.overview_cpu'), health?.cpu_utilisation_percent)
+      : {
+          id: 'cpu',
+          icon: Cpu,
+          tone: 'neutral' as const,
+          label: t('nodes.overview_cpu'),
+          value: t('common.not_available'),
+          loading,
+        },
+    {
+      id: 'load',
+      icon: Activity,
+      tone: statTone({ kind: 'stateless' }),
+      label: t('nodes.overview_load'),
+      value: isMetricPresent(health?.load_average_1) ? health.load_average_1.toFixed(2) : t('common.not_available'),
+      loading,
+    },
     resource('mem', MemoryStick, t('nodes.overview_mem'), health?.mem_used_percent),
     resource('disk', HardDrive, t('nodes.overview_disk'), health?.disk_used_percent),
   ];

@@ -264,35 +264,45 @@ func (x *Heartbeat) GetHealth() *HealthReport {
 }
 
 type HealthReport struct {
-	state                    protoimpl.MessageState `protogen:"open.v1"`
-	RelayActive              bool                   `protobuf:"varint,1,opt,name=relay_active,json=relayActive,proto3" json:"relay_active,omitempty"`
-	MtproxyActive            bool                   `protobuf:"varint,2,opt,name=mtproxy_active,json=mtproxyActive,proto3" json:"mtproxy_active,omitempty"`
-	CaddyActive              bool                   `protobuf:"varint,3,opt,name=caddy_active,json=caddyActive,proto3" json:"caddy_active,omitempty"`
-	Healthz                  bool                   `protobuf:"varint,4,opt,name=healthz,proto3" json:"healthz,omitempty"`
-	Readyz                   bool                   `protobuf:"varint,5,opt,name=readyz,proto3" json:"readyz,omitempty"`
-	TproxyVersion            string                 `protobuf:"bytes,6,opt,name=tproxy_version,json=tproxyVersion,proto3" json:"tproxy_version,omitempty"`
-	AgentVersion             string                 `protobuf:"bytes,7,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
-	UptimeSeconds            int64                  `protobuf:"varint,8,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
-	CpuPercent               float64                `protobuf:"fixed64,9,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
-	MemUsedPercent           float64                `protobuf:"fixed64,10,opt,name=mem_used_percent,json=memUsedPercent,proto3" json:"mem_used_percent,omitempty"`
-	DiskUsedPercent          float64                `protobuf:"fixed64,11,opt,name=disk_used_percent,json=diskUsedPercent,proto3" json:"disk_used_percent,omitempty"`
-	ProfileCount             int32                  `protobuf:"varint,12,opt,name=profile_count,json=profileCount,proto3" json:"profile_count,omitempty"`
-	Dcs                      []*DcLatency           `protobuf:"bytes,13,rep,name=dcs,proto3" json:"dcs,omitempty"`
-	UpstreamHealthy          bool                   `protobuf:"varint,14,opt,name=upstream_healthy,json=upstreamHealthy,proto3" json:"upstream_healthy,omitempty"`
-	UpstreamFails            int32                  `protobuf:"varint,15,opt,name=upstream_fails,json=upstreamFails,proto3" json:"upstream_fails,omitempty"`
-	EffectiveLatencyMs       float64                `protobuf:"fixed64,16,opt,name=effective_latency_ms,json=effectiveLatencyMs,proto3" json:"effective_latency_ms,omitempty"`
-	ConnectSuccessTotal      int64                  `protobuf:"varint,17,opt,name=connect_success_total,json=connectSuccessTotal,proto3" json:"connect_success_total,omitempty"`
-	ConnectFailTotal         int64                  `protobuf:"varint,18,opt,name=connect_fail_total,json=connectFailTotal,proto3" json:"connect_fail_total,omitempty"`
-	UpstreamLastCheckAgeSecs int64                  `protobuf:"varint,19,opt,name=upstream_last_check_age_secs,json=upstreamLastCheckAgeSecs,proto3" json:"upstream_last_check_age_secs,omitempty"`
-	DcDataAvailable          bool                   `protobuf:"varint,20,opt,name=dc_data_available,json=dcDataAvailable,proto3" json:"dc_data_available,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RelayActive   bool                   `protobuf:"varint,1,opt,name=relay_active,json=relayActive,proto3" json:"relay_active,omitempty"`
+	MtproxyActive bool                   `protobuf:"varint,2,opt,name=mtproxy_active,json=mtproxyActive,proto3" json:"mtproxy_active,omitempty"`
+	CaddyActive   bool                   `protobuf:"varint,3,opt,name=caddy_active,json=caddyActive,proto3" json:"caddy_active,omitempty"`
+	Healthz       bool                   `protobuf:"varint,4,opt,name=healthz,proto3" json:"healthz,omitempty"`
+	Readyz        bool                   `protobuf:"varint,5,opt,name=readyz,proto3" json:"readyz,omitempty"`
+	TproxyVersion string                 `protobuf:"bytes,6,opt,name=tproxy_version,json=tproxyVersion,proto3" json:"tproxy_version,omitempty"`
+	AgentVersion  string                 `protobuf:"bytes,7,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
+	UptimeSeconds int64                  `protobuf:"varint,8,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
+	// cpu_percent is load average over core count, kept as it was so history and older agents keep
+	// their meaning. It is not processor utilisation, which is what cpu_utilisation_percent carries.
+	CpuPercent               float64      `protobuf:"fixed64,9,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemUsedPercent           float64      `protobuf:"fixed64,10,opt,name=mem_used_percent,json=memUsedPercent,proto3" json:"mem_used_percent,omitempty"`
+	DiskUsedPercent          float64      `protobuf:"fixed64,11,opt,name=disk_used_percent,json=diskUsedPercent,proto3" json:"disk_used_percent,omitempty"`
+	ProfileCount             int32        `protobuf:"varint,12,opt,name=profile_count,json=profileCount,proto3" json:"profile_count,omitempty"`
+	Dcs                      []*DcLatency `protobuf:"bytes,13,rep,name=dcs,proto3" json:"dcs,omitempty"`
+	UpstreamHealthy          bool         `protobuf:"varint,14,opt,name=upstream_healthy,json=upstreamHealthy,proto3" json:"upstream_healthy,omitempty"`
+	UpstreamFails            int32        `protobuf:"varint,15,opt,name=upstream_fails,json=upstreamFails,proto3" json:"upstream_fails,omitempty"`
+	EffectiveLatencyMs       float64      `protobuf:"fixed64,16,opt,name=effective_latency_ms,json=effectiveLatencyMs,proto3" json:"effective_latency_ms,omitempty"`
+	ConnectSuccessTotal      int64        `protobuf:"varint,17,opt,name=connect_success_total,json=connectSuccessTotal,proto3" json:"connect_success_total,omitempty"`
+	ConnectFailTotal         int64        `protobuf:"varint,18,opt,name=connect_fail_total,json=connectFailTotal,proto3" json:"connect_fail_total,omitempty"`
+	UpstreamLastCheckAgeSecs int64        `protobuf:"varint,19,opt,name=upstream_last_check_age_secs,json=upstreamLastCheckAgeSecs,proto3" json:"upstream_last_check_age_secs,omitempty"`
+	DcDataAvailable          bool         `protobuf:"varint,20,opt,name=dc_data_available,json=dcDataAvailable,proto3" json:"dc_data_available,omitempty"`
 	// web is the WEB transport telemetry; absent when the agent could not read it. An agent
 	// that never sets it and a panel that never reads it both keep working.
 	Web *WebTelemetry `protobuf:"bytes,21,opt,name=web,proto3" json:"web,omitempty"`
 	// capabilities is what the agent worked out the node's telemt can do; absent when the
 	// probe did not run or could not reach telemt.
-	Capabilities  *TelemtCapabilities `protobuf:"bytes,22,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Capabilities *TelemtCapabilities `protobuf:"bytes,22,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	// Processor utilisation, measured between two readings of /proc/stat. Absent until the agent has
+	// taken a second reading, and absent from agents that predate it: a load average divided by core
+	// count answers a different question, and reporting one as the other sends an operator hunting a
+	// busy CPU that is not busy.
+	CpuUtilisationPercent *float64 `protobuf:"fixed64,23,opt,name=cpu_utilisation_percent,json=cpuUtilisationPercent,proto3,oneof" json:"cpu_utilisation_percent,omitempty"`
+	LoadAverage_1         *float64 `protobuf:"fixed64,24,opt,name=load_average_1,json=loadAverage1,proto3,oneof" json:"load_average_1,omitempty"`
+	LoadAverage_5         *float64 `protobuf:"fixed64,25,opt,name=load_average_5,json=loadAverage5,proto3,oneof" json:"load_average_5,omitempty"`
+	LoadAverage_15        *float64 `protobuf:"fixed64,26,opt,name=load_average_15,json=loadAverage15,proto3,oneof" json:"load_average_15,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *HealthReport) Reset() {
@@ -477,6 +487,34 @@ func (x *HealthReport) GetCapabilities() *TelemtCapabilities {
 		return x.Capabilities
 	}
 	return nil
+}
+
+func (x *HealthReport) GetCpuUtilisationPercent() float64 {
+	if x != nil && x.CpuUtilisationPercent != nil {
+		return *x.CpuUtilisationPercent
+	}
+	return 0
+}
+
+func (x *HealthReport) GetLoadAverage_1() float64 {
+	if x != nil && x.LoadAverage_1 != nil {
+		return *x.LoadAverage_1
+	}
+	return 0
+}
+
+func (x *HealthReport) GetLoadAverage_5() float64 {
+	if x != nil && x.LoadAverage_5 != nil {
+		return *x.LoadAverage_5
+	}
+	return 0
+}
+
+func (x *HealthReport) GetLoadAverage_15() float64 {
+	if x != nil && x.LoadAverage_15 != nil {
+		return *x.LoadAverage_15
+	}
+	return 0
 }
 
 // WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
@@ -3551,7 +3589,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x0etproxy_version\x18\x02 \x01(\tR\rtproxyVersion\x12\x1a\n" +
 	"\bhostname\x18\x03 \x01(\tR\bhostname\";\n" +
 	"\tHeartbeat\x12.\n" +
-	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\xa1\a\n" +
+	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\xb7\t\n" +
 	"\fHealthReport\x12!\n" +
 	"\frelay_active\x18\x01 \x01(\bR\vrelayActive\x12%\n" +
 	"\x0emtproxy_active\x18\x02 \x01(\bR\rmtproxyActive\x12!\n" +
@@ -3576,7 +3614,15 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x1cupstream_last_check_age_secs\x18\x13 \x01(\x03R\x18upstreamLastCheckAgeSecs\x12*\n" +
 	"\x11dc_data_available\x18\x14 \x01(\bR\x0fdcDataAvailable\x12(\n" +
 	"\x03web\x18\x15 \x01(\v2\x16.agent.v1.WebTelemetryR\x03web\x12@\n" +
-	"\fcapabilities\x18\x16 \x01(\v2\x1c.agent.v1.TelemtCapabilitiesR\fcapabilities\"n\n" +
+	"\fcapabilities\x18\x16 \x01(\v2\x1c.agent.v1.TelemtCapabilitiesR\fcapabilities\x12;\n" +
+	"\x17cpu_utilisation_percent\x18\x17 \x01(\x01H\x00R\x15cpuUtilisationPercent\x88\x01\x01\x12)\n" +
+	"\x0eload_average_1\x18\x18 \x01(\x01H\x01R\floadAverage1\x88\x01\x01\x12)\n" +
+	"\x0eload_average_5\x18\x19 \x01(\x01H\x02R\floadAverage5\x88\x01\x01\x12+\n" +
+	"\x0fload_average_15\x18\x1a \x01(\x01H\x03R\rloadAverage15\x88\x01\x01B\x1a\n" +
+	"\x18_cpu_utilisation_percentB\x11\n" +
+	"\x0f_load_average_1B\x11\n" +
+	"\x0f_load_average_5B\x12\n" +
+	"\x10_load_average_15\"n\n" +
 	"\x10WebCounterSample\x12\x18\n" +
 	"\acarrier\x18\x01 \x01(\tR\acarrier\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
@@ -3958,6 +4004,7 @@ func file_agent_v1_agent_proto_init() {
 		(*Envelope_Response)(nil),
 		(*Envelope_LogChunk)(nil),
 	}
+	file_agent_v1_agent_proto_msgTypes[3].OneofWrappers = []any{}
 	file_agent_v1_agent_proto_msgTypes[22].OneofWrappers = []any{
 		(*Request_Health)(nil),
 		(*Request_GetProfiles)(nil),

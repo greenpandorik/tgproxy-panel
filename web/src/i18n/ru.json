@@ -391,7 +391,8 @@
     "install_health_ready": "Control API готов",
     "install_open": "Открыть сервер",
     "logs_service_telemt": "telemt",
-    "logs_service_agent": "Агент"
+    "logs_service_agent": "Агент",
+    "overview_load": "Средняя нагрузка"
   },
   "keys": {
     "title": "Ключи",

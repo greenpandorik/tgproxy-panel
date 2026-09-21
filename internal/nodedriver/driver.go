@@ -20,6 +20,14 @@ type HealthReport struct {
 	CPUPercent, MemUsedPercent, DiskUsedPercent              float64
 	ProfileCount                                             int
 
+	// CPUUtilisationPercent is processor utilisation measured between two readings on the node.
+	// Nil until the agent has taken a second reading, and nil from agents that do not measure it:
+	// CPUPercent above is a load average over core count, which answers a different question.
+	CPUUtilisationPercent *float64 `json:",omitempty"`
+	LoadAverage1          *float64 `json:",omitempty"`
+	LoadAverage5          *float64 `json:",omitempty"`
+	LoadAverage15         *float64 `json:",omitempty"`
+
 	DCs                      []DcLatency
 	UpstreamHealthy          bool
 	UpstreamFails            int

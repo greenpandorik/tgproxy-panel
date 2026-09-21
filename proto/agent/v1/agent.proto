@@ -34,6 +34,8 @@ message HealthReport {
   string tproxy_version = 6;
   string agent_version = 7;
   int64 uptime_seconds = 8;
+  // cpu_percent is load average over core count, kept as it was so history and older agents keep
+  // their meaning. It is not processor utilisation, which is what cpu_utilisation_percent carries.
   double cpu_percent = 9;
   double mem_used_percent = 10;
   double disk_used_percent = 11;
@@ -54,6 +56,15 @@ message HealthReport {
   // capabilities is what the agent worked out the node's telemt can do; absent when the
   // probe did not run or could not reach telemt.
   TelemtCapabilities capabilities = 22;
+
+  // Processor utilisation, measured between two readings of /proc/stat. Absent until the agent has
+  // taken a second reading, and absent from agents that predate it: a load average divided by core
+  // count answers a different question, and reporting one as the other sends an operator hunting a
+  // busy CPU that is not busy.
+  optional double cpu_utilisation_percent = 23;
+  optional double load_average_1 = 24;
+  optional double load_average_5 = 25;
+  optional double load_average_15 = 26;
 }
 
 // WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase

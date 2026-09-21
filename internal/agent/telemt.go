@@ -1038,6 +1038,7 @@ func (h *Handler) healthTelemt(ctx context.Context) *agentv1.HealthReport {
 		UptimeSeconds: readUptime(), CpuPercent: readLoadPercent(), MemUsedPercent: readMemPercent(),
 		DiskUsedPercent: diskPercent(h.siteDir()),
 	}
+	h.withLoad(rep)
 	if h.tm == nil {
 		return rep
 	}

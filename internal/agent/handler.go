@@ -18,10 +18,12 @@ import (
 
 type Handler struct {
 	maintenance sync.Mutex
-	cfg         Config
-	exec        Exec
-	httpc       *http.Client
-	log         *slog.Logger
+	// cpu measures processor utilisation between heartbeats; see cpuSampler.
+	cpu   cpuSampler
+	cfg   Config
+	exec  Exec
+	httpc *http.Client
+	log   *slog.Logger
 	// tm is the telemt control API client; nil unless the node runs the telemt engine.
 	tm *telemt.Client
 
