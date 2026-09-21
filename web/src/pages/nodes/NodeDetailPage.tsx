@@ -212,7 +212,7 @@ export function NodeDetailPage() {
             <NodeWebTab node={node} />
           </TabsContent>
           <TabsContent value="logs">
-            <NodeLogs nodeId={node.id} online={node.online} />
+            <NodeLogs nodeId={node.id} online={node.online} engine={node.engine} />
           </TabsContent>
           <TabsContent value="site">
             <NodeSiteTab nodeId={node.id} />

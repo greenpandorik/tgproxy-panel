@@ -586,7 +586,12 @@ func (s *Server) handleNodeLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	services := strings.Split(r.URL.Query().Get("services"), ",")
 	if services[0] == "" {
+		// The engine decides which process is "the proxy" on this node. Defaulting to the tproxy
+		// unit on a telemt node asks for logs that will never exist.
 		services = []string{"tproxy-server"}
+		if n.Engine == db.NodeEngineTelemt {
+			services = []string{"telemt"}
+		}
 	}
 	lines, _ := strconv.Atoi(r.URL.Query().Get("lines"))
 	if lines <= 0 || lines > 2000 {

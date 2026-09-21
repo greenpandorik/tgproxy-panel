@@ -14,11 +14,24 @@ import { cn } from '@/lib/utils';
 
 import type { LogLine } from '@/api/types';
 
-const SERVICES = [
-  { id: 'tproxy-server', labelKey: 'nodes.logs_service_tproxy' },
-  { id: 'mtproxy', labelKey: 'nodes.logs_service_mtproxy' },
-  { id: 'caddy', labelKey: 'nodes.logs_service_caddy' },
-] as const;
+/** The units an engine actually runs. A telemt node has no tproxy-server to read. */
+const SERVICES_BY_ENGINE: Record<string, { id: string; labelKey: string }[]> = {
+  telemt: [
+    { id: 'telemt', labelKey: 'nodes.logs_service_telemt' },
+    { id: 'caddy', labelKey: 'nodes.logs_service_caddy' },
+    { id: 'tgwp-agent', labelKey: 'nodes.logs_service_agent' },
+  ],
+  tproxy: [
+    { id: 'tproxy-server', labelKey: 'nodes.logs_service_tproxy' },
+    { id: 'mtproxy', labelKey: 'nodes.logs_service_mtproxy' },
+    { id: 'caddy', labelKey: 'nodes.logs_service_caddy' },
+    { id: 'tgwp-agent', labelKey: 'nodes.logs_service_agent' },
+  ],
+};
+
+function servicesFor(engine: string) {
+  return SERVICES_BY_ENGINE[engine] ?? SERVICES_BY_ENGINE.tproxy;
+}
 
 const LINE_OPTIONS = [100, 200, 500, 1000, 2000];
 const MAX_BUFFER = 5000;
@@ -42,10 +55,11 @@ function ServiceChip({ label, selected, onToggle }: { label: string; selected: b
   );
 }
 
-export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }) {
+export function NodeLogs({ nodeId, online, engine }: { nodeId: string; online: boolean; engine: string }) {
   const { t } = useTranslation();
   const { refetch: refetchNode } = useNode(nodeId);
-  const [services, setServices] = useState<string[]>(['tproxy-server']);
+  const available = servicesFor(engine);
+  const [services, setServices] = useState<string[]>([available[0].id]);
   const [lines, setLines] = useState(200);
   const [follow, setFollow] = useState(true);
   const [paused, setPaused] = useState(false);
@@ -129,7 +143,7 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-hairline px-4 py-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          {SERVICES.map((svc) => (
+          {available.map((svc) => (
             <ServiceChip
               key={svc.id}
               label={t(svc.labelKey)}
@@ -176,26 +190,32 @@ export function NodeLogs({ nodeId, online }: { nodeId: string; online: boolean }
 
       {services.length === 0 && <p className="px-4 pt-4 text-label text-err">{t('nodes.logs_select_service')}</p>}
 
+      {/* Outside the scroller and not conditional on an empty buffer: a stream that drops after
+          delivering lines used to say nothing at all, leaving a stale tail that looked live. */}
+      {disconnected && (
+        <div className="mx-4 flex flex-wrap items-center justify-between gap-3 rounded-surface border border-hairline-strong px-3 py-2 text-body">
+          <p className="text-mute">{online ? t('nodes.logs_disconnected') : t('nodes.offline_message')}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setDisconnected(false);
+              setReconnectNonce((n) => n + 1);
+            }}
+          >
+            {t('common.refresh')}
+          </Button>
+        </div>
+      )}
+
       <div
         ref={scrollRef}
         className="mono m-4 h-96 overflow-y-auto rounded-surface border border-hairline bg-background p-3 text-mono text-mute"
       >
         {visibleLines.length === 0 ? (
           disconnected ? (
-            <div className="flex flex-col items-start gap-3 font-sans text-body">
-              <p className="text-mute">{online ? t('nodes.logs_disconnected') : t('nodes.offline_message')}</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDisconnected(false);
-                  setReconnectNonce((n) => n + 1);
-                }}
-              >
-                {t('common.refresh')}
-              </Button>
-            </div>
+            <p className="font-sans text-body text-mute">{t('nodes.logs_empty')}</p>
           ) : connected ? (
             <p className="font-sans text-body text-mute">{t('nodes.logs_empty')}</p>
           ) : (

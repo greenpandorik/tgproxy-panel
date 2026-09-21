@@ -389,7 +389,9 @@
     "install_health_engine": "Сервис прокси",
     "install_health_caddy": "Сервис Caddy",
     "install_health_ready": "Control API готов",
-    "install_open": "Открыть сервер"
+    "install_open": "Открыть сервер",
+    "logs_service_telemt": "telemt",
+    "logs_service_agent": "Агент"
   },
   "keys": {
     "title": "Ключи",
