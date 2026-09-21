@@ -397,3 +397,51 @@ func TestStatsSnapshotCarriesDcLatency(t *testing.T) {
 		t.Fatalf("snapshot without DC data: %+v", snaps)
 	}
 }
+
+// Consumption is the difference between two snapshots. A reading that failed used to be stored as
+// zero, so 100 -> failed -> 110 was charged as 110 bytes instead of 10, on both the node's chart
+// and the key's quota. A tick with no reading has to stay a gap.
+func TestStatsSkipsTheTickWhenTrafficCannotBeRead(t *testing.T) {
+	f := newTelemtFixture(t)
+	ctx := context.Background()
+	k, err := f.keys.Create(ctx, keys.CreateInput{
+		Label: "a", Type: domain.KeyPersonal, CarrierMode: "https",
+		TelemtLimits: domain.TelemtLimits{DataQuotaBytes: 10 << 30}, NodeIDs: []uuid.UUID{f.node.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := domain.ProfileName(k.ID)
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	mock.SetMetrics(f.node.ID, "telemt_connections_total 41\n"+
+		`telemt_user_connections_current{user="`+name+`"} 3`+"\n")
+	mock.SetStats(f.node.ID, telemtStats(name))
+	_ = f.st.Q.SetNodeOnline(ctx, db.SetNodeOnlineParams{ID: f.node.ID})
+	s := worker.NewStats(f.st, mock, 90*time.Second, slog.New(slog.DiscardHandler))
+
+	if err := s.RunOnce(ctx); err != nil { // one good reading to have something to compare against
+		t.Fatal(err)
+	}
+
+	mock.SetStatsErr(f.node.ID, "connection refused")
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatalf("a node that cannot report traffic must not fail the sweep: %v", err)
+	}
+
+	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	if len(snaps) != 1 {
+		t.Fatalf("snapshots: %+v", snaps)
+	}
+	if snaps[0].BytesDown != 8192 {
+		t.Fatalf("bytes_down = %d, want the last real reading rather than a zero", snaps[0].BytesDown)
+	}
+
+	rows, err := f.st.Q.LatestKeyStatsSnapshots(ctx, k.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].TotalOctets != 8192 {
+		t.Fatalf("key rows = %+v, want the last real reading and no fabricated zero", rows)
+	}
+}

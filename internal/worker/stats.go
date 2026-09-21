@@ -250,10 +250,21 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 			s.log.Warn("metrics", "node", n.ID, "err", err)
 			continue
 		}
-		stats, _ := s.driver.Stats(ctx, n.ID)
+		stats, statsErr := s.driver.Stats(ctx, n.ID)
+		if statsErr != nil {
+			s.log.Warn("stats", "node", n.ID, "err", statsErr)
+		}
 		m := ParseRelayMetrics(text)
 		var telemtM TelemtMetrics
 		if n.Engine == db.NodeEngineTelemt {
+			// On telemt the byte counters come only from this endpoint. Recording a zero for a
+			// fetch that failed would not just lose a reading: consumption is the difference
+			// between snapshots, so 100 -> 0 -> 110 is charged as 110 rather than 10. A missing
+			// tick is a gap in the series, which is what actually happened.
+			if statsErr != nil {
+				s.log.Warn("snapshot skipped: the traffic counters could not be read", "node", n.ID)
+				continue
+			}
 			telemtM = ParseTelemtMetrics(text)
 			m = telemtRelayMetrics(telemtM, stats)
 		}
@@ -440,6 +451,12 @@ func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetr
 		octets, haveOctets := stats["user."+p.Name+".octets"]
 		user, inMetrics := m.Users[p.Name]
 		if !haveConns && !haveOctets && !inMetrics {
+			continue
+		}
+		// A user present in the metrics but absent from the traffic counters used to be written
+		// with zero octets, which the next reading then charged as a whole session's worth of
+		// consumption. Until the column can hold "not measured", the row is left out.
+		if !haveOctets {
 			continue
 		}
 		row := db.InsertKeyStatsSnapshotParams{

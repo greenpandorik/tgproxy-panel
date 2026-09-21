@@ -16,6 +16,7 @@ type mockNode struct {
 	site        SiteBundle
 	metrics     string
 	stats       map[string]string
+	statsErr    string
 	applied     []ApplyRequest
 	failMsg     string
 	restarts    int
@@ -63,6 +64,14 @@ func (m *Mock) SetMetrics(id uuid.UUID, text string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.node(id).metrics = text
+}
+
+// SetStatsErr makes the node's traffic counters unreadable, the way a relay that is up but not
+// answering its stats endpoint behaves.
+func (m *Mock) SetStatsErr(id uuid.UUID, msg string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.node(id).statsErr = msg
 }
 
 func (m *Mock) SetStats(id uuid.UUID, s map[string]string) {
@@ -212,6 +221,9 @@ func (m *Mock) Stats(_ context.Context, id uuid.UUID) (map[string]string, error)
 	n, err := m.get(id)
 	if err != nil {
 		return nil, err
+	}
+	if n.statsErr != "" {
+		return nil, errors.New(n.statsErr)
 	}
 	return n.stats, nil
 }
