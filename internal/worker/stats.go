@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -235,68 +236,34 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// Nodes are polled together: one that has stopped answering holds a request open for the
+	// driver's whole timeout, and a handful of those used to push every healthy node's snapshot
+	// minutes late. The pool is small on purpose - each worker holds a database connection.
+	started := time.Now()
+	var polled, failed atomic.Int64
+	sem := make(chan struct{}, statsWorkers)
+	var wg sync.WaitGroup
 	for _, n := range nodes {
 		if n.Status == db.NodeStatusOffline || n.Status == db.NodeStatusPending {
 			continue
 		}
-		if rows, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && rows > 0 {
-			s.notify(ctx, func(ctx context.Context) { s.alerts.NodeOnline(ctx, n) })
-		}
-		if !s.driver.Online(n.ID) {
-			continue
-		}
-		text, err := s.driver.Metrics(ctx, n.ID)
-		if err != nil {
-			s.log.Warn("metrics", "node", n.ID, "err", err)
-			continue
-		}
-		stats, statsErr := s.driver.Stats(ctx, n.ID)
-		if statsErr != nil {
-			s.log.Warn("stats", "node", n.ID, "err", statsErr)
-		}
-		m := ParseRelayMetrics(text)
-		var telemtM TelemtMetrics
-		if n.Engine == db.NodeEngineTelemt {
-			// On telemt the byte counters come only from this endpoint. Recording a zero for a
-			// fetch that failed would not just lose a reading: consumption is the difference
-			// between snapshots, so 100 -> 0 -> 110 is charged as 110 rather than 10. A missing
-			// tick is a gap in the series, which is what actually happened.
-			if statsErr != nil {
-				s.log.Warn("snapshot skipped: the traffic counters could not be read", "node", n.ID)
-				continue
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(n db.Node) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			// One node's budget, so a hung agent cannot hold a worker for the whole sweep.
+			nodeCtx, cancel := context.WithTimeout(ctx, nodeStatsBudget)
+			defer cancel()
+			polled.Add(1)
+			if !s.collectNode(nodeCtx, n) {
+				failed.Add(1)
 			}
-			telemtM = ParseTelemtMetrics(text)
-			m = telemtRelayMetrics(telemtM, stats)
-		}
-		raw, _ := json.Marshal(stats)
-		if raw == nil {
-			raw = []byte("{}")
-		}
-		load := nodeLoad(n.LastHealth)
-		if err := s.st.Q.InsertSnapshot(ctx, db.InsertSnapshotParams{
-			NodeID: n.ID, SessionsLive: int32(m.SessionsLive), StreamsLive: int32(m.StreamsLive),
-			BytesUp: m.BytesUp, BytesDown: m.BytesDown, SessionsCreated: m.SessionsCreated, LimitHits: m.LimitHits,
-			CpuPercent: load.CpuPercent, MemUsedPercent: load.MemUsedPercent, DiskUsedPercent: load.DiskUsedPercent,
-			DcLatency:  load.DcLatency,
-			MtproxyRaw: raw, RelayRaw: "",
-			WebCarrierSelectionsHttps:          load.WebCarrierSelectionsHttps,
-			WebCarrierSelectionsHttpsLanes:     load.WebCarrierSelectionsHttpsLanes,
-			WebCarrierSelectionsWebsocket:      load.WebCarrierSelectionsWebsocket,
-			WebCarrierSelectionsWebsocketLanes: load.WebCarrierSelectionsWebsocketLanes,
-			WebCarrierFailures:                 load.WebCarrierFailures,
-			WebRejectedAttempts:                load.WebRejectedAttempts,
-			WebEvictedSessions:                 load.WebEvictedSessions,
-			WebBridgeRecoveries:                load.WebBridgeRecoveries,
-			WebLearningEntries:                 load.WebLearningEntries,
-		}); err != nil {
-			s.log.Error("snapshot", "err", err)
-		}
-		if n.Engine == db.NodeEngineTelemt {
-			if err := s.keySnapshots(ctx, n.ID, telemtM, stats); err != nil {
-				s.log.Error("key snapshot", "node", n.ID, "err", err)
-			}
-		}
+		}(n)
 	}
+	wg.Wait()
+	s.log.Debug("stats sweep", "nodes", polled.Load(), "incomplete", failed.Load(), "took", time.Since(started))
+
 	if err := s.st.Q.DeleteExpiredSessions(ctx); err != nil {
 		s.log.Error("delete expired sessions", "err", err)
 	}
@@ -304,6 +271,79 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	s.sweepHistory(ctx)
 	return s.st.Q.DeleteOldSnapshots(ctx, time.Now().Add(-retention))
 }
+
+// collectNode gathers one node's snapshot. It reports whether the node was read in full; a node
+// that could not be read is logged and left out, never allowed to fail the sweep for the others.
+func (s *Stats) collectNode(ctx context.Context, n db.Node) bool {
+	if rows, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && rows > 0 {
+		// Not on this node's polling budget: sending an alert is not part of reading a node, and
+		// a Telegram call outliving a 30s poll is normal.
+		s.notify(context.WithoutCancel(ctx), func(ctx context.Context) { s.alerts.NodeOnline(ctx, n) })
+	}
+	if !s.driver.Online(n.ID) {
+		return true // not connected right now: nothing to read, and nothing wrong either
+	}
+	text, err := s.driver.Metrics(ctx, n.ID)
+	if err != nil {
+		s.log.Warn("metrics", "node", n.ID, "err", err)
+		return false
+	}
+	stats, statsErr := s.driver.Stats(ctx, n.ID)
+	if statsErr != nil {
+		s.log.Warn("stats", "node", n.ID, "err", statsErr)
+	}
+	m := ParseRelayMetrics(text)
+	var telemtM TelemtMetrics
+	if n.Engine == db.NodeEngineTelemt {
+		// On telemt the byte counters come only from this endpoint. Recording a zero for a
+		// fetch that failed would not just lose a reading: consumption is the difference
+		// between snapshots, so 100 -> 0 -> 110 is charged as 110 rather than 10. A missing
+		// tick is a gap in the series, which is what actually happened.
+		if statsErr != nil {
+			s.log.Warn("snapshot skipped: the traffic counters could not be read", "node", n.ID)
+			return false
+		}
+		telemtM = ParseTelemtMetrics(text)
+		m = telemtRelayMetrics(telemtM, stats)
+	}
+	raw, _ := json.Marshal(stats)
+	if raw == nil {
+		raw = []byte("{}")
+	}
+	load := nodeLoad(n.LastHealth)
+	if err := s.st.Q.InsertSnapshot(ctx, db.InsertSnapshotParams{
+		NodeID: n.ID, SessionsLive: int32(m.SessionsLive), StreamsLive: int32(m.StreamsLive),
+		BytesUp: m.BytesUp, BytesDown: m.BytesDown, SessionsCreated: m.SessionsCreated, LimitHits: m.LimitHits,
+		CpuPercent: load.CpuPercent, MemUsedPercent: load.MemUsedPercent, DiskUsedPercent: load.DiskUsedPercent,
+		DcLatency:  load.DcLatency,
+		MtproxyRaw: raw, RelayRaw: "",
+		WebCarrierSelectionsHttps:          load.WebCarrierSelectionsHttps,
+		WebCarrierSelectionsHttpsLanes:     load.WebCarrierSelectionsHttpsLanes,
+		WebCarrierSelectionsWebsocket:      load.WebCarrierSelectionsWebsocket,
+		WebCarrierSelectionsWebsocketLanes: load.WebCarrierSelectionsWebsocketLanes,
+		WebCarrierFailures:                 load.WebCarrierFailures,
+		WebRejectedAttempts:                load.WebRejectedAttempts,
+		WebEvictedSessions:                 load.WebEvictedSessions,
+		WebBridgeRecoveries:                load.WebBridgeRecoveries,
+		WebLearningEntries:                 load.WebLearningEntries,
+	}); err != nil {
+		s.log.Error("snapshot", "err", err)
+	}
+	if n.Engine == db.NodeEngineTelemt {
+		if err := s.keySnapshots(ctx, n.ID, telemtM, stats); err != nil {
+			s.log.Error("key snapshot", "node", n.ID, "err", err)
+		}
+	}
+	return true
+}
+
+const (
+	// statsWorkers polls this many nodes at once. Each holds a database connection while it
+	// writes, so the ceiling is about the pool as much as about the agents.
+	statsWorkers = 4
+	// nodeStatsBudget is one node's share of a sweep, driver timeouts included.
+	nodeStatsBudget = 30 * time.Second
+)
 
 // nodeLoad reads the server-load percentages and the WEB counters out of a node's last heartbeat.
 func nodeLoad(lastHealth []byte) db.InsertSnapshotParams {

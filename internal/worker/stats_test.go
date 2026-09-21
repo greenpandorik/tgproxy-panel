@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -443,5 +444,85 @@ func TestStatsSkipsTheTickWhenTrafficCannotBeRead(t *testing.T) {
 	}
 	if len(rows) != 1 || rows[0].TotalOctets != 8192 {
 		t.Fatalf("key rows = %+v, want the last real reading and no fabricated zero", rows)
+	}
+}
+
+// slowMetricsDriver makes the named nodes hang in Metrics until released, the way an agent that
+// has stopped answering holds a request open for the driver's whole timeout.
+type slowMetricsDriver struct {
+	*nodedriver.Mock
+	slow    map[uuid.UUID]bool
+	release chan struct{}
+}
+
+func (d *slowMetricsDriver) Metrics(ctx context.Context, id uuid.UUID) (string, error) {
+	if d.slow[id] {
+		select {
+		case <-d.release:
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	return d.Mock.Metrics(ctx, id)
+}
+
+// A node that has stopped answering must not hold up everybody else's snapshot.
+func TestStatsPollsNodesTogether(t *testing.T) {
+	f := newTelemtFixture(t)
+	ctx := context.Background()
+	mock := nodedriver.NewMock()
+	slow := map[uuid.UUID]bool{}
+
+	ids := []uuid.UUID{f.node.ID}
+	for i := range 2 {
+		n, err := f.st.Q.CreateNode(ctx, db.CreateNodeParams{
+			Name: "extra" + strconv.Itoa(i), Hostname: "extra" + strconv.Itoa(i) + ".test",
+			AcmeEmail: "a@b.co", Engine: db.NullNodeEngine{NodeEngine: db.NodeEngineTelemt, Valid: true},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, n.ID)
+	}
+	for i, id := range ids {
+		mock.SetOnline(id, true)
+		mock.SetMetrics(id, "telemt_connections_total 1\n")
+		mock.SetStats(id, map[string]string{"connections_total": "1"})
+		_ = f.st.Q.SetNodeOnline(ctx, db.SetNodeOnlineParams{ID: id})
+		if i < 2 {
+			// The stuck ones come first, so a sequential sweep would make the healthy node
+			// wait behind them and this test would have nothing to say.
+			slow[id] = true
+		}
+	}
+
+	drv := &slowMetricsDriver{Mock: mock, slow: slow, release: make(chan struct{})}
+	s := worker.NewStats(f.st, drv, 90*time.Second, slog.New(slog.DiscardHandler))
+
+	done := make(chan error, 1)
+	go func() { done <- s.RunOnce(ctx) }()
+
+	// The healthy node's snapshot must land while the other two are still hanging.
+	deadline := time.After(5 * time.Second)
+	for {
+		snaps, _ := f.st.Q.LatestSnapshots(ctx)
+		if len(snaps) > 0 {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("the healthy node waited behind the stuck ones")
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+
+	close(drv.release)
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the sweep never finished")
 	}
 }
