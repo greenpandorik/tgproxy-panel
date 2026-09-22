@@ -10,6 +10,8 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/greenpandorik/tgproxy-panel)](go.mod)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
+**English** · [Русский](README.ru.md)
+
 A self-hosted control panel for a fleet of Telegram proxy nodes. It issues and revokes keys,
 pushes configuration to nodes over gRPC, serves a cover website on each of them and watches
 their health. One panel manages many nodes; a node runs [telemt](https://github.com/telemt/telemt)
@@ -124,6 +126,13 @@ engine runs: Telegram's WEB proxy relay and the official MTProxy behind it.
 
 If you run this, [give it a star](https://github.com/greenpandorik/tgproxy-panel) — it is how
 other people running Telegram proxies find the project.
+
+<a href="https://www.star-history.com/#greenpandorik/tgproxy-panel&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=greenpandorik/tgproxy-panel&type=Date&theme=dark">
+    <img src="https://api.star-history.com/svg?repos=greenpandorik/tgproxy-panel&type=Date" alt="Star history" width="60%">
+  </picture>
+</a>
 
 ## License
 

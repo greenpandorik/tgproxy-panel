@@ -22,3 +22,4 @@ tgwp-agent*
 .playwright-cli/
 skills-lock.json
 /output/
+.DS_Store
