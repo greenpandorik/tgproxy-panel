@@ -4,13 +4,13 @@ Product name: **TGProxy Panel** (repository `greenpandorik/tgproxy-panel`). The
 name is the default value of `branding_profiles.panel_name` (migration 00008),
 `branding.DefaultPanelName` in Go and `DEFAULT_PANEL_NAME` in
 `web/src/components/brand/brand.ts`; an operator can rename their install in
-Settings → Branding and every surface follows.
+Panel settings → Project identity and every surface follows.
 
 ## Mark
 
 A rotated square outline with an axis-aligned square inside: the wrapper around
-the payload. That is what the product does - it hides MTProto inside WEB or
-Fake-TLS traffic - and it is two shapes, so it still reads at 16 px. The outline
+the payload. That is what the product does (it hides MTProto inside WEB or
+Fake-TLS traffic), and the mark is two shapes, so it still reads at 16 px. The outline
 takes the text colour of wherever it sits (`currentColor`); the core takes the
 brand primary, so the mark agrees with the active-nav marker next to it and
 follows an operator's own primary colour.
@@ -39,9 +39,8 @@ box, add gradients or a shadow, or use the Telegram paper plane next to it.
 
 ## Colours
 
-The panel stays almost colourless - three near-black surfaces, hairlines,
-three text weights.
-Two hues carry the brand:
+The panel stays almost colourless: three near-black surfaces, hairlines and
+three text weights. Two hues carry the brand:
 
 | Role | Hex | Hue | on `--bg` `#09090b` | on `--bg-2` `#0f0f11` | on `--bg-3` `#151517` | on light `#fafafa` |
 |---|---|---|---|---|---|---|
@@ -49,8 +48,8 @@ Two hues carry the brand:
 | Accent (teal) | `#12a198` | 176° | **6.23 : 1** | 6.00 : 1 | 5.71 : 1 | 3.06 : 1 |
 
 Ratios are WCAG 2.x relative-luminance contrast, and the four columns above are
-the dark theme plus one light surface. Read them as the ratios of the identity
-colours, not of the text that uses them.
+the dark theme plus one light surface. They measure the identity colours themselves;
+text that uses them is covered below.
 
 The primary clears 4.5 : 1 (AA text) on all three dark surfaces. On the light
 theme it does not (3.80 : 1 on `#fafafa`), so light-theme text does not use it:
@@ -69,23 +68,23 @@ ratios and fails the build if a default drifts below the floor.
 
 Where they go:
 
-- **Primary** - the active nav item's 2 px marker, the focus ring, links,
+- **Primary**: the active nav item's 2 px marker, the focus ring, links,
   checkbox/switch fills, the first chart series, the login page glow (10 %
   alpha) and the core of the mark. Never a button fill: the primary button is
   `--fg` on `--bg`.
-- **Accent** - the second chart series and the copy-button hover on the
+- **Accent**: the second chart series and the copy-button hover on the
   subscription page. Nothing else, so an operator who leaves it alone never
   sees a second hue outside a chart.
 
 Why these two: the previous pair (`#3b82f6` / `#22c55e`) was the status palette
 wearing a brand badge, and Telegram's own blue (`#2aabee`) is off the table.
 Magenta at 329° is 128° from Telegram blue, 173° from `ok`, 69° from `warn`
-and 31° from `err` - the closest neighbour, but a magenta tab beside a red dot
-is not confusable, and the two never share a role. Teal at 176° sits between
+and 31° from `err`. That is the closest neighbour, but a magenta tab beside a
+red dot cannot be mistaken for it, and the two never share a role. Teal at 176° sits between
 `ok` (34°) and `info` (41°) in hue and is only used for chart strokes, where
 the legend names the series.
 
-Status colours are unchanged and still reserved for state:
+Status colours are reserved for state:
 
 | Role | Hex | on `#09090b` |
 |---|---|---|
@@ -94,16 +93,16 @@ Status colours are unchanged and still reserved for state:
 | err | `#ef4444` | 5.29 : 1 |
 | info | `#3b82f6` | 5.41 : 1 |
 
-Chart series 3-8 are unchanged except series 5, which was a pink (`#d55181`)
-and is now a blue (`#4f8ef7` dark / `#2f6fd6` light): with a magenta series 1
-it was the one hue a chart could not tell apart.
+Chart series 5 is a blue (`#4f8ef7` dark / `#2f6fd6` light) instead of the pink
+(`#d55181`) it used to be: next to a magenta series 1, a pink was the one hue a
+chart could not tell apart.
 
 Where the defaults live (keep them in step):
 
-- `internal/store/migrations/00008_rename_default.sql` - column defaults
-- `internal/branding/defaults.go` - Go fallbacks for the subscription page, the
-  TOTP issuer and the Telegram test message
-- `web/src/index.css` - `--brand-primary` / `--brand-accent` fallbacks before
-  `/api/v1/branding` answers
-- `web/src/components/brand/brand.ts` - the name and colours the SPA shows
-  while that request is in flight
+- `internal/store/migrations/00008_rename_default.sql`: column defaults.
+- `internal/branding/defaults.go`: Go fallbacks for the subscription page, the
+  TOTP issuer and the Telegram test message.
+- `web/src/index.css`: `--brand-primary` / `--brand-accent` fallbacks until
+  `/api/v1/branding` answers.
+- `web/src/components/brand/brand.ts`: the name and colours the SPA shows
+  while that request is in flight.

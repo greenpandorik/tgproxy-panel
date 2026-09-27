@@ -6,8 +6,8 @@ sets a font size, a corner radius or a duration of its own.
 
 ## 1. Type scale
 
-Six roles. Colour is not hierarchy: before a role is chosen by tone, it is
-chosen by job.
+Six roles. Hierarchy comes from the role, not from colour: pick the role for
+what the text does, and only then its tone.
 
 | Role | Token | Size / leading | Tracking | Weight | Utility | Use it for |
 |---|---|---|---|---|---|---|
@@ -45,11 +45,10 @@ cannot be applied directly (cmdk renders its own group heading element, so
 
 ### There is no second scale
 
-The older t-shirt sizes (`text-xs`, `text-sm`, `text-base`, `text-xl`,
-`text-2xl`) were retuned in `@theme` while the pages were migrating. The
-migration is finished - `src/**` contains none of them - so the retuning is
-gone with them and `body` is `text-body`. `text-sm` now resolves to Tailwind's
-stock 14px, which is not a role in this system. Do not reach for it.
+Tailwind's t-shirt sizes (`text-xs`, `text-sm`, `text-base`, `text-xl`,
+`text-2xl`) are not used anywhere in `src/**`, and `body` is `text-body`.
+`text-sm` resolves to Tailwind's stock 14px, which is not a role in this
+system. Do not reach for it.
 
 ### Tracking
 
@@ -57,8 +56,8 @@ stock 14px, which is not a role in this system. Do not reach for it.
 typographic tracking in the panel. `--tracking-code` (0.35em, the
 `tracking-code` utility) is not a typographic value: it is the cell gap of a
 one-time-code field, where the eye counts six characters instead of reading a
-word. It is used by exactly two inputs - the login OTP and the TOTP
-confirmation - and by their placeholders, so the dots stand where the digits
+word. It is used by exactly two inputs, the login OTP and the TOTP
+confirmation, and by their placeholders, so the dots stand where the digits
 will. Anywhere else, hand-written letter spacing is a bug.
 
 ## 2. Shape scale (the shape lock)
@@ -82,7 +81,7 @@ the scale deliberately, and both say why in a comment:
   radius on an `h-3` line draws a pill.
 
 A drawer takes the surface radius only on its inner edge
-(`data-[side=right]:rounded-l-surface` and so on) - the edges flush with the
+(`data-[side=right]:rounded-l-surface` and so on); the edges flush with the
 viewport stay square.
 
 ## 3. Motion
@@ -111,9 +110,9 @@ retunes `--default-transition-duration` and `--default-transition-timing-functio
 to the two tokens. So `duration-fast` is only worth writing next to a
 hand-written property list where the intent is worth saying out loud.
 
-When a transition needs to carry the press, put `scale` in its property list,
-not `transform` - Tailwind v4's `scale-*` utilities set the standalone `scale`
-property. The shorthand `transition-transform` already covers `transform`,
+When a transition needs to carry the press, put `scale` in its property list
+instead of `transform`, because Tailwind v4's `scale-*` utilities set the
+standalone `scale` property. The shorthand `transition-transform` already covers `transform`,
 `translate`, `scale` and `rotate`.
 
 ### Press
@@ -157,7 +156,7 @@ already has a `className`, compose it instead:
 
 `@media (prefers-reduced-motion: reduce)` in `index.css` switches the panel's
 motion off in three layers, and the guarantee is that **nothing in the panel
-moves under it** - not just the things somebody remembered to list.
+moves under it**, including things nobody thought to list.
 
 1. `--dur-fast` and `--dur-base` go to `0ms`, so every transition built on
    them, including every bare `transition-*`, becomes an instant state change
@@ -171,31 +170,31 @@ moves under it** - not just the things somebody remembered to list.
    wildcard rather than a list so that code written after this file is covered
    by default. 1ms rather than 0s because a zero-length animation never fires
    `animationend`, and the iteration count is what actually stops a loop.
-3. The two motifs that would still read as motion even at 1ms - the pulse ring
-   on a live status dot, which is a growing circle, and the entrance, which
-   starts at `opacity: 0` - are switched off outright.
+3. Two motifs would still read as motion even at 1ms: the pulse ring on a live
+   status dot, which is a growing circle, and the entrance, which starts at
+   `opacity: 0`. Both are switched off outright.
 
 Nothing new needs to add itself to that block. If something does need to opt
 out of layer 2, it has to say why in a comment there.
 
 ## 4. Tone
 
-Colour is not hierarchy, but it is legibility, and two of the panel's tones are
-not interchangeable.
+Colour does not set hierarchy, but it does decide what can be read, and two of
+the panel's tones cannot stand in for each other.
 
 | Token | Dark | Light | What it is for |
 |---|---|---|---|
 | `--fg` | `#f4f4f5` | `#111113` | Primary text: the value, the answer, the title. |
-| `--mute` | `#8b8d93` (5.77:1 on `--bg-2`) | `#6b6d75` (5.16:1) | Everything else a person reads: a description, an empty state, a field label, a table head, helper text, a placeholder, an error line - and every machine value a person actually reads: a timestamp, a count, an id, a hostname, a byte figure, a version, an IP, a status word, a pagination summary. |
+| `--mute` | `#8b8d93` (5.77:1 on `--bg-2`) | `#6b6d75` (5.16:1) | Everything else a person reads: a description, an empty state, a field label, a table head, helper text, a placeholder, an error line, and also every machine value a person actually reads: a timestamp, a count, an id, a hostname, a byte figure, a version, an IP, a status word, a pagination summary. |
 | `--dim` | `#55575f` (2.76 / 2.53 / 2.36 on `--bg` / `--bg-2` / `--bg-3`) | `#9a9ca3` (2.54 / 2.74 / 2.43) | Not a text tone. Marks that carry no information on their own: the separator glyph between two items, the dash standing in for an absent value, the gutter line numbers in the code editor, an icon that only repeats the label beside it. |
 
 `--dim` misses the 4.5:1 floor on every surface in both themes, so it can never
-carry meaning. It is the tone of a mark you are meant to skip, not of small
-text. That a machine wrote the string is not a reason a person cannot read it:
-a timestamp, a byte count, a job duration, an audit meta line and a role name
-are all `--mute`, however incidental they look in a mock.
+carry meaning. It is for marks you are meant to skip, and small text does not
+qualify. A string a machine wrote still has to be readable: a timestamp, a byte
+count, a job duration, an audit meta line and a role name are all `--mute`,
+however incidental they look in a mock.
 
-The check is a rendered sweep, not a reading of the class name. Measure the
+Check this on the rendered page; class names do not tell you. Measure the
 computed colour of every text element against its nearest opaque background,
 in both themes; anything under 4.5:1 has to be one of the four marks above.
 
@@ -216,18 +215,17 @@ colour:
   `--destructive-solid` is 5.14:1 in both themes.
 - **`--brand-ink`** is the brand hue at text weight, used for links, the `link`
   button and badge variants, and the brand chip. `--brand-primary` stays the
-  identity - the active nav marker, the focus ring, the checkbox fill, the
-  first chart series - and those are graphics that owe 3:1. Prose owes 4.5:1,
+  identity colour for the active nav marker, the focus ring, the checkbox fill
+  and the first chart series, and those are graphics that owe 3:1. Prose owes 4.5:1,
   which the default magenta does not make on a light surface, so the light
   theme darkens it with `color-mix(in oklab, var(--brand-primary) 82%, black)`.
   It is a mix and not a constant so that an operator's own brand colour, which
   arrives at runtime on `--brand-primary`, is darkened with it.
 
-## 5. What did not change
+## 5. Fixed values
 
 The near-black surfaces, the two hairline strengths, the three text weights and
-the brand hue itself. `--brand-primary` and `--brand-accent` are the values
-`docs/design/brand.md` documents, and the dark status hues are untouched; what
-the fix wave added is the light-theme half that was missing, never a change to
-the dark palette. Focus rings are untouched. So are routes, i18n keys, form
-field names and component props.
+the brand hue are fixed. `--brand-primary` and `--brand-accent` are the values
+`docs/design/brand.md` documents. The light theme defines its own status hues
+and text-weight brand colour; it does not alter the dark palette or the focus
+rings.

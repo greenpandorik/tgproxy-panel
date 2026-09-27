@@ -18,6 +18,8 @@ tgwp-agent*
 .claude/
 .agents/
 .impeccable/
+/PRODUCT.md
+/DESIGN.md
 .playwright-mcp/
 .playwright-cli/
 skills-lock.json

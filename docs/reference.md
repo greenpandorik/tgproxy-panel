@@ -27,8 +27,7 @@ and environment variable does. For a walkthrough with screenshots, start with th
 
 ## Installing the panel
 
-
-At the end it prints the URL and, when you did not pass one, the generated admin password (once). The install directory holds `docker-compose.yml`, `Caddyfile`, `.env` (mode 0600; keep a copy off the host, `MASTER_KEY` encrypts every secret in the database) and a copy of the script for later:
+The one-line installer from the README's quick start asks for the domain, the ACME e-mail and the admin account, or takes them as flags. At the end it prints the URL and, when you did not pass one, the generated admin password (once). The install directory holds `docker-compose.yml`, `Caddyfile`, `.env` (mode 0600; keep a copy off the host, `MASTER_KEY` encrypts every secret in the database) and a copy of the script for later:
 
 ```bash
 sudo /opt/tgproxy-panel/install.sh --update              # move to the latest release (or --version 1.2.0)
@@ -37,7 +36,7 @@ sudo /opt/tgproxy-panel/install.sh --uninstall --purge   # remove containers, vo
 cd /opt/tgproxy-panel && docker compose logs -f panel    # logs
 ```
 
-Before changing anything the script runs a pre-flight: the domain must resolve to this host's public IP, ports 80 and 443 (8080 in local mode) must be free, and the install directory must be usable; a failed check offers re-run / continue / quit on a terminal and stops the script otherwise (`--skip-preflight` skips it). `install.sh --help` lists every option; each one can also be given as an environment variable `TGWP_<NAME>` (`TGWP_DOMAIN`, `TGWP_YES`, ...). `--dir` changes the install directory, `--image <ref>` replaces the `ghcr.io/greenpandorik/tgproxy-panel:<version>` reference (for mirrors, and for tests: `make test-install` runs the script against a locally built image). The script does not touch the firewall; open 80/443 (or 8080 in local mode) yourself. The published image is built for `linux/amd64` and `linux/arm64`.
+Before changing anything, the script runs a pre-flight: the domain must resolve to this host's public IP, ports 80 and 443 (8080 in local mode) must be free, and the install directory must be usable. On a terminal a failed check offers re-run, continue or quit; without one the script stops (`--skip-preflight` skips the checks). `install.sh --help` lists every option; each one can also be given as an environment variable `TGWP_<NAME>` (`TGWP_DOMAIN`, `TGWP_YES`, ...). `--dir` changes the install directory, `--image <ref>` replaces the `ghcr.io/greenpandorik/tgproxy-panel:<version>` reference (for mirrors, and for tests: `make test-install` runs the script against a locally built image). The script does not touch the firewall; open 80/443 (or 8080 in local mode) yourself. The published image is built for `linux/amd64` and `linux/arm64`.
 
 ### Manual setup
 
@@ -102,7 +101,7 @@ Ports on a telemt node: **80 and 443 public** (Caddy, ACME and the WEB transport
 
 **`tproxy`** runs the older stack: `tproxy-server` at the pinned `TPROXY_COMMIT`, the official MTProxy, Caddy and the agent, installed by the upstream `deploy/install.sh`. A tproxy node exposes 80 and 443 only.
 
-An installed node moves to a newer pin on its own: `tgwp-agent upgrade` on the host asks the panel what it should be running (`GET /api/v1/node/upgrade`, authenticated with the node token the agent already holds), replaces only what differs after verifying the panel's sha256, restarts the unit, and puts the previous binary back if it does not come back healthy — no install token, no re-install, one command per node (see the runbook).
+An installed node moves to a newer pin on its own: `tgwp-agent upgrade` on the host asks the panel what it should be running (`GET /api/v1/node/upgrade`, authenticated with the node token the agent already holds), replaces only what differs after verifying the panel's sha256, restarts the unit, and puts the previous binary back if it does not come back healthy. It needs no install token and no re-install, just one command per node (see the runbook).
 
 Keys behave differently per engine. A telemt node gives every key two links (WEB and Fake-TLS), enforces the key's `telemt_limits` (quota, up/down rate, max unique IPs, max connections) itself, and applies profile changes over its control API without restarting anything. A tproxy node offers the WEB link only, ignores those limits, and restarts the relay on every apply. `GET /api/v1/keys/{id}/links` returns one entry per node, `[{node_id, node_name, hostname, engine, links:[{kind, tme, tg}]}]`, with `kind` being `web` or `faketls`.
 
@@ -151,7 +150,7 @@ scrape_configs:
 
 `METRICS_TOKEN` is required whenever `NODE_DRIVER=gateway`; the panel refuses to start without it. Keep it out of the browser and give it only to your scraper.
 
-See [`docs/monitoring.md`](monitoring.md) for enabling `/metrics`, importing the Grafana dashboard ([`deploy/grafana/tgwp-panel.json`](../deploy/grafana/tgwp-panel.json), scrape example at [`deploy/prometheus.example.yml`](../deploy/prometheus.example.yml)), the full metric reference, and why there is no per-key breakdown.
+See [`docs/monitoring.md`](monitoring.md) for enabling `/metrics`, importing the Grafana dashboard ([`deploy/grafana/tgwp-panel.json`](../deploy/grafana/tgwp-panel.json), scrape example at [`deploy/prometheus.example.yml`](../deploy/prometheus.example.yml)), the full metric reference, and which per-key statistics exist.
 
 ## Audit log
 
@@ -180,13 +179,13 @@ does not execute server-side applications.
 A telemt node reporting `HttpUpstreamDecoy` can use a local/private HTTP upstream
 from its Website tab, subject to API origin validation. Test/apply it and verify
 the deployed hostname. Keep the website and WEB proxy through Telemt's shared
-front. See [the implementation and infrastructure acceptance matrix](vnext-acceptance.md).
+front.
 
 Assigning a preset to a node runs it through **uniquification** first: block order, CSS class names, asset filenames, and any wording marked as having variants are all re-randomized per node, deterministically seeded from the node's ID. Class renaming skips `url(...)` bodies, quoted strings and comments in the CSS, so a stylesheet that references an asset (`background: url(/logo.png)`, `@font-face { src: ... }`) keeps working. Two nodes running the same preset therefore serve byte-different HTML/CSS, and the same node re-assigned the same preset without any change to the template gets the exact same output back (no accidental redeploy). The point is to defeat simple probing: an outside observer fingerprinting what a proxy's cover site looks like across your fleet by diffing HTML/class names/asset names will not find a repeating signature.
 
 ## Telegram alerts
 
-Configure a bot token and chat ID under Settings, Telegram (`PUT /api/v1/settings`, owner only; the token is encrypted at rest and never sent back to the browser, only whether one is set). A "Send test message" button calls `POST /api/v1/settings/telegram/test` (owner only), which sends "Test message from `<panel name>`" using the form's in-progress token and chat ID if you typed them (neither is persisted by the test), else the stored ones, so the button works before you save. It returns `200 {"ok":true}` on success, `422` naming the missing field when neither the body nor the stored settings supply a token or a chat ID, or `502` with the Telegram API's error description on failure (e.g. wrong chat ID, blocked bot).
+Configure a bot token and chat ID under Panel settings → Behavior and notifications (`PUT /api/v1/settings`, owner only; the token is encrypted at rest and never sent back to the browser, only whether one is set). A "Send test message" button calls `POST /api/v1/settings/telegram/test` (owner only), which sends "Test message from `<panel name>`" using the form's in-progress token and chat ID if you typed them (neither is persisted by the test), else the stored ones, so the button works before you save. It returns `200 {"ok":true}` on success, `422` naming the missing field when neither the body nor the stored settings supply a token or a chat ID, or `502` with the Telegram API's error description on failure (e.g. wrong chat ID, blocked bot).
 
 Once enabled, alerts fire automatically for:
 
@@ -197,7 +196,7 @@ Each `(node, alert kind)` pair is rate-limited to at most one message per 5 minu
 
 ## Node prerequisite checks
 
-The node Overview tab has a "Run check" button (writers only) that calls `POST /api/v1/nodes/{id}/check` and persists the result on the node (`last_check`, shown in `GET /api/v1/nodes/{id}`). It runs six probes in order (seven on a telemt node, which adds `mask`), sharing one 15-second budget:
+The Prerequisite check card on the node's Diagnostics tab has a "Run check" button (writers only) that calls `POST /api/v1/nodes/{id}/check` and persists the result on the node (`last_check`, shown in `GET /api/v1/nodes/{id}`). It runs six probes in order (seven on a telemt node, which adds `mask`), sharing one 15-second budget:
 
 | Check | Verifies |
 | --- | --- |
@@ -211,7 +210,7 @@ The node Overview tab has a "Run check" button (writers only) that calls `POST /
 
 ## Two-factor authentication
 
-Set `FEATURE_TOTP=true` to turn on TOTP two-factor login; the routes 404 `feature_disabled` when it is off. Enrolment is self-service for every role, from Settings, Security:
+Set `FEATURE_TOTP=true` to turn on TOTP two-factor login; the routes 404 `feature_disabled` when it is off. Every role can enrol on its own, from Panel settings → Security:
 
 1. **Turn on** starts a setup (`POST /api/v1/auth/totp/setup`) and shows a QR code plus the secret in a copyable field, for apps that cannot scan (Google Authenticator, Aegis, 1Password, any standard 30s/6-digit/SHA1 TOTP app all work).
 2. Type the 6-digit code the app shows **and your current password** to confirm (`POST /api/v1/auth/totp/confirm {password, code}`). The password is what stops a stolen live session from enrolling *its own* authenticator and locking the real owner out; confirming also ends every other session on the account, the way a password change does. This enables TOTP and shows **eight recovery codes once** (`xxxxx-xxxxx`, high-entropy, stored only as a sha256 hash, never re-displayed) with copy-all and download-`.txt` buttons. Save them somewhere safe before dismissing the dialog.
@@ -235,9 +234,9 @@ Every access key can get a public, unauthenticated "subscription" link: one URL 
 
 ## Branding profiles
 
-Settings → Appearance separates personal display preferences from shared branding. Light/dark/system theme, comfortable/compact density and sidebar collapse are saved in the current browser; they do not change other users’ settings. The workspace uses the available width.
+Panel settings keeps personal display preferences (My preferences) apart from shared branding (Project identity). The theme (light, dark or system), the density (comfortable or compact) and the collapsed sidebar are saved in the current browser and do not change anyone else's settings. The content area uses the full width of the window.
 
-The project appearance section manages one or more named profiles (panel name, primary/accent color, default theme, support link, footer text, main/dark logo, favicon and login-background uploads); the active one styles the login page, the SPA header, and every public subscription page. Owner/admin only:
+Project identity manages one or more named profiles (panel name, primary/accent color, default theme, support link, footer text, main/dark logo, favicon and login-background uploads); the active one styles the login page, the SPA header, and every public subscription page. Owner/admin only:
 
 | Route | Behaviour |
 | --- | --- |
@@ -252,7 +251,7 @@ The project appearance section manages one or more named profiles (panel name, p
 
 ## Backups and restore
 
-Settings, Backups (owner only) takes on-demand dumps and can schedule nightly ones, using `pg_dump`/`pg_restore` bundled in the panel image:
+Panel settings → Backups (owner only) takes on-demand dumps and can schedule nightly ones, using `pg_dump`/`pg_restore` bundled in the panel image:
 
 | Route | Behaviour |
 | --- | --- |
@@ -359,7 +358,7 @@ make e2e          # tproxy engine: deploy/Dockerfile.fakenode (real tproxy-serve
 make e2e-telemt   # telemt engine: deploy/Dockerfile.fakenode-telemt (the real telemt release binary)
 ```
 
-Each target brings up postgres + the panel with the override file on `:8080`, creates an admin and a node of that engine, runs the demo container against a fresh install token, drives the flow end to end (assigns a key and the `studio` preset site, applies, asserts the relay serves that site with the key's profile active) and prints `SMOKE OK`, then tears the stack down with its volumes.
+Each target brings up postgres + the panel with the override file on `:8080`, creates an admin and a node of that engine, runs the demo container against a fresh install token, drives the flow end to end (creates a key, applies, and asserts the relay has the key's profile; the tproxy run also assigns the `corporate` preset and checks the relay serves it) and prints `SMOKE OK`, then tears the stack down with its volumes.
 
 `deploy/fakenode` runs the real `tproxy-server` relay (built from the pinned commit) plus a stub MTProxy backend, wired up with shims for `systemctl`/`journalctl` so the unmodified agent can manage it exactly as it would a real Linux host. To drive the flow by hand, see `docs/runbook.md` or run `deploy/e2e-smoke.sh` directly; it needs the two-phase `--continue` flag because the fakenode container cannot start until a node (and its install token) exists.
 
@@ -392,5 +391,4 @@ Both flags exist for that bench only. Real nodes run with the synlimit rules and
 
 ## Status
 
-Version 1.6.0. Both engines pass the containerised end-to-end tests (`make e2e`, `make e2e-telemt`). The install script and real Telegram clients have not yet been exercised on a public VPS by the maintainers: do the first production install on a test VPS and verify a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
-
+Both engines have containerised end-to-end tests (`make e2e`, `make e2e-telemt`). Do your first production install on a test VPS and check a connection from Telegram Desktop before relying on it. Issues and pull requests are welcome.
