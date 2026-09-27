@@ -27,36 +27,36 @@ or tproxy-server, and a small agent on the node takes instructions from the pane
 
 **A key gets two links, and one of them negotiates its own transport.** The Fake-TLS link
 (`https://t.me/proxy?…`) is a single shape: a TLS handshake that looks like a real visit to your
-domain. The WEB link (`https://t.me/webproxy?…`) is a protocol over ordinary HTTPS on port 443,
-and inside it there are four ways to carry the traffic. telemt tries them per connection —
+domain. The WEB link (`https://t.me/webproxy?…`) is a protocol over ordinary HTTPS on port 443, and
+inside it there are four ways to carry the traffic. telemt tries them per connection, in order:
 WebSocket lanes, WebSocket, HTTPS lanes, then plain HTTPS as the one that gets through almost
-anywhere — and remembers which one worked in that client's network, so the next connection starts
+anywhere. It remembers which one worked in that client's network, so the next connection starts
 there. A corporate proxy that eats WebSocket no longer means "the proxy is broken for this person".
 
 **Every node serves a different-looking cover site.** Fifteen built-in sites ship with the panel,
-and assigning one to a node re-randomizes its block order, CSS class names, asset filenames and
-marked wording first. The result is deterministic per node, so re-assigning the same template
-changes nothing and does not restart anything — but two nodes running the same template never
-serve byte-identical pages, so a fleet cannot be fingerprinted by diffing its cover sites.
+and assigning one to a node first re-randomizes its block order, CSS class names, asset filenames
+and marked wording. The result is deterministic per node, so re-assigning the same template changes
+nothing and restarts nothing. Two nodes running the same template still never serve byte-identical
+pages, so a fleet cannot be fingerprinted by diffing its cover sites.
 
-**Limits are enforced by the proxy, not by the panel.** On a telemt node a key's traffic quota,
-up/down rate, maximum unique IPs and maximum connections are pushed into telemt and applied by
-telemt itself, along with per-key traffic accounting. The panel does not sit in the data path.
+**The proxy enforces the limits.** On a telemt node a key's traffic quota, up/down rate, maximum
+unique IPs and maximum connections are pushed into telemt, which applies them itself and keeps the
+per-key traffic accounting. The panel does not sit in the data path.
 
-**A number the panel does not have is never drawn as zero.** If a node did not report a counter,
-the panel says "not available" and means it. A diagnostic check that could not run is left out of
-both the passed and the total count instead of being scored as a pass. It is the difference
-between "nothing is wrong" and "we have not heard", and the panel refuses to blur it.
+**A number the panel does not have is never drawn as zero.** If a node did not report a counter, the
+panel says "not available" and means it. A diagnostic check that could not run is left out of both
+the passed and the total count instead of being scored as a pass, so "nothing is wrong" and "we have
+not heard" never arrive looking the same.
 
 **Changing keys does not drop anybody.** On a telemt node the agent applies the desired state over
 telemt's loopback control API without restarting the process, so live sessions survive. (Changing
 the Fake-TLS domain or port is the one exception, and the panel warns before you do it.)
 
 **Nodes move themselves to a new version.** `tgwp-agent upgrade` asks the panel what this node
-should be running, replaces only what differs after verifying the panel's sha256, restarts the
-unit, waits for it to report healthy, and puts the previous binary back if it does not. Updating
-telemt goes further: drain, swap, verify, and reopen admission — with the rollback path reporting
-whether reopening actually succeeded.
+should be running, replaces only what differs after verifying the panel's sha256, restarts the unit,
+waits for it to report healthy, and puts the previous binary back if it does not. Updating telemt
+goes further: drain, swap, verify, and reopen admission, and the rollback path reports whether
+reopening actually succeeded.
 
 Beyond that: shared and personal keys with batch creation, public subscription pages, a fleet
 overview that leads with a verdict, Prometheus metrics and a Grafana dashboard, Telegram alerts,
@@ -77,7 +77,7 @@ compose files and a generated `.env`, starts the stack and creates the first adm
 curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash
 ```
 
-It prints the URL and the admin password once. Then add your first node in the UI — the panel
+It prints the URL and the admin password once. Then add your first node in the UI, and the panel
 gives you a command to paste into a root shell on the node:
 
 ```bash
@@ -124,8 +124,8 @@ engine runs: Telegram's WEB proxy relay and the official MTProxy behind it.
 
 ## Star it
 
-If you run this, [give it a star](https://github.com/greenpandorik/tgproxy-panel) — it is how
-other people running Telegram proxies find the project.
+If you run this, [give it a star](https://github.com/greenpandorik/tgproxy-panel). It is how other
+people running Telegram proxies find the project.
 
 <a href="https://www.star-history.com/#greenpandorik/tgproxy-panel&Date">
   <picture>
