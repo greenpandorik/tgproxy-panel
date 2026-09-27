@@ -163,12 +163,12 @@ phase_continue() {
 	[[ -n "$key_id" && "$key_id" != "null" ]] || die "create key: missing id in response: $LAST_BODY"
 	log "key created: id=$key_id"
 
-	log "assigning the studio preset site to the node"
+	log "assigning the corporate preset site to the node"
 	http GET /api/v1/site-templates
 	expect_status 200 "$LAST_STATUS" "list site templates"
 	local template_id
 	template_id="$(jq -r '.items[] | select(.name=="corporate") | .id' <<<"$LAST_BODY" | head -n1)"
-	[[ -n "$template_id" ]] || die "no 'studio' preset found in site-templates: $LAST_BODY"
+	[[ -n "$template_id" ]] || die "no 'corporate' preset found in site-templates: $LAST_BODY"
 	http POST "/api/v1/nodes/$NODE_ID/site" "$(jq -n --arg t "$template_id" '{template_id:$t}')"
 	expect_status 200 "$LAST_STATUS" "assign site"
 
@@ -248,8 +248,8 @@ phase_continue() {
 	log "checking the real relay serves the preset site"
 	local site_html
 	site_html="$(compose exec -T fakenode curl -s -H "Host: $NODE_HOSTNAME" http://127.0.0.1:8080/)"
-	if ! grep -q "Ferrule Studio" <<<"$site_html"; then
-		die "relay did not serve the studio preset site: $site_html"
+	if ! grep -q "Alder &amp; Co." <<<"$site_html"; then
+		die "relay did not serve the corporate preset site: $site_html"
 	fi
 	log "relay serves the preset site"
 
@@ -277,13 +277,13 @@ phase_continue() {
 	[[ "$audit_total" -ge 1 ]] || die "audit?action=key.: expected total >= 1, got $audit_total: $LAST_BODY"
 	log "audit log has $audit_total key.* entries"
 
-	log "checking site-templates has 5 presets"
+	log "checking site-templates has 15 presets"
 	http GET /api/v1/site-templates
 	expect_status 200 "$LAST_STATUS" "list site templates"
 	local preset_count
 	preset_count="$(jq -r '[.items[] | select(.is_preset == true)] | length' <<<"$LAST_BODY")"
-	[[ "$preset_count" == "5" ]] || die "site-templates: expected 5 presets, got $preset_count: $LAST_BODY"
-	log "site-templates has 5 presets"
+	[[ "$preset_count" == "15" ]] || die "site-templates: expected 15 presets, got $preset_count: $LAST_BODY"
+	log "site-templates has 15 presets"
 
 	log "creating a backup (owner)"
 	http POST /api/v1/backups ""
