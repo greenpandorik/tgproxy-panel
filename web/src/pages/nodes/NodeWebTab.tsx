@@ -8,11 +8,9 @@ import { MetricValue } from '@/components/common/MetricValue';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { StatusIndicator } from '@/components/common/StatusIndicator';
 import { WebLifecycleControls } from '@/components/web/WebLifecycleControls';
-import { WebPolicyCard } from '@/components/web/WebPolicyCard';
 import { CapabilityNotice } from '@/components/web/CapabilityNotice';
 import { CarrierDistribution } from '@/components/web/CarrierDistribution';
 import { WebCounters } from '@/components/web/WebCounters';
-import { WebDiagnosticsCard } from '@/components/web/WebDiagnosticsCard';
 import { CAP_CARRIER_LEARNING, CAP_CARRIER_NEGOTIATION, CAP_WEB, nodeCapability } from '@/components/web/capability';
 import { webRuntimeStatus } from '@/components/web/webRuntimeDisplay';
 import { ENTER_CLASS } from '@/components/ui/motion';
@@ -46,27 +44,79 @@ function CapacityPanel({ health, loading }: { health?: NodeHealth; loading: bool
   const { t, i18n } = useTranslation();
   const capacity = health?.web_runtime?.capacity ?? null;
   const events = capacity ? Object.values(capacity.overload_outcomes).reduce((sum, value) => sum + value, 0) : null;
-  const resources = capacity?.resources.filter((resource) => CAPACITY_RESOURCES.includes(resource.resource as typeof CAPACITY_RESOURCES[number])) ?? [];
+  const resources =
+    capacity?.resources.filter((resource) =>
+      CAPACITY_RESOURCES.includes(resource.resource as (typeof CAPACITY_RESOURCES)[number]),
+    ) ?? [];
 
   return (
     <Panel>
-      <PanelHeader icon={Gauge} title={t('web.capacity_title')} meta={capacity ? t(`web.overload_action_${capacity.connection_capacity_action}`, { defaultValue: capacity.connection_capacity_action }) : undefined} />
+      <PanelHeader
+        icon={Gauge}
+        title={t('web.capacity_title')}
+        meta={
+          capacity
+            ? t(`web.overload_action_${capacity.connection_capacity_action}`, {
+                defaultValue: capacity.connection_capacity_action,
+              })
+            : undefined
+        }
+      />
       <PanelBody className="space-y-4">
-        {loading ? <Skeleton className="h-32 w-full" /> : !capacity ? (
+        {loading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : !capacity ? (
           <p className="text-label text-mute">{t('web.capacity_unavailable')}</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <div><p className="text-micro text-mute">{t('web.capacity_saturated')}</p><p className={cn('mt-1 text-title', capacity.saturated_resources.length ? 'text-err' : 'text-ok')}>{capacity.saturated_resources.length ? formatNumber(capacity.saturated_resources.length, i18n.language) : t('web.capacity_none')}</p></div>
-              <div><p className="text-micro text-mute">{t('web.capacity_events')}</p><p className="mt-1 text-title"><MetricValue value={events} /></p></div>
-              <div><p className="text-micro text-mute">{t('web.capacity_pending_sessions')}</p><p className="mt-1 text-title"><MetricValue value={null} /></p></div>
-              <div><p className="text-micro text-mute">{t('web.capacity_pending_streams')}</p><p className="mt-1 text-title"><MetricValue value={null} /></p></div>
+              <div>
+                <p className="text-micro text-mute">{t('web.capacity_saturated')}</p>
+                <p className={cn('mt-1 text-title', capacity.saturated_resources.length ? 'text-err' : 'text-ok')}>
+                  {capacity.saturated_resources.length
+                    ? formatNumber(capacity.saturated_resources.length, i18n.language)
+                    : t('web.capacity_none')}
+                </p>
+              </div>
+              <div>
+                <p className="text-micro text-mute">{t('web.capacity_events')}</p>
+                <p className="mt-1 text-title">
+                  <MetricValue value={events} />
+                </p>
+              </div>
+              <div>
+                <p className="text-micro text-mute">{t('web.capacity_pending_sessions')}</p>
+                <p className="mt-1 text-title">
+                  <MetricValue value={null} />
+                </p>
+              </div>
+              <div>
+                <p className="text-micro text-mute">{t('web.capacity_pending_streams')}</p>
+                <p className="mt-1 text-title">
+                  <MetricValue value={null} />
+                </p>
+              </div>
             </div>
             <div className="space-y-3">
               {resources.map((resource) => {
                 const percent = resource.limit > 0 ? Math.min(100, (resource.used / resource.limit) * 100) : 0;
                 const saturated = capacity.saturated_resources.includes(resource.resource);
-                return <div key={resource.resource}><div className="mb-1.5 flex items-center justify-between gap-3 text-label"><span>{t(`web.capacity_resource_${resource.resource}`, { defaultValue: resource.resource })}</span><span className={cn('mono text-mono', saturated ? 'text-err' : 'text-mute')}>{formatNumber(resource.used, i18n.language)} / {formatNumber(resource.limit, i18n.language)}</span></div><div className="h-1.5 overflow-hidden rounded-pill bg-hairline"><div className={cn('h-full rounded-pill', saturated ? 'bg-err' : percent >= 80 ? 'bg-warn' : 'bg-brand')} style={{width:`${percent}%`}} /></div></div>;
+                return (
+                  <div key={resource.resource}>
+                    <div className="mb-1.5 flex items-center justify-between gap-3 text-label">
+                      <span>{t(`web.capacity_resource_${resource.resource}`, { defaultValue: resource.resource })}</span>
+                      <span className={cn('mono text-mono', saturated ? 'text-err' : 'text-mute')}>
+                        {formatNumber(resource.used, i18n.language)} / {formatNumber(resource.limit, i18n.language)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-pill bg-hairline">
+                      <div
+                        className={cn('h-full rounded-pill', saturated ? 'bg-err' : percent >= 80 ? 'bg-warn' : 'bg-brand')}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
               })}
             </div>
             <p className="text-micro text-mute">{t('web.capacity_metric_note')}</p>
@@ -92,12 +142,20 @@ function Toggle({ state, on }: { state: CapabilityState; on: boolean | null | un
 function TlsValidity({ node }: { node: Node }) {
   const cert = node.last_check?.results?.find((r) => r.name === 'tls_cert');
   if (!cert) return <MetricValue value={null} />;
-  return (
-    <span className={cn('text-mono', cert.ok ? 'text-ok' : 'text-err')}>{cert.detail || (cert.ok ? 'ok' : 'failed')}</span>
-  );
+  return <span className={cn('text-mono', cert.ok ? 'text-ok' : 'text-err')}>{cert.detail || (cert.ok ? 'ok' : 'failed')}</span>;
 }
 
-function StatusPanel({ node, health, offline, loading }: { node: Node; health?: NodeHealth; offline: boolean; loading: boolean }) {
+function StatusPanel({
+  node,
+  health,
+  offline,
+  loading,
+}: {
+  node: Node;
+  health?: NodeHealth;
+  offline: boolean;
+  loading: boolean;
+}) {
   const { t } = useTranslation();
   const runtime = health?.web_runtime ?? null;
   const negotiation = nodeCapability(node, CAP_CARRIER_NEGOTIATION);
@@ -216,11 +274,6 @@ export function NodeWebTab({ node }: { node: Node }) {
           )}
         </PanelBody>
       </Panel>
-
-      <WebPolicyCard nodeId={node.id} enabled={negotiationSupported(node)} />
-      <WebDiagnosticsCard nodeId={node.id} />
     </div>
   );
 }
-
-function negotiationSupported(node: Node) { return nodeCapability(node, CAP_CARRIER_NEGOTIATION) === 'supported'; }

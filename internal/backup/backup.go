@@ -31,16 +31,18 @@ func DirFor(dataDir string) string { return filepath.Join(dataDir, "backups") }
 
 // Entry describes one dump: the file on disk plus, once the caller has written it, the row that indexes it.
 type Entry struct {
-	ID        uuid.UUID
-	Path      string
-	Name      string
-	Size      int64
-	Kind      string
-	CreatedAt time.Time
+	ID              uuid.UUID
+	Path            string
+	Name            string
+	Size            int64
+	Kind            string
+	CreatedAt       time.Time
+	ProtectionError string
 }
 
 // Runner shells out to the postgres client tools.
 type Runner struct {
+	Protection  *Protection
 	DatabaseURL string
 	Dir         string
 	Exec        func(ctx context.Context, name string, args ...string) ([]byte, error)
@@ -78,10 +80,14 @@ func (r *Runner) Create(ctx context.Context, kind string) (Entry, error) {
 	if err != nil {
 		return Entry{}, fmt.Errorf("pg_dump produced no file: %w", err)
 	}
-	return Entry{Path: path, Name: name, Size: info.Size(), Kind: kind, CreatedAt: now}, nil
+	entry := Entry{Path: path, Name: name, Size: info.Size(), Kind: kind, CreatedAt: now}
+	if err := r.protect(ctx, entry); err != nil {
+		entry.ProtectionError = err.Error()
+	}
+	return entry, nil
 }
 
-// freeName picks a file name that does not exist yet.
+// freeName reserves a private file atomically, including across panel/CLI processes.
 func (r *Runner) freeName(now time.Time, kind string) (string, string, error) {
 	stamp := now.Format(timeLayout)
 	for i := 1; i <= 9; i++ {
@@ -90,8 +96,16 @@ func (r *Runner) freeName(now time.Time, kind string) (string, string, error) {
 			name = fmt.Sprintf("tgwp-%s-%s-%d.dump", stamp, kind, i)
 		}
 		path := filepath.Join(r.Dir, name)
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err == nil {
+			if err = file.Close(); err != nil {
+				_ = os.Remove(path)
+				return "", "", err
+			}
 			return name, path, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return "", "", err
 		}
 	}
 	return "", "", fmt.Errorf("too many backups already taken at %s", stamp)
@@ -170,6 +184,7 @@ func (r *Runner) Prune(ctx context.Context, keep int, entries []Entry, del func(
 	removed := 0
 	for _, e := range ordered[keep:] {
 		if e.Path != "" {
+			_ = os.Remove(e.Path + ".age")
 			if err := os.Remove(e.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return removed, err
 			}

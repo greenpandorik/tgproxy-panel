@@ -13,13 +13,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TelemtUpdateCard } from '@/components/web/TelemtUpdateCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SectionTabs, useSection } from '@/components/common/SectionNav';
+import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
+import { NodeListenersCard } from './NodeListenersCard';
+import { NodeCheckCard } from './NodeCheckCard';
+import { WebDiagnosticsCard } from '@/components/web/WebDiagnosticsCard';
+import { WebPolicyCard } from '@/components/web/WebPolicyCard';
+import { CAP_CARRIER_NEGOTIATION, nodeCapability } from '@/components/web/capability';
 import { toast } from '@/components/ui/toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 
 import { InstallCommandDialog } from './InstallCommandDialog';
+import { NodeProbes } from './NodeProbes';
+import { NodeReliability } from './NodeReliability';
 import { NodeLogs } from './NodeLogs';
 import { NodeOverviewTab } from './NodeOverviewTab';
 import { NodeProfilesTab } from './NodeProfilesTab';
@@ -50,6 +58,12 @@ export function NodeDetailPage() {
   const deleteNode = useDeleteNode();
   const installCommand = useInstallCommand(id ?? '');
 
+  const [section, setSection] = useSection(
+    nodeQuery.data?.engine === 'tproxy'
+      ? ['overview', 'stats', 'diagnostics', 'logs', 'profiles', 'site', 'settings']
+      : ['overview', 'web', 'stats', 'diagnostics', 'logs', 'proxy', 'profiles', 'site', 'settings'],
+    'overview',
+  );
   const [restartOpen, setRestartOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [installResult, setInstallResult] = useState<{ command: string; expires_at: string } | null>(null);
@@ -171,57 +185,88 @@ export function NodeDetailPage() {
                   </TooltipTrigger>
                   <TooltipContent>{t(node.dirty ? 'nodes.detail_apply_hint' : 'nodes.detail_apply_up_to_date')}</TooltipContent>
                 </Tooltip>
-                <Button type="button" variant="outline" size="sm" onClick={() => setRestartOpen(true)}>
-                  {restartLabel}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void handleShowInstall()}
-                  disabled={installCommand.isPending}
-                >
-                  {t('nodes.install_show')}
-                </Button>
-                <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
-                  {t('nodes.detail_delete')}
-                </Button>
               </div>
             )}
           </div>
         </div>
 
-        <Tabs defaultValue="overview">
-          <TabsList variant="line" className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="overview">{t('nodes.tab_overview')}</TabsTrigger>
-            <TabsTrigger value="profiles">{t('nodes.tab_profiles')}</TabsTrigger>
-            <TabsTrigger value="web">{t('nodes.tab_web')}</TabsTrigger>
-            <TabsTrigger value="logs">{t('nodes.tab_logs')}</TabsTrigger>
-            <TabsTrigger value="site">{t('nodes.tab_site')}</TabsTrigger>
-            <TabsTrigger value="stats">{t('nodes.tab_stats')}</TabsTrigger>
-            {node.engine === 'telemt' && <TabsTrigger value="settings">{t('nodes.tab_settings')}</TabsTrigger>}
-          </TabsList>
-
-          <TabsContent value="overview">
-            <NodeOverviewTab node={node} />
-          </TabsContent>
-          <TabsContent value="profiles">
-            <NodeProfilesTab nodeId={node.id} online={node.online} engine={node.engine} />
-          </TabsContent>
-          <TabsContent value="web">
-            <NodeWebTab node={node} />
-          </TabsContent>
-          <TabsContent value="logs">
-            <NodeLogs nodeId={node.id} online={node.online} engine={node.engine} />
-          </TabsContent>
-          <TabsContent value="site">
-            <NodeSiteTab nodeId={node.id} />
-          </TabsContent>
-          {node.engine === 'telemt' && <TabsContent value="settings"><TelemtUpdateCard node={node} /></TabsContent>}
-          <TabsContent value="stats">
-            <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />
-          </TabsContent>
-        </Tabs>
+        <div className="flex min-w-0 flex-col gap-6">
+          <SectionTabs
+            label={t('workspace.node_navigation')}
+            value={section}
+            onChange={setSection}
+            items={[
+              { value: 'overview', label: t('workspace.tab_overview'), group: t('workspace.observe') },
+              ...(node.engine === 'telemt' ? [{ value: 'web', label: t('workspace.tab_web'), group: t('workspace.observe') }] : []),
+              { value: 'stats', label: t('workspace.tab_stats'), group: t('workspace.observe') },
+              { value: 'diagnostics', label: t('workspace.tab_diagnostics'), group: t('workspace.observe') },
+              { value: 'logs', label: t('workspace.tab_logs'), group: t('workspace.observe') },
+              ...(node.engine === 'telemt'
+                ? [{ value: 'proxy', label: t('workspace.tab_proxy'), group: t('workspace.configure') }]
+                : []),
+              { value: 'profiles', label: t('workspace.tab_profiles'), group: t('workspace.configure') },
+              { value: 'site', label: t('workspace.tab_site'), group: t('workspace.configure') },
+              { value: 'settings', label: t('workspace.tab_settings'), group: t('workspace.service') },
+            ]}
+          />
+          <section className="min-w-0 space-y-5" aria-label={t(`workspace.section_${section}`)}>
+            <div className="space-y-1">
+              <h2 className="text-title">{t(`workspace.section_${section}`)}</h2>
+              <p className="max-w-[72ch] text-body text-mute">{t(`workspace.description_${section}`)}</p>
+            </div>
+            {section === 'overview' && <NodeOverviewTab node={node} />}
+            {section === 'web' && <NodeWebTab node={node} />}
+            {section === 'stats' && <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />}
+            {section === 'diagnostics' && (
+              <>
+                <NodeProbes id={node.id} />
+                <NodeCheckCard node={node} />
+                {node.engine === 'telemt' && <WebDiagnosticsCard nodeId={node.id} />}
+              </>
+            )}
+            {section === 'logs' && <NodeLogs nodeId={node.id} online={node.online} engine={node.engine} />}
+            {section === 'proxy' && node.engine === 'telemt' && (
+              <>
+                <NodeListenersCard node={node} canEdit={isWriter} />
+                <WebPolicyCard nodeId={node.id} enabled={nodeCapability(node, CAP_CARRIER_NEGOTIATION) === 'supported'} />
+                <NodeReliability node={node} />
+              </>
+            )}
+            {section === 'profiles' && <NodeProfilesTab nodeId={node.id} online={node.online} engine={node.engine} />}
+            {section === 'site' && <NodeSiteTab nodeId={node.id} />}
+            {section === 'settings' && (
+              <>
+                {node.engine === 'telemt' && <TelemtUpdateCard node={node} />}
+                <NodeOverviewTab node={node} maintenance />
+                {isWriter && (
+                  <Panel>
+                    <PanelHeader title={t('workspace.service_actions')} />
+                    <PanelBody className="space-y-4">
+                      <p className="text-body text-mute">{t('workspace.service_warning')}</p>
+                      <div className="flex flex-wrap gap-3">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setRestartOpen(true)}>
+                          {restartLabel}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleShowInstall()}
+                          disabled={installCommand.isPending}
+                        >
+                          {t('nodes.install_show')}
+                        </Button>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                          {t('nodes.detail_delete')}
+                        </Button>
+                      </div>
+                    </PanelBody>
+                  </Panel>
+                )}
+              </>
+            )}
+          </section>
+        </div>
       </div>
 
       <ConfirmDialog

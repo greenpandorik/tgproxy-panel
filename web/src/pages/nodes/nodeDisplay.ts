@@ -1,5 +1,6 @@
 import type { Status } from '@/components/common/StatusBadge';
 import type { Node } from '@/api/types';
+import { isMetricPresent } from '@/components/common/metric';
 
 /** What the panel prints where a machine reported nothing. */
 export const DASH = '—';
@@ -58,8 +59,11 @@ export const LOAD_TONE_CLASS: Record<LoadTone, { text: string; bar: string }> = 
   danger: { text: 'text-err', bar: 'bg-err' },
 };
 
-export function nodeLoad(node: Pick<Node, 'status' | 'health'>): { cpu: number; mem: number } | undefined {
+export function nodeLoad(node: Pick<Node, 'status' | 'health'>): { cpu: number | undefined; mem: number } | undefined {
   if (!node.health || node.status === 'offline') return undefined;
   const clamp = (v: number) => Math.max(0, Math.min(100, Number.isFinite(v) ? v : 0));
-  return { cpu: clamp(node.health.cpu_percent), mem: clamp(node.health.mem_used_percent) };
+  // cpu_percent is a load average over core count, not utilisation, so a node that did not
+  // measure utilisation has no CPU figure here rather than a borrowed one.
+  const cpu = isMetricPresent(node.health.cpu_utilisation_percent) ? clamp(node.health.cpu_utilisation_percent) : undefined;
+  return { cpu, mem: clamp(node.health.mem_used_percent) };
 }

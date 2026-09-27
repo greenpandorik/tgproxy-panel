@@ -423,3 +423,33 @@ summary {
 .branding-preview[data-theme='dark'] .preview-header {
   background: #1d2939;
 }
+
+/* Native selections share the same visible boundary and keyboard focus as inputs. */
+.ops-select {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font: inherit;
+}
+.ops-select:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+.section-nav {
+  width: 100%;
+}
+@media (min-width: 1024px) {
+  .section-nav {
+    width: 14rem;
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100dvh - 6.5rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}

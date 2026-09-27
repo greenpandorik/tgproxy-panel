@@ -65,6 +65,8 @@ message HealthReport {
   optional double load_average_1 = 24;
   optional double load_average_5 = 25;
   optional double load_average_15 = 26;
+  // Versioned operational readings; absent from older agents, never assumed healthy.
+  bytes reliability_json = 27;
 }
 
 // WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
@@ -243,6 +245,7 @@ message Request {
     TelemtUpdateStatusRequest telemt_update_status = 10;
     WebControlRequest web_control = 11;
     CancelRequest cancel = 12;
+    ReliabilityRequest reliability = 13;
   }
 }
 
@@ -325,6 +328,7 @@ message Response {
     StatsMap stats = 7;
     Empty empty = 8;
     TelemtUpdate telemt_update = 9;
+    ReliabilityResponse reliability = 10;
   }
 }
 message ApplyResult {
@@ -347,3 +351,5 @@ message LogLine { string service = 1; string line = 2; int64 unix_ms = 3; }
 message LogChunk { repeated LogLine lines = 1; bool done = 2; string error = 3; }
 
 message WebControlRequest { string action = 1; int32 timeout_secs = 2; }
+message ReliabilityRequest { bytes policy_json = 1; }
+message ReliabilityResponse { bytes json = 1; }

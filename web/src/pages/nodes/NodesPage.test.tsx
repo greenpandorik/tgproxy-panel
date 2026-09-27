@@ -42,6 +42,7 @@ function health(cpu: number, mem: number, extra: Partial<NodeHealth> = {}): Node
     agent_version: '1',
     uptime_seconds: 10,
     cpu_percent: cpu,
+    cpu_utilisation_percent: cpu,
     mem_used_percent: mem,
     disk_used_percent: 5,
     profile_count: 0,
@@ -94,6 +95,23 @@ describe('NodesPage load columns', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({ isWriter: false } as unknown as ReturnType<typeof useAuth>);
     setLang('en');
+  });
+
+  it('leaves CPU blank when the node reported no utilisation, rather than showing its load average', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: {
+        items: [node('n1', 'online', health(42, 85, { cpu_utilisation_percent: undefined }))],
+        total: 1,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    const bars = within(rowOf('n1')).getAllByTestId('load-bar');
+    expect(bars).toHaveLength(1);
+    expect(bars[0]).toHaveTextContent('85%');
+    expect(within(rowOf('n1')).queryByText('42%')).toBeNull();
   });
 
   it('draws CPU and RAM bars from the last heartbeat, toned at 80% and 95%', () => {

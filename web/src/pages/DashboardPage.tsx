@@ -20,6 +20,7 @@ import { ApiError } from '@/lib/api';
 import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
 import { formatCompactAge, formatCompactDuration } from '@/lib/format';
 
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { AttentionSection } from './dashboard/AttentionSection';
 import { DashboardMetrics } from './dashboard/DashboardMetrics';
 import { NodesTable, NodesTableSkeleton } from './dashboard/NodesTable';
@@ -224,7 +225,11 @@ export function DashboardPage() {
     <>
       <PageHeader
         title={t('dashboard.title')}
-        description={<UpdatedAgo at={summaryQuery.dataUpdatedAt} />}
+        description={
+          <>
+            {t('workspace.home_hint')} <UpdatedAgo at={summaryQuery.dataUpdatedAt} />
+          </>
+        }
         actions={
           <>
             {isWriter && (
@@ -249,6 +254,8 @@ export function DashboardPage() {
         }}
       />
 
+      <AttentionSection />
+
       <DashboardMetrics
         loading={loading}
         nodesOnline={summary?.nodes.online}
@@ -257,8 +264,6 @@ export function DashboardPage() {
         sessions={summary?.sessions_live}
         traffic={seriesLoading ? undefined : traffic}
       />
-
-      <AttentionSection />
 
       {/* Wrapped rather than classed directly: Panel takes a className but no
           style, and the entrance needs its index on the element. */}
@@ -282,44 +287,46 @@ export function DashboardPage() {
         </Panel>
       </div>
 
-      <div className={ENTER_CLASS} style={enterDelay(2)}>
-        <Panel className="flex flex-col">
-          {/* No range control and no expand button here, unlike the mockup:
+      <AdvancedSettings label={t('workspace.history_details')}>
+        <div className={ENTER_CLASS} style={enterDelay(2)}>
+          <Panel className="flex flex-col">
+            {/* No range control and no expand button here, unlike the mockup:
               the series behind this chart is a fixed 24h fetch and there is
               no full-screen view to open, so either affordance would be a
               control that does nothing. */}
-          <PanelHeader
-            icon={Activity}
-            title={t('dashboard.sessions_chart_title')}
-            actions={
-              <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/monitoring" />}>
-                {t('nav.monitoring')}
-              </Button>
-            }
-            meta={chartStep ? t('dashboard.sessions_chart_meta', { step: chartStep }) : undefined}
-          />
-          <div className="flex-1 px-2 pt-3">
-            {seriesLoading ? (
-              <Skeleton className="h-[220px] w-full" />
-            ) : chart.data.length === 0 ? (
-              <div className="flex h-[220px] items-center justify-center">
-                <p className="text-body text-mute">{t('dashboard.sessions_chart_empty')}</p>
-              </div>
-            ) : (
-              <Suspense fallback={<Skeleton className="h-[220px] w-full" />}>
-                <SessionsChart data={chart.data} series={chart.series} />
-              </Suspense>
-            )}
-          </div>
-          <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-3" />
-        </Panel>
-      </div>
+            <PanelHeader
+              icon={Activity}
+              title={t('dashboard.sessions_chart_title')}
+              actions={
+                <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/monitoring" />}>
+                  {t('nav.monitoring')}
+                </Button>
+              }
+              meta={chartStep ? t('dashboard.sessions_chart_meta', { step: chartStep }) : undefined}
+            />
+            <div className="flex-1 px-2 pt-3">
+              {seriesLoading ? (
+                <Skeleton className="h-[220px] w-full" />
+              ) : chart.data.length === 0 ? (
+                <div className="flex h-[220px] items-center justify-center">
+                  <p className="text-body text-mute">{t('dashboard.sessions_chart_empty')}</p>
+                </div>
+              ) : (
+                <Suspense fallback={<Skeleton className="h-[220px] w-full" />}>
+                  <SessionsChart data={chart.data} series={chart.series} />
+                </Suspense>
+              )}
+            </div>
+            <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-3" />
+          </Panel>
+        </div>
 
-      <div className={ENTER_CLASS} style={enterDelay(3)}>
-        <Panel>
-          <RecentJobsSection jobs={recentJobs} />
-        </Panel>
-      </div>
+        <div className={ENTER_CLASS} style={enterDelay(3)}>
+          <Panel>
+            <RecentJobsSection jobs={recentJobs} />
+          </Panel>
+        </div>
+      </AdvancedSettings>
     </>
   );
 }

@@ -250,6 +250,52 @@ func TestNodeListHealthMatchesHealthEndpoint(t *testing.T) {
 	}
 }
 
+func TestNodeHealthCarriesMeasuredCPUAndOmitsItWhenUnmeasured(t *testing.T) {
+	util, load1 := 18.5, 0.62
+	for _, tc := range []struct {
+		name    string
+		report  nodedriver.HealthReport
+		present bool
+	}{
+		{"agent measured it", nodedriver.HealthReport{RelayActive: true, CPUPercent: 0.61, CPUUtilisationPercent: &util, LoadAverage1: &load1}, true},
+		{"agent does not report it", nodedriver.HealthReport{RelayActive: true, CPUPercent: 0.61}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, c, n := ownerWithNode(t)
+			raw, _ := json.Marshal(tc.report)
+			if err := h.Store.Q.SetNodeHeartbeat(t.Context(), db.SetNodeHeartbeatParams{ID: n.ID, Status: db.NodeStatusOnline, LastHealth: raw}); err != nil {
+				t.Fatal(err)
+			}
+			var list struct {
+				Items []struct {
+					Health map[string]any `json:"health"`
+				} `json:"items"`
+			}
+			c.JSON(c.Get("/api/v1/nodes"), &list)
+			got := list.Items[0].Health
+
+			cpu, ok := got["cpu_utilisation_percent"]
+			if ok != tc.present {
+				t.Fatalf("cpu_utilisation_percent present=%v, want %v: %+v", ok, tc.present, got)
+			}
+			if tc.present && cpu != util {
+				t.Fatalf("cpu_utilisation_percent = %v, want %v", cpu, util)
+			}
+			if _, ok := got["load_average_1"]; ok != tc.present {
+				t.Fatalf("load_average_1 present=%v, want %v", ok, tc.present)
+			}
+			// A node that did not measure utilisation must not be handed the load average
+			// under that name, and must not be given a zero either.
+			if !tc.present && cpu != nil {
+				t.Fatalf("unmeasured node got a cpu figure: %#v", cpu)
+			}
+			if got["cpu_percent"] != 0.61 {
+				t.Fatalf("cpu_percent = %v, want the load average untouched", got["cpu_percent"])
+			}
+		})
+	}
+}
+
 func TestNodeListHealthCarriesDcConnectivity(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	raw, _ := json.Marshal(nodedriver.HealthReport{

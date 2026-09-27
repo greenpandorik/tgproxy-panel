@@ -52,6 +52,9 @@ func (h *Handler) verifyDecoy(ctx context.Context, index []byte) error {
 		if resp.StatusCode != http.StatusOK || !bytes.Equal(raw, index) {
 			return fmt.Errorf("decoy check %s: status %d or served index differs from deployed website", endpoint, resp.StatusCode)
 		}
+		if err := h.verifyWebsiteAssets(ctx, client, endpoint, host, index); err != nil {
+			return err
+		}
 	}
 	return nil
 }

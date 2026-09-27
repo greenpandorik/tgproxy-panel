@@ -142,19 +142,42 @@ func adminCreate(ctx context.Context, st *store.Store, args []string) error {
 	return nil
 }
 
-const dbUsage = "usage: panel db backup\n       panel db restore <file> --yes"
+const dbUsage = "usage: panel db backup\n       panel db restore <file> --yes\n       panel db verify <file>"
 
 func dbCmd(ctx context.Context, cfg config.Config, st *store.Store, args []string) error {
 	if len(args) == 0 {
 		return errors.New(dbUsage)
 	}
 	runner := &backup.Runner{DatabaseURL: cfg.DatabaseURL, Dir: backup.DirFor(cfg.DataDir)}
+	if args[0] == "backup" || args[0] == "verify" {
+		if (args[0] == "backup" && len(args) != 1) || (args[0] == "verify" && len(args) != 2) {
+			return errors.New(dbUsage)
+		}
+		keys := map[int][]byte{}
+		for v, k := range cfg.OldMasterKeys {
+			keys[v] = k
+		}
+		keys[cfg.MasterKeyVersion] = cfg.MasterKey
+		box, err := crypto.NewBox(cfg.MasterKeyVersion, keys)
+		if err != nil {
+			return err
+		}
+		runner.Protection = backupProtection(cfg, box)
+		if args[0] == "verify" && runner.Protection == nil {
+			runner.Protection = &backup.Protection{Decrypt: box.Decrypt}
+		}
+	}
 	switch args[0] {
 	case "backup":
 		if len(args) != 1 {
 			return errors.New(dbUsage)
 		}
 		return dbBackup(ctx, runner, st)
+	case "verify":
+		if len(args) != 2 {
+			return errors.New(dbUsage)
+		}
+		return runner.Verify(ctx, args[1])
 	case "restore":
 		return dbRestore(ctx, cfg, runner, st, args[1:])
 	}
@@ -170,6 +193,9 @@ func dbBackup(ctx context.Context, runner *backup.Runner, st *store.Store) error
 		return fmt.Errorf("dump written to %s but the backups row failed: %w", e.Path, err)
 	}
 	fmt.Printf("backup written: %s (%d bytes)\n", e.Path, e.Size)
+	if e.ProtectionError != "" {
+		return errors.New("local backup saved; protection failed: " + e.ProtectionError)
+	}
 	return nil
 }
 
@@ -356,7 +382,7 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 		return settingsReader.Duration(ctx, "offline_after", time.Duration(cfg.OfflineAfter)*time.Second)
 	})
 	tg := notify.NewTelegram(&http.Client{Timeout: 10 * time.Second}, "")
-	backupRunner := &backup.Runner{DatabaseURL: cfg.DatabaseURL, Dir: backup.DirFor(cfg.DataDir)}
+	backupRunner := &backup.Runner{DatabaseURL: cfg.DatabaseURL, Dir: backup.DirFor(cfg.DataDir), Protection: backupProtection(cfg, box)}
 	deps := api.Deps{
 		Store: st, Box: box, Signer: crypto.NewSigner(cfg.SessionSecret), Log: log, Cfg: cfg, Driver: driver, Presence: presence,
 		Keys: keySvc, ApplyNow: func(ctx context.Context, id uuid.UUID) { applyW.Trigger(id) }, Notifier: tg,
@@ -368,8 +394,13 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	}
 	srv := api.New(deps)
 	alerts := worker.NewAlerts(srv.TelegramConfig, tg, log)
+	if cfg.AlertWebhookURL != "" {
+		alerts.Webhook = &notify.Webhook{URL: cfg.AlertWebhookURL, Secret: cfg.AlertWebhookSecret}
+	}
 	applyW.SetAlerts(alerts)
+	go srv.RunOperations(ctx, alerts)
 	statsW.SetAlerts(alerts)
+	statsW.SetProbeLocations(cfg.ProbeLocations)
 	stopWorkers := worker.Start(ctx, applyW, worker.NewExpiry(st, keySvc, log), statsW, worker.NewBackup(st, backupRunner, log))
 	httpHandler := srv.Handler()
 	mux := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -399,4 +430,11 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 		return serveErr
 	}
 	return nil
+}
+
+func backupProtection(cfg config.Config, box *crypto.Box) *backup.Protection {
+	if cfg.BackupRecipient == "" && cfg.BackupUploadURL == "" && !cfg.BackupVerify {
+		return nil
+	}
+	return &backup.Protection{Recipient: cfg.BackupRecipient, UploadURL: cfg.BackupUploadURL, UploadToken: cfg.BackupUploadToken, Verify: cfg.BackupVerify, Decrypt: box.Decrypt}
 }

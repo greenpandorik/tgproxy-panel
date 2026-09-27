@@ -200,6 +200,10 @@ func (h *Handler) StartTelemtUpdate(ctx context.Context, req *agentv1.UpdateTele
 	if !h.maintenance.TryLock() {
 		return nil, errors.New("node maintenance is already in progress")
 	}
+	if err := h.checkUpdateJournal(); err != nil {
+		h.maintenance.Unlock()
+		return nil, err
+	}
 	h.updMu.Lock()
 	if h.upd != nil && h.upd.running() {
 		h.updMu.Unlock()
@@ -230,10 +234,11 @@ func drainTimeoutSecs(req *agentv1.UpdateTelemtRequest) int {
 
 // updatePlan is what the preflight settled before anything on the node was touched.
 type updatePlan struct {
-	installed string
-	drain     bool
-	pause     bool
-	resume    bool
+	preserveClosed bool
+	installed      string
+	drain          bool
+	pause          bool
+	resume         bool
 	// drainSkip is why the drain will not run; empty when it will.
 	drainSkip string
 	hadWeb    bool
@@ -256,6 +261,23 @@ func (h *Handler) runTelemtUpdate(ctx context.Context, u *telemtUpdate, req *age
 	defer func() { _ = os.Remove(staged) }()
 	u.finish(UpdateStepDownload, UpdateStateOK, "downloaded and sha256 verified (%s)", shortSHA(req.GetSha256()))
 
+	journal, err := h.prepareUpdateJournal(ctx, plan, req.GetVersion())
+	if err != nil {
+		u.end(UpdateOutcomeRefused, fmt.Errorf("persist rollback intent: %w", err))
+		return
+	}
+	plan.preserveClosed = journal.HadWeb && !journal.AdmissionOpen
+	defer func() {
+		state := u.snapshot()
+		if state.Outcome == UpdateOutcomeUpdated || state.Outcome == UpdateOutcomeRolledBack {
+			journal.Active = false
+			journal.Outcome = state.Outcome
+			journal.Error = state.Error
+			if e := h.writeUpdateJournal(journal); e != nil {
+				h.log.Error("finalize update journal", "err", e)
+			}
+		}
+	}()
 	if err := h.updatePause(ctx, u, plan); err != nil {
 		u.end(UpdateOutcomeFailed, err)
 		return
@@ -529,6 +551,21 @@ func (h *Handler) verifyTelemtVersion(ctx context.Context, want string) error {
 
 // updateResume reopens admission and confirms from telemt that it is open.
 func (h *Handler) updateResume(ctx context.Context, u *telemtUpdate, plan updatePlan, paused bool) error {
+	if plan.preserveClosed {
+		if err := h.tm.WebPause(ctx); err != nil {
+			return err
+		}
+		st, err := h.tm.WebStatus(ctx)
+		if err != nil {
+			return err
+		}
+		if st.OperatorLifecycle == nil || st.OperatorLifecycle.AdmissionOpen {
+			return errors.New("original closed WEB admission could not be verified")
+		}
+		u.skip(UpdateStepResume, "operator admission was closed before maintenance and remains closed")
+		return nil
+	}
+
 	if !paused {
 		u.skip(UpdateStepResume, "admission was never closed")
 		return nil

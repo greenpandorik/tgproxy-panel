@@ -5,32 +5,43 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"filippo.io/age"
 )
 
 type Config struct {
-	HTTPAddr         string
-	DatabaseURL      string
-	MasterKey        []byte
-	MasterKeyVersion int
-	OldMasterKeys    map[int][]byte // MASTER_KEY_V<n>=base64 for decrypting older versions
-	SessionSecret    []byte
-	PublicURL        string // e.g. https://panel.example.com, no trailing slash
-	DataDir          string
-	NodeDriver       string // gateway | mock
-	MetricsToken     string
-	TProxyCommit     string
-	TelemtVersion    string
-	TelemtSHA256     string
-	FeatureTOTP      bool
-	LogLevel         string
-	ApplyInterval    int // seconds
-	OfflineAfter     int // seconds
-	GitHubRepo       string
-	GitHubToken      string
-	UpdateCheck      bool
+	ProbeToken         string
+	ProbeLocations     []string
+	BackupRecipient    string
+	BackupUploadURL    string
+	BackupUploadToken  string
+	BackupVerify       bool
+	AlertWebhookURL    string
+	AlertWebhookSecret string
+	HTTPAddr           string
+	DatabaseURL        string
+	MasterKey          []byte
+	MasterKeyVersion   int
+	OldMasterKeys      map[int][]byte // MASTER_KEY_V<n>=base64 for decrypting older versions
+	SessionSecret      []byte
+	PublicURL          string // e.g. https://panel.example.com, no trailing slash
+	DataDir            string
+	NodeDriver         string // gateway | mock
+	MetricsToken       string
+	TProxyCommit       string
+	TelemtVersion      string
+	TelemtSHA256       string
+	FeatureTOTP        bool
+	LogLevel           string
+	ApplyInterval      int // seconds
+	OfflineAfter       int // seconds
+	GitHubRepo         string
+	GitHubToken        string
+	UpdateCheck        bool
 }
 
 const (
@@ -47,6 +58,9 @@ func Load(getenv func(string) string) (Config, error) {
 		return def
 	}
 	cfg := Config{
+		ProbeToken: get("PROBE_TOKEN", ""), ProbeLocations: strings.FieldsFunc(get("PROBE_LOCATIONS", ""), func(r rune) bool { return r == ',' || r == ' ' }),
+		BackupRecipient: get("BACKUP_AGE_RECIPIENT", ""), BackupUploadURL: get("BACKUP_UPLOAD_URL", ""), BackupUploadToken: get("BACKUP_UPLOAD_TOKEN", ""), BackupVerify: get("BACKUP_VERIFY", "false") == "true",
+		AlertWebhookURL: get("ALERT_WEBHOOK_URL", ""), AlertWebhookSecret: get("ALERT_WEBHOOK_SECRET", ""),
 		HTTPAddr:      get("PANEL_HTTP_ADDR", ":8080"),
 		DatabaseURL:   get("DATABASE_URL", ""),
 		PublicURL:     strings.TrimRight(get("PANEL_PUBLIC_URL", "http://localhost:8080"), "/"),
@@ -111,6 +125,34 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.NodeDriver == "gateway" && cfg.TelemtSHA256 == "" {
 		return cfg, errors.New("TELEMT_SHA256_X86_64 is required when NODE_DRIVER=gateway (sha256 of the telemt " + cfg.TelemtVersion + " release asset telemt-x86_64-linux-gnu.tar.gz; the node install script verifies the download against it)")
+	}
+	if (cfg.ProbeToken != "" || len(cfg.ProbeLocations) > 0) && (len(cfg.ProbeToken) < 32 || len(cfg.ProbeLocations) == 0) {
+		return cfg, errors.New("PROBE_TOKEN requires at least 32 characters and PROBE_LOCATIONS")
+	}
+	for _, loc := range cfg.ProbeLocations {
+		if !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(loc) {
+			return cfg, errors.New("invalid PROBE_LOCATIONS entry")
+		}
+	}
+	if cfg.BackupRecipient != "" {
+		if _, err := age.ParseX25519Recipient(cfg.BackupRecipient); err != nil {
+			return cfg, errors.New("BACKUP_AGE_RECIPIENT must be an age X25519 public recipient")
+		}
+	}
+	if cfg.BackupUploadURL != "" && cfg.BackupRecipient == "" {
+		return cfg, errors.New("BACKUP_UPLOAD_URL requires BACKUP_AGE_RECIPIENT")
+	}
+	for _, endpoint := range []string{cfg.BackupUploadURL, cfg.AlertWebhookURL} {
+		if endpoint == "" {
+			continue
+		}
+		u, err := url.Parse(endpoint)
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+			return cfg, errors.New("backup and alert endpoints require HTTPS URLs without credentials, query or fragment")
+		}
+	}
+	if cfg.AlertWebhookURL != "" && len(cfg.AlertWebhookSecret) < 32 {
+		return cfg, errors.New("ALERT_WEBHOOK_SECRET requires at least 32 characters")
 	}
 	return cfg, nil
 }

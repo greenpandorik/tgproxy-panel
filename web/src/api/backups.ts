@@ -11,7 +11,11 @@ export const backupKeys = {
 export const useBackups = (enabled = true) =>
   useQuery({
     queryKey: backupKeys.all,
-    queryFn: () => api.get<{ items: Backup[] }>('/api/v1/backups'),
+    queryFn: () =>
+      api.get<{
+        items: Backup[];
+        protection?: { at: string; encrypted: boolean; uploaded: boolean; verified: boolean; error?: string };
+      }>('/api/v1/backups'),
     enabled,
   });
 

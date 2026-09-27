@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { useNodeRegistrationSecret, usePatchNode } from '@/api/nodes';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
 import { Panel, PanelHeader } from '@/components/common/Panel';
@@ -139,7 +140,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
 
           <p className="text-label text-mute">{t('nodes.field_public_ip_hint')}</p>
 
-          <div className="space-y-2">
+          <AdvancedSettings label={t('nodes.field_ad_tag')} defaultOpen={!!node.ad_tag} contentClassName="space-y-2">
             <Label htmlFor="node-ad-tag-edit">{t('nodes.field_ad_tag')}</Label>
             <Input
               id="node-ad-tag-edit"
@@ -177,8 +178,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
                 />
               )}
             </div>
-          </div>
-
+          </AdvancedSettings>
           <p className="flex items-start gap-2 text-label text-warn">
             <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
             {t('nodes.listeners_restart_note')}

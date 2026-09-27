@@ -66,7 +66,7 @@ func healthyHealth() nodedriver.HealthReport {
 		RelayActive: true, MTProxyActive: true, CaddyActive: true, Healthz: true, Readyz: true,
 		TProxyVersion: "telemt 3.5.7", UpstreamHealthy: true, EffectiveLatencyMs: 42,
 		ConnectSuccessTotal: 100, DcDataAvailable: true,
-		DCs:          []nodedriver.DcLatency{{DC: 1, LatencyMs: 40, Known: true}, {DC: 2}},
+		DCs:          []nodedriver.DcLatency{{DC: 1, LatencyMs: 40, Known: true}, {DC: 2, LatencyMs: 45, Known: true}},
 		Capabilities: nodedriver.TelemtCapabilities{telemt.CapTLSEmulation: &yes},
 	}
 }
@@ -89,7 +89,7 @@ func frontServer(t *testing.T) (*httptest.Server, *nodecheck.Checker) {
 		if err != nil {
 			return nil, err
 		}
-		if host != "example.com" {
+		if host != "example.com" && host != "5.6.7.8" {
 			return nil, fmt.Errorf("unexpected dial host %q", host)
 		}
 		switch port {
@@ -249,9 +249,9 @@ func TestRunUnreachableNodeIsNotAllFailures(t *testing.T) {
 	if counts[domain.CheckNotAvailable] < counts[domain.CheckFail] {
 		t.Fatalf("an unreachable node should mostly be not_available, got %v", counts)
 	}
-	// The two reachability checks are the only failures; everything downstream is unknown.
-	if got := counts[domain.CheckFail]; got != 2 {
-		t.Fatalf("failures = %d, want the two reachability checks: %v", got, counts)
+	// The three reachability checks are the only failures; everything downstream is unknown.
+	if got := counts[domain.CheckFail]; got != 3 {
+		t.Fatalf("failures = %d, want the three reachability checks: %v", got, counts)
 	}
 	if c := checkIn(t, run, domain.GroupTransport, "tcp_443"); c.Status != domain.CheckFail {
 		t.Fatalf("tcp_443 = %+v, want fail", c)
@@ -385,7 +385,7 @@ func TestRunStaysInsideItsBudget(t *testing.T) {
 	if elapsed := time.Since(start); elapsed > 3*time.Second {
 		t.Fatalf("the pass took %v; it must divide its own 700ms budget", elapsed)
 	}
-	if len(run.Groups) != 6 {
+	if len(run.Groups) != 7 {
 		t.Fatalf("a timed-out pass still reports every group, got %d", len(run.Groups))
 	}
 }

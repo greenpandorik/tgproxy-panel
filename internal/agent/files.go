@@ -25,11 +25,25 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 		_ = os.Remove(name)
 		return err
 	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(name)
+		return err
+	}
 	if err := tmp.Close(); err != nil {
 		_ = os.Remove(name)
 		return err
 	}
-	return os.Rename(name, path)
+	if err := os.Rename(name, path); err != nil {
+		_ = os.Remove(name)
+		return err
+	}
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dir.Close() }()
+	return dir.Sync()
 }
 
 // chown is best-effort via the exec layer so tests on macOS do not need root.

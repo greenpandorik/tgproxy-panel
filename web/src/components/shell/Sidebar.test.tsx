@@ -81,7 +81,7 @@ describe('Sidebar navigation', () => {
 
   it('links to servers without duplicating dashboard counters', async () => {
     renderSidebar();
-    expect(await screen.findByRole('link', { name: 'Серверы' })).toHaveAttribute('href', '/nodes');
+    expect(await screen.findByRole('link', { name: 'Парк серверов' })).toHaveAttribute('href', '/nodes');
     expect(screen.queryByText('1/2')).toBeNull();
   });
 });

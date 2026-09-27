@@ -10,6 +10,7 @@ import { CopyButton } from '@/components/common/CopyButton';
 import { EmptyState, PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
+import { useSection } from '@/components/common/SectionNav';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -120,8 +121,6 @@ function NodeCardSkeleton() {
   );
 }
 
-type MonitoringView = 'overview' | 'problems' | 'nodes' | 'web';
-
 function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Record<string, MonitoringPoint[]> }) {
   const { t, i18n } = useTranslation();
   const online = nodes.filter((node) => node.status === 'online' || node.status === 'degraded').length;
@@ -148,14 +147,26 @@ function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Rec
     [t('monitoring.fleet_sessions'), formatNumber(sessions, i18n.language)],
     [t('monitoring.fleet_traffic'), measuredThroughput ? `${formatBytes(throughput)}/s` : t('common.not_available')],
   ];
-  return <Panel><PanelHeader icon={Activity} title={t('monitoring.fleet_title')} /><div className="grid grid-cols-2 gap-px bg-hairline sm:grid-cols-3 xl:grid-cols-5">{items.map(([label,value])=><div key={label} className="bg-card px-5 py-4"><p className="text-micro text-mute">{label}</p><p className="mt-1 text-title text-foreground">{value}</p></div>)}</div></Panel>;
+  return (
+    <Panel>
+      <PanelHeader icon={Activity} title={t('monitoring.fleet_title')} />
+      <div className="grid grid-cols-2 gap-px bg-hairline sm:grid-cols-3 xl:grid-cols-5">
+        {items.map(([label, value]) => (
+          <div key={label} className="bg-card px-5 py-4">
+            <p className="text-micro text-mute">{label}</p>
+            <p className="mt-1 text-title text-foreground">{value}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
 }
 
 export function MonitoringPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [range, setRange] = useState<MonitoringRange>('24h');
-  const [view, setView] = useState<MonitoringView>('overview');
+  const [view, setView] = useSection(['overview', 'problems', 'nodes', 'web', 'integrations'], 'overview');
   const overviewQuery = useMonitoringOverview(range);
   const { data: branding } = useBranding();
   const nodesQuery = useNodes();
@@ -178,6 +189,7 @@ export function MonitoringPage() {
     <>
       <PageHeader
         title={t('monitoring.title')}
+        description={t('workspace.monitoring_hint')}
         actions={
           <>
             <HelpButton topic="monitoring" />
@@ -196,15 +208,18 @@ export function MonitoringPage() {
         value={view}
         onChange={setView}
         className="mb-4 max-w-full overflow-x-auto"
-        options={(['overview', 'problems', 'nodes', 'web'] as const).map((value) => ({ value, label: t(`monitoring.view_${value}`) }))}
+        options={(['overview', 'problems', 'nodes', 'web', 'integrations'] as const).map((value) => ({
+          value,
+          label: t(`monitoring.view_${value}`),
+        }))}
       />
 
-      {loading && view !== 'problems' ? (
+      {loading && view !== 'problems' && view !== 'integrations' ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <NodeCardSkeleton />
           <NodeCardSkeleton />
         </div>
-      ) : overviewQuery.isError ? (
+      ) : overviewQuery.isError && view !== 'integrations' && view !== 'problems' ? (
         /* The readings failed to arrive, which is not the same as a network with
            no nodes in it - so it says so, and offers the one useful move. */
         <ErrorState
@@ -212,7 +227,7 @@ export function MonitoringPage() {
           retryLabel={t('common.refresh')}
           onRetry={() => void overviewQuery.refetch()}
         />
-      ) : view !== 'problems' && nodes.length === 0 ? (
+      ) : view !== 'problems' && view !== 'integrations' && nodes.length === 0 ? (
         <EmptyState
           icon={Server}
           title={t('monitoring.empty_no_nodes')}
@@ -239,25 +254,27 @@ export function MonitoringPage() {
             </Arriving>
           ))}
         </div>
-      ) : (
+      ) : view === 'web' ? (
         <FleetCarriersCard nodes={nodesQuery.data?.items ?? []} />
-      )}
+      ) : null}
 
-      {view === 'overview' && <Arriving index={nodes.length + 1}>
-        <Panel>
-          <PanelHeader icon={Plug} title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
-          <PanelBody className="space-y-4">
-            <p className="max-w-[72ch] text-body text-mute">{t('monitoring.prometheus_description')}</p>
-            <pre className="mono overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2.5 text-mono text-foreground">
-              {METRICS_SNIPPET}
-            </pre>
-            <p className="max-w-[72ch] text-label text-mute">{t('monitoring.prometheus_node_note')}</p>
-            <p className="text-label text-mute">
-              {t('monitoring.docs_link_prefix')} <span className="mono text-mono">docs/monitoring.md</span>
-            </p>
-          </PanelBody>
-        </Panel>
-      </Arriving>}
+      {view === 'integrations' && (
+        <Arriving index={nodes.length + 1}>
+          <Panel>
+            <PanelHeader icon={Plug} title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
+            <PanelBody className="space-y-4">
+              <p className="max-w-[72ch] text-body text-mute">{t('monitoring.prometheus_description')}</p>
+              <pre className="mono overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2.5 text-mono text-foreground">
+                {METRICS_SNIPPET}
+              </pre>
+              <p className="max-w-[72ch] text-label text-mute">{t('monitoring.prometheus_node_note')}</p>
+              <p className="text-label text-mute">
+                {t('monitoring.docs_link_prefix')} <span className="mono text-mono">docs/monitoring.md</span>
+              </p>
+            </PanelBody>
+          </Panel>
+        </Arriving>
+      )}
     </>
   );
 }

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"tgwebproxy/internal/notify"
 	"tgwebproxy/internal/store/db"
 )
 
@@ -20,9 +21,10 @@ type Sender interface {
 const alertRateLimit = 5 * time.Minute
 
 type Alerts struct {
-	src func(ctx context.Context) (enabled bool, botToken, chatID string, err error)
-	tg  Sender
-	log *slog.Logger
+	Webhook *notify.Webhook
+	src     func(ctx context.Context) (enabled bool, botToken, chatID string, err error)
+	tg      Sender
+	log     *slog.Logger
 
 	mu   sync.Mutex
 	sent map[string]time.Time // key: "<nodeID>|<kind>"
@@ -49,6 +51,13 @@ func (a *Alerts) markSent(key string) {
 }
 
 func (a *Alerts) send(ctx context.Context, nodeID, kind, text string) {
+	if a.Webhook != nil && a.allow(nodeID+"|webhook_"+kind) {
+		if err := a.Webhook.Send(ctx, nodeID, kind, text); err != nil {
+			a.log.Warn("webhook delivery", "kind", kind, "err", err)
+		} else {
+			a.markSent(nodeID + "|webhook_" + kind)
+		}
+	}
 	enabled, token, chatID, err := a.src(ctx)
 	if err != nil {
 		a.log.Error("telegram config", "err", err)

@@ -458,7 +458,7 @@ func healthJSON(h nodedriver.HealthReport) map[string]any {
 	for _, d := range h.DCs {
 		dcs = append(dcs, map[string]any{"dc": d.DC, "latency_ms": d.LatencyMs, "known": d.Known, "ip_preference": d.IPPreference})
 	}
-	return map[string]any{
+	out := map[string]any{
 		"relay_active": h.RelayActive, "mtproxy_active": h.MTProxyActive, "caddy_active": h.CaddyActive,
 		"healthz": h.Healthz, "readyz": h.Readyz, "tproxy_version": h.TProxyVersion, "agent_version": h.AgentVersion,
 		"uptime_seconds": h.UptimeSeconds, "cpu_percent": h.CPUPercent, "mem_used_percent": h.MemUsedPercent,
@@ -467,8 +467,21 @@ func healthJSON(h nodedriver.HealthReport) map[string]any {
 		"effective_latency_ms": h.EffectiveLatencyMs, "connect_success_total": h.ConnectSuccessTotal,
 		"connect_fail_total": h.ConnectFailTotal, "upstream_last_check_age_secs": h.UpstreamLastCheckAgeSecs,
 		"dc_data_available": h.DcDataAvailable,
+		"reliability":       h.Reliability,
 		"web_runtime":       webRuntimeJSON(h.Web),
 	}
+	// Absent from agents that do not measure them, and left out rather than sent as zero.
+	for key, v := range map[string]*float64{
+		"cpu_utilisation_percent": h.CPUUtilisationPercent,
+		"load_average_1":          h.LoadAverage1,
+		"load_average_5":          h.LoadAverage5,
+		"load_average_15":         h.LoadAverage15,
+	} {
+		if v != nil {
+			out[key] = *v
+		}
+	}
+	return out
 }
 
 func (s *Server) handleNodeProfiles(w http.ResponseWriter, r *http.Request) {

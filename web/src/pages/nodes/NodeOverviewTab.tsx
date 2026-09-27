@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next';
 
 import { useNodeHealth, useNodeJobs } from '@/api/nodes';
 import { isMetricPresent } from '@/components/common/metric';
-import { useAuth } from '@/auth/AuthProvider';
 import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
@@ -29,9 +28,8 @@ import { ApiError } from '@/lib/api';
 import { formatCompactDuration, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-import { NodeCheckCard } from './NodeCheckCard';
+import { ReliabilityReadings } from './NodeReliability';
 import { NodeDcsCard } from './NodeDcsCard';
-import { NodeListenersCard } from './NodeListenersCard';
 import { DASH, telemtVersion } from './nodeDisplay';
 
 import type { ReactNode } from 'react';
@@ -50,8 +48,8 @@ function isCommitHash(v: string): boolean {
 
 function Cell({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-center justify-between gap-3 bg-card px-4 py-3', className)}>
-      <span className="truncate text-label text-mute">{label}</span>
+    <div className={cn('flex flex-wrap items-center justify-between gap-x-3 gap-y-1 bg-card px-4 py-3', className)}>
+      <span className="text-label text-mute">{label}</span>
       <span className="mono shrink-0 text-mono">{children}</span>
     </div>
   );
@@ -159,9 +157,17 @@ function JobRow({ job }: { job: ApplyJob }) {
 
   return (
     <Fragment>
-      <TableRow className="cursor-pointer" onClick={() => setExpanded((e) => !e)} aria-expanded={expanded}>
+      <TableRow>
         <TableCell className="w-0 pr-0 text-mute">
-          {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          <button
+            type="button"
+            className="flex size-9 items-center justify-center rounded-control border border-hairline-strong hover:bg-elevated focus-visible:outline-2 focus-visible:outline-ring"
+            aria-expanded={expanded}
+            aria-label={t('nodes.job_details')}
+            onClick={() => setExpanded((e) => !e)}
+          >
+            {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          </button>
         </TableCell>
         <TableCell className="mono text-mono text-mute">{t(`nodes.job_kind_${job.kind}`, job.kind)}</TableCell>
         <TableCell className="mono text-mono text-mute">{formatDateTime(job.created_at, i18n.language)}</TableCell>
@@ -198,9 +204,8 @@ function JobRow({ job }: { job: ApplyJob }) {
 }
 
 // What the node is doing right now, in four panels.
-export function NodeOverviewTab({ node }: { node: Node }) {
+export function NodeOverviewTab({ node, maintenance = false }: { node: Node; maintenance?: boolean }) {
   const { t, i18n } = useTranslation();
-  const { isWriter } = useAuth();
   const healthQuery = useNodeHealth(node.id, node.online);
   const jobsQuery = useNodeJobs(node.id);
   const telemt = node.engine === 'telemt';
@@ -211,141 +216,146 @@ export function NodeOverviewTab({ node }: { node: Node }) {
 
   return (
     <div className={cn(ENTER_CLASS, 'flex flex-col gap-4')}>
-      <Panel>
-        <PanelHeader icon={HeartPulse} title={t('nodes.overview_health')} />
-        {offline ? (
-          <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
-        ) : healthQuery.isError ? (
-          <PanelError onRetry={() => void healthQuery.refetch()} />
-        ) : !health ? (
-          <HealthSkeleton telemt={telemt} />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2 lg:grid-cols-3">
-              <Cell label={t(telemt ? 'nodes.overview_telemt_active' : 'nodes.overview_relay_active')}>
-                <ServiceState active={health.relay_active} />
-              </Cell>
-              {/* telemt serves Fake-TLS itself and reports mtproxy_active as a constant
+      {!maintenance && (
+        <>
+          <Panel>
+            <PanelHeader icon={HeartPulse} title={t('nodes.overview_health')} />
+            {offline ? (
+              <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
+            ) : healthQuery.isError ? (
+              <PanelError onRetry={() => void healthQuery.refetch()} />
+            ) : !health ? (
+              <HealthSkeleton telemt={telemt} />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2 lg:grid-cols-3">
+                  <Cell label={t(telemt ? 'nodes.overview_telemt_active' : 'nodes.overview_relay_active')}>
+                    <ServiceState active={health.relay_active} />
+                  </Cell>
+                  {/* telemt serves Fake-TLS itself and reports mtproxy_active as a constant
                   true - a row that can never say anything is noise, so it is omitted. */}
-              {!telemt && (
-                <Cell label={t('nodes.overview_mtproxy_active')}>
-                  <ServiceState active={health.mtproxy_active} />
-                </Cell>
-              )}
-              <Cell label={t('nodes.overview_caddy_active')}>
-                <ServiceState active={health.caddy_active} />
-              </Cell>
-              <Cell label={t('nodes.overview_healthz')}>
-                <ServiceState active={health.healthz} />
-              </Cell>
-              <Cell label={t('nodes.overview_readyz')}>
-                <ServiceState active={health.readyz} />
-              </Cell>
-              <ServiceGridFiller telemt={telemt} />
-            </div>
+                  {!telemt && (
+                    <Cell label={t('nodes.overview_mtproxy_active')}>
+                      <ServiceState active={health.mtproxy_active} />
+                    </Cell>
+                  )}
+                  <Cell label={t('nodes.overview_caddy_active')}>
+                    <ServiceState active={health.caddy_active} />
+                  </Cell>
+                  <Cell label={t('nodes.overview_healthz')}>
+                    <ServiceState active={health.healthz} />
+                  </Cell>
+                  <Cell label={t('nodes.overview_readyz')}>
+                    <ServiceState active={health.readyz} />
+                  </Cell>
+                  <ServiceGridFiller telemt={telemt} />
+                </div>
 
-            {/* Uptime leaves the service grid and joins the three resource
+                {/* Uptime leaves the service grid and joins the three resource
                 figures: the four of them are the numbers on this page, and a
                 number belongs in a tile rather than in a row of yes/no states. */}
-            <StatGrid tiles={healthTiles(health, t, i18n.language)} className={HEALTH_GRID} />
-          </>
-        )}
-      </Panel>
+                <StatGrid tiles={healthTiles(health, t, i18n.language)} className={HEALTH_GRID} />
+              </>
+            )}
+          </Panel>
 
-      {/* The same health readout, read for its other half: how the node reaches
+          {/* The same health readout, read for its other half: how the node reaches
           Telegram. It follows the services panel because the two answer the
           same question in order - is the proxy up, and can it get through. */}
-      <NodeDcsCard
-        engine={node.engine}
-        offline={offline}
-        health={health}
-        error={healthQuery.isError}
-        onRetry={() => void healthQuery.refetch()}
-      />
+          <NodeDcsCard
+            engine={node.engine}
+            offline={offline}
+            health={health}
+            error={healthQuery.isError}
+            onRetry={() => void healthQuery.refetch()}
+          />
 
-      <Panel>
-        <PanelHeader icon={Package} title={t('nodes.overview_versions')} />
-        <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-3">
-          {telemt ? (
-            <Cell label={t('nodes.overview_telemt_version')}>
-              <span className={telemtVersion(node) ? 'text-mute' : 'text-dim'}>{telemtVersion(node) || DASH}</span>
-            </Cell>
-          ) : (
-            <Cell label={t('nodes.overview_tproxy_version')}>
-              {node.tproxy_version ? (
-                isCommitHash(node.tproxy_version) ? (
-                  <a
-                    href={`${TPROXY_REPO}/commit/${node.tproxy_version}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-brand-ink underline-offset-3 hover:underline"
-                  >
-                    {node.tproxy_version.slice(0, 12)}
-                    <ExternalLink className="size-3" aria-hidden="true" />
-                  </a>
-                ) : (
-                  <span className="text-mute">{node.tproxy_version}</span>
-                )
+          <ReliabilityReadings report={health?.reliability} />
+        </>
+      )}
+      {maintenance && (
+        <>
+          <Panel>
+            <PanelHeader icon={Package} title={t('nodes.overview_versions')} />
+            <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-3">
+              {telemt ? (
+                <Cell label={t('nodes.overview_telemt_version')}>
+                  <span className={telemtVersion(node) ? 'text-mute' : 'text-dim'}>{telemtVersion(node) || DASH}</span>
+                </Cell>
               ) : (
-                <span className="text-dim">{DASH}</span>
+                <Cell label={t('nodes.overview_tproxy_version')}>
+                  {node.tproxy_version ? (
+                    isCommitHash(node.tproxy_version) ? (
+                      <a
+                        href={`${TPROXY_REPO}/commit/${node.tproxy_version}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-brand-ink underline-offset-3 hover:underline"
+                      >
+                        {node.tproxy_version.slice(0, 12)}
+                        <ExternalLink className="size-3" aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <span className="text-mute">{node.tproxy_version}</span>
+                    )
+                  ) : (
+                    <span className="text-dim">{DASH}</span>
+                  )}
+                </Cell>
               )}
-            </Cell>
-          )}
-          <Cell label={t('nodes.overview_agent_version')}>
-            <span className={node.agent_version ? 'text-mute' : 'text-dim'}>{node.agent_version || DASH}</span>
-          </Cell>
-          <Cell label={t('nodes.overview_last_apply')}>
-            <span className="text-mute">
-              {node.last_apply_at ? formatDateTime(node.last_apply_at, i18n.language) : t('nodes.overview_never')}
-            </span>
-          </Cell>
-        </div>
-      </Panel>
+              <Cell label={t('nodes.overview_agent_version')}>
+                <span className={node.agent_version ? 'text-mute' : 'text-dim'}>{node.agent_version || DASH}</span>
+              </Cell>
+              <Cell label={t('nodes.overview_last_apply')}>
+                <span className="text-mute">
+                  {node.last_apply_at ? formatDateTime(node.last_apply_at, i18n.language) : t('nodes.overview_never')}
+                </span>
+              </Cell>
+            </div>
+          </Panel>
 
-      {telemt && <NodeListenersCard node={node} canEdit={isWriter} />}
-
-      <NodeCheckCard node={node} />
-
-      <Panel>
-        <PanelHeader
-          icon={History}
-          title={t('nodes.overview_jobs_title')}
-          meta={jobs.length > 0 ? String(jobs.length) : undefined}
-        />
-        {jobsQuery.isLoading ? (
-          <div className="divide-y divide-hairline">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex h-11 items-center gap-4 px-3">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-3 w-36" />
-                <Skeleton className="ml-auto h-3 w-12" />
-                <Skeleton className="h-3 w-16" />
+          <Panel>
+            <PanelHeader
+              icon={History}
+              title={t('nodes.overview_jobs_title')}
+              meta={jobs.length > 0 ? String(jobs.length) : undefined}
+            />
+            {jobsQuery.isLoading ? (
+              <div className="divide-y divide-hairline">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex h-11 items-center gap-4 px-3">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-36" />
+                    <Skeleton className="ml-auto h-3 w-12" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : jobsQuery.isError ? (
-          <PanelError onRetry={() => void jobsQuery.refetch()} />
-        ) : jobs.length === 0 ? (
-          <PanelEmpty>{t('nodes.overview_jobs_empty')}</PanelEmpty>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-0" />
-                <TableHead>{t('nodes.job_column_kind')}</TableHead>
-                <TableHead>{t('nodes.job_column_created')}</TableHead>
-                <TableHead className="text-right">{t('nodes.job_column_duration')}</TableHead>
-                <TableHead className="text-right">{t('nodes.job_column_status')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {jobs.map((job) => (
-                <JobRow key={job.id} job={job} />
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Panel>
+            ) : jobsQuery.isError ? (
+              <PanelError onRetry={() => void jobsQuery.refetch()} />
+            ) : jobs.length === 0 ? (
+              <PanelEmpty>{t('nodes.overview_jobs_empty')}</PanelEmpty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-0" />
+                    <TableHead>{t('nodes.job_column_kind')}</TableHead>
+                    <TableHead>{t('nodes.job_column_created')}</TableHead>
+                    <TableHead className="text-right">{t('nodes.job_column_duration')}</TableHead>
+                    <TableHead className="text-right">{t('nodes.job_column_status')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {jobs.map((job) => (
+                    <JobRow key={job.id} job={job} />
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Panel>
+        </>
+      )}
     </div>
   );
 }

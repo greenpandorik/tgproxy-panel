@@ -4,12 +4,15 @@ package nodediag
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"tgwebproxy/internal/reliability"
 
 	"github.com/google/uuid"
 
@@ -110,6 +113,29 @@ func (e *Engine) Run(ctx context.Context, t Target, trigger domain.DiagnosticsTr
 			telemtGroup(t, node),
 			telegramGroup(node),
 		},
+	}
+	if public.resolved() {
+		group := newGroup("public_addresses")
+		for i, addr := range public.addrs {
+			if i >= 8 {
+				group.add(na("remaining_addresses", "address verification is limited to eight records per run"))
+				break
+			}
+			key := addr.IP.String()
+			if ctx.Err() != nil {
+				group.add(na(key, "diagnostic budget exhausted"))
+				continue
+			}
+			probe, err := e.checker().ProbeTLS(ctx, 2*time.Second, key, "443", t.Hostname, nil)
+			if err != nil {
+				group.add(fail(key, "unreachable", "TLS check for this published address failed"))
+			} else if probe.HostnameErr != nil {
+				group.add(fail(key, "certificate_mismatch", "certificate does not cover the hostname"))
+			} else {
+				group.add(ok(key, "reachable", "TLS handshake succeeded for this published address"))
+			}
+		}
+		run.Groups = append(run.Groups, group.group())
 	}
 	run.Tally()
 	if run.Total > 0 && !public.reachable() && !node.reachable() {
@@ -605,7 +631,9 @@ func telegramGroup(n nodeFacts) domain.DiagnosticGroup {
 
 	h := n.health
 	age := strconv.FormatInt(h.UpstreamLastCheckAgeSecs, 10) + "s ago"
-	if h.UpstreamHealthy {
+	if h.UpstreamLastCheckAgeSecs > 120 {
+		g.add(na("upstream_health", "upstream reading is stale: "+age))
+	} else if h.UpstreamHealthy {
 		g.add(ok("upstream_health", "healthy", "telemt's route to Telegram is healthy, last checked "+age))
 	} else {
 		g.add(fail("upstream_health", "unhealthy", "telemt cannot reach Telegram ("+strconv.Itoa(h.UpstreamFails)+" failures, last checked "+age+")"))
@@ -632,18 +660,46 @@ func telegramGroup(n nodeFacts) domain.DiagnosticGroup {
 		g.add(na("datacenters", "telemt listed no datacenters"))
 	case known == 0:
 		g.add(fail("datacenters", value, "no Telegram datacenter has answered a latency probe"))
+	case known < len(h.DCs):
+		g.add(warn("datacenters", value, "some Telegram datacenters have no fresh latency reading"))
 	default:
 		g.add(ok("datacenters", value, "Telegram datacenters with a measured latency"))
 	}
 
+	var report reliability.Report
+	_ = json.Unmarshal(h.Reliability, &report)
+	w := report.Connections
 	switch {
-	case h.ConnectSuccessTotal > 0:
-		g.add(ok("connect_attempts", formatCount(float64(h.ConnectSuccessTotal)), "connections to Telegram are succeeding"))
-	case h.ConnectFailTotal > 0:
-		g.add(fail("connect_attempts", formatCount(float64(h.ConnectFailTotal))+" failed", "every connection attempt to Telegram has failed"))
+	case w == nil || time.Since(w.At) > 2*time.Minute:
+		g.add(na("connect_attempts", "no fresh connection interval; lifetime counters do not establish current health"))
+	case w.Success+w.Failed == 0:
+		g.add(na("connect_attempts", "no connection attempts during the measured interval"))
+	case w.Success == 0:
+		g.add(fail("connect_attempts", formatCount(float64(w.Failed))+" failed", "all attempts in the recent interval failed"))
+	case w.Failed > 0:
+		g.add(warn("connect_attempts", formatCount(float64(w.Failed))+" failed", "partial failures in the recent interval"))
 	default:
-		g.add(na("connect_attempts", "telemt has not attempted a connection yet"))
+		g.add(ok("connect_attempts", formatCount(float64(w.Success))+" succeeded", "successful attempts in the recent interval"))
 	}
+	for _, r := range report.Routes {
+		key := "route_" + r.Kind
+		switch {
+		case r.Age > 120:
+			g.add(na(key, "route reading is stale"))
+		case !r.Healthy:
+			g.add(fail(key, "unhealthy", "this route cannot reach Telegram"))
+		default:
+			g.add(ok(key, "healthy", "fresh upstream reading"))
+		}
+	}
+	for _, d := range report.DCs {
+		if d.Required > 0 && d.Alive == 0 {
+			g.add(fail("dc_writers_"+strconv.Itoa(d.ID), "0", "no live Middle Proxy writers for this DC"))
+		} else if d.Required > 0 && d.Alive < d.Required {
+			g.add(warn("dc_writers_"+strconv.Itoa(d.ID), strconv.Itoa(d.Alive)+" / "+strconv.Itoa(d.Required), "partial DC coverage"))
+		}
+	}
+
 	return g.group()
 }
 

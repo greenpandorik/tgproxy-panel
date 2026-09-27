@@ -23,6 +23,7 @@ var allowedForViewer = map[string]bool{
 }
 
 var publicMutations = map[string]bool{
+	"POST /api/v1/probes/report":            true, // Independently authenticated by the dedicated probe token.
 	"POST /api/v1/auth/login":               true,
 	"POST /api/v1/auth/totp/verify":         true,
 	"POST /api/v1/install/{token}/register": true,

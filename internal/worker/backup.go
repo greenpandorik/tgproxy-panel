@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -55,6 +56,10 @@ func (b *Backup) RunOnce(ctx context.Context) (bool, error) {
 	}
 	if _, err := b.st.Q.InsertBackup(ctx, db.InsertBackupParams{Path: e.Name, Size: e.Size, Kind: db.BackupKind(e.Kind)}); err != nil {
 		return false, err
+	}
+	if e.ProtectionError != "" {
+		_, _ = b.st.Q.InsertAlert(ctx, db.InsertAlertParams{Kind: "backup_protection", Message: e.ProtectionError})
+		return true, errors.New(e.ProtectionError)
 	}
 	if err := b.prune(ctx, sched.Keep); err != nil {
 		b.log.Error("prune backups", "err", err)

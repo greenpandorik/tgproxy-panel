@@ -3,6 +3,7 @@ package nodedriver
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 var ErrOffline = gateway.ErrOffline
 
 type HealthReport struct {
+	Reliability                                              json.RawMessage `json:",omitempty"`
 	RelayActive, MTProxyActive, CaddyActive, Healthz, Readyz bool
 	TProxyVersion, AgentVersion                              string
 	UptimeSeconds                                            int64

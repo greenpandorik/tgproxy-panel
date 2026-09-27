@@ -73,6 +73,7 @@ func SiteFromProto(s *agentv1.SiteBundle) SiteBundle {
 
 func HealthFromProto(h *agentv1.HealthReport) HealthReport {
 	out := HealthReport{
+		Reliability: h.GetReliabilityJson(),
 		RelayActive: h.GetRelayActive(), MTProxyActive: h.GetMtproxyActive(), CaddyActive: h.GetCaddyActive(),
 		Healthz: h.GetHealthz(), Readyz: h.GetReadyz(), TProxyVersion: h.GetTproxyVersion(), AgentVersion: h.GetAgentVersion(),
 		UptimeSeconds: h.GetUptimeSeconds(), CPUPercent: h.GetCpuPercent(), MemUsedPercent: h.GetMemUsedPercent(),
@@ -95,7 +96,8 @@ func HealthFromProto(h *agentv1.HealthReport) HealthReport {
 
 func HealthToProto(h HealthReport) *agentv1.HealthReport {
 	out := &agentv1.HealthReport{
-		RelayActive: h.RelayActive, MtproxyActive: h.MTProxyActive, CaddyActive: h.CaddyActive,
+		ReliabilityJson: h.Reliability,
+		RelayActive:     h.RelayActive, MtproxyActive: h.MTProxyActive, CaddyActive: h.CaddyActive,
 		Healthz: h.Healthz, Readyz: h.Readyz, TproxyVersion: h.TProxyVersion, AgentVersion: h.AgentVersion,
 		UptimeSeconds: h.UptimeSeconds, CpuPercent: h.CPUPercent, MemUsedPercent: h.MemUsedPercent,
 		CpuUtilisationPercent: h.CPUUtilisationPercent, LoadAverage_1: h.LoadAverage1,

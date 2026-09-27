@@ -23,6 +23,7 @@ import { ApiError } from '@/lib/api';
 import { formatCompactAge, formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
+import { FleetUpdates } from './FleetUpdates';
 import { CreateNodeDialog } from './CreateNodeDialog';
 import { DC_TONE_TEXT, dcTone, nodeDcLatency } from './dcDisplay';
 import { EngineTag } from './EngineTag';
@@ -317,7 +318,7 @@ export function NodesPage() {
       <div className="space-y-6">
         <PageHeader
           title={t('nodes.title')}
-          description={nodes.length > 0 ? t('nodes.header_online', { online, total: nodes.length }) : undefined}
+          description={t('workspace.fleet_hint')}
           actions={
             <>
               <HelpButton topic="nodes.list" />
@@ -331,6 +332,7 @@ export function NodesPage() {
           }
         />
 
+        <FleetUpdates nodes={nodes} />
         {isLoading ? (
           <DataTableSkeleton columns={isWriter ? 10 : 9} rows={4} />
         ) : nodes.length === 0 ? (

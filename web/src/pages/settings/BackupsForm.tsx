@@ -77,6 +77,7 @@ export function BackupsForm() {
   }, [settingsQuery.data, reset]);
 
   const scheduleEnabled = watch('enabled');
+  const protection = backupsQuery.data?.protection;
   const backups = backupsQuery.data?.items ?? [];
 
   const onCreate = async () => {
@@ -135,6 +136,23 @@ export function BackupsForm() {
             <p className="max-w-prose text-label text-mute">{t('settings.backups_master_key_note')}</p>
           </PanelBody>
 
+          <PanelBody className="space-y-3 border-b border-hairline">
+            <h3 className="text-body font-medium">{t('workspace.backup_protection')}</h3>
+            <p className="max-w-[72ch] text-label text-mute">{t('workspace.backup_protection_hint')}</p>
+            <dl className="space-y-2">
+              {(['encrypted', 'uploaded', 'verified'] as const).map((key) => (
+                <div key={key} className="flex flex-wrap justify-between gap-2 text-body">
+                  <dt>{t(`workspace.backup_${key}`)}</dt>
+                  <dd>{t(protection?.[key] ? 'probe.ok' : 'probe.not_run')}</dd>
+                </div>
+              ))}
+            </dl>
+            {protection?.error && (
+              <p role="alert" className="text-body text-err">
+                {protection.error}
+              </p>
+            )}
+          </PanelBody>
           {backupsQuery.isLoading ? (
             // Three rows of the table that is coming, not a grey block.
             <PanelBody className="space-y-3">

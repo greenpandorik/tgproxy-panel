@@ -122,6 +122,7 @@ func (s *Server) Handler() chi.Router {
 	r.Get("/s/{token}.json", s.handleSubscriptionJSON)
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Post("/probes/report", s.handleProbeReport)
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/totp/verify", s.handleTOTPVerify)
 		r.Get("/install/{token}.sh", s.handleInstallScript)
@@ -166,7 +167,10 @@ func (s *Server) mountProtected(r chi.Router) {
 		r.With(RequireRole(writers...)).Delete("/", s.handleDeleteNode)
 		r.With(RequireRole(writers...)).Get("/install-command", s.handleInstallCommand)
 		r.With(RequireRole(writers...)).Get("/registration-secret", s.handleNodeRegistrationSecret)
+		r.Get("/probes", s.handleNodeProbes)
 		r.Get("/health", s.handleNodeHealth)
+		r.Get("/reliability", s.handleNodeReliability)
+		r.With(RequireRole(writers...)).Put("/reliability", s.handleNodeReliability)
 		r.Get("/profiles", s.handleNodeProfiles)
 		r.Get("/stats", s.handleNodeStats)
 		r.Get("/metrics", s.handleNodeMetrics)
@@ -192,6 +196,9 @@ func (s *Server) mountProtected(r chi.Router) {
 	s.mountSites(r)
 	s.mountBranding(r)
 	s.mountDashboard(r)
+	r.Get("/fleet/updates", s.handleFleetList)
+	r.With(RequireRole(writers...)).Post("/fleet/updates", s.handleFleetStart)
+	r.With(RequireRole(writers...)).Post("/fleet/updates/{id}/stop", s.handleFleetStop)
 	s.mountMonitoring(r)
 	s.mountSettings(r)
 	s.mountBackups(r)

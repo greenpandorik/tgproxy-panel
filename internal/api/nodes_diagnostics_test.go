@@ -101,8 +101,8 @@ func TestNodeDiagnosticsRunsAndPersists(t *testing.T) {
 	if run.ID == 0 || run.NodeID != n.ID.String() || run.Trigger != "manual" {
 		t.Fatalf("run = %+v", run)
 	}
-	if len(run.Groups) != 6 {
-		t.Fatalf("expected six groups, got %d", len(run.Groups))
+	if len(run.Groups) != 7 {
+		t.Fatalf("expected seven groups, got %d", len(run.Groups))
 	}
 	if run.Passed+run.NotRun == 0 || run.Passed > run.Total {
 		t.Fatalf("counts passed=%d total=%d not_run=%d", run.Passed, run.Total, run.NotRun)
@@ -128,7 +128,7 @@ func TestNodeDiagnosticsRunsAndPersists(t *testing.T) {
 	if stored.Passed != run.Passed || stored.Total != run.Total || stored.NotRun != run.NotRun {
 		t.Fatalf("stored counts %+v differ from the run's %+v", stored, run)
 	}
-	if len(stored.Groups) != 6 {
+	if len(stored.Groups) != len(run.Groups) {
 		t.Fatalf("stored run lost its groups: %+v", stored.Groups)
 	}
 }

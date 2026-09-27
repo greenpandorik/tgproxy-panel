@@ -160,6 +160,7 @@ func statsInt(stats map[string]string, key string) int64 {
 }
 
 type Stats struct {
+	probeLocations   []string
 	st               *store.Store
 	driver           nodedriver.Driver
 	offlineAfter     time.Duration
@@ -244,6 +245,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	sem := make(chan struct{}, statsWorkers)
 	var wg sync.WaitGroup
 	for _, n := range nodes {
+		s.collectProbes(ctx, n)
 		if n.Status == db.NodeStatusOffline || n.Status == db.NodeStatusPending {
 			continue
 		}
@@ -275,6 +277,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 // collectNode gathers one node's snapshot. It reports whether the node was read in full; a node
 // that could not be read is logged and left out, never allowed to fail the sweep for the others.
 func (s *Stats) collectNode(ctx context.Context, n db.Node) bool {
+	s.collectIncidents(ctx, n)
 	if rows, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && rows > 0 {
 		// Not on this node's polling budget: sending an alert is not part of reading a node, and
 		// a Telegram call outliving a 30s poll is normal.

@@ -1,0 +1,8 @@
+[Unit]
+Description=Run TGProxy external probe (%i) every minute
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+RandomizedDelaySec=10s
+[Install]
+WantedBy=timers.target

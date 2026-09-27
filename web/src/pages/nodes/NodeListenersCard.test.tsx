@@ -149,8 +149,9 @@ describe('NodeListenersCard', () => {
     });
   });
 
-  it('offers a link to @MTProxybot and a way to copy what it needs', () => {
+  it('offers a link to @MTProxybot and a way to copy what it needs', async () => {
     render(wrap(<NodeListenersCard node={node} canEdit />));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Sponsor channel tag' }));
     expect(screen.getByRole('link', { name: /Open @MTProxybot/ })).toHaveAttribute('href', 'https://t.me/MTProxybot');
     // The node's public IP is 104.239.66.187, and registering that would have the bot hand out a
     // link nobody can use: clients dial the hostname, which is what the panel's own links carry.

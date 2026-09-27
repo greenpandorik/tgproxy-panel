@@ -49,7 +49,7 @@ func (s *Server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 	for _, b := range rows {
 		items = append(items, backupJSON(b))
 	}
-	writeJSON(w, 200, map[string]any{"items": items})
+	writeJSON(w, 200, map[string]any{"items": items, "protection": s.backups.ProtectionStatus()})
 }
 
 // handleCreateBackup runs pg_dump inline.
@@ -78,7 +78,10 @@ func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Audit(ctx, "backup.create", "backup", row.ID.String(), map[string]any{"name": row.Path, "size": row.Size, "kind": string(row.Kind)})
-	writeJSON(w, 201, backupJSON(row))
+	result := backupJSON(row)
+	result["protection"] = s.backups.ProtectionStatus()
+	result["protection_error"] = e.ProtectionError
+	writeJSON(w, 201, result)
 }
 
 func (s *Server) loadBackup(w http.ResponseWriter, r *http.Request) (db.Backup, bool) {
@@ -137,6 +140,10 @@ func (s *Server) handleDeleteBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	if path, err := s.backups.Path(row.Path); err == nil {
+		if err := os.Remove(path + ".age"); err != nil && !errors.Is(err, os.ErrNotExist) {
+			internal(w)
+			return
+		}
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			s.log.Error("backup delete file", "backup", row.ID, "err", err)
 			internal(w)

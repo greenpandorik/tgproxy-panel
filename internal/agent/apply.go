@@ -142,6 +142,9 @@ func (h *Handler) Apply(ctx context.Context, req *agentv1.ApplyRequest) *agentv1
 	}
 	defer h.maintenance.Unlock()
 	if h.cfg.Engine == EngineTelemt {
+		if err := h.checkUpdateJournal(); err != nil {
+			return &agentv1.ApplyResult{Ok: false, Log: err.Error()}
+		}
 		return h.applyTelemt(ctx, req)
 	}
 	lg := &applyLog{}

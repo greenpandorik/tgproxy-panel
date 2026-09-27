@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"log/slog"
+	"math/rand/v2"
 	"net/url"
 	"os"
 	"strings"
@@ -27,6 +28,13 @@ const (
 
 // Run keeps one session open to the panel, reconnecting with backoff.
 func Run(ctx context.Context, cfg Config, h *Handler, log *slog.Logger) error {
+	if err := h.loadRecovery(); err != nil {
+		log.Error("recovery policy unreadable; automatic actions remain disabled", "err", err)
+	}
+	if err := h.recoverUpdate(ctx); err != nil {
+		log.Error("update recovery requires attention", "err", err)
+	}
+	go h.runRecovery(ctx)
 	u, err := url.Parse(cfg.PanelURL)
 	if err != nil {
 		return err
@@ -55,10 +63,10 @@ func Run(ctx context.Context, cfg Config, h *Handler, log *slog.Logger) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-time.After(backoff):
+		case <-time.After(backoff + time.Duration(rand.Int64N(int64(backoff/2)+1))):
 		}
 		if backoff < 30*time.Second {
-			backoff *= 2
+			backoff = min(backoff*2, 30*time.Second)
 		}
 	}
 }

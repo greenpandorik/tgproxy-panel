@@ -1,5 +1,5 @@
+import type { ReliabilityReport } from './reliability';
 import type { Metric } from '@/components/common/metric';
-
 
 export interface Paginated<T> {
   items: T[];
@@ -195,6 +195,7 @@ export interface DiagnosticsRun {
 }
 
 export interface NodeHealth {
+  reliability?: ReliabilityReport | null;
   relay_active: boolean;
   mtproxy_active: boolean;
   caddy_active: boolean;

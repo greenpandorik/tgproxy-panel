@@ -301,8 +301,10 @@ type HealthReport struct {
 	LoadAverage_1         *float64 `protobuf:"fixed64,24,opt,name=load_average_1,json=loadAverage1,proto3,oneof" json:"load_average_1,omitempty"`
 	LoadAverage_5         *float64 `protobuf:"fixed64,25,opt,name=load_average_5,json=loadAverage5,proto3,oneof" json:"load_average_5,omitempty"`
 	LoadAverage_15        *float64 `protobuf:"fixed64,26,opt,name=load_average_15,json=loadAverage15,proto3,oneof" json:"load_average_15,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Versioned operational readings; absent from older agents, never assumed healthy.
+	ReliabilityJson []byte `protobuf:"bytes,27,opt,name=reliability_json,json=reliabilityJson,proto3" json:"reliability_json,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *HealthReport) Reset() {
@@ -515,6 +517,13 @@ func (x *HealthReport) GetLoadAverage_15() float64 {
 		return *x.LoadAverage_15
 	}
 	return 0
+}
+
+func (x *HealthReport) GetReliabilityJson() []byte {
+	if x != nil {
+		return x.ReliabilityJson
+	}
+	return nil
 }
 
 // WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
@@ -1991,6 +2000,7 @@ type Request struct {
 	//	*Request_TelemtUpdateStatus
 	//	*Request_WebControl
 	//	*Request_Cancel
+	//	*Request_Reliability
 	Body          isRequest_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2141,6 +2151,15 @@ func (x *Request) GetCancel() *CancelRequest {
 	return nil
 }
 
+func (x *Request) GetReliability() *ReliabilityRequest {
+	if x != nil {
+		if x, ok := x.Body.(*Request_Reliability); ok {
+			return x.Reliability
+		}
+	}
+	return nil
+}
+
 type isRequest_Body interface {
 	isRequest_Body()
 }
@@ -2193,6 +2212,10 @@ type Request_Cancel struct {
 	Cancel *CancelRequest `protobuf:"bytes,12,opt,name=cancel,proto3,oneof"`
 }
 
+type Request_Reliability struct {
+	Reliability *ReliabilityRequest `protobuf:"bytes,13,opt,name=reliability,proto3,oneof"`
+}
+
 func (*Request_Health) isRequest_Body() {}
 
 func (*Request_GetProfiles) isRequest_Body() {}
@@ -2216,6 +2239,8 @@ func (*Request_TelemtUpdateStatus) isRequest_Body() {}
 func (*Request_WebControl) isRequest_Body() {}
 
 func (*Request_Cancel) isRequest_Body() {}
+
+func (*Request_Reliability) isRequest_Body() {}
 
 // CancelRequest ends a streaming request the panel no longer reads. It carries no response: the
 // stream it names answers for itself by finishing. Only log tailing is cancellable - an apply or
@@ -3006,6 +3031,7 @@ type Response struct {
 	//	*Response_Stats
 	//	*Response_Empty
 	//	*Response_TelemtUpdate
+	//	*Response_Reliability
 	Body          isResponse_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3127,6 +3153,15 @@ func (x *Response) GetTelemtUpdate() *TelemtUpdate {
 	return nil
 }
 
+func (x *Response) GetReliability() *ReliabilityResponse {
+	if x != nil {
+		if x, ok := x.Body.(*Response_Reliability); ok {
+			return x.Reliability
+		}
+	}
+	return nil
+}
+
 type isResponse_Body interface {
 	isResponse_Body()
 }
@@ -3163,6 +3198,10 @@ type Response_TelemtUpdate struct {
 	TelemtUpdate *TelemtUpdate `protobuf:"bytes,9,opt,name=telemt_update,json=telemtUpdate,proto3,oneof"`
 }
 
+type Response_Reliability struct {
+	Reliability *ReliabilityResponse `protobuf:"bytes,10,opt,name=reliability,proto3,oneof"`
+}
+
 func (*Response_Health) isResponse_Body() {}
 
 func (*Response_Profiles) isResponse_Body() {}
@@ -3178,6 +3217,8 @@ func (*Response_Stats) isResponse_Body() {}
 func (*Response_Empty) isResponse_Body() {}
 
 func (*Response_TelemtUpdate) isResponse_Body() {}
+
+func (*Response_Reliability) isResponse_Body() {}
 
 type ApplyResult struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -3570,6 +3611,94 @@ func (x *WebControlRequest) GetTimeoutSecs() int32 {
 	return 0
 }
 
+type ReliabilityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PolicyJson    []byte                 `protobuf:"bytes,1,opt,name=policy_json,json=policyJson,proto3" json:"policy_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReliabilityRequest) Reset() {
+	*x = ReliabilityRequest{}
+	mi := &file_agent_v1_agent_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReliabilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReliabilityRequest) ProtoMessage() {}
+
+func (x *ReliabilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReliabilityRequest.ProtoReflect.Descriptor instead.
+func (*ReliabilityRequest) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ReliabilityRequest) GetPolicyJson() []byte {
+	if x != nil {
+		return x.PolicyJson
+	}
+	return nil
+}
+
+type ReliabilityResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Json          []byte                 `protobuf:"bytes,1,opt,name=json,proto3" json:"json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReliabilityResponse) Reset() {
+	*x = ReliabilityResponse{}
+	mi := &file_agent_v1_agent_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReliabilityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReliabilityResponse) ProtoMessage() {}
+
+func (x *ReliabilityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReliabilityResponse.ProtoReflect.Descriptor instead.
+func (*ReliabilityResponse) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ReliabilityResponse) GetJson() []byte {
+	if x != nil {
+		return x.Json
+	}
+	return nil
+}
+
 var File_agent_v1_agent_proto protoreflect.FileDescriptor
 
 const file_agent_v1_agent_proto_rawDesc = "" +
@@ -3589,7 +3718,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x0etproxy_version\x18\x02 \x01(\tR\rtproxyVersion\x12\x1a\n" +
 	"\bhostname\x18\x03 \x01(\tR\bhostname\";\n" +
 	"\tHeartbeat\x12.\n" +
-	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\xb7\t\n" +
+	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\xe2\t\n" +
 	"\fHealthReport\x12!\n" +
 	"\frelay_active\x18\x01 \x01(\bR\vrelayActive\x12%\n" +
 	"\x0emtproxy_active\x18\x02 \x01(\bR\rmtproxyActive\x12!\n" +
@@ -3618,7 +3747,8 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x17cpu_utilisation_percent\x18\x17 \x01(\x01H\x00R\x15cpuUtilisationPercent\x88\x01\x01\x12)\n" +
 	"\x0eload_average_1\x18\x18 \x01(\x01H\x01R\floadAverage1\x88\x01\x01\x12)\n" +
 	"\x0eload_average_5\x18\x19 \x01(\x01H\x02R\floadAverage5\x88\x01\x01\x12+\n" +
-	"\x0fload_average_15\x18\x1a \x01(\x01H\x03R\rloadAverage15\x88\x01\x01B\x1a\n" +
+	"\x0fload_average_15\x18\x1a \x01(\x01H\x03R\rloadAverage15\x88\x01\x01\x12)\n" +
+	"\x10reliability_json\x18\x1b \x01(\fR\x0freliabilityJsonB\x1a\n" +
 	"\x18_cpu_utilisation_percentB\x11\n" +
 	"\x0f_load_average_1B\x11\n" +
 	"\x0f_load_average_5B\x12\n" +
@@ -3750,7 +3880,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\acontent\x18\x02 \x01(\fR\acontent\"6\n" +
 	"\n" +
 	"SiteBundle\x12(\n" +
-	"\x05files\x18\x01 \x03(\v2\x12.agent.v1.SiteFileR\x05files\"\xe6\x05\n" +
+	"\x05files\x18\x01 \x03(\v2\x12.agent.v1.SiteFileR\x05files\"\xa8\x06\n" +
 	"\aRequest\x121\n" +
 	"\x06health\x18\x01 \x01(\v2\x17.agent.v1.HealthRequestH\x00R\x06health\x12A\n" +
 	"\fget_profiles\x18\x02 \x01(\v2\x1c.agent.v1.GetProfilesRequestH\x00R\vgetProfiles\x12.\n" +
@@ -3765,7 +3895,8 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	" \x01(\v2#.agent.v1.TelemtUpdateStatusRequestH\x00R\x12telemtUpdateStatus\x12>\n" +
 	"\vweb_control\x18\v \x01(\v2\x1b.agent.v1.WebControlRequestH\x00R\n" +
 	"webControl\x121\n" +
-	"\x06cancel\x18\f \x01(\v2\x17.agent.v1.CancelRequestH\x00R\x06cancelB\x06\n" +
+	"\x06cancel\x18\f \x01(\v2\x17.agent.v1.CancelRequestH\x00R\x06cancel\x12@\n" +
+	"\vreliability\x18\r \x01(\v2\x1c.agent.v1.ReliabilityRequestH\x00R\vreliabilityB\x06\n" +
 	"\x04body\".\n" +
 	"\rCancelRequest\x12\x1d\n" +
 	"\n" +
@@ -3823,7 +3954,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\bservices\x18\x01 \x03(\tR\bservices\x12\x14\n" +
 	"\x05lines\x18\x02 \x01(\x05R\x05lines\x12\x16\n" +
 	"\x06follow\x18\x03 \x01(\bR\x06follow\"\x15\n" +
-	"\x13RestartRelayRequest\"\xb2\x03\n" +
+	"\x13RestartRelayRequest\"\xf5\x03\n" +
 	"\bResponse\x12\x14\n" +
 	"\x05error\x18\x01 \x01(\tR\x05error\x120\n" +
 	"\x06health\x18\x02 \x01(\v2\x16.agent.v1.HealthReportH\x00R\x06health\x124\n" +
@@ -3833,7 +3964,9 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\ametrics\x18\x06 \x01(\v2\x15.agent.v1.MetricsTextH\x00R\ametrics\x12*\n" +
 	"\x05stats\x18\a \x01(\v2\x12.agent.v1.StatsMapH\x00R\x05stats\x12'\n" +
 	"\x05empty\x18\b \x01(\v2\x0f.agent.v1.EmptyH\x00R\x05empty\x12=\n" +
-	"\rtelemt_update\x18\t \x01(\v2\x16.agent.v1.TelemtUpdateH\x00R\ftelemtUpdateB\x06\n" +
+	"\rtelemt_update\x18\t \x01(\v2\x16.agent.v1.TelemtUpdateH\x00R\ftelemtUpdate\x12A\n" +
+	"\vreliability\x18\n" +
+	" \x01(\v2\x1d.agent.v1.ReliabilityResponseH\x00R\vreliabilityB\x06\n" +
 	"\x04body\"\xfa\x01\n" +
 	"\vApplyResult\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12'\n" +
@@ -3862,7 +3995,12 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x05error\x18\x03 \x01(\tR\x05error\"N\n" +
 	"\x11WebControlRequest\x12\x16\n" +
 	"\x06action\x18\x01 \x01(\tR\x06action\x12!\n" +
-	"\ftimeout_secs\x18\x02 \x01(\x05R\vtimeoutSecs2E\n" +
+	"\ftimeout_secs\x18\x02 \x01(\x05R\vtimeoutSecs\"5\n" +
+	"\x12ReliabilityRequest\x12\x1f\n" +
+	"\vpolicy_json\x18\x01 \x01(\fR\n" +
+	"policyJson\")\n" +
+	"\x13ReliabilityResponse\x12\x12\n" +
+	"\x04json\x18\x01 \x01(\fR\x04json2E\n" +
 	"\fAgentGateway\x125\n" +
 	"\aSession\x12\x12.agent.v1.Envelope\x1a\x12.agent.v1.Envelope(\x010\x01B#Z!tgwebproxy/proto/agent/v1;agentv1b\x06proto3"
 
@@ -3878,7 +4016,7 @@ func file_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_agent_v1_agent_proto_rawDescData
 }
 
-var file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
+var file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_agent_v1_agent_proto_goTypes = []any{
 	(*Envelope)(nil),                  // 0: agent.v1.Envelope
 	(*Hello)(nil),                     // 1: agent.v1.Hello
@@ -3924,8 +4062,10 @@ var file_agent_v1_agent_proto_goTypes = []any{
 	(*LogLine)(nil),                   // 41: agent.v1.LogLine
 	(*LogChunk)(nil),                  // 42: agent.v1.LogChunk
 	(*WebControlRequest)(nil),         // 43: agent.v1.WebControlRequest
-	nil,                               // 44: agent.v1.TelemtCapabilities.SupportedEntry
-	nil,                               // 45: agent.v1.StatsMap.ValuesEntry
+	(*ReliabilityRequest)(nil),        // 44: agent.v1.ReliabilityRequest
+	(*ReliabilityResponse)(nil),       // 45: agent.v1.ReliabilityResponse
+	nil,                               // 46: agent.v1.TelemtCapabilities.SupportedEntry
+	nil,                               // 47: agent.v1.StatsMap.ValuesEntry
 }
 var file_agent_v1_agent_proto_depIdxs = []int32{
 	1,  // 0: agent.v1.Envelope.hello:type_name -> agent.v1.Hello
@@ -3952,7 +4092,7 @@ var file_agent_v1_agent_proto_depIdxs = []int32{
 	5,  // 21: agent.v1.WebTelemetry.session_closures:type_name -> agent.v1.WebCounterFamily
 	5,  // 22: agent.v1.WebTelemetry.bridge_recovery:type_name -> agent.v1.WebCounterFamily
 	11, // 23: agent.v1.WebTelemetry.runtime:type_name -> agent.v1.WebRuntimeState
-	44, // 24: agent.v1.TelemtCapabilities.supported:type_name -> agent.v1.TelemtCapabilities.SupportedEntry
+	46, // 24: agent.v1.TelemtCapabilities.supported:type_name -> agent.v1.TelemtCapabilities.SupportedEntry
 	15, // 25: agent.v1.Profile.limits:type_name -> agent.v1.ProfileLimits
 	16, // 26: agent.v1.ProfilesFile.profiles:type_name -> agent.v1.Profile
 	18, // 27: agent.v1.WebPolicy.timeouts:type_name -> agent.v1.WebTimeouts
@@ -3969,27 +4109,29 @@ var file_agent_v1_agent_proto_depIdxs = []int32{
 	28, // 38: agent.v1.Request.telemt_update_status:type_name -> agent.v1.TelemtUpdateStatusRequest
 	43, // 39: agent.v1.Request.web_control:type_name -> agent.v1.WebControlRequest
 	23, // 40: agent.v1.Request.cancel:type_name -> agent.v1.CancelRequest
-	16, // 41: agent.v1.ApplyRequest.profiles:type_name -> agent.v1.Profile
-	21, // 42: agent.v1.ApplyRequest.site:type_name -> agent.v1.SiteBundle
-	19, // 43: agent.v1.ApplyRequest.web_policy:type_name -> agent.v1.WebPolicy
-	29, // 44: agent.v1.TelemtUpdate.steps:type_name -> agent.v1.UpdateStep
-	3,  // 45: agent.v1.Response.health:type_name -> agent.v1.HealthReport
-	17, // 46: agent.v1.Response.profiles:type_name -> agent.v1.ProfilesFile
-	37, // 47: agent.v1.Response.apply:type_name -> agent.v1.ApplyResult
-	21, // 48: agent.v1.Response.site:type_name -> agent.v1.SiteBundle
-	38, // 49: agent.v1.Response.metrics:type_name -> agent.v1.MetricsText
-	39, // 50: agent.v1.Response.stats:type_name -> agent.v1.StatsMap
-	40, // 51: agent.v1.Response.empty:type_name -> agent.v1.Empty
-	30, // 52: agent.v1.Response.telemt_update:type_name -> agent.v1.TelemtUpdate
-	45, // 53: agent.v1.StatsMap.values:type_name -> agent.v1.StatsMap.ValuesEntry
-	41, // 54: agent.v1.LogChunk.lines:type_name -> agent.v1.LogLine
-	0,  // 55: agent.v1.AgentGateway.Session:input_type -> agent.v1.Envelope
-	0,  // 56: agent.v1.AgentGateway.Session:output_type -> agent.v1.Envelope
-	56, // [56:57] is the sub-list for method output_type
-	55, // [55:56] is the sub-list for method input_type
-	55, // [55:55] is the sub-list for extension type_name
-	55, // [55:55] is the sub-list for extension extendee
-	0,  // [0:55] is the sub-list for field type_name
+	44, // 41: agent.v1.Request.reliability:type_name -> agent.v1.ReliabilityRequest
+	16, // 42: agent.v1.ApplyRequest.profiles:type_name -> agent.v1.Profile
+	21, // 43: agent.v1.ApplyRequest.site:type_name -> agent.v1.SiteBundle
+	19, // 44: agent.v1.ApplyRequest.web_policy:type_name -> agent.v1.WebPolicy
+	29, // 45: agent.v1.TelemtUpdate.steps:type_name -> agent.v1.UpdateStep
+	3,  // 46: agent.v1.Response.health:type_name -> agent.v1.HealthReport
+	17, // 47: agent.v1.Response.profiles:type_name -> agent.v1.ProfilesFile
+	37, // 48: agent.v1.Response.apply:type_name -> agent.v1.ApplyResult
+	21, // 49: agent.v1.Response.site:type_name -> agent.v1.SiteBundle
+	38, // 50: agent.v1.Response.metrics:type_name -> agent.v1.MetricsText
+	39, // 51: agent.v1.Response.stats:type_name -> agent.v1.StatsMap
+	40, // 52: agent.v1.Response.empty:type_name -> agent.v1.Empty
+	30, // 53: agent.v1.Response.telemt_update:type_name -> agent.v1.TelemtUpdate
+	45, // 54: agent.v1.Response.reliability:type_name -> agent.v1.ReliabilityResponse
+	47, // 55: agent.v1.StatsMap.values:type_name -> agent.v1.StatsMap.ValuesEntry
+	41, // 56: agent.v1.LogChunk.lines:type_name -> agent.v1.LogLine
+	0,  // 57: agent.v1.AgentGateway.Session:input_type -> agent.v1.Envelope
+	0,  // 58: agent.v1.AgentGateway.Session:output_type -> agent.v1.Envelope
+	58, // [58:59] is the sub-list for method output_type
+	57, // [57:58] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_agent_v1_agent_proto_init() }
@@ -4018,6 +4160,7 @@ func file_agent_v1_agent_proto_init() {
 		(*Request_TelemtUpdateStatus)(nil),
 		(*Request_WebControl)(nil),
 		(*Request_Cancel)(nil),
+		(*Request_Reliability)(nil),
 	}
 	file_agent_v1_agent_proto_msgTypes[36].OneofWrappers = []any{
 		(*Response_Health)(nil),
@@ -4028,6 +4171,7 @@ func file_agent_v1_agent_proto_init() {
 		(*Response_Stats)(nil),
 		(*Response_Empty)(nil),
 		(*Response_TelemtUpdate)(nil),
+		(*Response_Reliability)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -4035,7 +4179,7 @@ func file_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agent_v1_agent_proto_rawDesc), len(file_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   46,
+			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

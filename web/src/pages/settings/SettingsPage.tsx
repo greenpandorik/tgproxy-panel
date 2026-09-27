@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { useAuth } from '@/auth/AuthProvider';
 import { PageHeader } from '@/components/common/PageHeader';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SectionNav, useSection } from '@/components/common/SectionNav';
 import { HelpButton, type HelpTopic } from '@/help';
-
 import { AdminsForm } from './AdminsForm';
 import { BackupsForm } from './BackupsForm';
 import { BrandingProfilesList } from './BrandingProfilesList';
@@ -13,9 +10,9 @@ import { PreferencesForm } from './PreferencesForm';
 import { PanelForm } from './PanelForm';
 import { SecurityForm } from './SecurityForm';
 
-/** The help topic of each tab: the header's `?` follows the selected tab. */
 const TAB_HELP: Record<string, HelpTopic> = {
   branding: 'settings.branding',
+  preferences: 'settings.branding',
   security: 'settings.security',
   admins: 'settings.admins',
   panel: 'settings.panel',
@@ -25,51 +22,35 @@ const TAB_HELP: Record<string, HelpTopic> = {
 export function SettingsPage() {
   const { t } = useTranslation();
   const { isOwner } = useAuth();
-  const [tab, setTab] = useState('branding');
-
+  const allowed = ['panel', 'preferences', 'branding', 'security', ...(isOwner ? ['admins', 'backups'] : [])];
+  const [section, setSection] = useSection(allowed, 'panel');
+  const items = allowed.map((value) => ({
+    value,
+    label: t(`workspace.settings_${value}`),
+    description: t(`workspace.settings_${value}_hint`),
+  }));
   return (
     <>
-      <PageHeader title={t('settings.title')} actions={<HelpButton topic={TAB_HELP[tab] ?? 'settings.branding'} />} />
-
-      <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
-        {/* Five labels do not fit at 390px; the row scrolls rather than clipping the last tab out of reach. */}
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="branding">{t('settings.tab_branding')}</TabsTrigger>
-          <TabsTrigger value="security">{t('settings.tab_security')}</TabsTrigger>
-          {isOwner && <TabsTrigger value="admins">{t('settings.tab_admins')}</TabsTrigger>}
-          <TabsTrigger value="panel">{t('settings.tab_panel')}</TabsTrigger>
-          {/* Owner only, and not merely hidden: a dump is the whole database, so
-              every /backups route rejects anyone else. */}
-          {isOwner && <TabsTrigger value="backups">{t('settings.tab_backups')}</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="branding" className="pt-4">
-          <div className="space-y-6">
-            <PreferencesForm />
-            <div className="space-y-1">
-              <h2 className="text-title">{t('preferences.project_title')}</h2>
-              <p className="text-body text-mute">{t('preferences.project_description')}</p>
-            </div>
-            <BrandingProfilesList />
+      <PageHeader
+        title={t('workspace.panel_settings')}
+        description={t('workspace.panel_settings_hint')}
+        actions={<HelpButton topic={TAB_HELP[section]} />}
+      />
+      <div className="flex min-w-0 flex-col items-start gap-6 lg:flex-row">
+        <SectionNav label={t('workspace.panel_settings')} items={items} value={section} onChange={setSection} />
+        <section className="min-w-0 w-full flex-1 space-y-5" aria-label={t(`workspace.settings_${section}`)}>
+          <div className="space-y-1">
+            <h2 className="text-title">{t(`workspace.settings_${section}`)}</h2>
+            <p className="max-w-[72ch] text-body text-mute">{t(`workspace.settings_${section}_hint`)}</p>
           </div>
-        </TabsContent>
-        <TabsContent value="security" className="pt-4">
-          <SecurityForm />
-        </TabsContent>
-        {isOwner && (
-          <TabsContent value="admins" className="pt-4">
-            <AdminsForm />
-          </TabsContent>
-        )}
-        <TabsContent value="panel" className="pt-4">
-          <PanelForm />
-        </TabsContent>
-        {isOwner && (
-          <TabsContent value="backups" className="pt-4">
-            <BackupsForm />
-          </TabsContent>
-        )}
-      </Tabs>
+          {section === 'panel' && <PanelForm />}
+          {section === 'preferences' && <PreferencesForm />}
+          {section === 'branding' && <BrandingProfilesList />}
+          {section === 'security' && <SecurityForm />}
+          {section === 'admins' && isOwner && <AdminsForm />}
+          {section === 'backups' && isOwner && <BackupsForm />}
+        </section>
+      </div>
     </>
   );
 }

@@ -21,7 +21,7 @@ func OpenTest(t *testing.T) *Store {
 	if err := Migrate(ctx, s.Pool); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	_, err = s.Pool.Exec(ctx, `TRUNCATE backups, settings, subscription_tokens, alerts, node_stats_snapshots, key_stats_snapshots,
+	_, err = s.Pool.Exec(ctx, `TRUNCATE fleet_rollouts, probe_reports, backups, settings, subscription_tokens, alerts, node_stats_snapshots, key_stats_snapshots,
 		audit_log, apply_jobs, node_sites, site_templates, key_bindings, profiles, access_keys, nodes,
 		sessions, recovery_codes, admin_users RESTART IDENTITY CASCADE`)
 	if err != nil {

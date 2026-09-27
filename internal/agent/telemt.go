@@ -454,6 +454,12 @@ func (h *Handler) reconcileTelemtPublicAddr(ctx context.Context, lg *applyLog, r
 
 func (h *Handler) reconcileTelemtMiddleProxy(ctx context.Context, lg *applyLog, req *agentv1.ApplyRequest, rb *telemtRollback) (changed, restart bool, err error) {
 	want := req.GetAdTag() != ""
+	h.recoveryMu.Lock()
+	routePolicy := h.recoveryPolicy
+	h.recoveryMu.Unlock()
+	if want && (routePolicy.Egress == "socks5" || routePolicy.AutomaticFailover) {
+		return false, false, errors.New("sponsor tag conflicts with managed SOCKS/WARP egress")
+	}
 	cfg, _, err := h.tm.GetConfig(ctx)
 	if err != nil {
 		return false, false, err
@@ -1054,9 +1060,12 @@ func (h *Handler) healthTelemt(ctx context.Context) *agentv1.HealthReport {
 	if users, err := h.tm.ListUsers(ctx); err == nil {
 		rep.ProfileCount = int32(len(users))
 	}
+	var upstreams *telemt.UpstreamsStats
 	if st, err := h.tm.UpstreamsStats(ctx); err == nil && st.Enabled {
 		fillDcConnectivity(rep, st)
+		upstreams = &st
 	}
+	h.reliabilityHealth(ctx, rep, upstreams)
 	rep.Web = h.webTelemetry(ctx)
 	rep.Capabilities = h.telemtCapabilities(ctx)
 	return rep
@@ -1069,15 +1078,25 @@ func fillDcConnectivity(rep *agentv1.HealthReport, st telemt.UpstreamsStats) {
 	if len(st.Upstreams) == 0 {
 		return
 	}
-	u := st.Upstreams[0]
-	rep.UpstreamHealthy, rep.UpstreamFails = u.Healthy, int32(u.Fails)
-	rep.EffectiveLatencyMs, rep.UpstreamLastCheckAgeSecs = u.EffectiveLatencyMs, u.LastCheckAgeSecs
-	for _, d := range u.DC {
-		dc := &agentv1.DcLatency{Dc: int32(d.DC), IpPreference: d.IPPreference}
-		if d.LatencyEmaMs != nil {
-			dc.Known, dc.LatencyMs = true, *d.LatencyEmaMs
+	rep.UpstreamHealthy = true
+	seen := map[int]bool{}
+	for _, u := range st.Upstreams {
+		rep.UpstreamHealthy = rep.UpstreamHealthy && u.Healthy && u.LastCheckAgeSecs <= 120
+		rep.UpstreamFails += int32(u.Fails)
+		rep.EffectiveLatencyMs = max(rep.EffectiveLatencyMs, u.EffectiveLatencyMs)
+		rep.UpstreamLastCheckAgeSecs = max(rep.UpstreamLastCheckAgeSecs, u.LastCheckAgeSecs)
+		for _, d := range u.DC {
+			if seen[d.DC] {
+				continue
+			}
+			seen[d.DC] = true
+			dc := &agentv1.DcLatency{Dc: int32(d.DC), IpPreference: d.IPPreference}
+			if d.LatencyEmaMs != nil && u.LastCheckAgeSecs <= 120 {
+				dc.Known = true
+				dc.LatencyMs = *d.LatencyEmaMs
+			}
+			rep.Dcs = append(rep.Dcs, dc)
 		}
-		rep.Dcs = append(rep.Dcs, dc)
 	}
 }
 

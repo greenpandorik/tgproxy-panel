@@ -12,12 +12,20 @@ import (
 	"sync"
 	"time"
 
+	"tgwebproxy/internal/reliability"
 	"tgwebproxy/internal/telemt"
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
 
 type Handler struct {
-	maintenance sync.Mutex
+	maintenance      sync.Mutex
+	connections      connectionSampler
+	recoveryMu       sync.Mutex
+	recoveryPolicy   reliability.Policy
+	recoveryEvents   []reliability.Event
+	recoveryFailures int
+	activeEgress     string
+	recoveryLast     time.Time
 	// cpu measures processor utilisation between heartbeats; see cpuSampler.
 	cpu   cpuSampler
 	cfg   Config
@@ -41,7 +49,7 @@ type Handler struct {
 }
 
 func NewHandler(cfg Config, ex Exec, log *slog.Logger) *Handler {
-	h := &Handler{cfg: cfg, exec: ex, httpc: &http.Client{Timeout: 5 * time.Second}, log: log}
+	h := &Handler{recoveryPolicy: reliability.DefaultPolicy(), cfg: cfg, exec: ex, httpc: &http.Client{Timeout: 5 * time.Second}, log: log}
 	if cfg.Engine == EngineTelemt {
 		h.tm = telemt.New(cfg.TelemtAPI, cfg.TelemtAPIToken)
 		if cfg.TelemtMetricsURL != "" {
@@ -64,6 +72,12 @@ func errorf(format string, a ...any) error { return fmt.Errorf(format, a...) }
 
 func (h *Handler) Handle(ctx context.Context, req *agentv1.Request) *agentv1.Response {
 	switch b := req.Body.(type) {
+	case *agentv1.Request_Reliability:
+		raw, err := h.configureReliability(ctx, b.Reliability.PolicyJson)
+		if err != nil {
+			return errResp(err)
+		}
+		return reliabilityReply(raw)
 	case *agentv1.Request_Health:
 		return &agentv1.Response{Body: &agentv1.Response_Health{Health: h.Health(ctx)}}
 	case *agentv1.Request_GetProfiles:
@@ -116,6 +130,9 @@ func (h *Handler) Handle(ctx context.Context, req *agentv1.Request) *agentv1.Res
 			return errResp(errorf("node maintenance is already in progress"))
 		}
 		defer h.maintenance.Unlock()
+		if err := h.checkUpdateJournal(); err != nil {
+			return errResp(err)
+		}
 		var err error
 		switch b.WebControl.Action {
 		case "pause":

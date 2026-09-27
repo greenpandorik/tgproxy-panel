@@ -1,0 +1,16 @@
+[Unit]
+Description=TGProxy external probe (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+EnvironmentFile=/etc/tgwp-probe/%i.env
+ExecStart=/usr/local/bin/tgwp-probe --panel ${PANEL_URL} --host ${NODE_HOST} --node ${NODE_ID} --location ${PROBE_LOCATION}
+TimeoutStartSec=100
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
