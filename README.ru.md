@@ -19,7 +19,7 @@
 панели указания.
 
 <p align="center">
-  <img src="docs/screenshots/issue-a-key.gif" width="90%" alt="Выпуск ключа: название, привязка к двум серверам, и на выходе обе ссылки с QR-кодами">
+  <img src="docs/screenshots/ru/issue-a-key.gif" width="90%" alt="Выпуск ключа: название, привязка к двум серверам, и на выходе обе ссылки с QR-кодами">
 </p>
 
 <p align="center"><sub>Выпуск ключа: даём название, привязываем к двум серверам и получаем обе ссылки с QR-кодами.</sub></p>
@@ -66,8 +66,8 @@
 ротация мастер-ключа.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="49%" alt="Обзор: вердикт по парку, что требует внимания и все серверы разом">
-  <img src="docs/screenshots/websites.png" width="49%" alt="Сайты: пятнадцать готовых сайтов-прикрытий, каждый уникализируется под ноду">
+  <img src="docs/screenshots/ru/dashboard.png" width="49%" alt="Обзор: вердикт по парку, что требует внимания и все серверы разом">
+  <img src="docs/screenshots/ru/websites.png" width="49%" alt="Сайты: пятнадцать готовых сайтов-прикрытий, каждый уникализируется под ноду">
 </p>
 
 ## Быстрый старт

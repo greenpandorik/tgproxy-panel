@@ -330,7 +330,7 @@ The `?` in the header of every page and dialog opens a help panel on the right: 
 
 ![Form draft](screenshots/draft-banner.png)
 
-On the node's Health tab, the "Telegram data centres" panel shows how the node sees Telegram's network. For each data centre it gives the latency telemt measures with its own health checks (a moving average, not a single probe at start), the IPv4/IPv6 preference, the health of the direct route, and a connection counter. Latency is green under 150 ms, amber under 400 and red above. The Stats tab plots the same latencies over time, the nodes list has a "Telegram" column with the overall latency, and the dashboard tile "Telegram latency" averages it over the online nodes. Nodes on the older tproxy engine have no such data.
+On the node's Health tab, the "Telegram datacenters" panel shows how the node sees Telegram's network. For each data centre it gives the latency telemt measures with its own health checks (a moving average, not a single probe at start), the IPv4/IPv6 preference, the health of the direct route, and a connection counter. Latency is green under 150 ms, amber under 400 and red above. The Stats tab plots the same latencies over time, the nodes list has a "Telegram" column with the overall latency, and the dashboard tile "Telegram latency" averages it over the online nodes. Nodes on the older tproxy engine have no such data.
 
 ![Telegram data centres](screenshots/node-dcs.png)
 
