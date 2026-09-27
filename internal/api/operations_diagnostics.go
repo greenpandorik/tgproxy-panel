@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/nodediag"
 	"tgwebproxy/internal/nodedriver"
 	"tgwebproxy/internal/reliability"
 	"tgwebproxy/internal/store/db"
@@ -38,6 +40,10 @@ func (s *Server) scheduledDiagnostics(ctx context.Context, alerts *worker.Alerts
 		}
 		run := s.diagEngine().Run(ctx, diagTarget(n), domain.TriggerScheduled)
 		release()
+		var previous []domain.DiagnosticGroup
+		if rows, e := s.store.Q.ListNodeDiagnostics(ctx, db.ListNodeDiagnosticsParams{NodeID: n.ID, Limit: 1}); e == nil && len(rows) == 1 {
+			_ = json.Unmarshal(rows[0].Checks, &previous)
+		}
 		if e = s.saveDiagnostics(ctx, n.ID, &run); e != nil {
 			return
 		}
@@ -51,6 +57,13 @@ func (s *Server) scheduledDiagnostics(ctx context.Context, alerts *worker.Alerts
 				message := "Scheduled check: " + g.Key + " / " + check.Key
 				if check.Detail != nil {
 					message += ": " + *check.Detail
+				}
+				if failed && nodediag.LifetimeCounter(check.Key) {
+					growth, grew := counterGrowth(previous, g.Key, check)
+					failed = grew
+					if grew {
+						message += " (+" + strconv.FormatFloat(growth, 'f', -1, 64) + " since the previous check)"
+					}
 				}
 				if failed {
 					tag, e := s.store.Pool.Exec(ctx, `INSERT INTO alerts(node_id,kind,message) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND kind=$2 AND resolved_at IS NULL)`, n.ID, kind, message)
@@ -71,4 +84,31 @@ func (s *Server) scheduledDiagnostics(ctx context.Context, alerts *worker.Alerts
 		}
 		return
 	}
+}
+
+// counterGrowth is how much a lifetime counter rose since the previous run.
+func counterGrowth(previous []domain.DiagnosticGroup, group string, check domain.DiagnosticCheck) (float64, bool) {
+	if check.Value == nil {
+		return 0, false
+	}
+	now, err := strconv.ParseFloat(*check.Value, 64)
+	if err != nil {
+		return 0, false
+	}
+	for _, g := range previous {
+		if g.Key != group {
+			continue
+		}
+		for _, c := range g.Checks {
+			if c.Key != check.Key || c.Value == nil {
+				continue
+			}
+			before, err := strconv.ParseFloat(*c.Value, 64)
+			if err != nil || now <= before {
+				return 0, false
+			}
+			return now - before, true
+		}
+	}
+	return 0, false
 }

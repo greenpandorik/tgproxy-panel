@@ -906,7 +906,7 @@
     "remedy_fake_tls_listener": "Check the configured Fake-TLS port and allow it through the firewall.",
     "remedy_tls_emulation": "Enable censorship.tls_emulation and restart Telemt; this setting is not hot-reloadable.",
     "remedy_tls_front_cache": "Check tls_front_dir, write access and mask-domain reachability, then restart Telemt.",
-    "remedy_tls_front_errors": "Inspect recent Telemt handshake errors and run diagnostics again after correcting them.",
+    "remedy_tls_front_errors": "Check on the node that https://<tls_domain>/ answers quickly (curl -sSI https://<tls_domain>/): Telemt masks unrecognised connections there. The count covers the whole Telemt process and resets only when Telemt restarts, so it will not drop after a fix.",
     "group_public_addresses": "Reachability of each IP address"
   },
   "audit": {

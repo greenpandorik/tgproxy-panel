@@ -17,6 +17,7 @@ const (
 	MetricBridgeRecovery    = "telemt_web_bridge_recovery_events_total"
 	MetricTLSFrontDomains   = "telemt_tls_front_profile_domains"
 	MetricHandshakeFailures = "telemt_handshake_failures_by_class_total"
+	MetricConnections       = "telemt_connections_total"
 )
 
 // LabelCounters is a metric family split by one label. Present is false when the family never
@@ -135,6 +136,7 @@ type WebMetrics struct {
 	BridgeRecovery    LabelCounters
 	TLSFrontDomains   LabelCounters
 	HandshakeFailures LabelCounters
+	Connections       LabelCounters
 }
 
 // ParseWebMetrics reads the telemt_web_* families out of Prometheus exposition text.
@@ -180,6 +182,8 @@ func (m *WebMetrics) markPresent(family string) {
 		m.TLSFrontDomains.Present = true
 	case MetricHandshakeFailures:
 		m.HandshakeFailures.Present = true
+	case MetricConnections:
+		m.Connections.Present = true
 	}
 }
 
@@ -211,6 +215,8 @@ func (m *WebMetrics) add(family string, labels map[string]string, value float64)
 		setLabel(&m.TLSFrontDomains, labels["status"], value)
 	case MetricHandshakeFailures:
 		setLabel(&m.HandshakeFailures, labels["class"], value)
+	case MetricConnections:
+		setLabel(&m.Connections, "", value)
 	}
 }
 

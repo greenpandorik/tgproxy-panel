@@ -406,13 +406,13 @@ telemt_handshake_failures_by_class_total{class="expected_64_got_0_unexpected_eof
 	if c.Status != domain.CheckOK {
 		t.Fatalf("tls_front_errors = %+v, want ok: nothing reached the handshake", c)
 	}
-	if c.Value == nil || *c.Value != "1122" {
-		t.Fatalf("value = %v, want the count still reported", c.Value)
+	if c.Value == nil || *c.Value != "0" || c.Detail == nil || !strings.Contains(*c.Detail, "1122") {
+		t.Fatalf("check = %+v, want nothing worth reading and the total still named", c)
 	}
 
 	real := strings.Replace(silence,
 		`telemt_handshake_failures_by_class_total{class="expected_64_got_0_unexpected_eof"} 204`,
-		`telemt_handshake_failures_by_class_total{class="bad_padding"} 7`, 1)
+		`telemt_handshake_failures_by_class_total{class="bad_padding"} 40`, 1)
 	e = &Engine{Checker: checker, Node: fakeNode{online: true, health: healthyHealth(), metrics: real}, Timeout: 10 * time.Second}
 	c = checkIn(t, e.Run(t.Context(), telemtTarget(), domain.TriggerManual), domain.GroupTelemt, "tls_front_errors")
 	if c.Status != domain.CheckWarn {
@@ -424,5 +424,46 @@ telemt_handshake_failures_by_class_total{class="expected_64_got_0_unexpected_eof
 	}
 	if !strings.Contains(detail, "bad_padding") || strings.Contains(detail, "got_0") {
 		t.Fatalf("detail = %q, want only the class worth reading", detail)
+	}
+}
+
+func TestHandshakeTimeoutsAreJudgedAgainstWhatTheNodeAccepted(t *testing.T) {
+	_, checker := frontServer(t)
+	metrics := func(timeouts string) string {
+		return strings.Replace(webMetricsText,
+			`telemt_handshake_failures_by_class_total{class="timeout"} 0`,
+			`telemt_handshake_failures_by_class_total{class="timeout"} `+timeouts+`
+telemt_handshake_failures_by_class_total{class="expected_64_got_0_unexpected_eof"} 246
+telemt_connections_total 8460`, 1)
+	}
+	run := func(m string) domain.DiagnosticCheck {
+		e := &Engine{Checker: checker, Node: fakeNode{online: true, health: healthyHealth(), metrics: m}, Timeout: 10 * time.Second}
+		return checkIn(t, e.Run(t.Context(), telemtTarget(), domain.TriggerManual), domain.GroupTelemt, "tls_front_errors")
+	}
+
+	c := run(metrics("8"))
+	if c.Status != domain.CheckOK || c.Value == nil || *c.Value != "8" {
+		t.Fatalf("8 timeouts in 8460 connections = %+v, want ok with the 8 still reported", c)
+	}
+	if c.Detail == nil || !strings.Contains(*c.Detail, "timeout: 8") || !strings.Contains(*c.Detail, "8460") {
+		t.Fatalf("detail = %v, want the class, its count and the connections it is measured against", c.Detail)
+	}
+
+	c = run(metrics("300"))
+	if c.Status != domain.CheckWarn || c.Value == nil || *c.Value != "300" {
+		t.Fatalf("300 timeouts in 8460 connections = %+v, want warn", c)
+	}
+}
+
+func TestOnlyGrowingCountersAreLifetimeCounters(t *testing.T) {
+	for _, key := range []string{"tls_front_errors", "carrier_failures", "web_rejections"} {
+		if !LifetimeCounter(key) {
+			t.Errorf("%s is a telemt counter that only grows", key)
+		}
+	}
+	for _, key := range []string{"connect_attempts", "certificate_expiry", "upstream_latency"} {
+		if LifetimeCounter(key) {
+			t.Errorf("%s describes the current state, not a lifetime total", key)
+		}
 	}
 }

@@ -593,6 +593,16 @@ func tlsEmulationChecks(t Target, n nodeFacts) []domain.DiagnosticCheck {
 // was ever asked for, so these are counted and named but do not make the node look unhealthy.
 func handshakeSilence(class string) bool { return strings.Contains(class, "got_0") }
 
+const (
+	handshakeWarnMin   = 20
+	handshakeWarnShare = 0.01
+)
+
+var lifetimeCounters = map[string]bool{"tls_front_errors": true, "carrier_failures": true, "web_rejections": true}
+
+// LifetimeCounter reports whether the check's value is a process-lifetime counter.
+func LifetimeCounter(key string) bool { return lifetimeCounters[key] }
+
 func tlsFrontErrors(metrics telemt.WebMetrics) domain.DiagnosticCheck {
 	if !metrics.HandshakeFailures.Present {
 		return na("tls_front_errors", "the node reports no "+telemt.MetricHandshakeFailures+" family")
@@ -601,18 +611,31 @@ func tlsFrontErrors(metrics telemt.WebMetrics) domain.DiagnosticCheck {
 	if total == 0 {
 		return ok("tls_front_errors", "0", "no TLS handshake failures have been recorded in this process")
 	}
-	var real []string
+	var real float64
+	var classes []string
 	for _, class := range metrics.HandshakeFailures.Labels() {
-		if !handshakeSilence(class) {
-			real = append(real, class)
+		if handshakeSilence(class) {
+			continue
 		}
+		v, _ := metrics.HandshakeFailures.Get(class)
+		real += v
+		classes = append(classes, class+": "+formatCount(v))
 	}
-	if len(real) == 0 {
-		return ok("tls_front_errors", formatCount(total),
-			"every handshake failure in this process ended before the peer sent anything, which is what a public port collects from scanners and probes")
+	if real == 0 {
+		return ok("tls_front_errors", "0",
+			formatCount(total)+" handshake failures in this process, all from peers that sent nothing, which is what a public port collects from scanners and probes")
 	}
-	return warn("tls_front_errors", formatCount(total),
-		"process-lifetime TLS handshake failures worth reading: "+joinStrings(real))
+	conns := metrics.Connections.Total()
+	share := ""
+	if metrics.Connections.Present && conns > 0 {
+		share = " among " + formatCount(conns) + " connections"
+	}
+	if real < handshakeWarnMin || (share != "" && real/conns < handshakeWarnShare) {
+		return ok("tls_front_errors", formatCount(real),
+			"handshakes that did not complete ("+joinStrings(classes)+")"+share+": the trickle a public port sees from stalled clients and probes")
+	}
+	return warn("tls_front_errors", formatCount(real),
+		"process-lifetime TLS handshake failures worth reading ("+joinStrings(classes)+")"+share)
 }
 
 func telegramGroup(n nodeFacts) domain.DiagnosticGroup {

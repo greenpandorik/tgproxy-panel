@@ -144,3 +144,13 @@ func TestClientWebMetrics(t *testing.T) {
 		t.Fatalf("metrics: %+v", m.CarrierSelections)
 	}
 }
+
+func TestParseWebMetricsReadsTheConnectionTotal(t *testing.T) {
+	m := ParseWebMetrics("# TYPE telemt_connections_total counter\ntelemt_connections_total 8460\ntelemt_connections_bad_total 1294\n")
+	if !m.Connections.Present || m.Connections.Total() != 8460 {
+		t.Fatalf("connections = %+v, want 8460 and nothing from the bad-connections family", m.Connections)
+	}
+	if m := ParseWebMetrics("telemt_connections_bad_total 1294\n"); m.Connections.Present {
+		t.Fatalf("connections present without telemt_connections_total: %+v", m.Connections)
+	}
+}
