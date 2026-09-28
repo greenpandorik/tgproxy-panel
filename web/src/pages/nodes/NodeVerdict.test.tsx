@@ -44,7 +44,7 @@ describe('NodeVerdict', () => {
     ]);
     renderVerdict(node());
     expect(screen.getByText('Требует внимания: 1')).toBeInTheDocument();
-    expect(screen.getByText('Диагностика: Ошибки TLS-front')).toBeInTheDocument();
+    expect(screen.getByText('Диагностика: Сбои TLS-рукопожатий')).toBeInTheDocument();
     expect(screen.queryByText(/Scheduled check/)).toBeNull();
     expect(screen.getByText('Открыть диагностику').closest('a')).toHaveAttribute('href', '/?section=diagnostics');
   });

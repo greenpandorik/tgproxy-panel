@@ -116,7 +116,7 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.click(await screen.findByRole('tab', { name: 'Батч' }));
+    await user.click(await screen.findByRole('tab', { name: 'Несколько ключей' }));
     await user.type(screen.getByLabelText('Префикс'), 'vip');
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     await user.click(screen.getByRole('button', { name: 'reopen' }));
@@ -124,7 +124,7 @@ describe('CreateKeyDialog drafts', () => {
     // Reopens on the default tab; continuing switches back to the batch.
     expect(await screen.findByLabelText('Метка')).toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'Продолжить' }));
-    expect(screen.getByRole('tab', { name: 'Батч' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Несколько ключей' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('Префикс')).toHaveValue('vip');
   });
 

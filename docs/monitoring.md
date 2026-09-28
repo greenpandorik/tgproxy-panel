@@ -1,10 +1,9 @@
 # Monitoring
 
-The Monitoring page is split by what you are trying to do: **Overview** for fleet health,
-**Problems** for active alerts and what to do next, **Nodes** for historical series,
-and **WEB Transport** for carrier and overload observations. The Problems view offers
-the same alert actions as the dashboard, so an issue is resolved or retried the same way
-from either place.
+The Monitoring page is for charts and history: **Whole fleet** for the fleet's totals,
+**Nodes** for each node's series, **WEB transport** for carrier and overload observations
+and **Metrics export** for Prometheus. Open incidents and what to do about them are on
+the Overview page, the one place the panel lists problems.
 
 ## WEB runtime and carriers
 

@@ -260,7 +260,7 @@ On the panel host, `sudo /opt/tgproxy-panel/install.sh --update` also moves the 
 
 ## 8. Issuing keys
 
-Open Access keys → New key. A SHARED key is one secret for a group of people; a PERSONAL key belongs to one person and is revoked on its own. The Batch tab creates several personal keys at once from a name template.
+Open Access keys → New key. A SHARED key is one secret for a group of people; a PERSONAL key belongs to one person and is revoked on its own. The Several keys tab creates several personal keys at once from a name template.
 
 ![Create key](screenshots/key-create-dialog.png)
 

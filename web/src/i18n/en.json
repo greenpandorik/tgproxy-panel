@@ -267,8 +267,8 @@
     "overview_telemt_active": "telemt",
     "overview_mtproxy_active": "MTProxy",
     "overview_caddy_active": "Caddy",
-    "overview_healthz": "healthz",
-    "overview_readyz": "readyz",
+    "overview_healthz": "Answers health checks",
+    "overview_readyz": "Ready for connections",
     "overview_uptime": "Uptime",
     "overview_cpu": "CPU",
     "overview_mem": "Memory",
@@ -371,7 +371,7 @@
     "check_pq_kex_hint": "Caddy on the node negotiates X25519MLKEM768 with modern clients. Informational.",
     "header_online": "{{online}} / {{total}} online",
     "column_relay": "Relay",
-    "column_heartbeat": "Last heartbeat",
+    "column_heartbeat": "Last response",
     "column_changes": "Changes",
     "dirty_tag": "pending",
     "state_up": "up",
@@ -434,7 +434,7 @@
     "filter_node_all": "All nodes",
     "type_shared": "Shared",
     "type_personal": "Personal",
-    "status_pending_hint": "Will be applied on the next apply batch",
+    "status_pending_hint": "Becomes active after the next apply on the node",
     "no_expiry": "No expiry",
     "select_all": "Select all",
     "column_label": "Label",
@@ -478,11 +478,11 @@
     "create_description": "Choose a key type, bind it to one or more nodes, and issue it.",
     "create_error": "Could not create the key",
     "create_submit": "Create key",
-    "create_batch_submit": "Create batch",
+    "create_batch_submit": "Create keys",
     "create_summary_title": "What you get",
     "create_summary_shared": "Shared key “{{label}}”",
     "create_summary_personal": "Personal key “{{label}}”",
-    "create_summary_batch": "Batch “{{prefix}}”, keys: {{count}}",
+    "create_summary_batch": "Series “{{prefix}}”, keys: {{count}}",
     "create_summary_owner": "for {{owner}}",
     "create_summary_no_name": "unnamed",
     "create_summary_nodes": "nodes: {{count}}",
@@ -495,7 +495,7 @@
     "create_summary_limits_set": "limits: {{count}}",
     "tab_shared": "Shared",
     "tab_personal": "Personal",
-    "tab_batch": "Batch",
+    "tab_batch": "Several keys",
     "field_label": "Label",
     "field_owner_label": "Owner label",
     "field_owner_label_hint": "Who this key is issued to, e.g. a name or e-mail.",
@@ -743,37 +743,37 @@
     "capability_unsupported_title": "This telemt has no {{feature}}",
     "carriers_title": "Carrier learning",
     "carriers_window": "last {{hours}} h",
-    "check_a_record": "A/AAAA record",
+    "check_a_record": "Domain DNS record",
     "check_agent_link": "Agent connection",
-    "check_build": "Build",
-    "check_caddy_service": "caddy service",
-    "check_carrier_failures": "Carrier failures counter",
-    "check_carrier_selections": "Carrier selections counter",
-    "check_certificate": "Certificate covers the hostname",
-    "check_certificate_expiry": "Certificate expiry",
-    "check_connect_attempts": "Connection attempts",
-    "check_control_api": "Control API",
-    "check_datacenters": "Datacenters",
+    "check_build": "telemt version",
+    "check_caddy_service": "Caddy service",
+    "check_carrier_failures": "Carrier failures",
+    "check_carrier_selections": "Carriers chosen by clients",
+    "check_certificate": "Certificate matches the domain",
+    "check_certificate_expiry": "Certificate validity",
+    "check_connect_attempts": "Connections to Telegram",
+    "check_control_api": "telemt control API",
+    "check_datacenters": "Telegram datacenters",
     "check_decoy_site": "Decoy site",
-    "check_fake_tls_listener": "Fake-TLS listener",
-    "check_http2": "HTTP/2 (ALPN)",
-    "check_https_response": "HTTPS response",
-    "check_public_ip_match": "Hostname points at this node",
-    "check_readiness": "Readiness",
+    "check_fake_tls_listener": "Fake-TLS port",
+    "check_http2": "HTTP/2 support",
+    "check_https_response": "Site answers over HTTPS",
+    "check_public_ip_match": "Domain points at this node",
+    "check_readiness": "Proxy is ready",
     "check_service": "telemt service",
     "check_status_fail": "failed",
     "check_status_not_available": "could not run",
     "check_status_ok": "passed",
     "check_status_warn": "warning",
-    "check_tcp_443": "Port 443",
+    "check_tcp_443": "Port 443 is open",
     "check_tls_handshake": "TLS handshake",
-    "check_tls_emulation": "TLS emulation enabled",
-    "check_tls_front_cache": "TLS-front cache",
-    "check_tls_front_errors": "TLS-front errors",
-    "check_upstream_health": "Upstream health",
-    "check_upstream_latency": "Upstream latency",
-    "check_web_rejections": "Rejected attempts counter",
-    "check_web_upstream": "Front to telemt",
+    "check_tls_emulation": "TLS emulation is on",
+    "check_tls_front_cache": "TLS masking profile",
+    "check_tls_front_errors": "TLS handshake failures",
+    "check_upstream_health": "Route to Telegram",
+    "check_upstream_latency": "Latency to Telegram",
+    "check_web_rejections": "Rejected WEB sessions",
+    "check_web_upstream": "Caddy passes requests to telemt",
     "counter_bridge_recoveries": "Bridge recoveries",
     "counter_bridge_recoveries_hint": "Times a broken bridge was picked back up.",
     "counters_quiet": "No carrier failures and no rejected or evicted sessions in this window.",
@@ -808,8 +808,8 @@
     "fleet_capability_undetermined": "For {{count}} the panel has not determined it.",
     "fleet_carriers_title": "WEB carriers across the fleet",
     "group_dns": "DNS",
-    "group_reverse_proxy": "Front",
-    "group_tcp_tls": "TCP and TLS",
+    "group_reverse_proxy": "Caddy web server",
+    "group_tcp_tls": "Ports and TLS",
     "group_telegram": "Telegram",
     "group_telemt": "telemt",
     "group_web_transport": "WEB transport",
@@ -1207,7 +1207,7 @@
           "alerts": {
             "name": "Needs attention",
             "what": "Open notifications about problems. Select a server name to inspect its status. Dismiss notification removes the entry but does not fix the cause.",
-            "tip": "The same events arrive in Telegram once notifications are on: Settings → Panel."
+            "tip": "The same events arrive in Telegram once notifications are on: Panel settings → Behavior and notifications."
           },
           "jobs": {
             "name": "Recent changes",
@@ -1225,7 +1225,7 @@
         "fields": {
           "status": {
             "name": "Status",
-            "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Settings → Panel). \"Degraded\" - the node answers but one of its services is down. \"Pending\" - the node was created, but the install command has not been run yet."
+            "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Panel settings → Behavior and notifications). \"Degraded\" - the node answers but one of its services is down. \"Pending\" - the node was created, but the install command has not been run yet."
           },
           "engine": {
             "name": "Engine",
@@ -1249,7 +1249,7 @@
             "what": "Latency to Telegram from the last heartbeat - telemt's one figure across all datacenters. Yellow from 150 ms, red from 400. A dash on tproxy nodes and on offline nodes. Per-DC detail is on the node page, Overview tab."
           },
           "heartbeat": {
-            "name": "Last heartbeat",
+            "name": "Last response",
             "what": "When the agent last checked in. \"never connected\" - the install has not run, or the script did not reach registration."
           },
           "changes": {
@@ -1609,7 +1609,7 @@
         }
       },
       "keys.batch": {
-        "title": "Key batch",
+        "title": "Several keys at once",
         "intro": "Creates several shared keys at once with identical settings (nodes, mode, expiry, limits) and labels of the form \"prefix-number\". Handy for handing out one key per person when the personal labels are not known yet. The panel checks that every node has room for the whole batch and creates either all keys or none.",
         "fields": {
           "prefix": {
@@ -1629,7 +1629,7 @@
         },
         "notes": {
           "1": "If some node has fewer free slots than keys in the batch, the panel refuses the whole batch and names the node and its free slots. Lower the count or drop the node.",
-          "2": "Batch keys are ordinary shared keys: they can be renamed, revoked or extended individually later."
+          "2": "Keys in a series are ordinary shared keys: they can be renamed, revoked or extended individually later."
         }
       },
       "keys.limits": {
@@ -1771,7 +1771,7 @@
           },
           "clients": {
             "name": "On the user's side",
-            "what": "Open the link → Telegram asks \"Enable proxy?\" → Connect. Verify: Settings → Data and Storage → Proxy. If the proxy will not connect, check the node's \"Readiness check\" first."
+            "what": "Open the link → Telegram asks \"Enable proxy?\" → Connect. Verify: Settings → Data and Storage → Proxy. If the proxy will not connect, check the node's \"Prerequisite check\" first."
           }
         },
         "notes": {
@@ -2029,7 +2029,7 @@
           },
           "password": {
             "name": "Password",
-            "what": "At least 10 characters. Tell it to the person and ask them to change it right away under Settings → Security."
+            "what": "At least 10 characters. Tell it to the person and ask them to change it right away under Panel settings → Security."
           },
           "role": {
             "name": "Role",

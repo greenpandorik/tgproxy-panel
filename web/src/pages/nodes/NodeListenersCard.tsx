@@ -170,7 +170,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
                   value={registrationSecret.data.address}
                   showLabel
                   label={t('nodes.field_ad_tag_copy_address', { address: registrationSecret.data.address })}
-                  className="h-6 px-2 text-label"
+                  className="h-auto min-h-6 max-w-full px-2 py-0.5 text-left text-label whitespace-normal"
                 />
               )}
               {registrationSecret.data && (
