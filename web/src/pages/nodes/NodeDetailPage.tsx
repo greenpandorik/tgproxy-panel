@@ -219,9 +219,9 @@ export function NodeDetailPage() {
             {section === 'stats' && <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />}
             {section === 'diagnostics' && (
               <>
-                <NodeProbes id={node.id} />
-                <NodeCheckCard node={node} />
                 {node.engine === 'telemt' && <WebDiagnosticsCard nodeId={node.id} />}
+                <NodeCheckCard node={node} />
+                <NodeProbes id={node.id} />
               </>
             )}
             {section === 'logs' && <NodeLogs nodeId={node.id} online={node.online} engine={node.engine} />}

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/lib/api';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { ErrorState } from '@/components/common/ErrorState';
 import { formatDateTime } from '@/lib/format';
@@ -31,7 +32,7 @@ export function NodeProbes({ id }: { id: string }) {
     <Panel>
       <PanelHeader title={t('probe.title')} />
       <PanelBody className="space-y-4">
-        <p className="max-w-[72ch] text-body text-mute">{t('probe.hint')}</p>
+        {locations.length > 0 && <p className="max-w-[72ch] text-body text-mute">{t('probe.hint')}</p>}
         {query.isLoading ? (
           <p role="status">{t('common.loading')}</p>
         ) : query.isError ? (
@@ -42,7 +43,13 @@ export function NodeProbes({ id }: { id: string }) {
             onRetry={() => void query.refetch()}
           />
         ) : locations.length === 0 ? (
-          <p className="text-body text-mute">{t('probe.empty')}</p>
+          <>
+            <p className="text-body text-mute">{t('probe.none')}</p>
+            <AdvancedSettings label={t('probe.setup_toggle')}>
+              <p className="max-w-[72ch] text-label text-mute">{t('probe.hint')}</p>
+              <p className="max-w-[72ch] text-label text-mute">{t('probe.empty')}</p>
+            </AdvancedSettings>
+          </>
         ) : (
           locations.map((location) => {
             const report = query.data?.items.find((p) => p.location === location);

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useRunNodeCheck } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -134,12 +135,33 @@ export function NodeCheckCard({ node }: { node: Node }) {
           )}
         </div>
       ) : (
-        <ul className="divide-y divide-hairline">
-          {CHECK_NAMES.map((name) => {
-            const result = results.find((r) => r.name === name);
-            return result ? <CheckRow key={name} result={result} /> : null;
-          })}
-        </ul>
+        (() => {
+          const ordered = CHECK_NAMES.map((name) => results.find((r) => r.name === name)).filter((r): r is NodeCheckResult => Boolean(r));
+          const failing = ordered.filter((r) => !r.ok);
+          const passing = ordered.filter((r) => r.ok);
+          return (
+            <>
+              {failing.length > 0 && (
+                <ul data-testid="node-check-failing" className="divide-y divide-hairline">
+                  {failing.map((result) => (
+                    <CheckRow key={result.name} result={result} />
+                  ))}
+                </ul>
+              )}
+              {passing.length > 0 && (
+                <div className={cn('px-4 py-3', failing.length > 0 && 'border-t border-hairline')}>
+                  <AdvancedSettings label={t('nodes.check_passed_toggle', { count: passing.length })}>
+                    <ul className="divide-y divide-hairline overflow-hidden rounded-control border border-hairline">
+                      {passing.map((result) => (
+                        <CheckRow key={result.name} result={result} />
+                      ))}
+                    </ul>
+                  </AdvancedSettings>
+                </div>
+              )}
+            </>
+          );
+        })()
       )}
     </Panel>
   );

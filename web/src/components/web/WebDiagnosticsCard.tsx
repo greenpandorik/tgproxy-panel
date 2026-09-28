@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useNodeDiagnostics, useRunWebDiagnostics } from '@/api/web';
 import { useAuth } from '@/auth/AuthProvider';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
@@ -16,13 +17,14 @@ import { cn } from '@/lib/utils';
 
 import { CHECK_TONE, tallyChecks } from './diagnostics';
 
-import type { DiagnosticCheck, DiagnosticsRun } from '@/api/types';
+import type { DiagnosticCheck, DiagnosticGroup, DiagnosticsRun } from '@/api/types';
 import type { CSSProperties } from 'react';
 
-function CheckRow({ check }: { check: DiagnosticCheck }) {
+function CheckRow({ check, group, showDetail }: { check: DiagnosticCheck; group?: string; showDetail: boolean }) {
   const { t } = useTranslation();
   const tone = CHECK_TONE[check.status] ?? 'neutral';
   const skipped = check.status === 'not_available';
+  const problem = check.status === 'fail' || check.status === 'warn';
 
   return (
     <li
@@ -40,11 +42,17 @@ function CheckRow({ check }: { check: DiagnosticCheck }) {
           aria-hidden="true"
         />
         <span className="flex min-w-0 flex-col">
-          <span className={cn('truncate text-body', skipped ? 'text-mute' : 'text-foreground')}>
+          <span className={cn('text-body', skipped ? 'text-mute' : 'text-foreground')}>
             {t(`web.check_${check.key}`, check.key)}
+            {group && <span className="text-label text-mute"> · {t(`web.group_${group}`, group)}</span>}
           </span>
-          {check.detail && <span className="text-label text-mute">{check.detail}</span>}
-          {(check.status === 'fail' || check.status === 'warn') && <span className="mt-1 text-label text-foreground">{t(`web.remedy_${check.key}`, t('web.remedy_default'))}</span>}
+          {problem && <span className="mt-1 text-label text-foreground">{t(`web.remedy_${check.key}`, t('web.remedy_default'))}</span>}
+          {check.detail && (problem || showDetail) && (
+            <span className="mt-0.5 text-label text-mute">
+              {problem && <span className="text-mute">{t('web.diagnostics_technical')}: </span>}
+              {check.detail}
+            </span>
+          )}
         </span>
       </span>
       <span className="flex shrink-0 items-center gap-2 sm:justify-end">
@@ -67,33 +75,76 @@ function CheckRow({ check }: { check: DiagnosticCheck }) {
   );
 }
 
+function GroupedChecks({ groups, keep }: { groups: DiagnosticGroup[]; keep: (check: DiagnosticCheck) => boolean }) {
+  const { t } = useTranslation();
+  return (
+    <div className="overflow-hidden rounded-control border border-hairline">
+      {groups.map((group) => {
+        const checks = group.checks.filter(keep);
+        if (checks.length === 0) return null;
+        return (
+          <section key={group.key} data-group={group.key}>
+            <h3 className="border-b border-hairline bg-elevated/50 px-4 py-1.5 text-label text-mute">{t(`web.group_${group.key}`, group.key)}</h3>
+            <ul className="divide-y divide-hairline">
+              {checks.map((check) => (
+                <CheckRow key={check.key} check={check} showDetail />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+const PROBLEM_ORDER: Record<string, number> = { fail: 0, warn: 1 };
+
+/** A pass read problems first: what needs doing is listed, everything that passed waits behind a toggle. */
 function RunReport({ run }: { run: DiagnosticsRun }) {
   const { t } = useTranslation();
   const tally = tallyChecks(run.groups);
+  const problems = run.groups
+    .flatMap((group) => group.checks.filter((c) => c.status === 'fail' || c.status === 'warn').map((check) => ({ group: group.key, check })))
+    .sort((a, b) => PROBLEM_ORDER[a.check.status] - PROBLEM_ORDER[b.check.status]);
+  const attention = tally.failed + tally.warned;
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-hairline px-4 py-3 text-label">
-        <span className="text-foreground">{t('web.diagnostics_passed', { passed: tally.passed, total: tally.total })}</span>
-        {tally.failed > 0 && <span className="text-err">{t('web.diagnostics_failed', { count: tally.failed })}</span>}
-        {tally.warned > 0 && <span className="text-warn">{t('web.diagnostics_warned', { count: tally.warned })}</span>}
-        {tally.notRun > 0 && <span className="text-mute">{t('web.diagnostics_not_run', { count: tally.notRun })}</span>}
+      <div data-testid="diagnostics-summary" className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-hairline px-4 py-3 text-body">
+        {attention === 0 ? (
+          <span className="text-ok">{t('web.diagnostics_all_clear', { passed: tally.passed, total: tally.total })}</span>
+        ) : (
+          <>
+            <span className="text-foreground">{t('web.diagnostics_attention', { count: attention })}</span>
+            {tally.failed > 0 && <span className="text-label text-err">{t('web.diagnostics_failed', { count: tally.failed })}</span>}
+            {tally.warned > 0 && <span className="text-label text-warn">{t('web.diagnostics_warned', { count: tally.warned })}</span>}
+            <span className="text-label text-mute">{t('web.diagnostics_passed', { passed: tally.passed, total: tally.total })}</span>
+          </>
+        )}
+        {tally.notRun > 0 && <span className="text-label text-mute">{t('web.diagnostics_not_run', { count: tally.notRun })}</span>}
       </div>
 
-      {run.groups.map((group) => (
-        <section key={group.key} data-group={group.key}>
-          <h3 className="border-b border-hairline bg-elevated/50 px-4 py-1.5 text-micro tracking-wide text-mute uppercase">
-            {t(`web.group_${group.key}`, group.key)}
-          </h3>
-          <ul className="divide-y divide-hairline">
-            {group.checks.map((check) => (
-              <CheckRow key={check.key} check={check} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      {problems.length > 0 && (
+        <ul data-testid="diagnostics-problems" className="divide-y divide-hairline border-b border-hairline">
+          {problems.map(({ group, check }) => (
+            <CheckRow key={`${group}/${check.key}`} check={check} group={group} showDetail={false} />
+          ))}
+        </ul>
+      )}
 
-      <p className="px-4 py-3 text-label text-mute">{t('web.diagnostics_not_run_hint')}</p>
+      <div className="flex flex-col gap-3 px-4 py-3">
+        {tally.passed > 0 && (
+          <AdvancedSettings label={t('web.diagnostics_passed_toggle', { count: tally.passed })}>
+            <GroupedChecks groups={run.groups} keep={(c) => c.status === 'ok'} />
+          </AdvancedSettings>
+        )}
+        {tally.notRun > 0 && (
+          <AdvancedSettings label={t('web.diagnostics_not_run_toggle', { count: tally.notRun })}>
+            <p className="text-label text-mute">{t('web.diagnostics_not_run_hint')}</p>
+            <GroupedChecks groups={run.groups} keep={(c) => c.status === 'not_available'} />
+          </AdvancedSettings>
+        )}
+      </div>
     </div>
   );
 }
