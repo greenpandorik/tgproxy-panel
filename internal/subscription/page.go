@@ -35,6 +35,7 @@ type Page struct {
 	PanelName     string
 	PrimaryColor  string
 	AccentColor   string
+	PrimaryInk    string
 	Theme         string // "dark" or "light"
 	SupportLink   string
 	FooterText    string

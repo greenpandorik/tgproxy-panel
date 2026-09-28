@@ -9,22 +9,22 @@
   :root {
     --primary: {{.PrimaryColor}};
     --accent: {{.AccentColor}};
-    --bg: #151f2c;
-    --surface: #1d2939;
-    --surface-2: #263548;
-    --border: rgba(255, 255, 255, 0.07);
-    --border-2: rgba(255, 255, 255, 0.12);
-    --text: #edf2f7;
-    --text-dim: #a6b3c4;
+    --bg: #10120f;
+    --surface: #1b1f19;
+    --surface-2: #2b3227;
+    --border: #30382b;
+    --border-2: #4a5743;
+    --text: #eef3e8;
+    --text-dim: #b0bca7;
   }
   html[data-theme="light"] {
-    --bg: #f1f5f9;
-    --surface: #ffffff;
-    --surface-2: #e9eff5;
-    --border: rgba(0, 0, 0, 0.08);
-    --border-2: rgba(0, 0, 0, 0.14);
-    --text: #182433;
-    --text-dim: #526478;
+    --bg: #eeede5;
+    --surface: #fffdf6;
+    --surface-2: #e2e7db;
+    --border: #d5d8c9;
+    --border-2: #98a68f;
+    --text: #28362b;
+    --text-dim: #596551;
   }
   * { box-sizing: border-box; }
   body {
@@ -152,7 +152,7 @@
     text-align: center;
     margin-top: 4px;
     background: var(--primary);
-    color: #fff;
+    color: {{.PrimaryInk}};
     text-decoration: none;
     font-size: 0.82rem;
     font-weight: 600;

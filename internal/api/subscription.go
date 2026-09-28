@@ -234,5 +234,7 @@ func (s *Server) subscriptionPage(r *http.Request, key db.AccessKey) (subscripti
 		page.SupportLink = b.SupportLink
 		page.FooterText = b.FooterText
 	}
+	page.PrimaryColor, page.AccentColor = branding.ThemeColors(page.PrimaryColor, page.AccentColor, page.Theme)
+	page.PrimaryInk = branding.Foreground(page.PrimaryColor)
 	return page, nil
 }

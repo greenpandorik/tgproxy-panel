@@ -7,18 +7,20 @@
 <title>{{.PanelName}}</title>
 <style>
   :root {
-    --bg: #151f2c;
-    --surface: #1d2939;
-    --border: rgba(255, 255, 255, 0.12);
-    --text: #edf2f7;
-    --text-dim: #a6b3c4;
+    --bg: #10120f;
+    --surface: #1b1f19;
+    --border: #4a5743;
+    --text: #eef3e8;
+    --text-dim: #b0bca7;
+    --mark: #c4ed79;
   }
   html[data-theme="light"] {
-    --bg: #f1f5f9;
-    --surface: #ffffff;
-    --border: rgba(0, 0, 0, 0.14);
-    --text: #182433;
-    --text-dim: #526478;
+    --bg: #eeede5;
+    --surface: #fffdf6;
+    --border: #98a68f;
+    --text: #28362b;
+    --text-dim: #596551;
+    --mark: #365b46;
   }
   * { box-sizing: border-box; }
   body {
@@ -62,7 +64,7 @@
 </head>
 <body>
   <div class="card">
-    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.75L22.25 12 12 22.25 1.75 12Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><rect x="9" y="9" width="6" height="6" rx="1" fill="#e23c92"/></svg>
+    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.75L22.25 12 12 22.25 1.75 12Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><rect x="9" y="9" width="6" height="6" rx="1" fill="var(--mark)"/></svg>
     <h1>{{.PanelName}}</h1>
     <p>{{.Message}}</p>
   </div>
