@@ -48,7 +48,7 @@ function PolicyForm({nodeId,data,enabled}:{nodeId:string;data:PolicyResponse;ena
   };
   return <form className="space-y-4" onSubmit={(e)=>{e.preventDefault();save.mutate();}}>
     <p className="max-w-3xl text-label text-mute">{t('web.policy_hint')}</p>
-    <fieldset disabled={!isWriter || !enabled || save.isPending} className="space-y-4 disabled:opacity-60">
+    <fieldset disabled={!isWriter || !enabled || save.isPending} className="space-y-4">
       <div className="flex flex-wrap gap-2">{PRESETS.map((preset)=><Button type="button" key={preset} variant={policy.preset===preset?'secondary':'outline'} aria-pressed={policy.preset===preset} onClick={()=>selectPreset(preset)}>{t(`web.preset_${preset}`)}</Button>)}</div>
       <p className="text-label">{t('web.policy_order')}: <span className="font-medium">{policy.carriers===false?'HTTPS': [...new Set([...policy.carriers,policy.carrier])].join(' → ')}</span></p>
       <details><summary className="cursor-pointer text-label text-mute">{t('web.policy_advanced')}</summary><div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

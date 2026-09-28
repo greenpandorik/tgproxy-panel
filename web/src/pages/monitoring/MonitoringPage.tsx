@@ -3,7 +3,7 @@ import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { useBranding } from '@/api/branding';
+import { useBrandingIdentity } from '@/theme/ThemeProvider';
 import { MONITORING_RANGES, useMonitoringOverview } from '@/api/monitoring';
 import { useNodes } from '@/api/nodes';
 import { CopyButton } from '@/components/common/CopyButton';
@@ -33,8 +33,8 @@ import { formatBytes, formatNumber } from '@/lib/format';
 // recharts stays out of the shell bundle - only NodeSeriesChart.tsx imports it.
 const NodeSeriesChart = lazy(() => import('./NodeSeriesChart').then((m) => ({ default: m.NodeSeriesChart })));
 
-const DEFAULT_BRAND_PRIMARY = '#3b82f6';
-const DEFAULT_BRAND_ACCENT = '#22c55e';
+const DEFAULT_BRAND_PRIMARY = '#365b46';
+const DEFAULT_BRAND_ACCENT = '#a35336';
 
 const METRICS_SNIPPET = `scrape_configs:
   - job_name: tgwp-panel
@@ -167,7 +167,7 @@ export function MonitoringPage() {
   const [range, setRange] = useState<MonitoringRange>('24h');
   const [view, setView] = useSection(['overview', 'nodes', 'web', 'integrations'], 'overview');
   const overviewQuery = useMonitoringOverview(range);
-  const { data: branding } = useBranding();
+  const { branding } = useBrandingIdentity();
   const nodesQuery = useNodes();
   const engineById = new Map((nodesQuery.data?.items ?? []).map((n) => [n.id, n.engine]));
 

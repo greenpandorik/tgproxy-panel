@@ -1,6 +1,6 @@
 
 /** Fallback hues after the brand pair, in fixed order. */
-export const NEUTRAL_SERIES = ['#a78bfa', '#f59e0b', '#22c55e', '#ec4899'] as const;
+export const NEUTRAL_SERIES = ['var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)'] as const;
 
 /** Below this hue gap two lines read as the same colour on a dark ground. */
 export const MIN_HUE_SEPARATION_DEG = 25;

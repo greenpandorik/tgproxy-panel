@@ -3,7 +3,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { useBranding } from '@/api/branding';
+import { useBrandingIdentity } from '@/theme/ThemeProvider';
 import { useAlerts, useDashboardSummary, useNodesSeries24h } from '@/api/dashboard';
 import { useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
@@ -33,8 +33,8 @@ import type { Node, SeriesPoint } from '@/api/types';
 // recharts stays out of the shell bundle - only SessionsChart.tsx imports it.
 const SessionsChart = lazy(() => import('./dashboard/SessionsChart').then((m) => ({ default: m.SessionsChart })));
 
-const DEFAULT_BRAND_PRIMARY = '#3b82f6';
-const DEFAULT_BRAND_ACCENT = '#22c55e';
+const DEFAULT_BRAND_PRIMARY = '#365b46';
+const DEFAULT_BRAND_ACCENT = '#a35336';
 
 const RECENT_JOBS_LIMIT = 6;
 
@@ -118,7 +118,7 @@ export function DashboardPage() {
   const summaryQuery = useDashboardSummary();
   const nodesQuery = useNodes();
   const alertsQuery = useAlerts();
-  const { data: branding } = useBranding();
+  const { branding } = useBrandingIdentity();
   const nodes = useMemo(() => nodesQuery.data?.items ?? [], [nodesQuery.data]);
   const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
   const seriesResults = useNodesSeries24h(nodeIds);

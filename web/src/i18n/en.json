@@ -985,6 +985,7 @@
     "branding_upload_too_large": "That file is over 2 MB — shrink it and try again",
     "branding_upload_bad_type": "Only PNG, JPEG, ICO and SVG work here",
     "branding_upload_success": "File uploaded",
+    "branding_theme_palette_hint": "Default palette: Carbon in dark mode, Linen in light mode. Resetting colors enables this theme pair. Custom brand colors apply to both modes.",
     "branding_primary_color": "Primary color",
     "branding_accent_color": "Accent color",
     "branding_color_invalid": "Enter a color as #rgb or #rrggbb",

@@ -10,6 +10,8 @@ function Controls() {
     <>
       <span data-testid="theme">{theme.theme}</span>
       <button onClick={() => theme.setTheme('system')}>System</button>
+      <button onClick={theme.toggleTheme}>Toggle</button>
+      <span data-testid="primary">{theme.branding?.primary_color}</span>
       <button onClick={() => theme.setDensity('compact')}>Compact</button>
       <button onClick={() => theme.setCollapsed(true)}>Collapse</button>
       <button onClick={theme.resetPreferences}>Reset</button>
@@ -39,6 +41,36 @@ beforeEach(() => {
       ),
     ),
   );
+});
+it('uses Carbon and Linen for legacy defaults and updates chart identity when toggled', async () => {
+  vi.mocked(fetch).mockResolvedValue(
+    new Response(
+      JSON.stringify({ primary_color: '#e23c92', accent_color: '#12a198', theme_default: 'light', panel_name: 'Legacy' }),
+      { headers: { 'content-type': 'application/json' } },
+    ),
+  );
+  mount();
+  await waitFor(() => expect(document.title).toBe('Legacy'));
+  expect(screen.getByTestId('primary')).toHaveTextContent('#365b46');
+  expect(document.documentElement.style.getPropertyValue('--primary-foreground')).toBe('#ffffff');
+  await userEvent.click(screen.getByText('Toggle'));
+  expect(screen.getByTestId('primary')).toHaveTextContent('#c4ed79');
+  expect(document.documentElement.style.getPropertyValue('--brand-accent')).toBe('#c0a8ed');
+  expect(document.documentElement.style.getPropertyValue('--primary-foreground')).toBe('#000000');
+});
+it('keeps custom brand colors in both themes', async () => {
+  vi.mocked(fetch).mockResolvedValue(
+    new Response(
+      JSON.stringify({ primary_color: '#112233', accent_color: '#abcdef', theme_default: 'light', panel_name: 'Custom' }),
+      { headers: { 'content-type': 'application/json' } },
+    ),
+  );
+  mount();
+  await waitFor(() => expect(document.title).toBe('Custom'));
+  await userEvent.click(screen.getByText('Toggle'));
+  expect(document.documentElement.style.getPropertyValue('--brand-primary')).toBe('#112233');
+  expect(document.documentElement.style.getPropertyValue('--brand-accent')).toBe('#abcdef');
+  expect(screen.getByTestId('primary')).toHaveTextContent('#112233');
 });
 it('persists density and menu, then resets them without changing the saved brand', async () => {
   const user = userEvent.setup();

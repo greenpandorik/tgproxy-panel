@@ -2,7 +2,7 @@ import { Gauge, Globe, RefreshCw, Sigma } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useBranding } from '@/api/branding';
+import { useBrandingIdentity } from '@/theme/ThemeProvider';
 import { MONITORING_RANGES, useNodeSeries } from '@/api/monitoring';
 import { useNodeStats } from '@/api/nodes';
 import { PanelEmpty } from '@/components/common/EmptyState';
@@ -25,14 +25,14 @@ import type { NodeEngine } from '@/api/types';
 const LoadChart = lazy(() => import('@/pages/monitoring/LoadChart').then((m) => ({ default: m.LoadChart })));
 const DcLatencyChart = lazy(() => import('./DcLatencyChart').then((m) => ({ default: m.DcLatencyChart })));
 
-const DEFAULT_BRAND_PRIMARY = '#3b82f6';
-const DEFAULT_BRAND_ACCENT = '#22c55e';
+const DEFAULT_BRAND_PRIMARY = '#365b46';
+const DEFAULT_BRAND_ACCENT = '#a35336';
 
 function NodeLoadPanel({ nodeId }: { nodeId: string }) {
   const { t } = useTranslation();
   const [range, setRange] = useState<MonitoringRange>('24h');
   const seriesQuery = useNodeSeries(nodeId, range);
-  const { data: branding } = useBranding();
+  const { branding } = useBrandingIdentity();
 
   const colors = useMemo((): [string, string, string] => {
     const [first, second, third] = seriesPalette(

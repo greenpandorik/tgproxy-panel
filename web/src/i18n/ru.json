@@ -985,6 +985,7 @@
     "branding_upload_too_large": "Файл больше 2 МБ — уменьшите его и попробуйте снова",
     "branding_upload_bad_type": "Подходят только PNG, JPEG, ICO и SVG",
     "branding_upload_success": "Файл загружен",
+    "branding_theme_palette_hint": "Стандартная палитра: Карбон в тёмной теме, Лён в светлой. Сброс цветов включает эту пару тем. Собственные цвета бренда используются в обеих темах.",
     "branding_primary_color": "Основной цвет",
     "branding_accent_color": "Акцентный цвет",
     "branding_color_invalid": "Введите цвет в формате #rgb или #rrggbb",

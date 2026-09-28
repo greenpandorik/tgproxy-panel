@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useBranding } from '@/api/branding';
 import { DEFAULT_PANEL_NAME } from '@/components/brand/brand';
 import { brandForeground } from './contrast';
-import { DEFAULT_PRIMARY_COLOR } from '@/components/brand/brand';
+import { themeColors } from './colors';
 import { readPreference, readThemePreference, savePreference } from './preferences';
 import type { Density, ThemePreference } from './preferences';
 import type { Branding } from '@/api/types';
@@ -33,7 +33,7 @@ export function useTheme(): ThemeContextValue {
 export function useBrandingIdentity() {
   const { data } = useBranding();
   const ctx = useContext(ThemeContext);
-  return { branding: ctx?.branding ?? data, theme: ctx?.theme ?? 'light' };
+  return { branding: ctx?.branding ?? { ...data, ...themeColors(data, 'light') }, theme: ctx?.theme ?? 'light' };
 }
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { data: savedBranding } = useBranding();
@@ -50,6 +50,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
   const preference = choice ?? branding?.theme_default ?? 'light';
   const theme: Theme = preference === 'system' ? (systemDark ? 'dark' : 'light') : preference;
+  const colors = useMemo(() => themeColors(branding, theme), [branding, theme]);
+  const resolvedBranding = useMemo(() => ({ ...branding, ...colors }), [branding, colors]);
 
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -65,18 +67,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.density = density;
   }, [density]);
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--primary-foreground',
-      brandForeground(branding?.primary_color || DEFAULT_PRIMARY_COLOR),
-    );
+    document.documentElement.style.setProperty('--primary-foreground', brandForeground(colors.primary_color));
     for (const [name, value] of [
-      ['--brand-primary', branding?.primary_color],
-      ['--brand-accent', branding?.accent_color],
+      ['--brand-primary', colors.primary_color],
+      ['--brand-accent', colors.accent_color],
     ]) {
       if (value) document.documentElement.style.setProperty(name!, value);
       else document.documentElement.style.removeProperty(name!);
     }
-  }, [branding?.primary_color, branding?.accent_color]);
+  }, [colors.primary_color, colors.accent_color]);
   useEffect(() => {
     document.title = branding?.panel_name || DEFAULT_PANEL_NAME;
   }, [branding?.panel_name]);
@@ -130,9 +129,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setDensityState('comfortable');
         setCollapsedState(false);
       },
-      branding,
+      branding: resolvedBranding,
       previewBranding: setPreview,
     };
-  }, [theme, preference, density, collapsed, branding]);
+  }, [theme, preference, density, collapsed, resolvedBranding]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

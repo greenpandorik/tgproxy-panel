@@ -6,27 +6,28 @@
 @custom-variant dark (&:is([data-theme="dark"] *));
 
 :root {
-  --bg: #151f2c;
-  --bg-2: #1d2939;
-  --bg-3: #263548;
+  --bg: #10120f;
+  --bg-2: #1b1f19;
+  --bg-3: #2b3227;
+  --field-bg: #121610;
 
-  --line: rgba(255, 255, 255, 0.07);
-  --line-2: rgba(255, 255, 255, 0.12);
+  --line: #30382b;
+  --line-2: #4a5743;
 
-  --fg: #edf2f7;
-  --mute: #a6b3c4;
-  --dim: #55575f;
+  --fg: #eef3e8;
+  --mute: #b0bca7;
+  --dim: #97a58d;
 
-  --status-ok: #22c55e;
-  --status-warn: #f59e0b;
-  --status-err: #ff8585;
-  --status-info: #80b6ff;
+  --status-ok: #85d5ac;
+  --status-warn: #e9c76b;
+  --status-err: #f4948e;
+  --status-info: #a7c8ee;
 
   --destructive-solid: #da1313;
   --destructive-solid-hover: #b81010;
 
-  --brand-primary: #e23c92;
-  --brand-accent: #12a198;
+  --brand-primary: #c4ed79;
+  --brand-accent: #c0a8ed;
 
   --brand-ink: color-mix(in srgb, var(--brand-primary) 40%, white);
 
@@ -70,8 +71,8 @@
   --t-mono: 12.5px;
   --t-mono-lh: 18px;
 
-  --r-control: 6px;
-  --r-surface: 8px;
+  --r-control: 4px;
+  --r-surface: 4px;
   --r-pill: 9999px;
 
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
@@ -80,18 +81,18 @@
 
   --series-1: var(--brand-primary);
   --series-2: var(--brand-accent);
-  --series-3: #d95926;
-  --series-4: #c98500;
-  --series-5: #4f8ef7;
-  --series-6: #9085e9;
+  --series-3: #a7c8ee;
+  --series-4: #e9c76b;
+  --series-5: #85d5ac;
+  --series-6: #f4948e;
   --series-7: #199e70;
   --series-8: #e66767;
   --series-other: var(--dim);
 
-  --sidebar: var(--bg-2);
+  --sidebar: #151913;
   --sidebar-foreground: var(--fg);
   --sidebar-primary: var(--brand-primary);
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: var(--bg-3);
   --sidebar-accent-foreground: var(--fg);
   --sidebar-border: var(--line);
@@ -99,31 +100,38 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #f1f5f9;
-  --bg-2: #ffffff;
-  --bg-3: #e9eff5;
+  --bg: #eeede5;
+  --bg-2: #fffdf6;
+  --bg-3: #e2e7db;
+  --field-bg: #f5f5ed;
+  --sidebar: #e0e5d9;
+  --brand-primary: #365b46;
+  --brand-accent: #a35336;
+  --primary-foreground: #ffffff;
+  --r-control: 8px;
+  --r-surface: 8px;
 
-  --line: rgba(0, 0, 0, 0.08);
-  --line-2: rgba(0, 0, 0, 0.14);
+  --line: #d5d8c9;
+  --line-2: #98a68f;
 
-  --fg: #182433;
-  --mute: #526478;
-  --dim: #9a9ca3;
+  --fg: #28362b;
+  --mute: #596551;
+  --dim: #596650;
 
-  --status-ok: #167e3c;
-  --status-warn: #986206;
-  --status-err: #da1313;
-  --status-info: #0b63f2;
+  --status-ok: #346842;
+  --status-warn: #835e0f;
+  --status-err: #ae3d35;
+  --status-info: #365f88;
 
   --brand-ink: color-mix(in srgb, var(--brand-primary) 40%, black);
 
-  --destructive-foreground: #ffffff;
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --destructive-foreground: #fffdf6;
+  --shadow-popover: 0 8px 24px #98a68f;
 
-  --series-3: #c04a1c;
-  --series-4: #a86e00;
-  --series-5: #2f6fd6;
-  --series-6: #6b5fd6;
+  --series-3: #365f88;
+  --series-4: #835e0f;
+  --series-5: #6a4f8f;
+  --series-6: #8e3f6f;
   --series-7: #12855e;
   --series-8: #d23a3a;
 }
@@ -452,4 +460,36 @@ summary {
     overflow-y: auto;
     scrollbar-width: thin;
   }
+}
+
+/* Carbon / Linen control states share the same semantic roles. */
+.panel-nav-link[aria-current='page'] {
+  background: var(--brand-primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+.panel-nav-link[aria-current='page'] .text-mute {
+  color: inherit;
+}
+.section-nav button[aria-current='page'] {
+  border-color: var(--brand-primary);
+  background: color-mix(in srgb, var(--brand-primary) 10%, var(--bg-2));
+}
+[data-slot='input'],
+.ops-select {
+  background-color: var(--field-bg);
+}
+[data-slot='button']:is(:disabled, [data-disabled], [aria-disabled='true']) {
+  opacity: 1;
+  background: var(--bg-3);
+  color: var(--mute);
+  border-color: var(--line-2);
+}
+[data-slot='input']:disabled {
+  opacity: 1;
+  background: var(--bg-3);
+  color: var(--mute);
+}
+[data-slot='button'].bg-primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: color-mix(in srgb, var(--brand-primary) 90%, var(--fg));
 }

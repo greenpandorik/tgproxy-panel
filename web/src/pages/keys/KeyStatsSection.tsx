@@ -2,7 +2,7 @@ import { Activity, ArrowDownUp, Radio, RefreshCw, TriangleAlert } from 'lucide-r
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useBranding } from '@/api/branding';
+import { useBrandingIdentity } from '@/theme/ThemeProvider';
 import { useKeyStats } from '@/api/keys';
 import { EmptyState } from '@/components/common/EmptyState';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
@@ -24,8 +24,8 @@ const KeyTrafficChart = lazy(() => import('./KeyTrafficChart').then((m) => ({ de
 
 const RANGES: KeyStatsRange[] = ['24h', '7d'];
 
-const DEFAULT_BRAND_PRIMARY = '#3b82f6';
-const DEFAULT_BRAND_ACCENT = '#22c55e';
+const DEFAULT_BRAND_PRIMARY = '#365b46';
+const DEFAULT_BRAND_ACCENT = '#a35336';
 
 export function trafficDeltas(points: KeyStatsNode['points']): TrafficPoint[] {
   const out: TrafficPoint[] = [];
@@ -110,7 +110,7 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
   const { t, i18n } = useTranslation();
   const [range, setRange] = useState<KeyStatsRange>('24h');
   const statsQuery = useKeyStats(keyId, range, hasTelemtNode);
-  const { data: branding } = useBranding();
+  const { branding } = useBrandingIdentity();
 
   const nodes = statsQuery.data?.nodes ?? [];
   const totals = statsQuery.data?.totals;
