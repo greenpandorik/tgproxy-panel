@@ -15,6 +15,7 @@ import {
   telemtLimitsToForm,
   validateTelemtLimitsForm,
   EMPTY_TELEMT_LIMITS_FORM,
+  MAX_RATE_MBIT,
 } from './units';
 
 describe('gigabytes and bytes', () => {
@@ -145,6 +146,14 @@ describe('validateTelemtLimitsForm', () => {
     expect(validateTelemtLimitsForm({ ...EMPTY_TELEMT_LIMITS_FORM, quota_gb: String(MAX_QUOTA_GB) })).toEqual({});
     expect(validateTelemtLimitsForm({ ...EMPTY_TELEMT_LIMITS_FORM, quota_gb: String(MAX_QUOTA_GB + 1) })).toEqual({
       quota_gb: 'limit_quota_max',
+    });
+  });
+
+  it('holds both rates to the 100 Gbit/s telemt accepts', () => {
+    expect(validateTelemtLimitsForm({ ...EMPTY_TELEMT_LIMITS_FORM, rate_up_mbit: String(MAX_RATE_MBIT) })).toEqual({});
+    expect(validateTelemtLimitsForm({ ...EMPTY_TELEMT_LIMITS_FORM, rate_up_mbit: String(MAX_RATE_MBIT + 1), rate_down_mbit: '250000' })).toEqual({
+      rate_up_mbit: 'limit_rate_max',
+      rate_down_mbit: 'limit_rate_max',
     });
   });
 

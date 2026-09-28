@@ -126,6 +126,9 @@ const MaxTelemtQuotaBytes int64 = 100 * 1024 * 1024 * 1024 * 1024
 // MaxTelemtCounter caps max_unique_ips and max_tcp_conns at one million.
 const MaxTelemtCounter = 1_000_000
 
+// MaxTelemtRateBps is the highest per-user rate telemt accepts, in bits per second.
+const MaxTelemtRateBps int64 = 100_000_000_000
+
 // TelemtLimits mirrors telemt's per-user limits.
 type TelemtLimits struct {
 	DataQuotaBytes   int64 `json:"data_quota_bytes,omitempty"`
@@ -147,6 +150,11 @@ func (l TelemtLimits) Validate() error {
 	}
 	if l.DataQuotaBytes > MaxTelemtQuotaBytes {
 		return fmt.Errorf("data_quota_bytes must not exceed %d (100 TB)", MaxTelemtQuotaBytes)
+	}
+	for name, v := range map[string]int64{"rate_limit_up_bps": l.RateLimitUpBps, "rate_limit_down_bps": l.RateLimitDownBps} {
+		if v > MaxTelemtRateBps {
+			return fmt.Errorf("%s must not exceed %d (100 Gbit/s)", name, MaxTelemtRateBps)
+		}
 	}
 	for name, v := range map[string]int{"max_unique_ips": l.MaxUniqueIPs, "max_tcp_conns": l.MaxTCPConns} {
 		if v > MaxTelemtCounter {

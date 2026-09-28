@@ -26,9 +26,6 @@ const (
 	telemtLoopbackCIDR  = "127.0.0.1/32"
 	// telemtSynlimitBackend is the per-listener SYN rate limiter telemt installs itself (spec §5, the MEKO fix).
 	telemtSynlimitBackend = "nftables"
-	// telemtMaxHTTPHandlers is set explicitly because telemt refuses the https carrier below 2
-	// and https-lanes below 4, and [web.limits] cannot be raised without a restart.
-	telemtMaxHTTPHandlers = 4
 )
 
 // Default node paths, overridable for tests.
@@ -189,8 +186,6 @@ carrier = {{q .Carrier}}
 carriers = [{{range $i, $c := .Carriers}}{{if $i}}, {{end}}{{q $c}}{{end}}]
 carrier_learning = {{.CarrierLearning}}
 carrier_negotiation_aggressiveness = {{q .Aggressiveness}}
-[web.limits]
-max_http_handlers = {{.MaxHTTPHandlers}}
 [web.timeouts]
 carrier_negotiation_deadlines_secs = [{{range $i, $d := .NegotiationDeadlines}}{{if $i}}, {{end}}{{$d}}{{end}}]
 carrier_health_secs = {{.CarrierHealthSecs}}
@@ -262,7 +257,6 @@ func RenderTelemtConfig(p TelemtInitParams, apiToken string) ([]byte, error) {
 		"MetricsListen": telemtMetricsListen, "APIListen": telemtAPIListen,
 		"LoopbackCIDR": telemtLoopbackCIDR,
 		"WebListenIP":  telemtWebListenIP, "WebListenPort": telemtWebListenPort,
-		"MaxHTTPHandlers": telemtMaxHTTPHandlers,
 	}
 	for k, v := range telemtWebPolicyTemplateData(p.WebPolicy) {
 		data[k] = v

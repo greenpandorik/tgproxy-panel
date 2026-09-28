@@ -299,7 +299,6 @@ func TestRenderTelemtConfigCarriesTheWebPolicy(t *testing.T) {
 		"carriers = [\"websocket-lanes\", \"websocket\", \"https-lanes\"]",
 		"carrier_learning = true",
 		"carrier_negotiation_aggressiveness = \"conservative\"",
-		"[web.limits]\nmax_http_handlers = 4",
 		"[web.timeouts]",
 		"carrier_negotiation_deadlines_secs = [3, 5, 8, 12]",
 		"carrier_health_secs = 30",
@@ -312,9 +311,9 @@ func TestRenderTelemtConfigCarriesTheWebPolicy(t *testing.T) {
 			t.Fatalf("config is missing %q:\n%s", want, cfg)
 		}
 	}
-	// The negotiation order ships https-lanes, which telemt refuses below four HTTP handlers.
-	if !strings.Contains(string(cfg), "max_http_handlers = 4") {
-		t.Fatalf("https-lanes needs max_http_handlers >= 4:\n%s", cfg)
+	// telemt refuses max_http_handlers below max_body_readers (32 by default) at startup.
+	if strings.Contains(string(cfg), "max_http_handlers") {
+		t.Fatalf("init-node must leave max_http_handlers at telemt's default:\n%s", cfg)
 	}
 }
 

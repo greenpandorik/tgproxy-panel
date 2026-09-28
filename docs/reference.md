@@ -305,7 +305,7 @@ All variables live in `.env.example`; copy it to `.env` and fill in the blanks.
 | `NODE_DRIVER` | `gateway` (real gRPC agents) or `mock` (for tests/demos without real nodes). |
 | `METRICS_TOKEN` | **Required when `NODE_DRIVER=gateway`** (the panel refuses to start without it). `/metrics` is mounted at the panel root, outside the auth group, so it requires `Authorization: Bearer <token>`. Only `NODE_DRIVER=mock` (tests/demos) may leave it empty. |
 | `TPROXY_COMMIT` | The `tproxy-server` commit the install script pins nodes to. Must be 7-40 lowercase hex characters; it is interpolated into a root-run script. |
-| `TELEMT_VERSION` | The telemt release telemt nodes install (default `3.5.7`). A three-part version like `3.5.7`; it is interpolated into a root-run script. |
+| `TELEMT_VERSION` | The telemt release telemt nodes install (default `3.5.8`). A three-part version like `3.5.7`; it is interpolated into a root-run script. |
 | `TELEMT_SHA256_X86_64` | **Required when `NODE_DRIVER=gateway`.** sha256 of the release asset `telemt-x86_64-linux-gnu.tar.gz` for `TELEMT_VERSION`, 64 hex characters. The install script verifies the download against it before running anything, so a wrong or empty value is the difference between a pinned install and an unverified one. Change it together with `TELEMT_VERSION`. |
 | `TELEMT_SHA256_MUSL_X86_64` | sha256 of the same release's `telemt-x86_64-linux-musl.tar.gz`. Used only by the `fakenode-telemt` demo image. |
 | `GITHUB_REPO` | Repository the update chip reads releases and stars from (default `greenpandorik/tgproxy-panel`). |

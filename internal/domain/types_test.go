@@ -172,3 +172,12 @@ func TestDiagnosticsTallyIsUnknownWhenNothingRan(t *testing.T) {
 		t.Fatalf("status %q, want unknown when no check could run", run.Status)
 	}
 }
+
+func TestTelemtLimitsHoldRatesToWhatTelemtAccepts(t *testing.T) {
+	if err := (TelemtLimits{RateLimitUpBps: MaxTelemtRateBps, RateLimitDownBps: MaxTelemtRateBps}).Validate(); err != nil {
+		t.Fatalf("100 Gbit/s must pass: %v", err)
+	}
+	if err := (TelemtLimits{RateLimitDownBps: MaxTelemtRateBps + 1}).Validate(); err == nil {
+		t.Fatal("a rate telemt 3.5.8 rejects must be refused before it reaches a node")
+	}
+}

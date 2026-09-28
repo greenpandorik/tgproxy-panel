@@ -10,6 +10,9 @@ export const MAX_QUOTA_GB = 100 * 1024;
 // Backend ceiling on the two counters (internal/domain.MaxTelemtCounter).
 export const MAX_TELEMT_COUNTER = 1_000_000;
 
+/** Backend ceiling on a rate (internal/domain.MaxTelemtRateBps = 100 Gbit/s), in Mbit/s. */
+export const MAX_RATE_MBIT = 100_000;
+
 function tidy(value: number): number {
   return Math.round(value * 1e6) / 1e6;
 }
@@ -116,6 +119,11 @@ export function validateTelemtLimitsForm(form: TelemtLimitsForm): Partial<Record
   }
   if (!out.quota_gb && parseAmount(form.quota_gb) > MAX_QUOTA_GB) {
     out.quota_gb = 'limit_quota_max';
+  }
+  for (const name of ['rate_up_mbit', 'rate_down_mbit'] as const) {
+    if (!out[name] && parseAmount(form[name]) > MAX_RATE_MBIT) {
+      out[name] = 'limit_rate_max';
+    }
   }
   return out;
 }
