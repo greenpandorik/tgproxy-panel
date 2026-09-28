@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ExternalLink, Network } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
@@ -70,6 +70,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -79,6 +80,9 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
   useEffect(() => {
     reset({ tls_domain: node.tls_domain, classic_port: node.classic_port, public_ip: node.public_ip, ad_tag: node.ad_tag });
   }, [node.tls_domain, node.classic_port, node.public_ip, node.ad_tag, reset]);
+
+  const [draftDomain, draftPort] = useWatch({ control, name: ['tls_domain', 'classic_port'] });
+  const fakeTlsEdited = draftDomain !== node.tls_domain || Number(draftPort) !== node.classic_port;
 
   const askToSave = (values: FormValues) => {
     const fakeTLS = values.tls_domain !== node.tls_domain || values.classic_port !== node.classic_port;
@@ -179,10 +183,12 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
               )}
             </div>
           </AdvancedSettings>
-          <p className="flex items-start gap-2 text-label text-warn">
-            <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
-            {t('nodes.listeners_restart_note')}
-          </p>
+          {fakeTlsEdited && (
+            <p data-testid="listeners-restart-note" className="flex items-start gap-2 text-label text-warn">
+              <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
+              {t('nodes.listeners_restart_note')}
+            </p>
+          )}
 
           <div className="flex justify-end">
             <Button type="submit" size="sm" disabled={isSubmitting || !isDirty}>

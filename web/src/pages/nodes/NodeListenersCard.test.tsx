@@ -113,6 +113,15 @@ describe('NodeListenersCard', () => {
     expect(within(dialog).getByText('Change the Fake-TLS settings?')).toBeInTheDocument();
   });
 
+  it('warns about reissuing links only while the Fake-TLS domain or port is being changed', async () => {
+    render(wrap(<NodeListenersCard node={node} canEdit />));
+    expect(screen.queryByTestId('listeners-restart-note')).toBeNull();
+    const port = screen.getByLabelText(/Fake-TLS port|Порт Fake-TLS/);
+    await userEvent.clear(port);
+    await userEvent.type(port, '9443');
+    expect(screen.getByTestId('listeners-restart-note')).toBeInTheDocument();
+  });
+
   it('lists the public IP read-only for viewers', () => {
     render(wrap(<NodeListenersCard node={node} canEdit={false} />));
     expect(screen.getByText('Public IP')).toBeInTheDocument();

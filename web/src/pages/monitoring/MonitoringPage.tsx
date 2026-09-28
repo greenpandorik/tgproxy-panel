@@ -22,7 +22,6 @@ import { ApiError } from '@/lib/api';
 import { seriesPalette } from '@/lib/chart';
 
 import { FleetCarriersCard } from './FleetCarriersCard';
-import { AttentionSection } from '@/pages/dashboard/AttentionSection';
 
 import type { ReactNode } from 'react';
 import type { MonitoringRange } from '@/api/monitoring';
@@ -166,7 +165,7 @@ export function MonitoringPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [range, setRange] = useState<MonitoringRange>('24h');
-  const [view, setView] = useSection(['overview', 'problems', 'nodes', 'web', 'integrations'], 'overview');
+  const [view, setView] = useSection(['overview', 'nodes', 'web', 'integrations'], 'overview');
   const overviewQuery = useMonitoringOverview(range);
   const { data: branding } = useBranding();
   const nodesQuery = useNodes();
@@ -208,18 +207,18 @@ export function MonitoringPage() {
         value={view}
         onChange={setView}
         className="mb-4 max-w-full overflow-x-auto"
-        options={(['overview', 'problems', 'nodes', 'web', 'integrations'] as const).map((value) => ({
+        options={(['overview', 'nodes', 'web', 'integrations'] as const).map((value) => ({
           value,
           label: t(`monitoring.view_${value}`),
         }))}
       />
 
-      {loading && view !== 'problems' && view !== 'integrations' ? (
+      {loading && view !== 'integrations' ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <NodeCardSkeleton />
           <NodeCardSkeleton />
         </div>
-      ) : overviewQuery.isError && view !== 'integrations' && view !== 'problems' ? (
+      ) : overviewQuery.isError && view !== 'integrations' ? (
         /* The readings failed to arrive, which is not the same as a network with
            no nodes in it - so it says so, and offers the one useful move. */
         <ErrorState
@@ -227,7 +226,7 @@ export function MonitoringPage() {
           retryLabel={t('common.refresh')}
           onRetry={() => void overviewQuery.refetch()}
         />
-      ) : view !== 'problems' && view !== 'integrations' && nodes.length === 0 ? (
+      ) : view !== 'integrations' && nodes.length === 0 ? (
         <EmptyState
           icon={Server}
           title={t('monitoring.empty_no_nodes')}
@@ -239,8 +238,6 @@ export function MonitoringPage() {
         />
       ) : view === 'overview' ? (
         <FleetOverview nodes={nodes} series={series} />
-      ) : view === 'problems' ? (
-        <AttentionSection />
       ) : view === 'nodes' ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {nodes.map((node, i) => (

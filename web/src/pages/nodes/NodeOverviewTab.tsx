@@ -29,6 +29,7 @@ import { formatCompactDuration, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { ReliabilityReadings } from './NodeReliability';
+import { NodeVerdict } from './NodeVerdict';
 import { NodeDcsCard } from './NodeDcsCard';
 import { DASH, telemtVersion } from './nodeDisplay';
 
@@ -218,6 +219,7 @@ export function NodeOverviewTab({ node, maintenance = false }: { node: Node; mai
     <div className={cn(ENTER_CLASS, 'flex flex-col gap-4')}>
       {!maintenance && (
         <>
+          <NodeVerdict node={node} />
           <Panel>
             <PanelHeader icon={HeartPulse} title={t('nodes.overview_health')} />
             {offline ? (

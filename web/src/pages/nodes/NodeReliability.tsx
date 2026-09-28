@@ -81,7 +81,8 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
             ))}
           </div>
         </AdvancedSettings>
-        <div className="space-y-4 border-t border-hairline pt-5">
+        <AdvancedSettings label={t('reliability.routing_toggle')} defaultOpen={state.policy.egress !== 'unmanaged'} className="border-t border-hairline pt-5">
+          <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="egress-mode">{t('reliability.egress')}</Label>
             <select
@@ -139,7 +140,8 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
               )}
             </>
           )}
-        </div>
+          </div>
+        </AdvancedSettings>
       </fieldset>
       <p className="text-label text-mute">{t('reliability.apply_hint')}</p>
       {save.isError && (

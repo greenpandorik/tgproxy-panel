@@ -16,6 +16,8 @@ import { toast } from '@/components/ui/toast';
 import { ApiError } from '@/lib/api';
 import { formatCompactAge } from '@/lib/format';
 
+import { alertTitle } from './alertTitle';
+
 import type { Alert } from '@/api/types';
 import type { HealthStatus } from '@/components/common/healthStatus';
 
@@ -39,7 +41,7 @@ function AttentionRow({ alert }: { alert: Alert }) {
 
   const status = ALERT_STATUS[alert.kind] ?? 'unknown';
   const age = formatCompactAge(alert.created_at, i18n.language);
-  const what = t(`dashboard.alert_${alert.kind}`, { defaultValue: alert.message || t('dashboard.alert_unknown') });
+  const what = alertTitle(alert, t, i18n);
 
   const run = async (action: () => Promise<unknown>, success: string) => {
     try {
