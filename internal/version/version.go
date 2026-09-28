@@ -2,4 +2,4 @@
 package version
 
 // Version is the panel version, overridable at link time.
-var Version = "2.8.2"
+var Version = "2.9.0"
