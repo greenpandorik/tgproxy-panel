@@ -68,8 +68,8 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.fakenode-telemt
       args:
-        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.7}
-        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-db26e363bb98f11a02a7fd6d0df455f4987af5cdb2a5897da7f6fb8d613fbf41}
+        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.9}
+        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-309aa7dedc99fd3b36324175ef4f64fe1012f2d6565ffb53f2874f14dadb9007}
     platform: linux/amd64
     profiles: [dev-telemt]
     environment:
