@@ -10,7 +10,7 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/greenpandorik/tgproxy-panel)](go.mod)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-**English** · [Русский](README.ru.md)
+**English** · [Русский](README.ru.md) · [Website](https://greenpandorik.github.io/tgproxy-panel/en/)
 
 A self-hosted control panel for a fleet of Telegram proxy servers. It issues and revokes keys,
 pushes configuration to servers over gRPC, serves a cover website on each of them and watches

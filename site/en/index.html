@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTProxy panel with Fake-TLS and WEB proxy | TGProxy Panel</title>
+<meta name="description" content="A free, self-hosted panel for your own Telegram proxies. One command to install; it issues keys with Fake-TLS and WEB links, serves a cover site and watches your servers.">
+<link rel="canonical" href="https://greenpandorik.github.io/tgproxy-panel/en/">
+<link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/">
+<link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/">
+<link rel="alternate" hreflang="x-default" href="https://greenpandorik.github.io/tgproxy-panel/en/">
+<meta name="theme-color" content="#171b21">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:site_name" content="TGProxy Panel">
+<meta property="og:title" content="MTProxy panel with Fake-TLS and WEB proxy">
+<meta property="og:description" content="One command to install. Issues keys with Fake-TLS and WEB links, serves a cover site on every server and watches their health. Open source.">
+<meta property="og:url" content="https://greenpandorik.github.io/tgproxy-panel/en/">
+<meta property="og:image" content="https://greenpandorik.github.io/tgproxy-panel/en/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="../fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "TGProxy Panel",
+  "description": "A self-hosted panel for your own Telegram proxies: keys with Fake-TLS and WEB links, cover websites, monitoring and server upgrades.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Linux",
+  "inLanguage": ["en", "ru"],
+  "url": "https://greenpandorik.github.io/tgproxy-panel/en/",
+  "downloadUrl": "https://github.com/greenpandorik/tgproxy-panel/releases",
+  "image": "https://greenpandorik.github.io/tgproxy-panel/en/og.png",
+  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+  "sameAs": "https://github.com/greenpandorik/tgproxy-panel",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<header class="wrap top">
+  <a class="brand" href="./" aria-label="TGProxy Panel, home">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/></svg>
+    TGProxy Panel
+  </a>
+  <nav class="nav" aria-label="Page sections">
+    <a href="#links">Links</a>
+    <a href="#install">Install</a>
+    <a href="#faq">FAQ</a>
+    <a class="lang" href="../" hreflang="ru" lang="ru">Русский</a>
+    <a class="gh" href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <h1>Control panel for MTProxy with <span class="nowrap">Fake-TLS</span> and <span class="nowrap">WEB proxy</span></h1>
+      <p class="lead">TGProxy Panel runs on one VPS and manages Telegram proxies on the rest. It issues keys with Fake-TLS and WEB links, puts a cover website on every server and keeps an eye on all of them. It is open source and free to use.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#install">How to install</a>
+        <a class="btn btn-ghost" href="https://github.com/greenpandorik/tgproxy-panel">Source code on GitHub</a>
+      </div>
+      <figure class="shot">
+        <img src="img/dashboard.png" width="1440" height="900" fetchpriority="high" alt="The panel overview: server summary, load, latency to Telegram and the server list">
+      </figure>
+    </div>
+  </div>
+
+  <section id="links">
+    <div class="wrap split">
+      <div>
+        <h2>Two links for every key</h2>
+        <p class="mute">A key gives one person or a group access to your servers. For every server the key is bound to, the panel issues two links with QR codes, and people connect with whichever one works on their network.</p>
+        <div class="links">
+          <div class="link">
+            <h3>Fake-TLS</h3>
+            <span class="shape">https://t.me/proxy?server=…&amp;secret=ee…</span>
+            <p>MTProxy that looks like an ordinary website visit from the outside: the TLS handshake uses your server's domain, and that domain serves a real cover site. Every official Telegram app understands these links.</p>
+          </div>
+          <div class="link web">
+            <h3>WEB proxy</h3>
+            <span class="shape">https://t.me/webproxy?server=…&amp;secret=…</span>
+            <p>A proxy over plain HTTPS on port 443. The server picks the transport that suits the user's network, so the proxy keeps working even where a corporate network blocks WebSocket. Telegram Desktop supports these links, and Android support is experimental.</p>
+          </div>
+        </div>
+        <p class="mute">If a server has backup domains, each one gives the key another Fake-TLS link. A subscription page gathers all of a person's links and QR codes behind a single address.</p>
+      </div>
+      <figure class="shot dialog" style="--ratio: 510 / 752; --top: -14.51%">
+        <img src="img/key-link-dialog.png" width="1440" height="900" loading="lazy" alt="The key links dialog: WEB and Fake-TLS links with a QR code for each server">
+      </figure>
+    </div>
+  </section>
+
+  <div class="wrap"><hr class="rule"></div>
+
+  <section id="install" class="after-rule">
+    <div class="wrap">
+      <h2>How to set up MTProxy with Fake-TLS on your own server</h2>
+      <p class="mute prose">You need two VPS: one for the panel and one for the proxy. The proxy takes ports 80 and 443, so it can't share a host with the panel. After that it's five steps.</p>
+      <ol class="steps">
+        <li>
+          <div>
+            <h3>Prepare the servers and domains</h3>
+            <ul class="req">
+              <li><strong>Panel:</strong> Ubuntu 22.04+ or Debian 12+, 1&nbsp;CPU and 1&nbsp;GB of RAM, a domain with an A record pointing at the server, ports 80 and 443 free.</li>
+              <li><strong>Proxy:</strong> Ubuntu 22.04+ or Debian 12+ on x86_64, a public IPv4 address, its own domain with an A record, ports 80 and 443 free.</li>
+            </ul>
+            <p>The A records must point at the servers before you install: the scripts check that first.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Install the panel</h3>
+            <p>On the panel server, run as root:</p>
+            <div class="cmd"><pre><code>curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash</code></pre></div>
+            <p>The script asks for the domain, an e-mail for the Let's Encrypt certificate and the admin credentials, installs Docker if needed and prints the panel address at the end.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Connect the proxy server</h3>
+            <p>In the panel, open Servers → Add server and enter a name, the server's domain and an e-mail. The panel gives you a one-time command that is valid for 24 hours. Run it on the proxy server as root:</p>
+            <div class="cmd"><pre><code>curl -fsSL https://panel.example.com/api/v1/install/&lt;token&gt;.sh | sudo bash</code></pre></div>
+            <p>The script checks DNS, ports and the CPU architecture before it installs anything, then sets up the <a href="https://github.com/telemt/telemt">telemt</a> proxy, the Caddy web server and the panel agent. It gets a certificate, waits for the proxy to report ready and registers the server. A minute later the server shows up in the panel.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Issue a key</h3>
+            <p>Access keys → New key: a name, who it's for and which servers. The panel shows the links and QR codes. The key starts working after the next apply on the server, usually within a minute.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Upgrade with one command</h3>
+            <p>To upgrade a proxy server:</p>
+            <div class="cmd"><pre><code>tgwp-agent upgrade</code></pre></div>
+            <p>The agent checks the sha256, replaces only what changed and rolls back if the new version doesn't come up. The panel upgrades with <code>sudo /opt/tgproxy-panel/install.sh --update</code>.</p>
+          </div>
+        </li>
+      </ol>
+      <p class="more">The <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md">full setup guide with screenshots</a> walks through every step and what to do when something goes wrong.</p>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>What else the panel does</h2>
+      <dl class="features">
+        <div><dt>A cover site on every server</dt><dd>Fifteen ready-made sites. When a site is assigned to a server, its block order, class names and file names are reshuffled, so two servers with the same template serve different pages and can't be linked to each other.</dd></div>
+        <div><dt>Per-key limits</dt><dd>Traffic quota, speed, unique IPs and connections. telemt enforces them itself, and the panel never sits in the traffic path.</dd></div>
+        <div><dt>Changes without dropped sessions</dt><dd>New and revoked keys reach the server through telemt's control API without a restart, so live sessions stay up.</dd></div>
+        <div><dt>Backup domains</dt><dd>If an ISP stops letting a server's main domain through, users take the link with a backup domain instead. No reinstall needed.</dd></div>
+        <div><dt>Checks and monitoring</dt><dd>The overview starts with a verdict: what is broken and where. The panel checks DNS, ports, the certificate and Fake-TLS masking, exports Prometheus metrics for a ready-made Grafana dashboard and sends alerts to Telegram.</dd></div>
+        <div><dt>Personal and shared keys</dt><dd>A personal key belongs to one person and is revoked on its own; a shared key goes to a group. You can create a batch of keys from a name template.</dd></div>
+        <div><dt>Panel security</dt><dd>Two-factor sign-in with recovery codes, an activity log, nightly database backups and master key rotation.</dd></div>
+        <div><dt>English and Russian</dt><dd>The interface and the docs come in both languages, and switching takes one click.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2>Common questions</h2>
+      <div class="faq prose">
+        <details>
+          <summary>How is Fake-TLS different from plain MTProxy?</summary>
+          <p>Plain MTProxy encrypts the traffic, but the connection itself doesn't look like anything familiar. Fake-TLS opens with a TLS handshake for your server's domain, so from the outside the connection looks like a visit to a website. That domain really does serve a cover site.</p>
+        </details>
+        <details>
+          <summary>What is a WEB proxy in Telegram?</summary>
+          <p>A newer kind of proxy that Telegram supports through <code>t.me/webproxy</code> links. It runs over plain HTTPS on port 443; the server chooses one of four transports and remembers which one worked on that network. Telegram Desktop supports it, Android does so experimentally and iOS not yet. That's why the panel gives every key both a WEB link and a Fake-TLS link.</p>
+        </details>
+        <details>
+          <summary>How much does it cost?</summary>
+          <p>The panel is free and open source under AGPL-3.0. You only pay for your own servers, and the cheapest VPS is enough for the panel.</p>
+        </details>
+        <details>
+          <summary>Can the panel and the proxy run on the same server?</summary>
+          <p>No. The proxy server needs ports 80 and 443, so the panel and the proxies always run on separate VPS. One panel can manage as many proxy servers as you like.</p>
+        </details>
+        <details>
+          <summary>What if the proxy stops connecting for some users?</summary>
+          <p>Open the server in the panel: "Full server check" and "Check from the panel" show what's wrong with DNS, ports, the certificate or masking. If an ISP stops letting the server's domain through, add backup domains, and every key gets one more Fake-TLS link per domain.</p>
+        </details>
+        <details>
+          <summary>What do the proxy servers run?</summary>
+          <p><a href="https://github.com/telemt/telemt">telemt</a> by default: an MTProxy written in Rust that handles Fake-TLS, the WEB proxy and the cover site in one process. The panel installs a vetted telemt release and checks its sha256. Older setups can keep the tproxy-server engine with the official MTProxy.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>TGProxy Panel, an open-source project under AGPL-3.0</span>
+    <nav aria-label="Project links">
+      <a href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
+      <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md">Setup guide</a>
+      <a href="https://github.com/greenpandorik/tgproxy-panel/releases">Releases</a>
+      <a href="https://github.com/greenpandorik/tgproxy-panel/discussions">Discussions</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="../copy.js" defer></script>
+</body>
+</html>

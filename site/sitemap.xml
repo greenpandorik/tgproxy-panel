@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://greenpandorik.github.io/tgproxy-panel/</loc>
     <lastmod>2026-09-29</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/"/>
+  </url>
+  <url>
+    <loc>https://greenpandorik.github.io/tgproxy-panel/en/</loc>
+    <lastmod>2026-09-29</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/"/>
   </url>
 </urlset>
