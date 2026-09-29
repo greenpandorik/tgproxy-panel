@@ -91,20 +91,20 @@
   },
   "login": {
     "status_title": "Network status",
-    "status_nodes": "nodes online",
+    "status_nodes": "servers online",
     "status_relay": "relay",
     "status_panel": "panel",
     "status_api": "api",
     "status_ok": "ok",
     "status_unavailable": "status unavailable",
-    "footer_nodes": "{{count}} nodes"
+    "footer_nodes": "{{count}} servers"
   },
   "dashboard": {
     "title": "Overview",
-    "nodes_online": "Nodes online",
+    "nodes_online": "Servers online",
     "keys_active": "Active keys",
     "sessions_live": "Sessions",
-    "empty_no_nodes": "Add your first node",
+    "empty_no_nodes": "Add your first server",
     "nodes_offline_suffix": "{{count}} offline",
     "traffic_title": "Traffic today",
     "alerts_title": "Needs attention",
@@ -120,7 +120,7 @@
     "keys_pending_context": "{{count}} awaiting apply",
     "offline_one": "{{name}} no heartbeat for {{ago}}",
     "offline_names": "{{names}} without heartbeat",
-    "offline_many": "{{count}} nodes without heartbeat",
+    "offline_many": "{{count}} servers without heartbeat",
     "delta_per_hour": "{{value}} in the last hour",
     "sessions_chart_meta": "24h · {{step}} step",
     "alerts_open_count": "{{count}} open",
@@ -130,8 +130,8 @@
     "col_heartbeat": "Last response",
     "alert_panel_scope": "Panel",
     "tile_nodes_online_context": "by last heartbeat",
-    "tile_nodes_offline": "Nodes offline",
-    "tile_nodes_offline_none": "every node reporting",
+    "tile_nodes_offline": "Servers offline",
+    "tile_nodes_offline_none": "every server reporting",
     "tile_degraded": "Degraded",
     "tile_degraded_none": "all services answering",
     "tile_degraded_some": "services answering in part",
@@ -148,9 +148,9 @@
     "tile_alerts_open": "Open alerts",
     "tile_alerts_none": "none open",
     "tile_avg_load": "Average load",
-    "tile_avg_load_context": "CPU, online nodes",
+    "tile_avg_load_context": "CPU, online servers",
     "tile_dc_latency": "Latency to Telegram",
-    "tile_dc_latency_context": "mean over online nodes",
+    "tile_dc_latency_context": "mean over online servers",
     "col_series_24h": "24h",
     "fleet_hint": "Reachable servers / total",
     "total_traffic": "Traffic over 24 hours",
@@ -190,7 +190,7 @@
     "verdict_ok": "All good",
     "verdict_ok_checked": "Diagnostics {{ago}} found nothing to fix.",
     "verdict_ok_unchecked": "Services are running. Diagnostics have not been run yet.",
-    "verdict_offline": "Node is not connected",
+    "verdict_offline": "Server is not connected",
     "verdict_offline_seen": "The agent last reported {{ago}}. Check the tgwp-agent service on the server.",
     "verdict_offline_never": "The agent has never connected. Run the install command on the server.",
     "verdict_attention": "Needs attention: {{count}}",
@@ -201,8 +201,8 @@
     "verdict_open_diagnostics": "Open diagnostics",
     "title": "Servers",
     "add": "Add server",
-    "empty_title": "No nodes yet",
-    "empty_description": "Add your first node to issue keys and serve traffic.",
+    "empty_title": "No servers yet",
+    "empty_description": "Add your first server to issue keys and serve traffic.",
     "column_name": "Name",
     "column_hostname": "Hostname",
     "column_profiles": "Profiles",
@@ -211,22 +211,22 @@
     "action_install_command": "Install command",
     "action_delete": "Delete",
     "action_open": "Open",
-    "delete_confirm_title": "Delete node \"{{name}}\"?",
-    "delete_confirm_description": "The node, its profiles and bound keys will be permanently deleted.",
-    "delete_success": "Node deleted",
+    "delete_confirm_title": "Delete server \"{{name}}\"?",
+    "delete_confirm_description": "The server, its profiles and bound keys will be permanently deleted.",
+    "delete_success": "Server deleted",
     "apply_queued": "Apply queued",
-    "create_title": "New node",
-    "create_description": "After creating the node, the panel issues an install command for the server.",
+    "create_title": "New server",
+    "create_description": "After creating the server, the panel issues an install command for the server.",
     "field_name": "Name",
     "field_hostname": "Hostname",
     "field_hostname_hint": "Lowercase, a dotted domain, no scheme or path (e.g. node1.example.com)",
     "field_engine": "Engine",
     "engine_telemt_desc": "One process: WEB and Fake-TLS. Per-key limits and traffic.",
     "engine_tproxy_desc": "The original relay + MTProxy pair.",
-    "engine_telemt_links": "Keys on this node get two links: WEB (through the node’s site) and Fake-TLS (classic MTProto on its own port).",
-    "engine_tproxy_links": "Keys on this node get the WEB link only.",
+    "engine_telemt_links": "Keys on this server get two links: WEB (through the server’s site) and Fake-TLS (classic MTProto on its own port).",
+    "engine_tproxy_links": "Keys on this server get the WEB link only.",
     "field_tls_domain": "Fake-TLS domain",
-    "field_tls_domain_hint": "The domain Fake-TLS masks behind. Defaults to the node’s hostname.",
+    "field_tls_domain_hint": "The domain Fake-TLS masks behind. Defaults to the server’s hostname.",
     "field_classic_port": "Fake-TLS port",
     "validation_classic_port": "Port 1024 to 65535, except 80 and 443",
     "field_acme_email": "Let's Encrypt e-mail",
@@ -235,8 +235,8 @@
     "field_public_ip_telemt": "optional, detected during install",
     "validation_hostname": "Lowercase, a dotted domain, no scheme or path",
     "validation_email": "Enter a valid e-mail address",
-    "create_submit": "Create node",
-    "create_error": "Could not create the node",
+    "create_submit": "Create server",
+    "create_error": "Could not create the server",
     "hostname_exists": "This hostname is already registered",
     "install_title": "Install command",
     "install_description": "Run this command on the new server as root.",
@@ -247,11 +247,11 @@
     "install_regenerate_note": "The old install command stops working.",
     "install_show": "Show install command",
     "detail_apply_now": "Apply now",
-    "detail_apply_hint": "Push the accumulated changes to the node right now, instead of waiting for the next scheduled apply.",
-    "detail_apply_up_to_date": "Nothing to apply — the node already matches what the panel has configured.",
+    "detail_apply_hint": "Push the accumulated changes to the server right now, instead of waiting for the next scheduled apply.",
+    "detail_apply_up_to_date": "Nothing to apply — the server already matches what the panel has configured.",
     "detail_restart_relay": "Restart relay",
     "detail_restart_telemt": "Restart telemt",
-    "detail_delete": "Delete node",
+    "detail_delete": "Delete server",
     "restart_confirm_title": "Restart relay on \"{{name}}\"?",
     "restart_confirm_description": "Active sessions will drop. Telegram clients reconnect automatically.",
     "restart_success": "Restart command sent",
@@ -261,7 +261,7 @@
     "tab_site": "Website",
     "tab_stats": "Stats",
     "tab_web": "WEB transport",
-    "offline_message": "Node is offline. This data is unavailable until the agent reconnects to the panel.",
+    "offline_message": "Server is offline. This data is unavailable until the agent reconnects to the panel.",
     "overview_health": "Service health",
     "overview_relay_active": "Relay",
     "overview_telemt_active": "telemt",
@@ -277,16 +277,16 @@
     "overview_tproxy_version": "tproxy-server",
     "overview_telemt_version": "telemt",
     "listeners_title": "Addresses and Fake-TLS",
-    "listeners_restart_note": "Saving records the change; the next apply pushes it to the node, where the agent rewrites telemt's config and restarts telemt — live connections drop. Every Fake-TLS link already handed out stops working and must be reissued. WEB links are unaffected.",
+    "listeners_restart_note": "Saving records the change; the next apply pushes it to the server, where the agent rewrites telemt's config and restarts telemt — live connections drop. Every Fake-TLS link already handed out stops working and must be reissued. WEB links are unaffected.",
     "listeners_saved": "Addresses and Fake-TLS settings saved",
     "listeners_confirm_title": "Change the Fake-TLS settings?",
-    "listeners_confirm_description": "The next apply pushes this to the node: the agent rewrites telemt's config and restarts telemt, dropping live connections. Every Fake-TLS link already handed out stops working — the domain and port are baked into its secret — so reissue them. WEB links are unaffected.",
+    "listeners_confirm_description": "The next apply pushes this to the server: the agent rewrites telemt's config and restarts telemt, dropping live connections. Every Fake-TLS link already handed out stops working — the domain and port are baked into its secret — so reissue them. WEB links are unaffected.",
     "field_extra_domains": "Backup masking domains",
-    "field_extra_domains_hint": "One per line. Every key gets its own Fake-TLS link for each domain, so if a provider blocks the main one, the user switches to a link with another. Use only real sites that answer HTTPS on 443 and are reachable from the node: telemt takes the TLS fingerprint of each domain at startup.",
+    "field_extra_domains_hint": "One per line. Every key gets its own Fake-TLS link for each domain, so if a provider blocks the main one, the user switches to a link with another. Use only real sites that answer HTTPS on 443 and are reachable from the server: telemt takes the TLS fingerprint of each domain at startup.",
     "validation_extra_domains": "Each domain lowercase and with a dot, at most {{max}}",
     "extra_domains_note": "The next apply restarts telemt, dropping live connections. Links already handed out keep working, and keys get links for the new domains.",
     "extra_domains_confirm_title": "Change the backup domains?",
-    "extra_domains_confirm_description": "The next apply pushes this to the node and restarts telemt, dropping live connections. Links already handed out keep working. If a domain does not answer HTTPS, telemt refuses the config and the apply rolls back.",
+    "extra_domains_confirm_description": "The next apply pushes this to the server and restarts telemt, dropping live connections. Links already handed out keep working. If a domain does not answer HTTPS, telemt refuses the config and the apply rolls back.",
     "overview_agent_version": "Agent",
     "overview_last_apply": "Last apply",
     "overview_never": "never run",
@@ -295,7 +295,7 @@
     "job_log_empty": "Log is empty",
     "job_started": "Started",
     "job_finished": "Finished",
-    "profiles_title": "Profiles on the node",
+    "profiles_title": "Profiles on the server",
     "profiles_column_name": "Name",
     "profiles_column_key": "Key",
     "profiles_column_carrier": "Mode",
@@ -311,11 +311,11 @@
     "limit_rate_down": "↓ {{value}} Mbit/s",
     "limit_ips": "IPs ≤ {{count}}",
     "limit_conns": "connections ≤ {{count}}",
-    "profiles_empty": "No profiles on this node yet",
-    "profiles_compare": "Compare with node",
-    "profiles_compare_title": "Comparison with the live node",
+    "profiles_empty": "No profiles on this server yet",
+    "profiles_compare": "Compare with server",
+    "profiles_compare_title": "Comparison with the live server",
     "profiles_compare_db_only": "Only in the panel database",
-    "profiles_compare_node_only": "Only on the node",
+    "profiles_compare_node_only": "Only on the server",
     "profiles_compare_in_sync": "Profiles match",
     "sync_pending": "Pending apply",
     "logs_title": "Logs",
@@ -374,7 +374,7 @@
     "check_http_root": "Site responds",
     "check_mask": "Fake-TLS mask",
     "check_pq_kex": "Post-quantum key exchange",
-    "check_pq_kex_hint": "Caddy on the node negotiates X25519MLKEM768 with modern clients. Informational.",
+    "check_pq_kex_hint": "Caddy on the server negotiates X25519MLKEM768 with modern clients. Informational.",
     "header_online": "{{online}} / {{total}} online",
     "column_relay": "Relay",
     "column_heartbeat": "Last response",
@@ -393,10 +393,10 @@
     "field_public_ip_hint": "The address the A record points at; on a NAT host the interface and the internet-facing address can differ.",
     "validation_ipv4": "IPv4 address, e.g. 203.0.113.10",
     "public_ip_confirm_title": "Change the public IP?",
-    "public_ip_confirm_description": "The next apply pushes this to the node: the agent rewrites the WEB vhost's address in telemt's config and restarts telemt, dropping live connections. Links are unaffected — they carry the domain, not the address.",
+    "public_ip_confirm_description": "The next apply pushes this to the server: the agent rewrites the WEB vhost's address in telemt's config and restarts telemt, dropping live connections. Links are unaffected — they carry the domain, not the address.",
     "field_ad_tag": "Sponsor channel tag",
     "field_ad_tag_placeholder": "32 hex characters",
-    "field_ad_tag_hint": "Register this server with @MTProxybot in Telegram to get a tag - it is what turns the sponsored channel on for clients connected through this node. The bot asks for the address, then the secret: paste what the buttons below copy. It accepts the secret only as 32 hex characters. Do not hand out the link it prints afterwards - give people the links from the keys page, which carry Fake-TLS. Empty - the sponsored channel is off.",
+    "field_ad_tag_hint": "Register this server with @MTProxybot in Telegram to get a tag - it is what turns the sponsored channel on for clients connected through this server. The bot asks for the address, then the secret: paste what the buttons below copy. It accepts the secret only as 32 hex characters. Do not hand out the link it prints afterwards - give people the links from the keys page, which carry Fake-TLS. Empty - the sponsored channel is off.",
     "field_ad_tag_open_bot": "Open @MTProxybot",
     "field_ad_tag_copy_address": "Copy {{address}} for the bot",
     "field_ad_tag_copy_secret": "Copy the secret for the bot",
@@ -437,16 +437,16 @@
     "search_placeholder": "Search by label or owner",
     "filter_type_all": "All types",
     "filter_status_all": "All statuses",
-    "filter_node_all": "All nodes",
+    "filter_node_all": "All servers",
     "type_shared": "Shared",
     "type_personal": "Personal",
-    "status_pending_hint": "Becomes active after the next apply on the node",
+    "status_pending_hint": "Becomes active after the next apply on the server",
     "no_expiry": "No expiry",
     "select_all": "Select all",
     "column_label": "Label",
     "column_type": "Type",
     "column_status": "Status",
-    "column_nodes": "Nodes",
+    "column_nodes": "Servers",
     "column_traffic": "Traffic (30d)",
     "column_expires": "Expires",
     "column_created": "Created",
@@ -481,7 +481,7 @@
     "delete_confirm_description": "This cannot be undone.",
     "delete_success": "Key deleted",
     "create_title": "New key",
-    "create_description": "Choose a key type, bind it to one or more nodes, and issue it.",
+    "create_description": "Choose a key type, bind it to one or more servers, and issue it.",
     "create_error": "Could not create the key",
     "create_submit": "Create key",
     "create_batch_submit": "Create keys",
@@ -491,8 +491,8 @@
     "create_summary_batch": "Series “{{prefix}}”, keys: {{count}}",
     "create_summary_owner": "for {{owner}}",
     "create_summary_no_name": "unnamed",
-    "create_summary_nodes": "nodes: {{count}}",
-    "create_summary_nodes_none": "no nodes picked",
+    "create_summary_nodes": "servers: {{count}}",
+    "create_summary_nodes_none": "no servers picked",
     "create_summary_expires": "until {{date}}",
     "create_summary_no_expiry": "no expiry",
     "create_summary_transport_auto": "transport automatic",
@@ -508,13 +508,13 @@
     "field_prefix": "Prefix",
     "field_prefix_hint": "Keys are labeled \"prefix-1\", \"prefix-2\", …",
     "field_count": "Count",
-    "field_nodes": "Nodes",
+    "field_nodes": "Servers",
     "field_carrier_mode": "Carrier mode",
     "field_carrier_mode_legacy": "Carrier mode (tproxy only)",
-    "field_carrier_mode_legacy_hint": "You picked both telemt and tproxy nodes. Only the tproxy ones get this mode; telemt nodes choose their transport themselves.",
+    "field_carrier_mode_legacy_hint": "You picked both telemt and tproxy servers. Only the tproxy ones get this mode; telemt servers choose their transport themselves.",
     "field_transport": "Transport",
     "transport_auto": "Chosen automatically",
-    "transport_auto_hint": "telemt on the node finds a working transport for every connection, from the client's network rather than from the key.",
+    "transport_auto_hint": "telemt on the server finds a working transport for every connection, from the client's network rather than from the key.",
     "field_expires_at": "Expires at",
     "field_no_expiry": "No expiry",
     "field_optional": "optional",
@@ -529,9 +529,9 @@
     "limits_edit_reset": "Clear all",
     "limits_edit_done": "Done",
     "telemt_limits_title": "Limits",
-    "telemt_limits_hint": "An empty field means no limit. telemt enforces these on the node.",
+    "telemt_limits_hint": "An empty field means no limit. telemt enforces these on the server.",
     "web_limits_hint": "Advanced Telemt WEB limits. An empty field inherits the node-wide ceiling; a value above it is rejected before apply.",
-    "legacy_limits_hint": "Advanced limits. Legacy fields apply only to tproxy nodes; Telemt receives session and stream limits only.",
+    "legacy_limits_hint": "Advanced limits. Legacy fields apply only to tproxy servers; Telemt receives session and stream limits only.",
     "telemt_limits_unavailable": "not available on this engine",
     "telemt_limit_quota_gb": "Traffic quota, GB",
     "telemt_limit_rate_up_mbit": "Upload speed, Mbit/s",
@@ -539,7 +539,7 @@
     "telemt_limit_max_unique_ips": "Max unique IPs",
     "telemt_limit_max_tcp_conns": "Max connections",
     "field_note": "Note",
-    "no_nodes": "No nodes available. Add a node first.",
+    "no_nodes": "No servers available. Add a server first.",
     "carrier_https": "HTTPS",
     "carrier_https_desc": "One serialized POST request plus long poll.",
     "carrier_https_lanes": "HTTPS lanes",
@@ -549,7 +549,7 @@
     "carrier_websocket_lanes": "WebSocket lanes",
     "carrier_websocket_lanes_desc": "One WebSocket connection per stream.",
     "validation_count": "Enter a number from 1 to 100",
-    "validation_node_ids": "Bind at least one node",
+    "validation_node_ids": "Bind at least one server",
     "validation_expires_future": "Must be in the future",
     "validation_exceeds_max_streams": "Must not exceed the streams limit",
     "validation_limit_positive": "Enter a positive number",
@@ -572,11 +572,11 @@
     "link_per_node_toggle": "Per-node links",
     "link_revoked": "This key is revoked and no longer has active links.",
     "link_no_permission": "You don't have permission to view this key's links.",
-    "link_pending_hint": "The key will be active once applied on the node (usually within a minute).",
+    "link_pending_hint": "The key will be active once applied on the server (usually within a minute).",
     "link_qr_alt_kind": "{{kind}} QR code for {{hostname}}",
     "link_web_only": "WEB only on this engine",
     "link_tls_domain": "Masking domain",
-    "link_no_nodes": "This key is not bound to any node.",
+    "link_no_nodes": "This key is not bound to any server.",
     "link_copy_tme": "Copy t.me link",
     "link_copy_tg": "Copy tg:// link",
     "link_download_qr": "Download QR",
@@ -586,10 +586,10 @@
     "edit_title": "Key",
     "edit_success": "Key saved",
     "edit_revoked_notice": "This key is revoked. Its settings are read-only.",
-    "binding_added": "Node added",
-    "binding_removed": "Node removed",
-    "binding_remove": "Remove node",
-    "binding_add_placeholder": "Add a node…",
+    "binding_added": "Server added",
+    "binding_removed": "Server removed",
+    "binding_remove": "Remove server",
+    "binding_add_placeholder": "Add a server…",
     "stats_title": "Traffic and connections",
     "stats_range_label": "Range",
     "stats_range_24h": "24h",
@@ -599,10 +599,10 @@
     "stats_traffic_range_7d": "Traffic this week",
     "stats_node_connections": "connections: {{count}}",
     "stats_traffic": "Traffic",
-    "stats_unavailable": "Nodes on the tproxy engine do not measure per-key traffic.",
+    "stats_unavailable": "Servers on the tproxy engine do not measure per-key traffic.",
     "stats_empty": "No data for this key yet.",
     "subscription_title": "Subscription link",
-    "subscription_description": "A public page with every node’s links (WEB and Fake-TLS) and QR codes for this key - without its label or notes.",
+    "subscription_description": "A public page with every server’s links (WEB and Fake-TLS) and QR codes for this key - without its label or notes.",
     "subscription_status_active": "Active",
     "subscription_shown_once": "The link and QR are shown only once - save them now.",
     "subscription_qr_alt": "Subscription link QR code",
@@ -622,7 +622,7 @@
     "title": "Websites",
     "create": "Custom website",
     "empty_title": "No templates yet",
-    "empty_description": "Create a cover-site template to assign it to nodes.",
+    "empty_description": "Create a cover-site template to assign it to servers.",
     "preset_badge": "Preset",
     "card_updated": "Updated {{time}}",
     "action_duplicate": "Duplicate as mine",
@@ -647,13 +647,13 @@
     "preview_title": "Preview {{name}}",
     "save_success": "Template saved",
     "create_success": "Template created",
-    "assign_button": "Assign to node…",
+    "assign_button": "Assign to server…",
     "assign_dialog_title": "Assign template \"{{name}}\"",
-    "assign_dialog_description": "Pick a node to assign this template to. It applies on the next \"Apply now\".",
-    "assign_node_label": "Node",
+    "assign_dialog_description": "Pick a server to assign this template to. It applies on the next \"Apply now\".",
+    "assign_node_label": "Server",
     "assign_submit": "Assign",
     "assign_success": "Website queued for {{node}}. Deployment status is on the server’s Website tab.",
-    "assign_no_nodes": "No nodes available. Add a node first.",
+    "assign_no_nodes": "No servers available. Add a server first.",
     "header_count": "{{count}} templates",
     "editor_lines": "{{count}} lines",
     "validation_title": "Check",
@@ -706,19 +706,19 @@
     "upstream_origin": "Origin URL",
     "upstream_hint": "Telemt serves the local application's response as the decoy website. The agent checks the origin on the server before switching; a failure leaves the current configuration in place.",
     "upstream_security": "Only http:// with a loopback or private IP is allowed. Public addresses, hostnames, credentials, and redirects are rejected.",
-    "upstream_unsupported": "This node has not confirmed HTTP upstream support. Update Telemt and wait for a fresh capability check.",
+    "upstream_unsupported": "This server has not confirmed HTTP upstream support. Update Telemt and wait for a fresh capability check.",
     "upstream_test_apply": "Test and apply",
-    "upstream_queued": "Origin saved. The node is checking it and applying the website.",
+    "upstream_queued": "Origin saved. The server is checking it and applying the website.",
     "upstream_preview_hint": "Preview this website at the server's public HTTPS address."
   },
   "monitoring": {
     "title": "Monitoring",
     "view_label": "Monitoring section",
     "view_overview": "Whole fleet",
-    "view_nodes": "Nodes",
+    "view_nodes": "Servers",
     "view_web": "WEB transport",
     "fleet_title": "Fleet health",
-    "fleet_online": "Nodes online",
+    "fleet_online": "Servers online",
     "fleet_healthy": "Healthy",
     "fleet_degraded": "Need attention",
     "fleet_sessions": "Live sessions",
@@ -728,9 +728,9 @@
     "range_6h": "6h",
     "range_24h": "24h",
     "range_7d": "7d",
-    "empty_no_nodes": "Add your first node",
+    "empty_no_nodes": "Add your first server",
     "node_empty": "No monitoring data yet",
-    "open_node": "Open node",
+    "open_node": "Open server",
     "sessions_live": "Live sessions",
     "streams_live": "Live streams",
     "traffic_up": "Upload",
@@ -739,15 +739,15 @@
     "traffic_total": "Traffic",
     "prometheus_title": "Prometheus",
     "prometheus_description": "Scrape the panel's metrics from /metrics with the METRICS_TOKEN bearer in the Authorization header.",
-    "prometheus_node_note": "Each node's relay metrics are also available separately at /api/v1/nodes/{id}/metrics (session cookie auth).",
+    "prometheus_node_note": "Each server's relay metrics are also available separately at /api/v1/nodes/{id}/metrics (session cookie auth).",
     "docs_link_prefix": "Full setup, dashboard import and metric reference:",
     "view_integrations": "Metrics export"
   },
   "web": {
-    "capability_undetermined_description": "The panel has not worked out what this node's telemt supports yet. It is not “not supported” — it is not known.",
+    "capability_undetermined_description": "The panel has not worked out what this server's telemt supports yet. It is not “not supported” — it is not known.",
     "capability_undetermined_description_checked": "Last worked out {{at}}, and this one stayed unsettled. It is not “not supported” — it is not known.",
     "capability_undetermined_title": "The panel could not determine {{feature}}",
-    "capability_unsupported_description": "The node answered, and this version does not have the feature. Nothing is broken and nothing is missing.",
+    "capability_unsupported_description": "The server answered, and this version does not have the feature. Nothing is broken and nothing is missing.",
     "capability_unsupported_title": "This telemt has no {{feature}}",
     "carriers_title": "Carrier learning",
     "carriers_window": "last {{hours}} h",
@@ -766,7 +766,7 @@
     "check_fake_tls_listener": "Fake-TLS port",
     "check_http2": "HTTP/2 support",
     "check_https_response": "Site answers over HTTPS",
-    "check_public_ip_match": "Domain points at this node",
+    "check_public_ip_match": "Domain points at this server",
     "check_readiness": "Proxy is ready",
     "check_service": "telemt service",
     "check_status_fail": "failed",
@@ -785,7 +785,7 @@
     "counter_bridge_recoveries": "Bridge recoveries",
     "counter_bridge_recoveries_hint": "Times a broken bridge was picked back up.",
     "counters_quiet": "No carrier failures and no rejected or evicted sessions in this window.",
-    "counters_partial": "No failures seen, but the node does not report some of these counters.",
+    "counters_partial": "No failures seen, but the server does not report some of these counters.",
     "counters_show": "Detailed counters",
     "counter_carrier_failures": "Carrier failures",
     "counter_carrier_failures_hint": "Times a carrier failed and telemt moved on.",
@@ -798,8 +798,8 @@
     "diagnostics_passed_toggle": "Passed checks: {{count}}",
     "diagnostics_not_run_toggle": "Not run: {{count}}",
     "diagnostics_technical": "Technical details",
-    "diagnostics_empty": "No pass has been run for this node yet.",
-    "diagnostics_empty_viewer": "No pass has been run for this node yet. Running one needs write access.",
+    "diagnostics_empty": "No pass has been run for this server yet.",
+    "diagnostics_empty_viewer": "No pass has been run for this server yet. Running one needs write access.",
     "diagnostics_failed": "{{count}} failed",
     "diagnostics_not_run": "{{count}} could not run",
     "diagnostics_not_run_hint": "Checks the panel could not perform are counted separately and are neither passes nor failures.",
@@ -807,12 +807,12 @@
     "diagnostics_run": "Run diagnostics",
     "diagnostics_title": "WEB diagnostics",
     "diagnostics_warned": "{{count}} with warnings",
-    "distribution_absent_description": "Not one node exported a carrier selection counter over this window. That is nothing measured, not a run of zeros.",
+    "distribution_absent_description": "Not one server exported a carrier selection counter over this window. That is nothing measured, not a run of zeros.",
     "distribution_absent_title": "No carrier selections reported",
     "distribution_note": "Shares of the carrier selections telemt recorded over the window. telemt does not count live sessions per carrier, so this is which carrier was chosen, not how many connections are on it now.",
     "feature_carrier_learning": "carrier learning",
     "feature_web": "the WEB transport",
-    "fleet_capability_summary": "{{supported}} of {{total}} nodes serve the WEB transport.",
+    "fleet_capability_summary": "{{supported}} of {{total}} servers serve the WEB transport.",
     "fleet_capability_undetermined": "For {{count}} the panel has not determined it.",
     "fleet_carriers_title": "WEB carriers across the fleet",
     "group_dns": "DNS",
@@ -838,7 +838,7 @@
     "status_transport": "WEB proxy",
     "window_counter_resets": "Counter resets (telemt restarts)",
     "window_details": "Window details",
-    "window_hint": "The counters are differences between consecutive heartbeats, so a telemt restart is subtracted rather than counted. A metric no node exported stays empty: the panel will not print a zero it never measured.",
+    "window_hint": "The counters are differences between consecutive heartbeats, so a telemt restart is subtracted rather than counted. A metric no server exported stays empty: the panel will not print a zero it never measured.",
     "window_learning_entries": "Learned entries at the end of the window",
     "window_range": "Window",
     "window_samples": "Heartbeats in the window",
@@ -943,7 +943,7 @@
     "remedy_fake_tls_listener": "Check the configured Fake-TLS port and allow it through the firewall.",
     "remedy_tls_emulation": "Enable censorship.tls_emulation and restart Telemt; this setting is not hot-reloadable.",
     "remedy_tls_front_cache": "Check tls_front_dir, write access and mask-domain reachability, then restart Telemt.",
-    "remedy_tls_front_errors": "Check on the node that https://<tls_domain>/ answers quickly (curl -sSI https://<tls_domain>/): Telemt masks unrecognised connections there. The count covers the whole Telemt process and resets only when Telemt restarts, so it will not drop after a fix.",
+    "remedy_tls_front_errors": "Check on the server that https://<tls_domain>/ answers quickly (curl -sSI https://<tls_domain>/): Telemt masks unrecognised connections there. The count covers the whole Telemt process and resets only when Telemt restarts, so it will not drop after a fix.",
     "group_public_addresses": "Reachability of each IP address"
   },
   "audit": {
@@ -951,7 +951,7 @@
     "filter_action_all": "All actions",
     "action_auth": "Login",
     "action_admin": "Admins",
-    "action_node": "Nodes",
+    "action_node": "Servers",
     "action_key": "Keys",
     "action_site_template": "Site templates",
     "action_branding": "Branding",
@@ -1155,28 +1155,28 @@
     "version_tooltip": "Panel version",
     "update_available": "v{{version}} is available",
     "github_tooltip": "Project on GitHub",
-    "nodes_tooltip": "Nodes online",
+    "nodes_tooltip": "Servers online",
     "skip_content": "Skip to content",
     "panel_available": "Panel available",
     "panel_unavailable": "Panel unreachable"
   },
   "command": {
     "title": "Command palette",
-    "description": "Jump to a section, find a node or key, run a quick action.",
+    "description": "Jump to a section, find a server or key, run a quick action.",
     "placeholder": "Search, commands…",
     "empty": "Nothing found",
     "group_sections": "Sections",
-    "group_nodes": "Nodes",
+    "group_nodes": "Servers",
     "group_keys": "Keys",
     "group_actions": "Actions",
     "action_create_key": "Create key",
     "action_apply_all": "Apply everywhere",
-    "apply_all_confirm_title": "Apply changes on {{count}} nodes?",
-    "apply_all_confirm_description": "Each node restarts its relay and applies the pending profile changes. Live sessions on those nodes will drop.",
+    "apply_all_confirm_title": "Apply changes on {{count}} servers?",
+    "apply_all_confirm_description": "Each server restarts its relay and applies the pending profile changes. Live sessions on those servers will drop.",
     "action_toggle_theme": "Switch theme",
     "action_toggle_lang": "Switch language",
-    "apply_all_nothing": "Every node is already up to date",
-    "apply_all_queued": "Apply queued on {{queued}} of {{total}} nodes"
+    "apply_all_nothing": "Every server is already up to date",
+    "apply_all_queued": "Apply queued on {{queued}} of {{total}} servers"
   },
   "help": {
     "open": "Help",
@@ -1190,25 +1190,25 @@
     "topics": {
       "dashboard": {
         "title": "Overview",
-        "intro": "A summary of the whole proxy network: how many nodes answer, how many keys work, how many people are connected right now and what went wrong. The numbers refresh on their own; the \"updated … ago\" stamp next to the title says how fresh they are.",
+        "intro": "A summary of the whole proxy network: how many servers answer, how many keys work, how many people are connected right now and what went wrong. The numbers refresh on their own; the \"updated … ago\" stamp next to the title says how fresh they are.",
         "fields": {
           "nodes_online": {
             "name": "Reachable servers",
             "what": "The number of online servers and the total fleet size. A server that stops responding beyond the offline threshold is marked unavailable. See the server list below for details.",
-            "tip": "An offline node hands out nothing: clients bound only to it will not connect."
+            "tip": "An offline server hands out nothing: clients bound only to it will not connect."
           },
           "keys_active": {
             "name": "Active keys",
             "what": "Keys with Active status. The total number of keys appears below. Open the card to manage keys and inspect pending changes.",
-            "tip": "If the pending count never shrinks, an apply is failing on some node: open the node → Overview → Recent applies."
+            "tip": "If the pending count never shrinks, an apply is failing on some server: open the server → Overview → Recent applies."
           },
           "sessions": {
             "name": "Connections",
-            "what": "How many client sessions are open on all nodes right now. One session is roughly one connected device. The delta is the change over the last hour."
+            "what": "How many client sessions are open on all servers right now. One session is roughly one connected device. The delta is the change over the last hour."
           },
           "traffic": {
             "name": "Traffic, 24 h",
-            "what": "Inbound plus outbound traffic of every node over the last 24 hours. Computed from stats snapshots, so it can lag a few minutes."
+            "what": "Inbound plus outbound traffic of every server over the last 24 hours. Computed from stats snapshots, so it can lag a few minutes."
           },
           "chart": {
             "name": "Connections over 24 hours",
@@ -1221,42 +1221,42 @@
           },
           "jobs": {
             "name": "Recent changes",
-            "what": "The latest apply jobs on the nodes with their result and duration. An \"apply\" is the moment key and site changes are actually sent to a node."
+            "what": "The latest apply jobs on the servers with their result and duration. An \"apply\" is the moment key and site changes are actually sent to a server."
           }
         },
         "notes": {
-          "1": "A node that has not been installed yet shows as \"Pending\" and does not count as offline.",
+          "1": "A server that has not been installed yet shows as \"Pending\" and does not count as offline.",
           "2": "Search and quick commands: ⌘K / Ctrl+K."
         }
       },
       "nodes.list": {
-        "title": "Nodes",
-        "intro": "A node is your VPS with its own domain, running the proxy. The panel installs everything it needs with one command and then manages it through an agent: keys, cover site, restarts. One panel, any number of nodes in different countries; a key can be bound to several at once.",
+        "title": "Servers",
+        "intro": "A server is your VPS with its own domain, running the proxy. The panel installs everything it needs with one command and then manages it through an agent: keys, cover site, restarts. One panel, any number of servers in different countries; a key can be bound to several at once.",
         "fields": {
           "status": {
             "name": "Status",
-            "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Panel settings → Behavior and notifications). \"Degraded\" - the node answers but one of its services is down. \"Pending\" - the node was created, but the install command has not been run yet."
+            "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Panel settings → Behavior and notifications). \"Degraded\" - the server answers but one of its services is down. \"Pending\" - the server was created, but the install command has not been run yet."
           },
           "engine": {
             "name": "Engine",
-            "what": "telemt - a single process that gives keys two links (WEB and Fake-TLS), per-key limits and per-key stats. tproxy - the older tproxy-server + MTProxy pair, WEB links only. Chosen when the node is created and fixed afterwards."
+            "what": "telemt - a single process that gives keys two links (WEB and Fake-TLS), per-key limits and per-key stats. tproxy - the older tproxy-server + MTProxy pair, WEB links only. Chosen when the server is created and fixed afterwards."
           },
           "relay": {
             "name": "Relay",
-            "what": "The proxy process version on the node: the telemt version or a short tproxy-server commit hash. Empty - the node has not reported yet."
+            "what": "The proxy process version on the server: the telemt version or a short tproxy-server commit hash. Empty - the server has not reported yet."
           },
           "profiles": {
             "name": "Profiles",
-            "what": "Used / maximum. A profile is one key on this node. A node has 128 slots by default; once they run out, new keys cannot be bound to it.",
+            "what": "Used / maximum. A profile is one key on this server. A server has 128 slots by default; once they run out, new keys cannot be bound to it.",
             "example": "37 / 128"
           },
           "load": {
             "name": "CPU and RAM",
-            "what": "Processor and memory load from the last heartbeat. Yellow from 80 %, red from 95 %. Keep headroom: an overloaded node adds latency for every client."
+            "what": "Processor and memory load from the last heartbeat. Yellow from 80 %, red from 95 %. Keep headroom: an overloaded server adds latency for every client."
           },
           "telegram": {
             "name": "Telegram",
-            "what": "Latency to Telegram from the last heartbeat - telemt's one figure across all datacenters. Yellow from 150 ms, red from 400. A dash on tproxy nodes and on offline nodes. Per-DC detail is on the node page, Overview tab."
+            "what": "Latency to Telegram from the last heartbeat - telemt's one figure across all datacenters. Yellow from 150 ms, red from 400. A dash on tproxy servers and on offline servers. Per-DC detail is on the server page, Overview tab."
           },
           "heartbeat": {
             "name": "Last response",
@@ -1264,73 +1264,73 @@
           },
           "changes": {
             "name": "Changes",
-            "what": "The \"pending\" tag means the panel holds changes (new or revoked keys, a different site) not yet sent to the node. They go out on the next apply, or right away with \"Apply\"."
+            "what": "The \"pending\" tag means the panel holds changes (new or revoked keys, a different site) not yet sent to the server. They go out on the next apply, or right away with \"Apply\"."
           },
           "actions": {
             "name": "Actions",
-            "what": "\"Apply\" - send the accumulated changes now. \"Install command\" - mint a new one-time token and show the command (the old command stops working). \"Delete\" - remove the node together with its profiles and bindings. Keys bound only to this node are left with no nodes."
+            "what": "\"Apply\" - send the accumulated changes now. \"Install command\" - mint a new one-time token and show the command (the old command stops working). \"Delete\" - remove the server together with its profiles and bindings. Keys bound only to this server are left with no servers."
           }
         },
         "notes": {
-          "1": "Applies run on their own every \"Apply interval\" (45 seconds by default). On a tproxy node every apply restarts the relay and drops live sessions; on a telemt node key changes go through the API without a restart.",
-          "2": "Nodes and the panel must be separate servers: the proxy on a node takes ports 80 and 443.",
-          "3": "A node that stays \"offline\" usually cannot reach the panel's address (PANEL_PUBLIC_URL). On the VPS: journalctl -u tgwp-agent -n 100."
+          "1": "Applies run on their own every \"Apply interval\" (45 seconds by default). On a tproxy server every apply restarts the relay and drops live sessions; on a telemt server key changes go through the API without a restart.",
+          "2": "Servers and the panel must be separate servers: the proxy on a server takes ports 80 and 443.",
+          "3": "A server that stays \"offline\" usually cannot reach the panel's address (PANEL_PUBLIC_URL). On the VPS: journalctl -u tgwp-agent -n 100."
         }
       },
       "nodes.create": {
-        "title": "New node",
-        "intro": "Here you describe the server that will become a node. The panel installs nothing yet: after creation it hands you one command to run on that server as root. Prepare the VPS first: clean Ubuntu 22.04+ or Debian 12+, a public IPv4, ports 80 and 443 free, and an A record for the domain that already points at this server.",
+        "title": "New server",
+        "intro": "Here you describe the VPS that will become a panel server. The panel installs nothing yet: after creation it hands you one command to run on that server as root. Prepare the VPS first: clean Ubuntu 22.04+ or Debian 12+, a public IPv4, ports 80 and 443 free, and an A record for the domain that already points at this server.",
         "fields": {
           "name": {
             "name": "Name",
-            "what": "What the node is called in the panel and its lists. Any text, seen only by you and the other admins. Required.",
+            "what": "What the server is called in the panel and its lists. Any text, seen only by you and the other admins. Required.",
             "example": "Amsterdam-1",
-            "tip": "Name by location or provider: this is the name you pick nodes by when issuing a key."
+            "tip": "Name by location or provider: this is the name you pick servers by when issuing a key."
           },
           "hostname": {
             "name": "Host",
-            "what": "The node's domain. The certificate is issued for it and every client link points at it. Lowercase letters, digits, hyphens and dots only; at least one dot; no https:// and no path; each part between dots is 1-63 characters and neither starts nor ends with a hyphen; 253 characters in total. Must be unique across nodes.",
+            "what": "The server's domain. The certificate is issued for it and every client link points at it. Lowercase letters, digits, hyphens and dots only; at least one dot; no https:// and no path; each part between dots is 1-63 characters and neither starts nor ends with a hyphen; 253 characters in total. Must be unique across servers.",
             "example": "ams1.example.com",
             "tip": "The A record for this domain must point at the server's IP BEFORE you run the install command: the script checks that first and cannot get a certificate without it."
           },
           "engine": {
             "name": "Engine",
-            "what": "telemt (default) - one process: clients get both a WEB link (through the node's site on 443) and a regular Fake-TLS link on a separate port; per-key quotas, speed limits and traffic. tproxy - the classic tproxy-server + MTProxy pair: WEB links only, no per-key limits, every apply restarts the relay. The engine cannot be changed later - only by reinstalling the node.",
+            "what": "telemt (default) - one process: clients get both a WEB link (through the server's site on 443) and a regular Fake-TLS link on a separate port; per-key quotas, speed limits and traffic. tproxy - the classic tproxy-server + MTProxy pair: WEB links only, no per-key limits, every apply restarts the relay. The engine cannot be changed later - only by reinstalling the server.",
             "tip": "Unless you have a reason to pick tproxy, keep telemt: it covers every official Telegram client and its WEB mode is the same."
           },
           "tls_domain": {
             "name": "Fake-TLS domain",
-            "what": "telemt only. The domain the Fake-TLS port masquerades as: to the ISP the client looks like an ordinary HTTPS connection to that site, and anyone probing the port without a secret sees the real site. Same spelling rules as the host. Defaults to the node's own host, and that is the right choice: it already has a real cover site and a valid certificate.",
+            "what": "telemt only. The domain the Fake-TLS port masquerades as: to the ISP the client looks like an ordinary HTTPS connection to that site, and anyone probing the port without a secret sees the real site. Same spelling rules as the host. Defaults to the server's own host, and that is the right choice: it already has a real cover site and a valid certificate.",
             "example": "ams1.example.com",
-            "tip": "A foreign domain only works if it is a real site answering HTTPS on port 443 with a valid certificate, and the node can reach it. A domain with no site on 443 breaks the masking: telemt takes the TLS fingerprint with a real connection and will not activate its config without one."
+            "tip": "A foreign domain only works if it is a real site answering HTTPS on port 443 with a valid certificate, and the server can reach it. A domain with no site on 443 breaks the masking: telemt takes the TLS fingerprint with a real connection and will not activate its config without one."
           },
           "classic_port": {
             "name": "Fake-TLS port",
-            "what": "telemt only. The port on which the node accepts classic MTProto (Fake-TLS) connections. 1024 to 65535; 80 and 443 belong to the node's web server. Default 8443.",
+            "what": "telemt only. The port on which the server accepts classic MTProto (Fake-TLS) connections. 1024 to 65535; 80 and 443 belong to the server's web server. Default 8443.",
             "example": "8443",
             "tip": "The port must be open in the VPS firewall and at the provider. It is baked into every Fake-TLS link, so changing it later means reissuing links."
           },
           "acme_email": {
             "name": "E-mail for Let's Encrypt",
-            "what": "Contact address for certificate issuance: Let's Encrypt writes to it when a certificate fails to renew. Must be a valid address; it goes into the install script and Caddy's config on the node.",
+            "what": "Contact address for certificate issuance: Let's Encrypt writes to it when a certificate fails to renew. Must be a valid address; it goes into the install script and Caddy's config on the server.",
             "example": "admin@example.com"
           },
           "public_ip": {
             "name": "Public IP",
-            "what": "The server's IPv4 address. Optional: a telemt node detects it during install. If set, the install script and \"Readiness check\" compare the domain's A record against it.",
+            "what": "The server's IPv4 address. Optional: a telemt server detects it during install. If set, the install script and \"Readiness check\" compare the domain's A record against it.",
             "example": "203.0.113.10",
             "tip": "Set it when the server has several addresses or sits behind NAT with a forwarded public IP - auto-detection may pick the wrong one there."
           }
         },
         "notes": {
-          "1": "The panel and the node are different servers. On the panel's server ports 80/443 are taken by the panel itself.",
-          "2": "Order: A record → create the node here → run the command on the VPS → a minute later the node is \"online\". If the record came later, just run the same command again.",
-          "3": "After install the node must be able to reach its own public address on port 443 (that is how Fake-TLS masking works). Check from the node itself: curl -sSI https://<node host>/ should return the site's response."
+          "1": "The panel and the server are different servers. On the panel's server ports 80/443 are taken by the panel itself.",
+          "2": "Order: A record → create the server here → run the command on the VPS → a minute later the server is \"online\". If the record came later, just run the same command again.",
+          "3": "After install the server must be able to reach its own public address on port 443 (that is how Fake-TLS masking works). Check from the server itself: curl -sSI https://<server host>/ should return the site's response."
         }
       },
       "nodes.install": {
         "title": "Install command",
-        "intro": "The one line that turns a clean server into a node: installs the proxy, the Caddy web server and the agent, obtains a Let's Encrypt certificate and registers the node in the panel. Run it on the VPS as root; it usually takes a minute or two.",
+        "intro": "The one line that turns a clean VPS into a panel server: installs the proxy, the Caddy web server and the agent, obtains a Let's Encrypt certificate and registers the server in the panel. Run it on the VPS as root; it usually takes a minute or two.",
         "fields": {
           "command": {
             "name": "Command",
@@ -1339,7 +1339,7 @@
           },
           "expires": {
             "name": "Valid until",
-            "what": "The token lives 24 hours and is spent exactly once - at the registration step. If it has expired, open the node and press \"Show install command\": the panel mints a new one."
+            "what": "The token lives 24 hours and is spent exactly once - at the registration step. If it has expired, open the server and press \"Show install command\": the panel mints a new one."
           },
           "preflight": {
             "name": "Pre-flight checks",
@@ -1348,11 +1348,11 @@
           },
           "installs": {
             "name": "What gets installed",
-            "what": "For telemt: the pinned telemt binary (sha256 verified), Caddy for TLS on 443, the tgwp-agent, the cover site, nftables rules, network sysctls (BBR, short keepalives). For tproxy: the pinned tproxy-server commit, the official MTProxy, Caddy and the agent. The script then waits up to two minutes for https://<host>/ to answer with a valid certificate and only then registers the node."
+            "what": "For telemt: the pinned telemt binary (sha256 verified), Caddy for TLS on 443, the tgwp-agent, the cover site, nftables rules, network sysctls (BBR, short keepalives). For tproxy: the pinned tproxy-server commit, the official MTProxy, Caddy and the agent. The script then waits up to two minutes for https://<host>/ to answer with a valid certificate and only then registers the server."
           },
           "regenerate": {
             "name": "Running it again",
-            "what": "If the script failed before the \"Registration\" step (usually while waiting for the certificate), fix the cause and run the same command again: installed packages are reused and the token is still unspent. \"Show install command\" on the node page mints a new token, and the previous command stops working."
+            "what": "If the script failed before the \"Registration\" step (usually while waiting for the certificate), fix the cause and run the same command again: installed packages are reused and the token is still unspent. \"Show install command\" on the server page mints a new token, and the previous command stops working."
           }
         },
         "notes": {
@@ -1363,11 +1363,11 @@
       },
       "nodes.check": {
         "title": "Readiness check",
-        "intro": "From its own side, the panel walks the same steps a Telegram client takes when connecting: resolve the domain, knock on the ports, verify the certificate and the site. Run it after install, after a DNS change, and whenever \"the node is online but clients cannot connect\".",
+        "intro": "From its own side, the panel walks the same steps a Telegram client takes when connecting: resolve the domain, knock on the ports, verify the certificate and the site. Run it after install, after a DNS change, and whenever \"the server is online but clients cannot connect\".",
         "fields": {
           "dns_a": {
             "name": "DNS record",
-            "what": "The node's domain resolves to an IP address. If the node has a public IP set, the record must point exactly there. Fails when the record is missing, not propagated yet, or points at another server."
+            "what": "The server's domain resolves to an IP address. If the server has a public IP set, the record must point exactly there. Fails when the record is missing, not propagated yet, or points at another server."
           },
           "tcp_80": {
             "name": "Port 80 (HTTP)",
@@ -1379,38 +1379,38 @@
           },
           "tls_cert": {
             "name": "TLS certificate",
-            "what": "Port 443 presents a valid certificate for the node's domain. Fails when Caddy could not obtain one (most often DNS or port 80) or it has expired."
+            "what": "Port 443 presents a valid certificate for the server's domain. Fails when Caddy could not obtain one (most often DNS or port 80) or it has expired."
           },
           "pq_kex": {
             "name": "Post-quantum key exchange",
-            "what": "Informational: whether Caddy on the node negotiates hybrid X25519MLKEM768 with modern clients. Does not affect the overall result."
+            "what": "Informational: whether Caddy on the server negotiates hybrid X25519MLKEM768 with modern clients. Does not affect the overall result."
           },
           "http_root": {
             "name": "Site responds",
-            "what": "GET https://<host>/ returns the cover site's page. Without a working site the traffic to the node does not look like ordinary HTTPS - which is the whole point of the disguise."
+            "what": "GET https://<host>/ returns the cover site's page. Without a working site the traffic to the server does not look like ordinary HTTPS - which is the whole point of the disguise."
           },
           "mask": {
             "name": "Fake-TLS masking",
-            "what": "telemt only. The panel connects to the Fake-TLS port with the site name from \"Fake-TLS domain\" and no secret - as a prober would - and expects to see that domain's real certificate. A failure means the node cannot reach <Fake-TLS domain>:443 (port closed, a domain with no site, or the server not allowed to connect to its own public address).",
-            "tip": "From the node itself: curl -sSI https://<Fake-TLS domain>/ must return the site's response. If it does not, the problem is the VPS network, not the panel."
+            "what": "telemt only. The panel connects to the Fake-TLS port with the site name from \"Fake-TLS domain\" and no secret - as a prober would - and expects to see that domain's real certificate. A failure means the server cannot reach <Fake-TLS domain>:443 (port closed, a domain with no site, or the server not allowed to connect to its own public address).",
+            "tip": "From the server itself: curl -sSI https://<Fake-TLS domain>/ must return the site's response. If it does not, the problem is the VPS network, not the panel."
           }
         },
         "notes": {
           "1": "The check runs from the panel's server. If the panel has its own egress firewall, some probes will fail even though clients work fine.",
-          "2": "A red line with the detail \"expected 203.0.113.10\" means the A record does not point at the public IP set in the panel: fix either the record or the IP on the node."
+          "2": "A red line with the detail \"expected 203.0.113.10\" means the A record does not point at the public IP set in the panel: fix either the record or the IP on the server."
         }
       },
       "nodes.detail": {
-        "title": "Node page",
-        "intro": "Everything about one node: service health and resources, which keys are on it, live logs, the cover site and statistics. The header buttons are the only actions that change something on the server itself.",
+        "title": "Server page",
+        "intro": "Everything about one server: service health and resources, which keys are on it, live logs, the cover site and statistics. The header buttons are the only actions that change something on the server itself.",
         "fields": {
           "header": {
             "name": "Header",
-            "what": "Status dot, name, host with a copy button and tags: telemt or relay version, the Fake-TLS endpoint (domain:port) on a telemt node, agent version."
+            "what": "Status dot, name, host with a copy button and tags: telemt or relay version, the Fake-TLS endpoint (domain:port) on a telemt server, agent version."
           },
           "apply": {
             "name": "Apply",
-            "what": "Send the accumulated changes to the node now instead of waiting for the next cycle. On a telemt node keys go through the API without a restart; on a tproxy node the relay restarts and live sessions drop (clients reconnect on their own)."
+            "what": "Send the accumulated changes to the server now instead of waiting for the next cycle. On a telemt server keys go through the API without a restart; on a tproxy server the relay restarts and live sessions drop (clients reconnect on their own)."
           },
           "restart": {
             "name": "Restart relay / telemt",
@@ -1421,8 +1421,8 @@
             "what": "Mints a new one-time token (24 hours) and shows the command. Use it to reinstall, or if the first install never reached registration. The old command stops working immediately."
           },
           "delete": {
-            "name": "Delete node",
-            "what": "Removes the node from the panel with its profiles and bindings. The server itself is untouched - the proxy on it keeps running with its old configuration until you stop it. Keys bound only to this node are left with no nodes."
+            "name": "Delete server",
+            "what": "Removes the server from the panel with its profiles and bindings. The server itself is untouched - the proxy on it keeps running with its old configuration until you stop it. Keys bound only to this server are left with no servers."
           },
           "tab_overview": {
             "name": "Overview",
@@ -1430,41 +1430,41 @@
           },
           "tab_profiles": {
             "name": "Profiles",
-            "what": "Keys the panel has put, or is about to put, on this node, with mode, limits and expiry. \"Compare with node\" asks the live node for its list and shows the differences: what exists only in the panel's database and what only on the node."
+            "what": "Keys the panel has put, or is about to put, on this server, with mode, limits and expiry. \"Compare with server\" asks the live server for its list and shows the differences: what exists only in the panel's database and what only on the server."
           },
           "tab_logs": {
             "name": "Logs",
-            "what": "Live journals of the node's services (telemt, or tproxy-server and mtproxy, and caddy). Only while the node is online."
+            "what": "Live journals of the server's services (telemt, or tproxy-server and mtproxy, and caddy). Only while the server is online."
           },
           "tab_site": {
             "name": "Site",
-            "what": "Which cover-site template is assigned and whether it is deployed, a preview, and a switch to another template. A new template reaches the node on the next apply."
+            "what": "Which cover-site template is assigned and whether it is deployed, a preview, and a switch to another template. A new template reaches the server on the next apply."
           },
           "tab_stats": {
             "name": "Statistics",
-            "what": "Sessions, connections and traffic of the node over the chosen range, plus server load (CPU, RAM, disk)."
+            "what": "Sessions, connections and traffic of the server over the chosen range, plus server load (CPU, RAM, disk)."
           }
         },
         "notes": {
-          "1": "While the node is offline the \"Profiles\" and \"Logs\" tabs and live statistics are unavailable until the agent reconnects.",
-          "2": "\"Degraded\" (yellow) on a running node usually means one of the services died: check \"Service health\" and that service's logs."
+          "1": "While the server is offline the \"Profiles\" and \"Logs\" tabs and live statistics are unavailable until the agent reconnects.",
+          "2": "\"Degraded\" (yellow) on a running server usually means one of the services died: check \"Service health\" and that service's logs."
         }
       },
       "nodes.listeners": {
         "title": "Addresses and Fake-TLS",
-        "intro": "The telemt node's public address and the settings of its classic MTProto port. The Fake-TLS domain and port are baked into every Fake-TLS link already handed out (the domain sits inside the secret), so changing them is not a setting - it is reissuing links: after saving, the next apply rewrites the config, restarts telemt, drops connections, and every Fake-TLS link of this node stops working. WEB links are unaffected. Changing the public IP restarts telemt too, but leaves the links alone.",
+        "intro": "The telemt server's public address and the settings of its classic MTProto port. The Fake-TLS domain and port are baked into every Fake-TLS link already handed out (the domain sits inside the secret), so changing them is not a setting - it is reissuing links: after saving, the next apply rewrites the config, restarts telemt, drops connections, and every Fake-TLS link of this server stops working. WEB links are unaffected. Changing the public IP restarts telemt too, but leaves the links alone.",
         "fields": {
           "tls_domain": {
             "name": "Fake-TLS domain",
-            "what": "The site the port masquerades as. The right choice is the node's own host: it has a real cover site and a certificate. A foreign domain is acceptable only if it is a real site answering HTTPS on 443 that the node can reach. Spelling rules as for the host: lowercase, with a dot, no scheme.",
+            "what": "The site the port masquerades as. The right choice is the server's own host: it has a real cover site and a certificate. A foreign domain is acceptable only if it is a real site answering HTTPS on 443 that the server can reach. Spelling rules as for the host: lowercase, with a dot, no scheme.",
             "example": "ams1.example.com",
             "tip": "After changing it, run \"Readiness check\": the \"Fake-TLS masking\" line tells you whether the new domain works."
           },
           "tls_domains": {
             "name": "Backup masking domains",
-            "what": "Extra domains the Fake-TLS port also masquerades as. Each one gives every key its own link, and the main link stays as it was. If a provider starts blocking the main domain by SNI, the user takes the link with another domain, with no need to reinstall the node. Saving restarts telemt but does not break links already handed out.",
+            "what": "Extra domains the Fake-TLS port also masquerades as. Each one gives every key its own link, and the main link stays as it was. If a provider starts blocking the main domain by SNI, the user takes the link with another domain, with no need to reinstall the server. Saving restarts telemt but does not break links already handed out.",
             "example": "www.example.org",
-            "tip": "Use real sites with HTTPS on 443 that the node can reach: telemt takes the TLS fingerprint of each domain at startup, and if one is unreachable the apply rolls back. Needs agent 2.9.2 or later."
+            "tip": "Use real sites with HTTPS on 443 that the server can reach: telemt takes the TLS fingerprint of each domain at startup, and if one is unreachable the apply rolls back. Needs agent 2.9.2 or later."
           },
           "classic_port": {
             "name": "Fake-TLS port",
@@ -1473,19 +1473,19 @@
           },
           "public_ip": {
             "name": "Public IP",
-            "what": "The IPv4 address the node is reachable at from the internet. telemt names it in the WEB vhost (public_addr) and \"Readiness check\" compares the host's A record against it. The install script detects it and reports it at registration; correct it here when it picked the wrong one.",
+            "what": "The IPv4 address the server is reachable at from the internet. telemt names it in the WEB vhost (public_addr) and \"Readiness check\" compares the host's A record against it. The install script detects it and reports it at registration; correct it here when it picked the wrong one.",
             "example": "203.0.113.10",
             "tip": "It must be the address the A record points at. On a NAT host the interface address and the one the internet sees can differ - the installer shows both; \"connection refused\" on 80/443 means the wrong one is recorded."
           }
         },
         "notes": {
-          "1": "Change these only as a last resort, and plan to send new links to everyone holding a Fake-TLS link of this node. Subscription pages update on their own.",
-          "2": "Saving only records the intent: the next apply (automatic, or the \"Apply\" button) sends it to the node."
+          "1": "Change these only as a last resort, and plan to send new links to everyone holding a Fake-TLS link of this server. Subscription pages update on their own.",
+          "2": "Saving only records the intent: the next apply (automatic, or the \"Apply\" button) sends it to the server."
         }
       },
       "nodes.dcs": {
         "title": "Telegram datacenters",
-        "intro": "How the node sees Telegram's datacenters: the state of the direct route to them and the latency to each DC. The figures are not the panel's but telemt's own: it keeps a moving average of the latency to every DC and refreshes it with its own health checks. telemt nodes only; tproxy does not report this.",
+        "intro": "How the server sees Telegram's datacenters: the state of the direct route to them and the latency to each DC. The figures are not the panel's but telemt's own: it keeps a moving average of the latency to every DC and refreshes it with its own health checks. telemt servers only; tproxy does not report this.",
         "fields": {
           "route": {
             "name": "Route",
@@ -1493,12 +1493,12 @@
           },
           "connections": {
             "name": "Connections",
-            "what": "telemt's counters since it started: successful and failed attempts to connect to Telegram. A growing share of failures at normal latency usually means the network between the node and Telegram, not the node itself."
+            "what": "telemt's counters since it started: successful and failed attempts to connect to Telegram. A growing share of failures at normal latency usually means the network between the server and Telegram, not the server itself."
           },
           "latency": {
             "name": "Latency",
             "what": "The moving average of the DC's response time in milliseconds over telemt's checks. Gray below 150 ms, yellow from 150, red from 400. A dash means the DC has not been measured yet.",
-            "tip": "A red DC does not mean the node is down: every user whose chats live in that DC feels the lag on this node. If it does not pass, move the keys to a node where that DC is green."
+            "tip": "A red DC does not mean the server is down: every user whose chats live in that DC feels the lag on this server. If it does not pass, move the keys to a server where that DC is green."
           },
           "ip_preference": {
             "name": "IP preference",
@@ -1506,13 +1506,13 @@
           }
         },
         "notes": {
-          "1": "This is latency from the node to Telegram, not to the user. A node with green DCs that is far from its users is still slow for them.",
-          "2": "\"Not available on this engine\" is a tproxy node. \"telemt is not reporting datacenter data\" means telemt older than 3.5.7, or its upstream checks are disabled in its config."
+          "1": "This is latency from the server to Telegram, not to the user. A server with green DCs that is far from its users is still slow for them.",
+          "2": "\"Not available on this engine\" is a tproxy server. \"telemt is not reporting datacenter data\" means telemt older than 3.5.7, or its upstream checks are disabled in its config."
         }
       },
       "keys.list": {
         "title": "Keys",
-        "intro": "A key is proxy access for a person or a group. On every bound node it becomes a profile with a secret, and the client gets one link per node. Here keys are searched, filtered, shown as links, extended and revoked - one at a time or in bulk.",
+        "intro": "A key is proxy access for a person or a group. On every bound server it becomes a profile with a secret, and the client gets one link per server. Here keys are searched, filtered, shown as links, extended and revoked - one at a time or in bulk.",
         "fields": {
           "type": {
             "name": "Type",
@@ -1520,27 +1520,27 @@
           },
           "status": {
             "name": "Status",
-            "what": "\"Pending\" - the key exists but its profile has not been sent to the node yet (next apply, usually within a minute). \"Active\" - on the nodes, the link works. \"Revoked\" - removed from the nodes; keys whose expiry passed are marked the same way."
+            "what": "\"Pending\" - the key exists but its profile has not been sent to the server yet (next apply, usually within a minute). \"Active\" - on the servers, the link works. \"Revoked\" - removed from the servers; keys whose expiry passed are marked the same way."
           },
           "nodes": {
-            "name": "Nodes",
-            "what": "Which nodes the key is bound to. The user gets one link per node and can switch between locations."
+            "name": "Servers",
+            "what": "Which servers the key is bound to. The user gets one link per server and can switch between locations."
           },
           "traffic": {
             "name": "Traffic (30 d)",
-            "what": "How much the key transferred in 30 days. Counted by telemt nodes only; a key bound solely to tproxy nodes shows a dash."
+            "what": "How much the key transferred in 30 days. Counted by telemt servers only; a key bound solely to tproxy servers shows a dash."
           },
           "expires": {
             "name": "Expires",
-            "what": "End date. When it arrives the panel revokes the key itself and removes the profile from the nodes on the next apply. \"No expiry\" - permanent."
+            "what": "End date. When it arrives the panel revokes the key itself and removes the profile from the servers on the next apply. \"No expiry\" - permanent."
           },
           "filters": {
             "name": "Search and filters",
-            "what": "Search by label and owner label; filters by type, status and node. A link of the form /keys?key=<id> opens one key - that is how the command palette gets there."
+            "what": "Search by label and owner label; filters by type, status and server. A link of the form /keys?key=<id> opens one key - that is how the command palette gets there."
           },
           "row_actions": {
             "name": "Row actions",
-            "what": "\"Show link\" - links and QR codes per node. \"Rotate secret\" - issue a new secret: the old link stops working, the new one must be sent out. \"Revoke\" - remove access. Click the label to open the whole key."
+            "what": "\"Show link\" - links and QR codes per server. \"Rotate secret\" - issue a new secret: the old link stops working, the new one must be sent out. \"Revoke\" - remove access. Click the label to open the whole key."
           },
           "bulk": {
             "name": "Bulk actions",
@@ -1548,14 +1548,14 @@
           }
         },
         "notes": {
-          "1": "Every change reaches clients only after an apply on the node - on schedule (every 45 seconds by default) or via \"Apply\" on the node. On telemt without a restart, on tproxy with a relay restart.",
-          "2": "A node has a limited number of profiles (128 by default). When it is full, the panel refuses the binding and names the node.",
+          "1": "Every change reaches clients only after an apply on the server - on schedule (every 45 seconds by default) or via \"Apply\" on the server. On telemt without a restart, on tproxy with a relay restart.",
+          "2": "A server has a limited number of profiles (128 by default). When it is full, the panel refuses the binding and names the server.",
           "3": "Viewers see the list but not the links or secrets."
         }
       },
       "keys.create": {
         "title": "New key",
-        "intro": "The tabs are three ways to hand out access: a shared key for a group, a personal key for one person, a batch of several keys at once. The key will work on every ticked node and becomes active after the next apply - usually within a minute. The panel shows the link right after creation.",
+        "intro": "The tabs are three ways to hand out access: a shared key for a group, a personal key for one person, a batch of several keys at once. The key will work on every ticked server and becomes active after the next apply - usually within a minute. The panel shows the link right after creation.",
         "fields": {
           "label": {
             "name": "Label",
@@ -1569,25 +1569,25 @@
             "example": "Ivan Petrov · @ivan"
           },
           "nodes": {
-            "name": "Nodes",
-            "what": "Tick at least one. Each ticked node gets a profile and the client gets one link per node. Next to each node: how many free slots remain; a full node cannot be selected.",
-            "tip": "Nodes can be added or removed later in the key's drawer."
+            "name": "Servers",
+            "what": "Tick at least one. Each ticked server gets a profile and the client gets one link per server. Next to each server: how many free slots remain; a full server cannot be selected.",
+            "tip": "Servers can be added or removed later in the key's drawer."
           },
           "carrier_mode": {
             "name": "Carrier mode",
-            "what": "Legacy tproxy nodes only: how the WEB client talks to the node over HTTPS. HTTPS - one POST request plus long poll, the most compatible. WebSocket - one persistent connection, lower latency. The \"lanes\" variants open a separate connection per stream. telemt nodes negotiate transport themselves, so the field is not shown for them.",
+            "what": "Legacy tproxy servers only: how the WEB client talks to the server over HTTPS. HTTPS - one POST request plus long poll, the most compatible. WebSocket - one persistent connection, lower latency. The \"lanes\" variants open a separate connection per stream. telemt servers negotiate transport themselves, so the field is not shown for them.",
             "example": "HTTPS",
             "tip": "On tproxy start with HTTPS and change it only if users complain about speed or drops."
           },
           "expires_at": {
             "name": "Expires",
-            "what": "Optional. Date and time in your time zone; must be in the future. When it arrives, the panel revokes the key itself and removes the profile from the nodes. Empty - a permanent key.",
+            "what": "Optional. Date and time in your time zone; must be in the future. When it arrives, the panel revokes the key itself and removes the profile from the servers. Empty - a permanent key.",
             "example": "2026-12-31 23:59",
             "tip": "Extend in the key's drawer or in bulk from the list - before the date passes."
           },
           "limits": {
             "name": "Limits",
-            "what": "Traffic quota, speed and address count are enforced by telemt itself, so they are available only when a telemt node is among the selected ones. \"Advanced limits\" are WEB-transport ceilings on sessions and streams. An empty field or 0 means no limit. The fields have their own help."
+            "what": "Traffic quota, speed and address count are enforced by telemt itself, so they are available only when a telemt server is among the selected ones. \"Advanced limits\" are WEB-transport ceilings on sessions and streams. An empty field or 0 means no limit. The fields have their own help."
           },
           "note": {
             "name": "Note",
@@ -1595,28 +1595,28 @@
           }
         },
         "notes": {
-          "1": "A key created in \"Pending\" starts working after an apply on the node - automatically after the interval (45 seconds by default) or right away with \"Apply\" on the node.",
-          "2": "On a telemt node the key gets two links: WEB and Fake-TLS. On a tproxy node only WEB (Telegram Desktop stable, Android experimental, iOS planned).",
+          "1": "A key created in \"Pending\" starts working after an apply on the server - automatically after the interval (45 seconds by default) or right away with \"Apply\" on the server.",
+          "2": "On a telemt server the key gets two links: WEB and Fake-TLS. On a tproxy server only WEB (Telegram Desktop stable, Android experimental, iOS planned).",
           "3": "Closed the dialog half-way? The panel keeps a draft and offers to continue next time."
         }
       },
       "keys.transport": {
         "title": "Key transport",
-        "intro": "How the client talks to the node. On telemt this belongs to the node and the network, not to the key: nothing is pinned to a particular person.",
+        "intro": "How the client talks to the server. On telemt this belongs to the server and the network, not to the key: nothing is pinned to a particular person.",
         "fields": {
           "automatic": {
             "name": "Automatic choice",
-            "what": "On telemt nodes the transport is negotiated per connection. The node tries the options in order and remembers what worked on that network - so there is nothing to choose on the key.",
-            "tip": "If someone sees slow or dropping connections, it is the node and the network, not the key: start from the node check."
+            "what": "On telemt servers the transport is negotiated per connection. The server tries the options in order and remembers what worked on that network - so there is nothing to choose on the key.",
+            "tip": "If someone sees slow or dropping connections, it is the server and the network, not the key: start from the server check."
           },
           "order": {
             "name": "Negotiation order",
-            "what": "Fastest first, most compatible last. Once an option works, the node remembers it instead of walking the list again for every connection.",
+            "what": "Fastest first, most compatible last. Once an option works, the server remembers it instead of walking the list again for every connection.",
             "example": "WebSocket lanes → WebSocket → HTTPS lanes → HTTPS"
           },
           "legacy": {
-            "name": "Legacy tproxy nodes",
-            "what": "tproxy negotiates nothing, so its carrier mode is set here and goes into the profile on the node. With nodes of both engines selected, only the tproxy ones get the mode.",
+            "name": "Legacy tproxy servers",
+            "what": "tproxy negotiates nothing, so its carrier mode is set here and goes into the profile on the server. With servers of both engines selected, only the tproxy ones get the mode.",
             "tip": "For tproxy start with HTTPS and change it only if users complain about speed or drops."
           }
         },
@@ -1626,7 +1626,7 @@
       },
       "keys.batch": {
         "title": "Several keys at once",
-        "intro": "Creates several shared keys at once with identical settings (nodes, mode, expiry, limits) and labels of the form \"prefix-number\". Handy for handing out one key per person when the personal labels are not known yet. The panel checks that every node has room for the whole batch and creates either all keys or none.",
+        "intro": "Creates several shared keys at once with identical settings (servers, mode, expiry, limits) and labels of the form \"prefix-number\". Handy for handing out one key per person when the personal labels are not known yet. The panel checks that every server has room for the whole batch and creates either all keys or none.",
         "fields": {
           "prefix": {
             "name": "Prefix",
@@ -1635,22 +1635,22 @@
           },
           "count": {
             "name": "Count",
-            "what": "1 to 100 keys per batch. Each takes one profile on every selected node.",
+            "what": "1 to 100 keys per batch. Each takes one profile on every selected server.",
             "example": "25"
           },
           "result": {
             "name": "Result",
-            "what": "After creation the panel lists the keys: each opens its link and QR, and \"Download all links\" gives a text file - one line per key and node - for sending out."
+            "what": "After creation the panel lists the keys: each opens its link and QR, and \"Download all links\" gives a text file - one line per key and server - for sending out."
           }
         },
         "notes": {
-          "1": "If some node has fewer free slots than keys in the batch, the panel refuses the whole batch and names the node and its free slots. Lower the count or drop the node.",
+          "1": "If some server has fewer free slots than keys in the batch, the panel refuses the whole batch and names the server and its free slots. Lower the count or drop the server.",
           "2": "Keys in a series are ordinary shared keys: they can be renamed, revoked or extended individually later."
         }
       },
       "keys.limits": {
         "title": "Key limits",
-        "intro": "Two sets of ceilings. The first five are enforced by telemt on the node - they work only on telemt nodes and change without a restart. The rest are WEB-transport ceilings on sessions and streams, enforced by the relay. An empty field or 0 always means no limit (for the WEB-transport ones: the node's default).",
+        "intro": "Two sets of ceilings. The first five are enforced by telemt on the server - they work only on telemt servers and change without a restart. The rest are WEB-transport ceilings on sessions and streams, enforced by the relay. An empty field or 0 always means no limit (for the WEB-transport ones: the server's default).",
         "fields": {
           "quota_gb": {
             "name": "Traffic quota, GB",
@@ -1717,14 +1717,14 @@
           }
         },
         "notes": {
-          "1": "If the key is bound only to tproxy nodes, the telemt limits are shown greyed out: nothing enforces them. They start working as soon as you add a telemt node.",
-          "2": "The WEB-transport limits are fine tuning. Leave zeros until you have a specific problem: a node's own defaults handle ordinary load.",
-          "3": "Every limit change reaches the node on the next apply."
+          "1": "If the key is bound only to tproxy servers, the telemt limits are shown greyed out: nothing enforces them. They start working as soon as you add a telemt server.",
+          "2": "The WEB-transport limits are fine tuning. Leave zeros until you have a specific problem: a server's own defaults handle ordinary load.",
+          "3": "Every limit change reaches the server on the next apply."
         }
       },
       "keys.detail": {
         "title": "Key drawer",
-        "intro": "Everything about one key, top to bottom: what it is, what can be changed, which nodes it is on, how it is handed out - and, at the very bottom behind a confirmation, what cannot be undone. Every save reaches the nodes on the next apply.",
+        "intro": "Everything about one key, top to bottom: what it is, what can be changed, which servers it is on, how it is handed out - and, at the very bottom behind a confirmation, what cannot be undone. Every save reaches the servers on the next apply.",
         "fields": {
           "status": {
             "name": "Header",
@@ -1735,16 +1735,16 @@
             "what": "Label, owner label, note, expiry, carrier mode and limits - the same fields as at creation. Changing the expiry of an active key is the usual way to extend access."
           },
           "nodes": {
-            "name": "Nodes",
-            "what": "Where the key is. \"Add node\" creates a profile on one more node (if it has room), \"Remove\" takes it off. The user gains or loses the link for that location; the subscription page updates itself."
+            "name": "Servers",
+            "what": "Where the key is. \"Add server\" creates a profile on one more server (if it has room), \"Remove\" takes it off. The user gains or loses the link for that location; the subscription page updates itself."
           },
           "link": {
             "name": "Link",
-            "what": "Opens the dialog with links and QR codes per node: WEB and, on telemt nodes, Fake-TLS."
+            "what": "Opens the dialog with links and QR codes per server: WEB and, on telemt servers, Fake-TLS."
           },
           "subscription": {
             "name": "Subscription link",
-            "what": "A public page where the user sees all their locations and QR codes, and which updates itself when nodes or the secret change. The link and QR are shown once at creation - save them. \"Rotate link\" invalidates the old address; \"Revoke\" removes the page. The key's label and notes never appear there."
+            "what": "A public page where the user sees all their locations and QR codes, and which updates itself when servers or the secret change. The link and QR are shown once at creation - save them. \"Rotate link\" invalidates the old address; \"Revoke\" removes the page. The key's label and notes never appear there."
           },
           "rotate": {
             "name": "Rotate secret",
@@ -1752,7 +1752,7 @@
           },
           "revoke": {
             "name": "Revoke",
-            "what": "Removes the profile from every node on the next apply. The key stays in the list for the record. For a shared key this cuts off everyone using it."
+            "what": "Removes the profile from every server on the next apply. The key stays in the list for the record. For a shared key this cuts off everyone using it."
           },
           "delete": {
             "name": "Delete",
@@ -1760,21 +1760,21 @@
           }
         },
         "notes": {
-          "1": "Per-key traffic and connections are counted by telemt nodes only; on tproxy nodes the stats block is empty.",
-          "2": "While the status is \"Pending\" the link is already shown but starts working only after the apply on the node (usually within a minute)."
+          "1": "Per-key traffic and connections are counted by telemt servers only; on tproxy servers the stats block is empty.",
+          "2": "While the status is \"Pending\" the link is already shown but starts working only after the apply on the server (usually within a minute)."
         }
       },
       "keys.link": {
         "title": "Client link",
-        "intro": "With the link the user enables the proxy in Telegram with one tap. The panel shows one block per node of the key; send the user the links of the locations they need, or one subscription link that gathers them all.",
+        "intro": "With the link the user enables the proxy in Telegram with one tap. The panel shows one block per server of the key; send the user the links of the locations they need, or one subscription link that gathers them all.",
         "fields": {
           "web": {
             "name": "WEB",
-            "what": "A link of the form https://t.me/webproxy?server=<host>&secret=<secret>. The client goes through the node's site on port 443 - plain HTTPS to the network. Available on every node. Client support: Telegram Desktop stable, Android experimental, iOS not yet."
+            "what": "A link of the form https://t.me/webproxy?server=<host>&secret=<secret>. The client goes through the server's site on port 443 - plain HTTPS to the network. Available on every server. Client support: Telegram Desktop stable, Android experimental, iOS not yet."
           },
           "fake_tls": {
             "name": "Fake-TLS",
-            "what": "A link of the form https://t.me/proxy?server=<host>&port=<port>&secret=ee…. A classic MTProto proxy disguised as HTTPS; every official Telegram client on every platform understands it. telemt nodes only; the port is the node's \"Fake-TLS port\".",
+            "what": "A link of the form https://t.me/proxy?server=<host>&port=<port>&secret=ee…. A classic MTProto proxy disguised as HTTPS; every official Telegram client on every platform understands it. telemt servers only; the port is the server's \"Fake-TLS port\".",
             "tip": "For iOS users and older clients hand out Fake-TLS."
           },
           "tme_vs_tg": {
@@ -1787,7 +1787,7 @@
           },
           "clients": {
             "name": "On the user's side",
-            "what": "Open the link → Telegram asks \"Enable proxy?\" → Connect. Verify: Settings → Data and Storage → Proxy. If the proxy will not connect, check the node's \"Prerequisite check\" first."
+            "what": "Open the link → Telegram asks \"Enable proxy?\" → Connect. Verify: Settings → Data and Storage → Proxy. If the proxy will not connect, check the server's \"Prerequisite check\" first."
           }
         },
         "notes": {
@@ -1808,12 +1808,12 @@
         },
         "notes": {
           "1": "Extend before the date passes: once it does, the panel revokes the key and it has to be issued again.",
-          "2": "The new expiry reaches the nodes on the next apply."
+          "2": "The new expiry reaches the servers on the next apply."
         }
       },
       "sites.templates": {
         "title": "Site templates",
-        "intro": "Every node's domain must serve an ordinary, plausible website: to the ISP the proxy traffic then looks like visits to a site, and anyone opening the address sees a page rather than an error. A template is such a site: HTML plus files. The panel deploys a preset when a node is installed; here you pick another or write your own.",
+        "intro": "Every server's domain must serve an ordinary, plausible website: to the ISP the proxy traffic then looks like visits to a site, and anyone opening the address sees a page rather than an error. A template is such a site: HTML plus files. The panel deploys a preset when a server is installed; here you pick another or write your own.",
         "fields": {
           "template": {
             "name": "Template",
@@ -1821,7 +1821,7 @@
           },
           "preset": {
             "name": "Preset",
-            "what": "Built-in templates. They cannot be deleted or renamed, but can be assigned to nodes and duplicated as your own."
+            "what": "Built-in templates. They cannot be deleted or renamed, but can be assigned to servers and duplicated as your own."
           },
           "duplicate": {
             "name": "Duplicate as own",
@@ -1829,25 +1829,25 @@
           },
           "delete": {
             "name": "Delete",
-            "what": "Own templates only. Nodes that already run it keep showing it until another one is assigned."
+            "what": "Own templates only. Servers that already run it keep showing it until another one is assigned."
           },
           "assign": {
-            "name": "Assign to node",
-            "what": "In the editor - the \"Assign to node…\" button; on the node page - the \"Site\" tab. Every node gets a uniquified copy: block order, class and file names differ, so nodes do not share a signature."
+            "name": "Assign to server",
+            "what": "In the editor - the \"Assign to server…\" button; on the server page - the \"Site\" tab. Every server gets a uniquified copy: block order, class and file names differ, so servers do not share a signature."
           }
         },
         "notes": {
-          "1": "A template is at most 2 MB including files: it travels to the node inside every apply.",
+          "1": "A template is at most 2 MB including files: it travels to the server inside every apply.",
           "2": "A good template is boring: a small business card site, a personal page, documentation. Do not copy well-known sites."
         }
       },
       "sites.editor": {
         "title": "Template editor",
-        "intro": "HTML and files on the left, preview and validation on the right. The cover site lives on the node and must be fully self-contained: the relay forbids anything that pulls external resources or sends data out - otherwise the site would give the node away.",
+        "intro": "HTML and files on the left, preview and validation on the right. The cover site lives on the server and must be fully self-contained: the relay forbids anything that pulls external resources or sends data out - otherwise the site would give the server away.",
         "fields": {
           "name": {
             "name": "Template name",
-            "what": "How the template appears in the list and in the node page's selector. A preset's name cannot be changed.",
+            "what": "How the template appears in the list and in the server page's selector. A preset's name cannot be changed.",
             "example": "Design studio"
           },
           "html": {
@@ -1865,11 +1865,11 @@
           },
           "preview": {
             "name": "Preview",
-            "what": "The page in a sandboxed frame - what a visitor to the node's domain sees. Check for broken images: they are the first sign of external references."
+            "what": "The page in a sandboxed frame - what a visitor to the server's domain sees. Check for broken images: they are the first sign of external references."
           },
           "save": {
             "name": "Save",
-            "what": "Stores the template in the panel. Nodes it is assigned to receive the new version on the next apply."
+            "what": "Stores the template in the panel. Servers it is assigned to receive the new version on the next apply."
           }
         },
         "notes": {
@@ -1878,22 +1878,22 @@
         }
       },
       "sites.assign": {
-        "title": "Assign template to node",
-        "intro": "Pick a node and this template becomes its cover site. The panel marks the node as having pending changes; the site reaches the server on the next apply.",
+        "title": "Assign template to server",
+        "intro": "Pick a server and this template becomes its cover site. The panel marks the server as having pending changes; the site reaches the server on the next apply.",
         "fields": {
           "node": {
-            "name": "Node",
-            "what": "The node the template is assigned to. It gets its own uniquified copy: file and class names differ from other nodes with the same template."
+            "name": "Server",
+            "what": "The server the template is assigned to. It gets its own uniquified copy: file and class names differ from other servers with the same template."
           }
         },
         "notes": {
-          "1": "On a tproxy node the apply restarts the relay and drops live sessions; on a telemt node a site change also goes through an apply.",
-          "2": "The current template and its deployment status are on the node page → \"Site\" tab."
+          "1": "On a tproxy server the apply restarts the relay and drops live sessions; on a telemt server a site change also goes through an apply.",
+          "2": "The current template and its deployment status are on the server page → \"Site\" tab."
         }
       },
       "monitoring": {
         "title": "Monitoring",
-        "intro": "Charts per node over the chosen range. Values come from stats snapshots the panel takes from the nodes regularly, so a line can trail \"now\" by a few minutes. For your own Prometheus/Grafana, the metrics address is at the bottom.",
+        "intro": "Charts per server over the chosen range. Values come from stats snapshots the panel takes from the servers regularly, so a line can trail \"now\" by a few minutes. For your own Prometheus/Grafana, the metrics address is at the bottom.",
         "fields": {
           "range": {
             "name": "Range",
@@ -1901,7 +1901,7 @@
           },
           "sessions": {
             "name": "Live sessions",
-            "what": "How many client WEB sessions were open on the node at each moment. Roughly the number of connected devices."
+            "what": "How many client WEB sessions were open on the server at each moment. Roughly the number of connected devices."
           },
           "streams": {
             "name": "Live streams",
@@ -1909,29 +1909,29 @@
           },
           "traffic": {
             "name": "Traffic",
-            "what": "The node's outbound and inbound traffic over the range. Useful to see when a node will hit its VPS plan's cap."
+            "what": "The server's outbound and inbound traffic over the range. Useful to see when a server will hit its VPS plan's cap."
           },
           "connections": {
             "name": "Connections (telemt)",
-            "what": "On telemt nodes, connections are shown instead of sessions and streams - what telemt itself counts."
+            "what": "On telemt servers, connections are shown instead of sessions and streams - what telemt itself counts."
           },
           "prometheus": {
             "name": "Prometheus",
-            "what": "The panel's own metrics are served at /metrics with the header Authorization: Bearer <METRICS_TOKEN> (the token is in the panel's .env). Each node's metrics: /api/v1/nodes/{id}/metrics. A ready Grafana dashboard is in the repository under deploy/grafana/."
+            "what": "The panel's own metrics are served at /metrics with the header Authorization: Bearer <METRICS_TOKEN> (the token is in the panel's .env). Each server's metrics: /api/v1/nodes/{id}/metrics. A ready Grafana dashboard is in the repository under deploy/grafana/."
           }
         },
         "notes": {
-          "1": "A node with no data for the range was either just installed or offline: snapshots are taken from online nodes only.",
+          "1": "A server with no data for the range was either just installed or offline: snapshots are taken from online servers only.",
           "2": "Per-key statistics are in the key's drawer (telemt only)."
         }
       },
       "audit": {
         "title": "Audit log",
-        "intro": "Who did what and when in the panel: logins, key creation and revocation, node, settings and branding changes. The panel writes the entries itself; they cannot be edited or deleted from the UI. Use it to trace where a change came from and who issued a key.",
+        "intro": "Who did what and when in the panel: logins, key creation and revocation, server, settings and branding changes. The panel writes the entries itself; they cannot be edited or deleted from the UI. Use it to trace where a change came from and who issued a key.",
         "fields": {
           "action": {
             "name": "Action",
-            "what": "Filter by action group: login, admins, nodes, keys, templates, branding, settings, alerts."
+            "what": "Filter by action group: login, admins, servers, keys, templates, branding, settings, alerts."
           },
           "user": {
             "name": "User",
@@ -1943,7 +1943,7 @@
           },
           "target": {
             "name": "Target",
-            "what": "What was touched: the id of a key, node, template or profile."
+            "what": "What was touched: the id of a key, server, template or profile."
           },
           "ip": {
             "name": "IP",
@@ -1965,24 +1965,24 @@
         "fields": {
           "apply_interval": {
             "name": "Apply interval, s",
-            "what": "How often the worker checks the nodes for unsent changes and sends them. 10 to 3600 seconds, default 45. A key created in the panel starts working no later than this interval.",
+            "what": "How often the worker checks the servers for unsent changes and sends them. 10 to 3600 seconds, default 45. A key created in the panel starts working no later than this interval.",
             "example": "45",
-            "tip": "On tproxy nodes every apply restarts the relay. If keys are issued often, a longer interval (120-300) means fewer restarts - the changes simply pile into one batch."
+            "tip": "On tproxy servers every apply restarts the relay. If keys are issued often, a longer interval (120-300) means fewer restarts - the changes simply pile into one batch."
           },
           "offline_after": {
             "name": "Offline after, s",
-            "what": "How many seconds without an agent heartbeat the panel waits before calling the node offline and raising an alert. 30 to 3600, default 90.",
+            "what": "How many seconds without an agent heartbeat the panel waits before calling the server offline and raising an alert. 30 to 3600, default 90.",
             "example": "90",
             "tip": "Too small a threshold gives false alerts on any network hiccup; do not go below 60."
           }
         },
         "notes": {
-          "1": "\"Apply\" on a node and \"Apply everywhere\" in the command palette do not wait for the interval."
+          "1": "\"Apply\" on a server and \"Apply everywhere\" in the command palette do not wait for the interval."
         }
       },
       "settings.telegram": {
         "title": "Telegram notifications",
-        "intro": "The panel messages Telegram when a node goes offline or comes back and when an apply on a node fails. You need your own bot and a chat for it to write to.",
+        "intro": "The panel messages Telegram when a server goes offline or comes back and when an apply on a server fails. You need your own bot and a chat for it to write to.",
         "fields": {
           "enabled": {
             "name": "Enable notifications",
@@ -2010,7 +2010,7 @@
       },
       "settings.security": {
         "title": "Security",
-        "intro": "Your account's password and second factor. The panel is the one place from which access to every node can be issued, so right after install change the password and turn on two-factor authentication.",
+        "intro": "Your account's password and second factor. The panel is the one place from which access to every server can be issued, so right after install change the password and turn on two-factor authentication.",
         "fields": {
           "password": {
             "name": "Change password",
@@ -2049,7 +2049,7 @@
           },
           "role": {
             "name": "Role",
-            "what": "Owner - everything, including panel settings, admins and backups. Admin - nodes, keys, templates and branding, but not panel settings or accounts. Viewer - read only: no key links or secrets."
+            "what": "Owner - everything, including panel settings, admins and backups. Admin - servers, keys, templates and branding, but not panel settings or accounts. Viewer - read only: no key links or secrets."
           }
         },
         "notes": {
@@ -2129,7 +2129,7 @@
       },
       "settings.backups": {
         "title": "Backups",
-        "intro": "A backup is a dump of the whole panel database: nodes, keys, secrets, settings, the audit log. Files live on the panel's server in the /data/backups/ volume. Owner only. Secrets in the dump stay encrypted with the MASTER_KEY from .env - without it a restored database is useless, so keep the key away from the server.",
+        "intro": "A backup is a dump of the whole panel database: servers, keys, secrets, settings, the audit log. Files live on the panel's server in the /data/backups/ volume. Owner only. Secrets in the dump stay encrypted with the MASTER_KEY from .env - without it a restored database is useless, so keep the key away from the server.",
         "fields": {
           "create": {
             "name": "Create backup",
@@ -2164,7 +2164,7 @@
         },
         "notes": {
           "1": "Make a manual backup before upgrading the panel - the schedule never deletes it.",
-          "2": "Nodes need no backup: the panel rebuilds their state with an apply after the database is restored."
+          "2": "Servers need no backup: the panel rebuilds their state with an apply after the database is restored."
         }
       }
     }
@@ -2214,7 +2214,7 @@
     "section_proxy": "Proxy settings",
     "description_proxy": "Settings for this server. Changing the Fake-TLS address or port affects existing links. WEB changes depend on engine capabilities.",
     "section_profiles": "Server access",
-    "description_profiles": "Profiles delivered to this node. Create a key and choose its servers in Access keys.",
+    "description_profiles": "Profiles delivered to this server. Create a key and choose its servers in Access keys.",
     "section_site": "Server website",
     "description_site": "Choose what a regular visitor sees on this domain. Shared templates live in Cover websites.",
     "section_settings": "Server maintenance",
@@ -2262,7 +2262,7 @@
     "unmanaged": "Existing engine configuration",
     "direct": "Direct to Telegram",
     "socks5": "Through local SOCKS5",
-    "egress_hint": "SOCKS5 must already run on this node, for example a WARP endpoint or a tunnel to a reserve VPS. Only engine routing changes; SSH and the agent route stay intact. Incompatible with a sponsor tag.",
+    "egress_hint": "SOCKS5 must already run on this server, for example a WARP endpoint or a tunnel to a reserve VPS. Only engine routing changes; SSH and the agent route stay intact. Incompatible with a sponsor tag.",
     "primary": "Primary SOCKS5, address:port",
     "reserve": "Reserve SOCKS5, address:port",
     "failover": "Switch to reserve on failure",
@@ -2299,7 +2299,7 @@
   "probe": {
     "title": "External network checks",
     "hint": "Reports from independent probes. TLS and website checks measure reachability. FakeTLS and WEB require a configured test client; without one, success is not confirmed.",
-    "none": "No probes connected: the node is not checked from other networks.",
+    "none": "No probes connected: the server is not checked from other networks.",
     "setup_toggle": "How to connect probes",
     "empty": "No probes configured. The panel host administrator sets PROBE_LOCATIONS and runs tgwp-probe in external networks.",
     "stale": "No fresh report",

@@ -34,7 +34,7 @@ describe('NodeVerdict', () => {
     setup([{ node_id: 'n1', kind: 'node_offline', message: '' }]);
     renderVerdict(node({ online: false, status: 'offline' }));
     expect(screen.getByTestId('node-verdict')).toHaveAttribute('data-tone', 'err');
-    expect(screen.getByText('Нода не на связи')).toBeInTheDocument();
+    expect(screen.getByText('Сервер не на связи')).toBeInTheDocument();
   });
 
   it('lists this node’s open incidents by name, not by the server’s log line', () => {

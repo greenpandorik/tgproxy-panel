@@ -16,14 +16,14 @@ describe('HelpSheet', () => {
   it('renders a topic: title, intro, fields with example and tip, notes, docs link', async () => {
     render(<HelpSheet topic="nodes.create" open onOpenChange={vi.fn()} />);
 
-    expect(await screen.findByText('Новая нода')).toBeInTheDocument();
+    expect(await screen.findByText('Новый сервер')).toBeInTheDocument();
     expect(screen.getByText(/A-запись домена, которая уже указывает/)).toBeInTheDocument();
     // A field, its example (mono) and its tip.
     expect(screen.getByText('Домен Fake-TLS')).toBeInTheDocument();
     expect(screen.getAllByText('ams1.example.com').length).toBeGreaterThan(0);
     expect(screen.getByText(/Чужой домен подходит только если это реальный сайт/)).toBeInTheDocument();
     // A note.
-    expect(screen.getByText(/Панель и нода — разные серверы/)).toBeInTheDocument();
+    expect(screen.getByText(/Панель и сервер — разные серверы/)).toBeInTheDocument();
     // The guide link follows the language.
     expect(screen.getByRole('link', { name: /руководстве/ })).toHaveAttribute(
       'href',

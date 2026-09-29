@@ -197,7 +197,7 @@ describe('CreateKeyDialog transport', () => {
 
     expect(document.querySelector('[data-transport]')).toHaveAttribute('data-transport', 'legacy');
     expect(screen.getByLabelText('Режим передачи (только tproxy)')).toBeInTheDocument();
-    expect(screen.getByText(/уйдёт только на tproxy-ноды/)).toBeInTheDocument();
+    expect(screen.getByText(/уйдёт только на серверы с tproxy/)).toBeInTheDocument();
   });
 
   it('says nothing about transport until nodes are chosen', async () => {
@@ -242,7 +242,7 @@ describe('CreateKeyDialog limits and summary', () => {
     await user.click(screen.getByText('Amsterdam'));
 
     expect(screen.getByText(/Общий ключ «Поддержка»/)).toHaveTextContent(
-      'нод: 1 · без срока · транспорт автоматически · без ограничений',
+      'серверов: 1 · без срока · транспорт автоматически · без ограничений',
     );
   });
 });

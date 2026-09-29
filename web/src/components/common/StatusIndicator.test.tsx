@@ -49,7 +49,7 @@ describe('StatusIndicator', () => {
     const { rerender } = render(<StatusIndicator status="healthy" />);
     expect(screen.getByText('Работает')).toBeInTheDocument();
 
-    rerender(<StatusIndicator status="healthy" label="Нода 1" />);
-    expect(screen.getByText('Нода 1').closest('[data-status]')).toHaveAttribute('data-tone', 'ok');
+    rerender(<StatusIndicator status="healthy" label="Сервер 1" />);
+    expect(screen.getByText('Сервер 1').closest('[data-status]')).toHaveAttribute('data-tone', 'ok');
   });
 });

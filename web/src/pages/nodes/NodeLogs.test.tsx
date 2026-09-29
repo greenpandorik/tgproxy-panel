@@ -66,7 +66,7 @@ describe('NodeLogs', () => {
     render(wrap(<NodeLogs nodeId="11111111-1111-4111-8111-111111111111" online={false} engine="tproxy" />));
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
     FakeEventSource.instances[0].onerror?.();
-    await waitFor(() => expect(screen.getByText(/Node is offline/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Server is offline/)).toBeInTheDocument());
     expect(FakeEventSource.instances[0].closed).toBe(true);
   });
 

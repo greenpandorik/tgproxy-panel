@@ -99,7 +99,7 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Применить всё')).toBeInTheDocument();
 
     // Nodes arrive from the cached list query, searchable by name and host.
-    expect(await screen.findByText('Ноды')).toBeInTheDocument();
+    expect(await screen.findByText('Серверы')).toBeInTheDocument();
     expect(await screen.findByText('Amsterdam')).toBeInTheDocument();
     expect(screen.getByText('ams1.proxy-demo.net')).toBeInTheDocument();
   });
@@ -133,8 +133,8 @@ describe('CommandPalette', () => {
     await user.click(await screen.findByText('Применить всё'));
 
     // The palette closes and the confirm takes its place - still nothing sent.
-    expect(await screen.findByText('Применить изменения на 2 нодах?')).toBeInTheDocument();
-    expect(screen.getByText(/Активные сессии на этих нодах оборвутся/)).toBeInTheDocument();
+    expect(await screen.findByText('Применить изменения на 2 серверах?')).toBeInTheDocument();
+    expect(screen.getByText(/Активные сессии на этих серверах оборвутся/)).toBeInTheDocument();
     expect(applyCalls()).toBe(0);
 
     await user.click(screen.getByRole('button', { name: 'Применить всё' }));
