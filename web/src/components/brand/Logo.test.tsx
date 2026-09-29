@@ -11,10 +11,12 @@ describe('Logo', () => {
     expect(svg).toHaveAttribute('width', '16');
     expect(svg.querySelector('path')).toHaveAttribute('d', MARK_PATH);
     expect(svg.querySelector('path')).toHaveAttribute('stroke', 'currentColor');
-    expect(svg.querySelector('rect')).toHaveAttribute('fill', 'var(--brand-primary)');
+    const eyes = svg.querySelectorAll('ellipse');
+    expect(eyes).toHaveLength(2);
+    for (const eye of eyes) expect(eye).toHaveAttribute('fill', 'var(--brand-primary)');
 
     rerender(<Logo size={40} title="TGProxy Panel" accent="#123456" />);
     expect(screen.getByRole('img', { name: 'TGProxy Panel' })).toHaveAttribute('height', '40');
-    expect(svg.querySelector('rect')).toHaveAttribute('fill', '#123456');
+    for (const eye of svg.querySelectorAll('ellipse')) expect(eye).toHaveAttribute('fill', '#123456');
   });
 });
