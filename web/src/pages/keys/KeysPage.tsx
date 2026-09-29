@@ -129,7 +129,22 @@ function RowActions({ keyRow, onShowLink, onEdit, onRotate, onRevoke, onDelete }
 
 /** The key's kind, in the vocabulary the API and the profile files use. */
 function TypeTag({ type }: { type: KeyType }) {
-  return <Badge>{type}</Badge>;
+  const { t } = useTranslation();
+  return <Badge>{t(TYPE_FILTER_LABEL[type])}</Badge>;
+}
+
+function KeyName({ keyRow, onOpen }: { keyRow: AccessKey; onOpen?: (id: string) => void }) {
+  const cls = 'block max-w-full truncate text-left text-body font-medium text-foreground';
+  if (!onOpen) return <span className={cls}>{keyRow.label}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(keyRow.id)}
+      className={cn(cls, 'underline-offset-4 hover:text-brand-ink hover:underline focus-visible:text-brand-ink')}
+    >
+      {keyRow.label}
+    </button>
+  );
 }
 
 function PendingStatus({ status }: { status: KeyStatus }) {
@@ -161,7 +176,7 @@ function NodeChips({ nodes }: { nodes: AccessKey['nodes'] }) {
     <span className="flex flex-wrap gap-1">
       {nodes.map((n) => (
         <Badge key={n.node_id} title={n.hostname}>
-          {shortHost(n.hostname)}
+          {n.node_name || shortHost(n.hostname)}
         </Badge>
       ))}
     </span>
@@ -514,7 +529,7 @@ export function KeysPage() {
                         </TableCell>
                       )}
                       <TableCell className="max-w-56">
-                        <span className="block truncate text-body font-medium text-foreground">{key.label}</span>
+                        <KeyName keyRow={key} onOpen={isWriter ? setEditKeyId : undefined} />
                         {key.owner_label && <span className="block truncate text-label text-mute">{key.owner_label}</span>}
                       </TableCell>
                       <TableCell>
@@ -556,7 +571,7 @@ export function KeysPage() {
                         />
                       )}
                       <div className="min-w-0">
-                        <p className="truncate text-body font-medium text-foreground">{key.label}</p>
+                        <KeyName keyRow={key} onOpen={isWriter ? setEditKeyId : undefined} />
                         {key.owner_label && <p className="truncate text-label text-mute">{key.owner_label}</p>}
                       </div>
                     </div>
@@ -636,7 +651,12 @@ export function KeysPage() {
         handover={linkHandover}
       />
 
-      <KeyDetailDrawer open={!!editKeyId} onOpenChange={(open) => !open && setEditKeyId(null)} keyId={editKeyId} />
+      <KeyDetailDrawer
+        open={!!editKeyId}
+        onOpenChange={(open) => !open && setEditKeyId(null)}
+        keyId={editKeyId}
+        onShowLinks={setLinkKeyId}
+      />
 
       {batchResult && (
         <BatchResultDialog

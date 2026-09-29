@@ -33,7 +33,7 @@ import type { Node, SeriesPoint } from '@/api/types';
 // recharts stays out of the shell bundle - only SessionsChart.tsx imports it.
 const SessionsChart = lazy(() => import('./dashboard/SessionsChart').then((m) => ({ default: m.SessionsChart })));
 
-const DEFAULT_BRAND_PRIMARY = '#0c8599';
+const DEFAULT_BRAND_PRIMARY = '#0b7285';
 const DEFAULT_BRAND_ACCENT = '#099268';
 
 const RECENT_JOBS_LIMIT = 6;
@@ -233,7 +233,7 @@ export function DashboardPage() {
         actions={
           <>
             {isWriter && (
-              <Button nativeButton={false} render={<Link to="/keys" />}>
+              <Button nativeButton={false} render={<Link to="/keys?create=1" />}>
                 <KeyRound />
                 {t('dashboard.manage_access')}
               </Button>

@@ -44,11 +44,11 @@ export function RecentJobsSection({ jobs }: { jobs: ApplyJob[] }) {
                   <Link to={`/nodes/${job.node_id}`} className="truncate text-body text-foreground hover:underline">
                     {job.node_name || job.node_id}
                   </Link>
-                  <Badge>{job.kind}</Badge>
+                  <Badge>{t(`nodes.job_kind_${job.kind}`, job.kind)}</Badge>
                 </div>
                 <span className={cn('mono shrink-0 text-mono', FAILED_STATUSES.has(job.status) ? 'text-err' : 'text-mute')}>
                   {timing && `${timing} · `}
-                  {job.status}
+                  {t(`nodes.job_status_${job.status}`, job.status)}
                 </span>
               </li>
             );

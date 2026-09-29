@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { useAlerts } from '@/api/dashboard';
 import { useNodeDiagnostics } from '@/api/web';
+import { CopyButton } from '@/components/common/CopyButton';
 import { Panel } from '@/components/common/Panel';
 import { TONE_VAR } from '@/components/common/statTone';
 import { tallyChecks } from '@/components/web/diagnostics';
@@ -12,6 +13,8 @@ import { alertTitle } from '@/pages/dashboard/alertTitle';
 
 import type { Node } from '@/api/types';
 import type { StatTone } from '@/components/common/statTone';
+
+const AGENT_COMMANDS = ['systemctl status tgwp-agent', 'journalctl -u tgwp-agent -n 100 --no-pager'];
 
 interface Verdict {
   tone: StatTone;
@@ -76,12 +79,32 @@ export function NodeVerdict({ node }: { node: Node }) {
               )}
             </div>
           </div>
-          {telemt && (
-            <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link to="?section=diagnostics" />}>
-              {t('nodes.verdict_open_diagnostics')}
+          {!node.online ? (
+            <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link to="?section=settings" />}>
+              {t('nodes.verdict_open_install')}
             </Button>
+          ) : (
+            telemt && (
+              <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link to="?section=diagnostics" />}>
+                {t('nodes.verdict_open_diagnostics')}
+              </Button>
+            )
           )}
         </div>
+        {!node.online && (
+          <div className="space-y-2 border-t border-hairline px-4 py-3">
+            <p className="text-label text-mute">{t('nodes.verdict_offline_commands')}</p>
+            {AGENT_COMMANDS.map((cmd) => (
+              <div key={cmd} className="flex items-center gap-2">
+                <code className="mono min-w-0 flex-1 truncate rounded-control border border-hairline bg-[var(--field-bg)] px-2.5 py-1.5 text-mono text-foreground">
+                  {cmd}
+                </code>
+                <CopyButton value={cmd} label={t('nodes.verdict_copy_command')} className="size-8 shrink-0" />
+              </div>
+            ))}
+            <p className="text-label text-mute">{t('nodes.verdict_offline_reinstall')}</p>
+          </div>
+        )}
       </Panel>
     </div>
   );

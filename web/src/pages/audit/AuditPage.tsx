@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight, Info, ScrollText } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAudit } from '@/api/audit';
+import { useNodes } from '@/api/nodes';
 import { DataTableSkeleton } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -72,22 +73,48 @@ function MetaCell({ meta }: { meta: unknown }) {
   );
 }
 
-function TargetCell({ type, id }: { type: string; id: string }) {
+function TargetCell({ type, id, names }: { type: string; id: string; names: ReadonlyMap<string, string> }) {
+  const { t, i18n } = useTranslation();
   if (!type && !id) return <span className="text-dim">—</span>;
+  const typeKey = `audit.target.${type}`;
+  const name = names.get(id);
   return (
     <div className="min-w-0">
-      {type && <div className="text-label text-mute">{type}</div>}
-      {id && <div className="mono truncate text-mono text-mute">{id}</div>}
+      {type && <div className="text-label text-mute">{i18n.exists(typeKey) ? t(typeKey) : type}</div>}
+      {id &&
+        (name ? (
+          <div className="truncate text-body text-foreground" title={id}>
+            {name}
+          </div>
+        ) : (
+          <div className="mono truncate text-mono text-mute" title={id}>
+            {id.slice(0, 8)}
+          </div>
+        ))}
     </div>
   );
 }
 
+function actionKey(action: string): string {
+  if (action.startsWith('key.bulk_')) return 'key_bulk';
+  if (action.startsWith('node.web_') && action !== 'node.web_policy') return 'node_web';
+  return action.replace(/\./g, '_');
+}
+
 function ActionName({ action }: { action: string }) {
-  return <span className="mono text-body text-foreground">{action}</span>;
+  const { t, i18n } = useTranslation();
+  const key = `audit.act.${actionKey(action)}`;
+  return (
+    <span className="text-body text-foreground" title={action}>
+      {i18n.exists(key) ? t(key) : action}
+    </span>
+  );
 }
 
 export function AuditPage() {
   const { t, i18n } = useTranslation();
+  const nodesQuery = useNodes();
+  const names = useMemo(() => new Map((nodesQuery.data?.items ?? []).map((n) => [n.id, n.name])), [nodesQuery.data]);
 
   const [action, setAction] = useState<(typeof ACTION_PREFIXES)[number] | 'all'>('all');
   const [userInput, setUserInput] = useState('');
@@ -222,7 +249,7 @@ export function AuditPage() {
                         <ActionName action={entry.action} />
                       </TableCell>
                       <TableCell>
-                        <TargetCell type={entry.target_type} id={entry.target_id} />
+                        <TargetCell type={entry.target_type} id={entry.target_id} names={names} />
                       </TableCell>
                       <TableCell className="mono text-mono text-mute">{entry.ip || '—'}</TableCell>
                       <TableCell className="pr-4">
@@ -242,7 +269,7 @@ export function AuditPage() {
                     <span className="mono shrink-0 text-mono text-mute">{formatDateTime(entry.created_at, i18n.language)}</span>
                   </div>
                   <p className="text-label text-foreground">{entry.username || t('audit.system_user')}</p>
-                  <TargetCell type={entry.target_type} id={entry.target_id} />
+                  <TargetCell type={entry.target_type} id={entry.target_id} names={names} />
                   <span className="mono block text-mono text-mute">{entry.ip || '—'}</span>
                   <MetaCell meta={entry.meta} />
                 </li>

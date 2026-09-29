@@ -9,17 +9,19 @@ import (
 // Brand defaults: what a fresh install shows before an operator edits the active branding profile.
 const (
 	DefaultPanelName    = "TGProxy Panel"
-	DefaultPrimaryColor = "#c4ed79"
-	DefaultAccentColor  = "#c0a8ed"
-	DarkGround          = "#10120f"
-	LightPrimaryColor   = "#365b46"
-	LightAccentColor    = "#a35336"
-	LightGround         = "#eeede5"
+	DefaultPrimaryColor = "#3fc0d6"
+	DefaultAccentColor  = "#20c997"
+	DarkGround          = "#171b21"
+	LightPrimaryColor   = "#0b7285"
+	LightAccentColor    = "#099268"
+	LightGround         = "#f3f5f8"
 )
 
 var defaultPairs = [][2]string{
 	{"#e23c92", "#12a198"},
 	{"#3b82f6", "#22c55e"},
+	{"#c4ed79", "#c0a8ed"},
+	{"#365b46", "#a35336"},
 	{DefaultPrimaryColor, DefaultAccentColor},
 	{LightPrimaryColor, LightAccentColor},
 }

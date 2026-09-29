@@ -33,7 +33,7 @@ import { formatBytes, formatNumber } from '@/lib/format';
 // recharts stays out of the shell bundle - only NodeSeriesChart.tsx imports it.
 const NodeSeriesChart = lazy(() => import('./NodeSeriesChart').then((m) => ({ default: m.NodeSeriesChart })));
 
-const DEFAULT_BRAND_PRIMARY = '#0c8599';
+const DEFAULT_BRAND_PRIMARY = '#0b7285';
 const DEFAULT_BRAND_ACCENT = '#099268';
 
 const METRICS_SNIPPET = `scrape_configs:

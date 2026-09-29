@@ -1,5 +1,6 @@
-import { LogOut, Menu, Moon, Search, Sun } from 'lucide-react';
+import { LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +72,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const lang = (i18n.language?.startsWith('en') ? 'en' : 'ru') as Lang;
 
@@ -131,6 +133,15 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
               {user && <Badge>{t(ROLE_KEY[user.role] ?? 'common.role_viewer')}</Badge>}
             </DropdownMenuLabel>
           </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate('/settings?section=security')}>
+            <ShieldCheck />
+            {t('workspace.settings_security')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/settings?section=preferences')}>
+            <SlidersHorizontal />
+            {t('workspace.settings_preferences')}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => void logout()}>
             <LogOut />

@@ -69,7 +69,11 @@ export function SiteTemplatesPage() {
     <>
       <PageHeader
         title={t('sites.title')}
-        description={templates.length > 0 ? t('sites.header_count', { count: templates.length }) : undefined}
+        description={
+          templates.length > 0
+            ? `${t('sites.description')} ${t('sites.header_count', { count: templates.length })}.`
+            : t('sites.description')
+        }
         actions={
           <>
             <HelpButton topic="sites.templates" />

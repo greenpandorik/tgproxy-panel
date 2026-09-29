@@ -238,7 +238,8 @@ describe('CreateKeyDialog limits and summary', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText('Название ключа'), 'Поддержка');
+    await user.click(await screen.findByRole('tab', { name: 'Общий' }));
+    await user.type(screen.getByLabelText('Название ключа'), 'Поддержка');
     await user.click(screen.getByText('Amsterdam'));
 
     expect(screen.getByText(/Общий ключ «Поддержка»/)).toHaveTextContent(

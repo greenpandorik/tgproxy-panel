@@ -51,8 +51,8 @@ it('maps every earlier default pair to the theme pair and updates chart identity
   );
   mount();
   await waitFor(() => expect(document.title).toBe('Legacy'));
-  expect(screen.getByTestId('primary')).toHaveTextContent('#0c8599');
-  expect(document.documentElement.style.getPropertyValue('--primary-foreground')).toBe('#000000');
+  expect(screen.getByTestId('primary')).toHaveTextContent('#0b7285');
+  expect(document.documentElement.style.getPropertyValue('--primary-foreground')).toBe('#ffffff');
   await userEvent.click(screen.getByText('Toggle'));
   expect(screen.getByTestId('primary')).toHaveTextContent('#3fc0d6');
   expect(document.documentElement.style.getPropertyValue('--brand-accent')).toBe('#20c997');

@@ -25,7 +25,7 @@ import type { NodeEngine } from '@/api/types';
 const LoadChart = lazy(() => import('@/pages/monitoring/LoadChart').then((m) => ({ default: m.LoadChart })));
 const DcLatencyChart = lazy(() => import('./DcLatencyChart').then((m) => ({ default: m.DcLatencyChart })));
 
-const DEFAULT_BRAND_PRIMARY = '#0c8599';
+const DEFAULT_BRAND_PRIMARY = '#0b7285';
 const DEFAULT_BRAND_ACCENT = '#099268';
 
 function NodeLoadPanel({ nodeId }: { nodeId: string }) {

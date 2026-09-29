@@ -200,6 +200,8 @@ export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDi
   const revoked = key?.status === 'revoked';
   const linksQuery = useKeyLinks(keyId ?? '', open && isWriter && !!key && !revoked);
   const groups = linksQuery.data?.items ?? [];
+  const bothKinds = groups.some((g) => new Set(g.links.map((l) => l.kind)).size > 1);
+  const whichHint = bothKinds && <p className="text-label text-mute">{t('keys.link_which_hint')}</p>;
 
   const handleDownload = async (group: NodeLinkGroup, link: KindLink) => {
     if (!keyId || !key) return;
@@ -304,6 +306,7 @@ export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDi
                 />
 
                 <AdvancedSettings label={t('keys.link_per_node_toggle')} className="border-t border-hairline pt-4">
+                  {whichHint}
                   <div className="max-h-[38vh] space-y-4 overflow-y-auto pr-1">
                     {groups.map((group, i) => (
                       <NodeLinksCard
@@ -320,6 +323,7 @@ export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDi
               </>
             ) : (
               <>
+                {whichHint}
                 <div className="max-h-[42vh] space-y-4 overflow-y-auto pr-1">
                   {groups.map((group, i) => (
                     <NodeLinksCard

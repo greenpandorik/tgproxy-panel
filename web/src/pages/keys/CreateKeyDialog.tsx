@@ -107,7 +107,7 @@ const formSchema = z
 type FormValues = z.infer<typeof formSchema>;
 
 const defaultValues: FormValues = {
-  mode: 'shared',
+  mode: 'personal',
   label: '',
   owner_label: '',
   prefix: '',
@@ -314,8 +314,8 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated, onBatchCreated 
             render={({ field }) => (
               <Tabs value={field.value} onValueChange={(v) => field.onChange(v as FormValues['mode'])}>
                 <TabsList>
-                  <TabsTrigger value="shared">{t('keys.tab_shared')}</TabsTrigger>
                   <TabsTrigger value="personal">{t('keys.tab_personal')}</TabsTrigger>
+                  <TabsTrigger value="shared">{t('keys.tab_shared')}</TabsTrigger>
                   <TabsTrigger value="batch">{t('keys.tab_batch')}</TabsTrigger>
                 </TabsList>
               </Tabs>

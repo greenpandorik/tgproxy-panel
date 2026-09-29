@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, X } from 'lucide-react';
+import { Link2, Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -161,9 +161,10 @@ interface KeyDetailDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   keyId: string | null;
+  onShowLinks?: (id: string) => void;
 }
 
-export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerProps) {
+export function KeyDetailDrawer({ open, onOpenChange, keyId, onShowLinks }: KeyDetailDrawerProps) {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
   const keyQuery = useKey(keyId ?? '');
@@ -319,7 +320,7 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
           {key && (
             <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
               <StatusBadge status={key.status} />
-              <Badge>{key.type}</Badge>
+              <Badge>{t(key.type === 'SHARED' ? 'keys.type_shared' : 'keys.type_personal')}</Badge>
               <span className="mono text-mono text-mute">{formatDateTime(key.created_at, i18n.language)}</span>
             </SheetDescription>
           )}
@@ -340,6 +341,12 @@ export function KeyDetailDrawer({ open, onOpenChange, keyId }: KeyDetailDrawerPr
           </div>
         ) : (
           <div className="space-y-4 px-4 pb-4">
+            {onShowLinks && isWriter && !revoked && (
+              <Button type="button" className="w-full" onClick={() => onShowLinks(key.id)}>
+                <Link2 />
+                {t('keys.show_links')}
+              </Button>
+            )}
             {revoked && (
               <p role="alert" className="flex items-start gap-2 text-label text-destructive">
                 <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-destructive" aria-hidden="true" />

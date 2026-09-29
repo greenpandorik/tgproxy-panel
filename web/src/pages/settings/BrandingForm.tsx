@@ -18,6 +18,7 @@ import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
 import { cn } from '@/lib/utils';
+import { isDefaultPair } from '@/theme/colors';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import { Arriving, FormFooter } from './formShell';
@@ -43,8 +44,8 @@ type FormValues = z.infer<typeof schema>;
 function valuesFromProfile(p: BrandingProfile): FormValues {
   return {
     panel_name: p.panel_name,
-    primary_color: p.primary_color,
-    accent_color: p.accent_color,
+    primary_color: isDefaultPair(p.primary_color, p.accent_color) ? DEFAULT_PRIMARY_COLOR : p.primary_color,
+    accent_color: isDefaultPair(p.primary_color, p.accent_color) ? DEFAULT_ACCENT_COLOR : p.accent_color,
     theme_default: p.theme_default,
     login_text: p.login_text,
     support_link: p.support_link,
@@ -206,6 +207,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
     register,
     handleSubmit,
     reset,
+    setValue,
     watch,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
@@ -385,7 +387,21 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
               actions={<HelpButton topic="settings.branding" />}
             />
             <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <p className="text-label text-mute sm:col-span-2">{t('settings.branding_theme_palette_hint')}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:col-span-2">
+                <p className="min-w-0 flex-1 text-label text-mute">{t('settings.branding_theme_palette_hint')}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isDefaultPair(watched.primary_color, watched.accent_color)}
+                  onClick={() => {
+                    setValue('primary_color', DEFAULT_PRIMARY_COLOR, { shouldDirty: true });
+                    setValue('accent_color', DEFAULT_ACCENT_COLOR, { shouldDirty: true });
+                  }}
+                >
+                  {t('settings.branding_restore_colors')}
+                </Button>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="branding-primary">{t('settings.branding_primary_color')}</Label>
                 <Controller
@@ -515,7 +531,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
 
         <FormFooter>
           <Button type="button" variant="outline" onClick={handleReset} disabled={!isDirty}>
-            {t('common.reset')}
+            {t('settings.branding_discard')}
           </Button>
           <Button type="submit" disabled={isSubmitting || !isDirty}>
             {t('common.save')}
