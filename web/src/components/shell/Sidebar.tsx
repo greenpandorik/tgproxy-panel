@@ -1,4 +1,3 @@
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
@@ -17,9 +16,8 @@ import type { NavItem } from './nav';
 interface SidebarProps {
   /** Icon-only rail (desktop, user-collapsed). Drawer variant ignores this and always shows labels. */
   collapsed?: boolean;
-  /** Rail shows the collapse toggle; drawer (mobile Sheet) does not. */
-  showToggle?: boolean;
-  onToggle?: () => void;
+  /** Mobile Sheet: its close button floats in the header corner. */
+  inDrawer?: boolean;
   onNavigate?: () => void;
 }
 
@@ -82,7 +80,7 @@ function NavRow({
   );
 }
 
-export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNavigate }: SidebarProps) {
+export function Sidebar({ collapsed = false, inDrawer = false, onNavigate }: SidebarProps) {
   const { t } = useTranslation();
   const { branding, theme } = useBrandingIdentity();
   const healthQuery = usePanelHealth();
@@ -94,13 +92,11 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
       className="wave-sidebar flex h-full flex-col px-3 py-4 text-sidebar-foreground"
       aria-label={t('shell.primary_navigation')}
     >
-      {/* The drawer (no rail toggle) has the Sheet's own close button floating in
-          this corner, so the version chip keeps clear of it. */}
       <div
         className={cn(
           'flex items-center gap-3 border-b border-hairline px-2 pt-1 pb-4',
           collapsed && 'justify-center px-0',
-          !showToggle && !collapsed && 'pr-7',
+          inDrawer && 'pr-7',
         )}
       >
         {(theme === 'dark' ? branding?.logo_dark_url || branding?.logo_url : branding?.logo_url) ? (
@@ -137,8 +133,8 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
         ))}
       </div>
 
-      <div className="wave-rule mt-4 flex items-end gap-1 pt-3">
-        <div className={cn('mono min-w-0 flex-1 text-micro text-mute', collapsed ? 'text-center' : 'px-2')}>
+      <div className="wave-rule mt-4 pt-3">
+        <div className={cn('mono min-w-0 text-micro text-mute', collapsed ? 'text-center' : 'px-2')}>
           {collapsed ? (
             <span
               className={cn('inline-block size-1.5 rounded-pill', apiOk ? 'bg-ok' : 'bg-err')}
@@ -153,44 +149,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
             </>
           )}
         </div>
-
-        {/* Icon only: the label would be the longest string in the rail. */}
-        {showToggle && !collapsed && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  onClick={onToggle}
-                  aria-label={t('shell.toggle_sidebar')}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-control text-mute transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
-                >
-                  <PanelLeftClose className="size-3.5" aria-hidden="true" />
-                </button>
-              }
-            />
-            <TooltipContent side="right">{t('shell.toggle_sidebar')}</TooltipContent>
-          </Tooltip>
-        )}
       </div>
-
-      {showToggle && collapsed && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <button
-                type="button"
-                onClick={onToggle}
-                aria-label={t('shell.toggle_sidebar')}
-                className="mt-2 flex h-10 w-full items-center justify-center rounded-control text-mute transition-[background-color,color,scale] duration-fast ease-out hover:bg-elevated hover:text-foreground active:scale-[0.985]"
-              >
-                <PanelLeftOpen className="size-3.5" aria-hidden="true" />
-              </button>
-            }
-          />
-          <TooltipContent side="right">{t('shell.toggle_sidebar')}</TooltipContent>
-        </Tooltip>
-      )}
 
       {!collapsed && branding?.footer_text && <p className="truncate px-2 pt-2 text-label text-mute">{branding.footer_text}</p>}
     </nav>

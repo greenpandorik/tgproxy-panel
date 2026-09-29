@@ -1229,7 +1229,8 @@
     "discard": "Удалить черновик"
   },
   "shell": {
-    "toggle_sidebar": "Свернуть/развернуть боковую панель",
+    "collapse_sidebar": "Свернуть меню",
+    "expand_sidebar": "Развернуть меню",
     "open_menu": "Открыть меню",
     "menu": "Меню",
     "breadcrumb_root": "Панель",
@@ -2340,7 +2341,15 @@
     "backup_protection_hint": "Шифрование, внешнее хранилище и тест восстановления настраивает администратор сервера панели. Не запускалось — не означает успешно.",
     "backup_encrypted": "Зашифрована",
     "backup_uploaded": "Отправлена во внешнее хранилище",
-    "backup_verified": "Тест восстановления пройден"
+    "backup_verified": "Тест восстановления пройден",
+    "settings_tab_panel": "Уведомления",
+    "settings_tab_branding": "Оформление",
+    "settings_tab_admins": "Учётные записи",
+    "settings_tab_backups": "Резервные копии",
+    "settings_tab_preferences": "Мой интерфейс",
+    "settings_tab_security": "Пароль и 2FA",
+    "settings_group_panel": "Для всей панели",
+    "settings_group_personal": "Только для вас"
   },
   "reliability": {
     "routing_toggle": "Маршрут до Telegram через SOCKS5 или WARP",

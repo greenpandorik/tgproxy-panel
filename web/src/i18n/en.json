@@ -1225,7 +1225,8 @@
     "discard": "Delete draft"
   },
   "shell": {
-    "toggle_sidebar": "Collapse/expand sidebar",
+    "collapse_sidebar": "Collapse menu",
+    "expand_sidebar": "Expand menu",
     "open_menu": "Open menu",
     "menu": "Menu",
     "breadcrumb_root": "Panel",
@@ -2336,7 +2337,15 @@
     "backup_protection_hint": "Encryption, off-host storage and restore verification are configured by the panel host administrator. Not run does not mean passed.",
     "backup_encrypted": "Encrypted",
     "backup_uploaded": "Uploaded off-host",
-    "backup_verified": "Restore verified"
+    "backup_verified": "Restore verified",
+    "settings_tab_panel": "Notifications",
+    "settings_tab_branding": "Branding",
+    "settings_tab_admins": "Accounts",
+    "settings_tab_backups": "Backups",
+    "settings_tab_preferences": "My interface",
+    "settings_tab_security": "Password and 2FA",
+    "settings_group_panel": "Whole panel",
+    "settings_group_personal": "Just for you"
   },
   "reliability": {
     "routing_toggle": "Route to Telegram through SOCKS5 or WARP",
