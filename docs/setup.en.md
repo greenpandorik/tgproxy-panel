@@ -2,7 +2,7 @@
 
 Русская версия: [setup.ru.md](setup.ru.md)
 
-TGProxy Panel is a control panel for Telegram proxies (MTProto, WEB and Fake-TLS): one Go binary with an embedded web UI, PostgreSQL, and Caddy for TLS. The panel runs on its own server and manages nodes that run telemt (the default) or the official `tproxy-server` + MTProxy. All screenshots below use demo data.
+TGProxy Panel is a control panel for Telegram proxies (MTProto, WEB and Fake-TLS): one Go binary with an embedded web UI, PostgreSQL, and Caddy for TLS. The panel runs on its own server and manages servers that run telemt (the default) or the official `tproxy-server` + MTProxy. All screenshots below use demo data.
 
 ![Dashboard](screenshots/dashboard.png)
 
@@ -12,10 +12,10 @@ TGProxy Panel is a control panel for Telegram proxies (MTProto, WEB and Fake-TLS
 |---|---|
 | Panel server | Linux with Docker and Docker Compose v2; 1 CPU / 1 GB is enough; a domain with an A record pointing at it; ports 80 and 443 open |
 | For the `install.sh` installer | A fresh Ubuntu 22.04+ or Debian 12+ host, root, ports 80 and 443 free. The script installs Docker itself |
-| Each node | A separate VPS: Ubuntu 22.04+ or Debian 12+, x86_64, public IPv4, its own domain (A record), root or sudo, ports 80 and 443 open |
-| Development without Docker | Go 1.26+, Node 22+, PostgreSQL 16 |
+| Each server | A separate VPS: Ubuntu 22.04+ or Debian 12+, x86_64, public IPv4, its own domain (A record), root or sudo, ports 80 and 443 open |
+| Development without Docker | Go 1.26+, Server 22+, PostgreSQL 16 |
 
-The panel and the nodes must be on different hosts, because a node takes ports 80 and 443 for itself.
+The panel and the servers must be on different hosts, because a server takes ports 80 and 443 for itself.
 
 ## 2. Option A: a server with a domain (recommended)
 
@@ -109,9 +109,9 @@ docker compose -f docker-compose.yml -f docker-compose.override.example.yml up -
 docker compose exec panel /app/panel admin create root 'change-me-now-1'
 ```
 
-The panel is at `http://localhost:8080`. Real nodes cannot join a panel like this, since the agent needs a public address to reach, but the UI, keys and templates all work.
+The panel is at `http://localhost:8080`. Real servers cannot join a panel like this, since the agent needs a public address to reach, but the UI, keys and templates all work.
 
-To see the UI with a demo node running the real relay in a container:
+To see the UI with a demo server running the real relay in a container:
 
 ```bash
 make e2e     # builds images, starts panel + fakenode, runs the end-to-end smoke and tears the stack down
@@ -143,7 +143,7 @@ cd web && npm run typecheck && npm run lint && npm run test -- --run && npm run 
 
 ## 5. First login and two-factor authentication
 
-Change your password right after the first login, in Panel settings → Security. Changing the password ends all your other sessions.
+Change your password right after the first login, in Settings → Security. Changing the password ends all your other sessions.
 
 To enable 2FA, set `FEATURE_TOTP=true` in `.env` and restart the panel. The same tab then shows a QR code for an authenticator app.
 
@@ -157,16 +157,16 @@ After you confirm the code, the panel shows eight recovery codes once. Save them
 docker compose exec panel /app/panel admin totp-reset <username>
 ```
 
-## 6. Adding a node
+## 6. Adding a server
 
-Prepare the VPS: an A record for the node's domain pointing at its IP, ports 80 and 443 open, and nothing else listening on them.
+Prepare the VPS: an A record for the server's domain pointing at its IP, ports 80 and 443 open, and nothing else listening on them.
 
-**The A record must already resolve to the node before you run the install command.** The script checks this before it installs anything. Its first step, "Pre-flight checks", prints one line per check:
+**The A record must already resolve to the server before you run the install command.** The script checks this before it installs anything. Its first step, "Pre-flight checks", prints one line per check:
 
 - `arch` (x86_64), `systemd`, and `panel` (the panel answers `/healthz` from this host).
-- `public_ip`, this server's public IPv4. It is `TGWP_PUBLIC_IP` if set, otherwise the `public_ip` set on the node in the panel, otherwise one of two detected candidates: the outbound interface's address and the address `api.ipify.org` sees. The one the A record already points at wins; failing that, the interface address is used when it is public. When the two differ, both are printed, because on a NAT host the provider's egress address is the one nothing listens on.
-- `dns`: the node's A record resolves to that address.
-- On a telemt node, `tls_domain` (it resolves; a warning only).
+- `public_ip`, this server's public IPv4. It is `TGWP_PUBLIC_IP` if set, otherwise the `public_ip` set on the server in the panel, otherwise one of two detected candidates: the outbound interface's address and the address `api.ipify.org` sees. The one the A record already points at wins; failing that, the interface address is used when it is public. When the two differ, both are printed, because on a NAT host the provider's egress address is the one nothing listens on.
+- `dns`: the server's A record resolves to that address.
+- On a telemt server, `tls_domain` (it resolves; a warning only).
 - `ports`: 80, 443 and the Fake-TLS port are free. Caddy or telemt left behind by an earlier run of this same script are fine.
 
 A failed `arch`, `systemd`, `panel` or `public_ip` check stops the script. A failed `dns` or `ports` check shows a menu read from the terminal:
@@ -177,11 +177,11 @@ A failed `arch`, `systemd`, `panel` or `public_ip` check stops the script. A fai
 
 Fix the record in another window and press `r`; `q` (or Ctrl-C) exits with nothing installed. Where there is no terminal to ask on (a cloud console that pipes the script), the script exits the same way. To go ahead regardless, run `curl … | sudo TGWP_SKIP_PREFLIGHT=1 bash`. `TGWP_DRY_RUN=1` stops right after the checks.
 
-After the packages, the installer starts Caddy and waits up to 120 seconds for `https://<node domain>/` to answer with a valid certificate. A telemt node then waits up to 60 seconds for telemt to report ready on its control API. Only after that does the script register the node with the panel. Registration is the one step that uses up the single-use install token, so if the script fails anywhere before the "Registration" step (the certificate wait is the usual place), fix the cause and run the same command again; packages already installed are reused. The failure message ends with the last 30 lines of `journalctl -u caddy` (or `-u telemt`) and says what to check. Caddy must hold a certificate before telemt starts because telemt learns the TLS fingerprint of its `tls_domain` from a real handshake on 443 and will not activate a new configuration until it has one.
+After the packages, the installer starts Caddy and waits up to 120 seconds for `https://<node domain>/` to answer with a valid certificate. A telemt server then waits up to 60 seconds for telemt to report ready on its control API. Only after that does the script register the server with the panel. Registration is the one step that uses up the single-use install token, so if the script fails anywhere before the "Registration" step (the certificate wait is the usual place), fix the cause and run the same command again; packages already installed are reused. The failure message ends with the last 30 lines of `journalctl -u caddy` (or `-u telemt`) and says what to check. Caddy must hold a certificate before telemt starts because telemt learns the TLS fingerprint of its `tls_domain` from a real handshake on 443 and will not activate a new configuration until it has one.
 
-In the panel, open Server fleet → Add server. Enter a name, the node's domain and an e-mail for the Let's Encrypt certificate.
+In the panel, open Servers → Add server. Enter a name, the server's domain and an e-mail for the Let's Encrypt certificate.
 
-![Create node](screenshots/node-create-dialog.png)
+![Create server](screenshots/node-create-dialog.png)
 
 The panel returns a one-time install command. The token is valid for 24 hours.
 
@@ -193,25 +193,25 @@ Run it on the VPS as root:
 curl -fsSL https://panel.example.com/api/v1/install/<token>.sh | sudo bash
 ```
 
-Depending on the node's engine, the script installs telemt (the default) or `tproxy-server` (at a pinned commit) with the official MTProxy, plus Caddy and the agent. It gets a certificate and registers the node, which shows up online within a minute.
+Depending on the server's engine, the script installs telemt (the default) or `tproxy-server` (at a pinned commit) with the official MTProxy, plus Caddy and the agent. It gets a certificate and registers the server, which shows up online within a minute.
 
-For either engine, the script also writes `/etc/sysctl.d/90-tgwp.conf`, network tuning for a proxy node taken from MTPROTO_FIX_By_MEKO: BBR with the `fq` qdisc, larger accept and SYN queues (`somaxconn`, `tcp_max_syn_backlog`, `netdev_max_backlog` = 65535), TCP Fast Open, and short keepalives (45/15 s × 3 probes) so dead clients drop off in about a minute. If the kernel rejects a key (in a container, or on an old kernel), the script says so and carries on. You can delete the file safely; nothing but these values depends on it.
+For either engine, the script also writes `/etc/sysctl.d/90-tgwp.conf`, network tuning for a proxy server taken from MTPROTO_FIX_By_MEKO: BBR with the `fq` qdisc, larger accept and SYN queues (`somaxconn`, `tcp_max_syn_backlog`, `netdev_max_backlog` = 65535), TCP Fast Open, and short keepalives (45/15 s × 3 external checks) so dead clients drop off in about a minute. If the kernel rejects a key (in a container, or on an old kernel), the script says so and carries on. You can delete the file safely; nothing but these values depends on it.
 
-![Nodes](screenshots/nodes.png)
+![Servers](screenshots/nodes.png)
 
-The node page shows service health, resources, the readiness check (DNS, ports, certificate, site response, and on a telemt node the Fake-TLS mask as well), profiles, logs and relay statistics. The separate "Post-quantum key exchange" row is informational. It shows whether Caddy on the node negotiates the hybrid X25519MLKEM768 with modern clients, and it does not affect the overall result of the check.
+The server page shows service health, resources, the check from the panel (DNS, ports, certificate, site response, and on a telemt server the Fake-TLS mask as well), profiles, logs and relay statistics. The separate "Post-quantum key exchange" row is informational. It shows whether Caddy on the server negotiates the hybrid X25519MLKEM768 with modern clients, and it does not affect the overall result of the check.
 
-![Node page](screenshots/node-detail.png)
+![Server page](screenshots/node-detail.png)
 
-Server load shows up in three places: the CPU and RAM columns in the nodes list and on the dashboard (from the last heartbeat, with a dash for an offline node), the node's Health tab (current CPU, memory, disk, uptime), and its Stats tab, with a CPU, RAM and disk chart over 1 hour, 6 hours, a day or a week. The same chart is in the node card on the Monitoring page.
+Server load shows up in three places: the CPU and RAM columns in the servers list and on the dashboard (from the last heartbeat, with a dash for an offline server), the server's Health tab (current CPU, memory, disk, uptime), and its Stats tab, with a CPU, RAM and disk chart over 1 hour, 6 hours, a day or a week. The same chart is in the server card on the Monitoring page.
 
-![Node load](screenshots/node-stats.png)
+![Server load](screenshots/node-stats.png)
 
-Profile and site changes are not pushed at once. A worker applies them in batches every `APPLY_INTERVAL` seconds (45 by default), or when you press Apply. On a tproxy node every apply restarts the relay, and clients reconnect on their own; a telemt node applies without a restart (see the next section).
+Profile and site changes are not pushed at once. A worker applies them in batches every `APPLY_INTERVAL` seconds (45 by default), or when you press Apply. On a tproxy server every apply restarts the relay, and clients reconnect on their own; a telemt server applies without a restart (see the next section).
 
-## 7. Node engine: telemt or tproxy
+## 7. Server engine: telemt or tproxy
 
-The engine is chosen when the node is created and cannot be changed later. Moving a node to the other engine means reinstalling it.
+The engine is chosen when the server is created and cannot be changed later. Moving a server to the other engine means reinstalling it.
 
 **`telemt` (the default).** A single pinned telemt process plus Caddy:
 
@@ -223,20 +223,20 @@ The engine is chosen when the node is created and cannot be changed later. Movin
 
 **`tproxy`.** The older stack: `tproxy-server` at a pinned commit, the official MTProxy, Caddy and the agent, installed by the upstream `deploy/install.sh`.
 
-Ports on a telemt node: **80 and 443 public** (Caddy, ACME, the WEB transport), **`classic_port` public** (Fake-TLS, 8443 by default), and **9090 (metrics), 9091 (control API), 18080 (WEB listener) loopback only**. A tproxy node exposes only 80 and 443.
+Ports on a telemt server: **80 and 443 public** (Caddy, ACME, the WEB transport), **`classic_port` public** (Fake-TLS, 8443 by default), and **9090 (metrics), 9091 (control API), 18080 (WEB listener) loopback only**. A tproxy server exposes only 80 and 443.
 
-The node must also be able to reach **its own public address on 443**. An unknown SNI on the Fake-TLS port is masked to `tls_domain:443`, which resolves to the node's own IP. Where NAT hairpinning or an egress policy stops a host from connecting to its own public address, masking fails without a word: a probe gets a connection error instead of the cover site, which is exactly the fingerprint the design is meant to avoid. `curl -sSI https://<node domain>/` run **on the node** must return the cover site's response.
+The server must also be able to reach **its own public address on 443**. An unknown SNI on the Fake-TLS port is masked to `tls_domain:443`, which resolves to the server's own IP. Where NAT hairpinning or an egress policy stops a host from connecting to its own public address, masking fails without a word: a probe gets a connection error instead of the cover site, which is exactly the fingerprint the design is meant to avoid. `curl -sSI https://<node domain>/` run **on the server** must return the cover site's response.
 
-The node's "Addresses and Fake-TLS" card also lets you correct `public_ip` after install (on a NAT host the installer can register the egress address instead of the interface one). The next apply rewrites telemt's WEB vhost address and restarts telemt; links are unaffected. Changing `tls_domain` or `classic_port` on the same card is the panel action that both restarts telemt *and* invalidates links. The next apply rewrites the node's config and restarts the process, dropping live connections, and **every Fake-TLS link already issued for that node stops working**, because the domain and port are baked into the link's secret. Reissue the links afterwards. WEB links are unaffected.
+The server's "Addresses and Fake-TLS" card also lets you correct `public_ip` after install (on a NAT host the installer can register the egress address instead of the interface one). The next apply rewrites telemt's WEB vhost address and restarts telemt; links are unaffected. Changing `tls_domain` or `classic_port` on the same card is the panel action that both restarts telemt *and* invalidates links. The next apply rewrites the server's config and restarts the process, dropping live connections, and **every Fake-TLS link already issued for that server stops working**, because the domain and port are baked into the link's secret. Reissue the links afterwards. WEB links are unaffected.
 
-The same card holds **backup masking domains**. Each domain in the list gives every key one more Fake-TLS link, and the main link stays as it was. If a provider starts blocking the main domain by SNI, the user takes the link with another domain, with no need to reinstall the node. Saving restarts telemt, but links already handed out keep working. Use only real sites that answer HTTPS on 443 and are reachable from the node: telemt takes the TLS fingerprint of each domain at startup, and if one is unreachable the apply rolls back. Needs agent 2.9.2 or later, up to eight domains per node.
+The same card holds **backup masking domains**. Each domain in the list gives every key one more Fake-TLS link, and the main link stays as it was. If a provider starts blocking the main domain by SNI, the user takes the link with another domain, with no need to reinstall the server. Saving restarts telemt, but links already handed out keep working. Use only real sites that answer HTTPS on 443 and are reachable from the server: telemt takes the TLS fingerprint of each domain at startup, and if one is unreachable the apply rolls back. Needs agent 2.9.2 or later, up to eight domains per server.
 
 What this changes in the panel:
 
-- **Two links per key.** On a telemt node a key offers both a WEB link (`https://t.me/webproxy?server=…`) and a Fake-TLS one (`https://t.me/proxy?server=…&port=<classic_port>&secret=ee…`). A tproxy node offers the WEB link only.
-- **Key limits** (traffic quota, up/down rate, max unique IPs, max connections) work on telemt only, and telemt enforces them itself. On tproxy nodes the fields show as unavailable.
-- **Applying without a restart.** On a telemt node, profile changes go over the control API and live sessions stay up. On a tproxy node every apply restarts the relay.
-- **The telemt version is pinned.** The install script downloads and verifies what `TELEMT_VERSION` and `TELEMT_SHA256_X86_64` in `.env` name. Change them only as a pair. Nodes already installed move to a new pin with `tgwp-agent upgrade` on the node itself; see below.
+- **Two links per key.** On a telemt server a key offers both a WEB link (`https://t.me/webproxy?server=…`) and a Fake-TLS one (`https://t.me/proxy?server=…&port=<classic_port>&secret=ee…`). A tproxy server offers the WEB link only.
+- **Key limits** (traffic quota, up/down rate, max unique IPs, max connections) work on telemt only, and telemt enforces them itself. On tproxy servers the fields show as unavailable.
+- **Applying without a restart.** On a telemt server, profile changes go over the control API and live sessions stay up. On a tproxy server every apply restarts the relay.
+- **The telemt version is pinned.** The install script downloads and verifies what `TELEMT_VERSION` and `TELEMT_SHA256_X86_64` in `.env` name. Change them only as a pair. Servers already installed move to a new pin with `tgwp-agent upgrade` on the server itself; see below.
 
 A local demo bench with the real telemt binary, with no VPS and no Telegram client needed:
 
@@ -244,11 +244,11 @@ A local demo bench with the real telemt binary, with no VPS and no Telegram clie
 make e2e-telemt
 ```
 
-It brings up postgres and the panel, builds `deploy/Dockerfile.fakenode-telemt` (telemt from the release, checksum verified), creates a telemt node and a key with limits, and asserts that telemt on the "node" really received the user over the control API. `make e2e` does the same for the tproxy engine.
+It brings up postgres and the panel, builds `deploy/Dockerfile.fakenode-telemt` (telemt from the release, checksum verified), creates a telemt server and a key with limits, and asserts that telemt on the "server" really received the user over the control API. `make e2e` does the same for the tproxy engine.
 
-### Upgrading a node
+### Upgrading a server
 
-A node upgrades itself. When the panel's pinned telemt moves (a panel update, or you changed `TELEMT_VERSION`/`TELEMT_SHA256_X86_64` in `.env`), log into the node over ssh as root and run:
+A server upgrades itself. When the panel's pinned telemt moves (a panel update, or you changed `TELEMT_VERSION`/`TELEMT_SHA256_X86_64` in `.env`), log into the server over ssh as root and run:
 
 ```bash
 tgwp-agent upgrade --check   # what would change; changes nothing
@@ -256,9 +256,9 @@ tgwp-agent upgrade           # prints the plan and asks
 tgwp-agent upgrade --yes     # unattended; required when there is no terminal
 ```
 
-The command reads the token the node already has in `/etc/tgwp-agent/agent.env` and asks the panel what the node should be running, so you do **not** need to generate an install command in the panel or run the whole installation again. It upgrades only what differs: the telemt binary, the agent binary, or both (`--telemt` / `--agent` narrow it). It verifies every download against the panel's sha256 before replacing anything, keeps the previous binary, restarts the unit and waits for it to come back healthy. If it does not, the previous binary goes back in place and is restarted. Restarting telemt drops the node's live sessions, so upgrade one node at a time.
+The command reads the token the server already has in `/etc/tgwp-agent/agent.env` and asks the panel what the server should be running, so you do **not** need to generate an install command in the panel or run the whole installation again. It upgrades only what differs: the telemt binary, the agent binary, or both (`--telemt` / `--agent` narrow it). It verifies every download against the panel's sha256 before replacing anything, keeps the previous binary, restarts the unit and waits for it to come back healthy. If it does not, the previous binary goes back in place and is restarted. Restarting telemt drops the server's live sessions, so upgrade one server at a time.
 
-On the panel host, `sudo /opt/tgproxy-panel/install.sh --update` also moves the telemt pins in `.env` to whatever the new panel release ships. The usual order is therefore: update the panel, then run `tgwp-agent upgrade` on each node.
+On the panel host, `sudo /opt/tgproxy-panel/install.sh --update` also moves the telemt pins in `.env` to whatever the new panel release ships. The usual order is therefore: update the panel, then run `tgwp-agent upgrade` on each server.
 
 ## 8. Issuing keys
 
@@ -266,7 +266,7 @@ Open Access keys → New key. A SHARED key is one secret for a group of people; 
 
 ![Create key](screenshots/key-create-dialog.png)
 
-A node holds up to 128 profiles. A key can be bound to several nodes, and the user then gets one link per location.
+A server holds up to 128 profiles. A key can be bound to several servers, and the user then gets one link per location.
 
 ![Keys](screenshots/keys.png)
 
@@ -274,45 +274,45 @@ Link and QR:
 
 ![Link and QR](screenshots/key-link-dialog.png)
 
-Link format: `https://t.me/webproxy?server=<node-domain>&secret=<secret>`. Client support today: Telegram Desktop stable, Android experimental, iOS planned. A key becomes active after the next apply on the node.
+Link format: `https://t.me/webproxy?server=<node-domain>&secret=<secret>`. Client support today: Telegram Desktop stable, Android experimental, iOS planned. A key becomes active after the next apply on the server.
 
 "Create link" in the same dialog makes a public subscription page: a single link where the user sees all their locations and QR codes. The key's label and notes never appear there.
 
-## 9. Node cover site
+## 9. Server cover site
 
-The node's domain must serve an ordinary website. Open Cover websites to preview one of
+The server's domain must serve an ordinary website. Open Cover websites to preview one of
 the 15 built-in sites, customize a copy, or import a static ZIP that contains `index.html`.
-Assign a site from the gallery or from the node's Website tab and wait for the apply.
-telemt nodes that support it can use a local or private HTTP upstream. Afterwards, check
+Assign a site from the gallery or from the server's Website tab and wait for the apply.
+telemt servers that support it can use a local or private HTTP upstream. Afterwards, check
 the public root, the assets and the WEB proxy; the editor's preview does not show what
 was deployed.
 
-When you create a node, the panel asks for its identity, DNS and proxy settings before it
+When you create a server, the panel asks for its identity, DNS and proxy settings before it
 gives you the install command. The installation dialog follows the agent as it connects
-and becomes ready, and offers diagnostics once it is connected. The node exists only
+and becomes ready, and offers diagnostics once it is connected. The server exists only
 after you run the command on it; a record in the panel is not an install.
-The WEB tab shows runtime and carrier information and the controls the node supports.
+The Statistics tab shows runtime and carrier information and the controls the server supports.
 Diagnostics keep their history and export to JSON, and a check that did not run is not
 counted as a pass. The Telemt update card targets the build the panel pins and shows
 progress and recovery outcomes. See [the runbook](runbook.md).
 
 ![Templates](screenshots/sites.png)
 
-The editor enforces the relay's restrictions (no external resources, inline handlers or forms) and moves styles and scripts into files. On assignment every node gets a uniquified copy with its own block order and class and file names, so nodes do not share a signature.
+The editor enforces the relay's restrictions (no external resources, inline handlers or forms) and moves styles and scripts into files. On assignment every server gets a uniquified copy with its own block order and class and file names, so servers do not share a signature.
 
 ![Editor](screenshots/site-editor.png)
 
 ## 10. Monitoring, alerts and audit
 
-Monitoring shows sessions, streams and traffic per node over 1 hour, 6 hours, a day or a week. The panel's own metrics are served on `/metrics` with `Authorization: Bearer <METRICS_TOKEN>`. A ready Grafana dashboard is in `deploy/grafana/tgwp-panel.json`; details are in [monitoring.md](monitoring.md).
+Monitoring shows sessions, streams and traffic per server over 1 hour, 6 hours, a day or a week. The panel's own metrics are served on `/metrics` with `Authorization: Bearer <METRICS_TOKEN>`. A ready Grafana dashboard is in `deploy/grafana/tgwp-panel.json`; details are in [monitoring.md](monitoring.md).
 
 ![Monitoring](screenshots/monitoring.png)
 
-Telegram alerts: in Panel settings → Behavior and notifications, enter the bot token and chat id and press "Send test message". The panel sends a message when a node goes offline, when it comes back, and when an apply fails.
+Telegram alerts: in Settings → Notifications and polling, enter the bot token and chat id and press "Send test message". The panel sends a message when a server goes offline, when it comes back, and when an apply fails.
 
 ![Panel settings](screenshots/settings-panel.png)
 
-The audit log records every administrator action and can be filtered by action, user and date.
+The activity log records every administrator action and can be filtered by action, user and date.
 
 ![Audit](screenshots/audit.png)
 
@@ -320,7 +320,7 @@ Search and commands open with `⌘K` / `Ctrl+K`.
 
 ![Command palette](screenshots/command-palette.png)
 
-The right side of the top bar has three chips: the panel version, the project on GitHub with its star count, and the number of nodes online. Once an hour the panel reads the latest release of `GITHUB_REPO` (default `greenpandorik/tgproxy-panel`). When a newer version exists, the version chip is highlighted and links to the release page. Nothing about your installation is sent, and `UPDATE_CHECK=false` in `.env` turns the GitHub calls off. On narrow screens the same information is in the user menu.
+The right side of the top bar has three chips: the panel version, the project on GitHub with its star count, and the number of servers online. Once an hour the panel reads the latest release of `GITHUB_REPO` (default `greenpandorik/tgproxy-panel`). When a newer version exists, the version chip is highlighted and links to the release page. Nothing about your installation is sent, and `UPDATE_CHECK=false` in `.env` turns the GitHub calls off. On narrow screens the same information is in the user menu.
 
 ![Top bar chips](screenshots/topbar.png)
 
@@ -332,19 +332,19 @@ The `?` in the header of every page and dialog opens a help panel on the right: 
 
 ![Form draft](screenshots/draft-banner.png)
 
-On the node's Health tab, the "Telegram datacenters" panel shows how the node sees Telegram's network. For each data centre it gives the latency telemt measures with its own health checks (a moving average, not a single probe at start), the IPv4/IPv6 preference, the health of the direct route, and a connection counter. Latency is green under 150 ms, amber under 400 and red above. The Stats tab plots the same latencies over time, the nodes list has a "Telegram" column with the overall latency, and the dashboard tile "Telegram latency" averages it over the online nodes. Nodes on the older tproxy engine have no such data.
+On the server's Health tab, the "Telegram datacenters" panel shows how the server sees Telegram's network. For each data centre it gives the latency telemt measures with its own health checks (a moving average, not a single probe at start), the IPv4/IPv6 preference, the health of the direct route, and a connection counter. Latency is green under 150 ms, amber under 400 and red above. The Stats tab plots the same latencies over time, the servers list has a "Telegram" column with the overall latency, and the dashboard tile "Telegram latency" averages it over the online servers. Servers on the older tproxy engine have no such data.
 
 ![Telegram data centres](screenshots/node-dcs.png)
 
 ## 11. Branding
 
-Panel settings → Project identity: name, logo, favicon, colours, default theme, login and footer texts, custom CSS. Changes apply at once, without a rebuild. You can keep several profiles and switch between them.
+Settings → Project identity: name, logo, favicon, colours, default theme, login and footer texts, custom CSS. Changes apply at once, without a rebuild. You can keep several profiles and switch between them.
 
 ![Branding](screenshots/settings-branding.png)
 
 ## 12. Backups, key rotation, upgrades
 
-Backups: Panel settings → Backups → "Create backup", or a schedule (UTC hour and how many copies to keep). Files live in the panel volume under `/data/backups/`.
+Backups: Settings → Backups → "Create backup", or a schedule (UTC hour and how many copies to keep). Files live in the panel volume under `/data/backups/`.
 
 ![Backups](screenshots/settings-backups.png)
 
@@ -380,7 +380,7 @@ git pull
 cd deploy && docker compose up -d --build panel
 ```
 
-Upgrading nodes: the panel serves the agent binary itself, and `tproxy-server` is pinned to the commit in `TPROXY_COMMIT`. Changing that commit means reinstalling the node with a fresh install command.
+Upgrading servers: the panel serves the agent binary itself, and `tproxy-server` is pinned to the commit in `TPROXY_COMMIT`. Changing that commit means reinstalling the server with a fresh install command.
 
 ## 13. Environment variables
 
@@ -389,11 +389,11 @@ Upgrading nodes: the panel serves the agent binary itself, and `tproxy-server` i
 | `DATABASE_URL` | PostgreSQL connection string |
 | `MASTER_KEY`, `MASTER_KEY_VERSION` | Encryption key for secrets in the database and its version |
 | `SESSION_SECRET` | Signs session cookies |
-| `PANEL_PUBLIC_URL` | Public panel address, embedded in node install commands |
+| `PANEL_PUBLIC_URL` | Public panel address, embedded in server install commands |
 | `PANEL_HTTP_ADDR` | Listen address inside the container, usually `:8080` |
-| `NODE_DRIVER` | `gateway` for real nodes, `mock` for demos and tests |
+| `NODE_DRIVER` | `gateway` for real servers, `mock` for demos and tests |
 | `METRICS_TOKEN` | Token for `/metrics`, required with `gateway` |
-| `TPROXY_COMMIT` | `tproxy-server` commit used when installing nodes |
+| `TPROXY_COMMIT` | `tproxy-server` commit used when installing servers |
 | `FEATURE_TOTP` | Enables 2FA |
 | `APPLY_INTERVAL`, `OFFLINE_AFTER` | Apply batch interval and offline threshold, seconds |
 | `PANEL_DOMAIN`, `ACME_EMAIL` | Caddy only, compose deployment |
@@ -401,8 +401,8 @@ Upgrading nodes: the panel serves the agent binary itself, and `tproxy-server` i
 ## 14. Troubleshooting
 
 - The panel does not start: run `docker compose logs panel`. The usual cause is an empty `METRICS_TOKEN` or a wrong `DATABASE_URL`.
-- A node never comes online: on the VPS run `systemctl status tgwp-agent tproxy-server mtproxy caddy` and `journalctl -u tgwp-agent -n 100`. The agent must be able to reach `PANEL_PUBLIC_URL`.
-- A key stays "pending": the node is offline or the apply failed. Look at "Recent applies" on the node's Maintenance tab, which has the agent log.
+- A server never comes online: on the VPS run `systemctl status tgwp-agent tproxy-server mtproxy caddy` and `journalctl -u tgwp-agent -n 100`. The agent must be able to reach `PANEL_PUBLIC_URL`.
+- A key stays "pending": the server is offline or the apply failed. Look at "Apply history" on the server's Maintenance tab, which has the agent log.
 - Detailed procedures: [runbook.md](runbook.md).
 
 Do the first production install on a test VPS and check a connection from Telegram Desktop before you hand out keys.

@@ -76,10 +76,10 @@ describe('help content', () => {
 
   it('links each topic to the setup guide in the reader’s language', () => {
     expect(docsUrl('nodes.create', 'ru')).toBe(
-      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md#6-подключение-ноды',
+      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md#6-подключение-сервера',
     );
     expect(docsUrl('nodes.create', 'en-US')).toBe(
-      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md#6-adding-a-node',
+      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md#6-adding-a-server',
     );
   });
 });

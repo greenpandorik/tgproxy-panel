@@ -1,9 +1,9 @@
 /** Which section of docs/setup.*.md a topic links to. Anchors are GitHub's heading slugs. */
 export const DOC_SECTIONS = {
-  install: { ru: '6-подключение-ноды', en: '6-adding-a-node' },
-  engine: { ru: '7-движок-ноды-telemt-или-tproxy', en: '7-node-engine-telemt-or-tproxy' },
+  install: { ru: '6-подключение-сервера', en: '6-adding-a-server' },
+  engine: { ru: '7-движок-сервера-telemt-или-tproxy', en: '7-server-engine-telemt-or-tproxy' },
   keys: { ru: '8-выдача-ключей', en: '8-issuing-keys' },
-  site: { ru: '9-сайт-заглушка-ноды', en: '9-node-cover-site' },
+  site: { ru: '9-сайт-прикрытие-сервера', en: '9-server-cover-site' },
   monitoring: { ru: '10-мониторинг-алерты-и-аудит', en: '10-monitoring-alerts-and-audit' },
   branding: { ru: '11-брендинг', en: '11-branding' },
   backups: { ru: '12-резервные-копии-ротация-ключа-обновление', en: '12-backups-key-rotation-upgrades' },

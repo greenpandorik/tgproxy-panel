@@ -13,8 +13,8 @@ Anyone running this software is running proxy infrastructure that people may dep
 - **Sessions.** Signed, `HttpOnly`, `Secure` when the public URL is HTTPS, `SameSite=Lax`. CSRF is a double-submit token compared in constant time.
 - **Sign-in.** Rate limited per IP, with an account lockout after repeated failures. Failed attempts are logged and recorded in the audit trail. TOTP verification shares the same limiter, so the second factor cannot be brute-forced separately.
 - **Authorisation.** Every route is covered by a test that walks the live router and asserts that anything mutating requires a session and a role; the exceptions are listed explicitly with their reasons.
-- **The node link.** The panel never exposes telemt's control API; it lives on the node's loopback and only the node's agent talks to it. Agents authenticate with a per-node token stored as a hash.
-- **Downloads to nodes.** The agent refuses to install any binary whose SHA-256 the panel cannot vouch for.
+- **The server link.** The panel never exposes telemt's control API; it lives on the server's loopback and only the server's agent talks to it. Agents authenticate with a per-node token stored as a hash.
+- **Downloads to servers.** The agent refuses to install any binary whose SHA-256 the panel cannot vouch for.
 - **Uploads.** Site bundles are parsed and rejected on path traversal, external references and script vectors; branding SVGs are XML-parsed and rejected on script vectors, then served sandboxed with their own CSP.
 - **Public surfaces.** Subscription pages carry no key label, owner or note, are rate limited per IP, and are served `no-store` with a policy that forbids every external request. The panel itself is served with a policy that permits no script it did not ship.
 - **Logs.** Secrets are wrapped in a type that redacts them. The request log records chi's route pattern, not the URL, because `/s/{token}` and the install routes carry a secret in the path.

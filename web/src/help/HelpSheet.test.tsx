@@ -27,7 +27,7 @@ describe('HelpSheet', () => {
     // The guide link follows the language.
     expect(screen.getByRole('link', { name: /руководстве/ })).toHaveAttribute(
       'href',
-      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md#6-подключение-ноды',
+      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md#6-подключение-сервера',
     );
   });
 
@@ -39,7 +39,7 @@ describe('HelpSheet', () => {
     expect(screen.getByText('Traffic quota, GB')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /setup guide/ })).toHaveAttribute(
       'href',
-      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md#7-node-engine-telemt-or-tproxy',
+      'https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md#7-server-engine-telemt-or-tproxy',
     );
   });
 });

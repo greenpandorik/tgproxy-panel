@@ -1,7 +1,7 @@
 # Monitoring
 
 The Monitoring page is for charts and history: **Whole fleet** for the fleet's totals,
-**Nodes** for each node's series, **WEB transport** for carrier and overload observations
+**Servers** for each server's series, **WEB transport** for carrier and overload observations
 and **Metrics export** for Prometheus. Open incidents and what to do about them are on
 the Overview page, the one place the panel lists problems.
 
@@ -14,15 +14,15 @@ whether negotiation and learning are supported. The UI's carrier window is 24 ho
 
 Selections count choices, not unique users. Reported failures and rejections are counters,
 so they cannot be read as a general client failure rate. Missing metric families, offline
-nodes and unsupported capabilities stay distinct from zero. Do not derive setup-latency
-P50/P95 from the timings of panel-to-node probes. Diagnostics history and its JSON export
+servers and unsupported capabilities stay distinct from zero. Do not derive setup-latency
+P50/P95 from the timings of panel-to-node external checks. Diagnostics history and its JSON export
 keep both executed and not-run results, but they do not vouch for every Telegram client
 and fallback path.
 
 The panel exposes fleet-level metrics for Prometheus at `/metrics`. The Monitoring
 page in the UI (`/monitoring`) already has per-node charts with no setup at all, so
 you only need this document to get the panel's own metrics into Grafana or Prometheus,
-or to understand what a relay node exposes and how to reach it.
+or to understand what a relay server exposes and how to reach it.
 
 ## 1. Enable `/metrics`
 
@@ -42,7 +42,7 @@ Authorization: Bearer <METRICS_TOKEN>
 
 `METRICS_TOKEN` is **required** when `NODE_DRIVER=gateway`. In that mode `/metrics` is
 reachable on the public domain, so the panel will not start without the token. With other
-node drivers it is optional but still recommended, because without it `/metrics` is open to
+server drivers it is optional but still recommended, because without it `/metrics` is open to
 anyone who can reach the panel.
 
 Keep the token out of the browser and out of version control. The only thing that needs
@@ -72,7 +72,7 @@ scrape_configs:
 ```
 
 A 60s scrape interval matches the dashboard's `1m` refresh. Scraping more often gains
-nothing: the node and key counts and the live-session gauges are read from the database
+nothing: the server and key counts and the live-session gauges are read from the database
 once per scrape, not streamed.
 
 ## 3. Import the dashboard
@@ -96,27 +96,27 @@ listed here.
 
 | Metric | Type | Labels | Meaning |
 | --- | --- | --- | --- |
-| `tgwp_nodes` | gauge | `status` (`pending`, `online`, `offline`, `degraded`) | Number of nodes currently in each status. All four labels are always present, even at 0. |
+| `tgwp_nodes` | gauge | `status` (`pending`, `online`, `offline`, `degraded`) | Number of servers currently in each status. All four labels are always present, even at 0. |
 | `tgwp_keys` | gauge | `status` (`pending`, `active`, `revoked`) | Number of access keys currently in each status. All three labels are always present, even at 0. |
-| `tgwp_node_sessions_live` | gauge | `node` (node UUID) | Live MTProto sessions on that node, from its latest stats snapshot. |
-| `tgwp_node_streams_live` | gauge | `node` (node UUID) | Live relay streams on that node, from its latest stats snapshot. |
+| `tgwp_node_sessions_live` | gauge | `node` (server UUID) | Live MTProto sessions on that server, from its latest stats snapshot. |
+| `tgwp_node_streams_live` | gauge | `node` (server UUID) | Live relay streams on that server, from its latest stats snapshot. |
 | `go_*`, `process_*` | various | — | Standard Go runtime and process collectors (goroutines, GC, memory, open FDs, CPU). Useful for panel-process health, not for the relay fleet. |
 
-`tgwp_node_sessions_live` and `tgwp_node_streams_live` appear only for nodes that
-have at least one stats snapshot. A brand-new node with no successful check yet has no
+`tgwp_node_sessions_live` and `tgwp_node_streams_live` appear only for servers that
+have at least one stats snapshot. A brand-new server with no successful check yet has no
 series until its first snapshot lands.
 
-The `node` label is the node's UUID rather than its hostname or display name, because labels
+The `node` label is the server's UUID rather than its hostname or display name, because labels
 on a `const` metric cannot join against the database at scrape time. The dashboard's table
 panel (`Sessions live by node`) is the quickest way to match a UUID with a live count. To
-match a UUID with a hostname, open that node's page in the panel UI; its URL contains the
+match a UUID with a hostname, open that server's page in the panel UI; its URL contains the
 same UUID.
 
 ## 5. Per-node relay metrics (not a Prometheus target)
 
-Each relay node's own metrics (on a tproxy node, the `tproxy_*` family: bytes up and down,
+Each relay server's own metrics (on a tproxy server, the `tproxy_*` family: bytes up and down,
 sessions created, limit hits, plus the two live gauges mirrored into `tgwp_node_*_live`
-above) are **not** scraped by Prometheus. Nodes are not reachable from the internet and
+above) are **not** scraped by Prometheus. Servers are not reachable from the internet and
 do not carry the panel's bearer-token auth. The panel proxies them through its own
 session-authenticated API instead:
 
@@ -131,12 +131,12 @@ the endpoint directly; it exists mainly as something for the UI to read. If you 
 yourself, for example from a script, you get raw Prometheus text format: the same
 `tproxy_sessions_live`, `tproxy_streams_live`, `tproxy_bytes_up_total`,
 `tproxy_bytes_down_total`, `tproxy_sessions_created_total` and `tproxy_limit_hits_total`
-names the relay exposes, without labels, one node per request.
+names the relay exposes, without labels, one server per request.
 
 ## 6. Per-key statistics are not a Prometheus metric
 
-There is no `tgwp_key_*` metric; the panel's metrics only count nodes and keys by status. On a
-telemt node the panel does record traffic per key, and shows it in the keys list and on
-each key's page. On a tproxy node there is nothing to record: the `tproxy-server` relay's
-own metrics carry no per-profile (per-key) label, only counters per node, so per-key usage
+There is no `tgwp_key_*` metric; the panel's metrics only count servers and keys by status. On a
+telemt server the panel does record traffic per key, and shows it in the keys list and on
+each key's page. On a tproxy server there is nothing to record: the `tproxy-server` relay's
+own metrics carry no per-profile (per-key) label, only counters per server, so per-key usage
 there would need a change in the relay upstream.
