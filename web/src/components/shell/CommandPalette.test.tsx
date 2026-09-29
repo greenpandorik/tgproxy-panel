@@ -134,7 +134,7 @@ describe('CommandPalette', () => {
 
     // The palette closes and the confirm takes its place - still nothing sent.
     expect(await screen.findByText('Применить изменения на 2 серверах?')).toBeInTheDocument();
-    expect(screen.getByText(/Активные сессии на этих серверах оборвутся/)).toBeInTheDocument();
+    expect(screen.getByText(/На серверах с tproxy relay перезапустится/)).toBeInTheDocument();
     expect(applyCalls()).toBe(0);
 
     await user.click(screen.getByRole('button', { name: 'Применить всё' }));

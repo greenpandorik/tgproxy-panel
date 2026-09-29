@@ -25,7 +25,7 @@ func (s *Stats) collectIncidents(ctx context.Context, n db.Node) {
 		return
 	}
 	findings := reliability.Findings(r, time.Now())
-	findings = append(findings, reliability.Finding{Kind: "disk_pressure", Message: "Node disk is at least 90% full", Failed: h.DiskUsedPercent >= 90, Known: true}, reliability.Finding{Kind: "memory_pressure", Message: "Node memory is at least 95% full", Failed: h.MemUsedPercent >= 95, Known: true}, reliability.Finding{Kind: "engine_unready", Message: "Proxy engine is not ready", Failed: !h.Readyz || !h.Healthz, Known: true})
+	findings = append(findings, reliability.Finding{Kind: "disk_pressure", Message: "Server disk is at least 90% full", Failed: h.DiskUsedPercent >= 90, Known: true}, reliability.Finding{Kind: "memory_pressure", Message: "Server memory is at least 95% full", Failed: h.MemUsedPercent >= 95, Known: true}, reliability.Finding{Kind: "engine_unready", Message: "Proxy engine is not ready", Failed: !h.Readyz || !h.Healthz, Known: true})
 	if h.Web != nil && h.Web.Runtime != nil && h.Web.Runtime.Lifecycle != nil {
 		findings = append(findings, reliability.Finding{Kind: "web_admission_closed", Message: "WEB admission is closed; inspect maintenance or pause state", Failed: !h.Web.Runtime.Lifecycle.AdmissionOpen, Known: true})
 	}

@@ -82,7 +82,7 @@ func (a *Alerts) NodeOffline(ctx context.Context, node db.Node) {
 	if a == nil {
 		return
 	}
-	text := fmt.Sprintf("⚠️ Node %s (%s) is offline", html.EscapeString(node.Name), html.EscapeString(node.Hostname))
+	text := fmt.Sprintf("⚠️ Server %s (%s) is offline", html.EscapeString(node.Name), html.EscapeString(node.Hostname))
 	a.send(ctx, node.ID.String(), "node_offline", text)
 }
 
@@ -91,7 +91,7 @@ func (a *Alerts) NodeOnline(ctx context.Context, node db.Node) {
 	if a == nil {
 		return
 	}
-	text := fmt.Sprintf("✅ Node %s (%s) is back online", html.EscapeString(node.Name), html.EscapeString(node.Hostname))
+	text := fmt.Sprintf("✅ Server %s (%s) is back online", html.EscapeString(node.Name), html.EscapeString(node.Hostname))
 	a.send(ctx, node.ID.String(), "node_online", text)
 }
 
