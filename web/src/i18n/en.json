@@ -446,7 +446,7 @@
     "support_status_stable": "stable",
     "support_status_experimental": "experimental",
     "support_status_planned": "planned",
-    "search_placeholder": "Search by label or owner",
+    "search_placeholder": "Search by name or owner",
     "filter_type_all": "All types",
     "filter_status_all": "All statuses",
     "filter_node_all": "All servers",
@@ -614,7 +614,7 @@
     "stats_unavailable": "Servers on the tproxy engine do not measure per-key traffic.",
     "stats_empty": "No data for this key yet.",
     "subscription_title": "Subscription link",
-    "subscription_description": "A public page with every server’s links (WEB and Fake-TLS) and QR codes for this key - without its label or notes.",
+    "subscription_description": "A public page with every server’s links (WEB and Fake-TLS) and QR codes for this key, without the key name or notes.",
     "subscription_status_active": "Active",
     "subscription_shown_once": "The link and QR are shown only once - save them now.",
     "subscription_qr_alt": "Subscription link QR code",
@@ -1613,7 +1613,7 @@
         "fields": {
           "type": {
             "name": "Type",
-            "what": "Shared - one link for a group of people, say a channel or a team. Personal - issued to one person with an owner label, revoked on its own without touching anyone else."
+            "what": "Shared - one link for a group of people, say a channel or a team. Personal - issued to one person (the \"Issued to\" field), revoked on its own without touching anyone else."
           },
           "status": {
             "name": "Status",
@@ -1633,7 +1633,7 @@
           },
           "filters": {
             "name": "Search and filters",
-            "what": "Search by label and owner label; filters by type, status and server. A link of the form /keys?key=<id> opens one key - that is how the command palette gets there."
+            "what": "Search by key name and \"Issued to\"; filters by type, status and server. A link of the form /keys?key=<id> opens one key - that is how the command palette gets there."
           },
           "row_actions": {
             "name": "Row actions",
@@ -1655,10 +1655,10 @@
         "intro": "The tabs are three ways to hand out access: a shared key for a group, a personal key for one person, a batch of several keys at once. The key will work on every ticked server and becomes active after the next apply - usually within a minute. The panel shows the link right after creation.",
         "fields": {
           "label": {
-            "name": "Label",
+            "name": "Key name",
             "what": "The key's name in the panel: who or what it is for. Required, any text. Never reaches the client or the link.",
             "example": "Support team",
-            "tip": "Labels are what you search by: write it so it still makes sense a year from now."
+            "tip": "The name is what you search by: write it so it still makes sense a year from now."
           },
           "owner_label": {
             "name": "Issued to",
@@ -1723,11 +1723,11 @@
       },
       "keys.batch": {
         "title": "Several keys at once",
-        "intro": "Creates several shared keys at once with identical settings (servers, mode, expiry, limits) and labels of the form \"prefix-number\". Handy for handing out one key per person when the personal labels are not known yet. The panel checks that every server has room for the whole batch and creates either all keys or none.",
+        "intro": "Creates several shared keys at once with identical settings (servers, mode, expiry, limits) and names of the form \"prefix-number\". Handy for handing out one key per person when the personal labels are not known yet. The panel checks that every server has room for the whole batch and creates either all keys or none.",
         "fields": {
           "prefix": {
             "name": "Prefix",
-            "what": "Required. The start of every key's label; a hyphen and a running number are appended.",
+            "what": "Required. The start of every key's name; a hyphen and a running number are appended.",
             "example": "vip → vip-1, vip-2, …"
           },
           "count": {
@@ -1825,11 +1825,11 @@
         "fields": {
           "status": {
             "name": "Header",
-            "what": "Label, status (pending / active / revoked), type and creation date. A revoked key opens read-only."
+            "what": "Name, status (pending / active / revoked), type and creation date. A revoked key opens read-only."
           },
           "edit": {
             "name": "Settings",
-            "what": "Label, owner label, note, expiry, carrier mode and limits - the same fields as at creation. Changing the expiry of an active key is the usual way to extend access."
+            "what": "Name, \"Issued to\", note, expiry, carrier mode and limits - the same fields as at creation. Changing the expiry of an active key is the usual way to extend access."
           },
           "nodes": {
             "name": "Servers",
@@ -2048,7 +2048,7 @@
           },
           "details": {
             "name": "Details",
-            "what": "Extra fields of the entry: the key's label, what exactly changed, the result of a test message. Opened with \"Details\"."
+            "what": "Extra fields of the entry: the key name, what exactly changed, the result of a test message. Opened with \"Details\"."
           }
         },
         "notes": {
