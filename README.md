@@ -3,7 +3,7 @@
   <img src="docs/brand/logo-light.png" alt="TGProxy Panel" height="32">
 </picture>
 
-# TGProxy panel
+# TGProxy Panel
 
 [![CI](https://github.com/greenpandorik/tgproxy-panel/actions/workflows/ci.yml/badge.svg)](https://github.com/greenpandorik/tgproxy-panel/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/greenpandorik/tgproxy-panel?sort=semver)](https://github.com/greenpandorik/tgproxy-panel/releases)
@@ -12,132 +12,116 @@
 
 **English** · [Русский](README.ru.md) · [Website](https://greenpandorik.github.io/tgproxy-panel/en/)
 
-A self-hosted control panel for a fleet of Telegram proxy servers. It issues and revokes keys,
-pushes configuration to servers over gRPC, serves a cover website on each of them and watches
-their health. One panel manages many servers; a server runs [telemt](https://github.com/telemt/telemt)
-or tproxy-server, and a small agent on the server takes instructions from the panel.
+TGProxy Panel lets you run your own Telegram proxies and manage them from a browser. You install
+the panel on one server, and it sets up the proxies on the others: it gives people keys with
+ready-made links and QR codes, hides every proxy behind an ordinary-looking website and keeps an
+eye on all of it.
+
+The panel is free and open source. It installs with one command, and the interface is in English
+and Russian.
 
 <p align="center">
-  <img src="docs/screenshots/issue-a-key.gif" width="90%" alt="Issuing a key: name it, bind it to two nodes, and get a WEB link and a Fake-TLS link with QR codes">
+  <img src="docs/screenshots/issue-a-key.gif" width="90%" alt="Issuing a key: name it, bind it to two servers, and get a WEB link and a Fake-TLS link with QR codes">
 </p>
 
-<p align="center"><sub>Issuing a key: name it, bind it to two servers, and out come both links with QR codes.</sub></p>
+<p align="center"><sub>Issuing a key: give it a name, pick the servers and get the links with QR codes.</sub></p>
 
-## What it does differently
+## What it does
 
-**A key gets two links, and one of them negotiates its own transport.** The Fake-TLS link
-(`https://t.me/proxy?…`) is a single shape: a TLS handshake that looks like a real visit to your
-domain. The WEB link (`https://t.me/webproxy?…`) is a protocol over ordinary HTTPS on port 443, and
-inside it there are four ways to carry the traffic. telemt tries them per connection, in order:
-WebSocket lanes, WebSocket, HTTPS lanes, then plain HTTPS as the one that gets through almost
-anywhere. It remembers which one worked in that client's network, so the next connection starts
-there. A corporate proxy that eats WebSocket no longer means "the proxy is broken for this person".
-
-**Every server serves a different-looking cover site.** Fifteen built-in sites ship with the panel,
-and assigning one to a server first re-randomizes its block order, CSS class names, asset filenames
-and marked wording. The result is deterministic per server, so re-assigning the same template changes
-nothing and restarts nothing. Two servers running the same template still never serve byte-identical
-pages, so a fleet cannot be fingerprinted by diffing its cover sites.
-
-**The proxy enforces the limits.** On a telemt server a key's traffic quota, up/down rate, maximum
-unique IPs and maximum connections are pushed into telemt, which applies them itself and keeps the
-per-key traffic accounting. The panel does not sit in the data path.
-
-**A number the panel does not have is never drawn as zero.** If a server did not report a counter, the
-panel says "not available" and means it. A diagnostic check that could not run is left out of both
-the passed and the total count instead of being scored as a pass, so "nothing is wrong" and "we have
-not heard" never arrive looking the same.
-
-**Changing keys does not drop anybody.** On a telemt server the agent applies the desired state over
-telemt's loopback control API without restarting the process, so live sessions survive. (Changing
-the Fake-TLS domain or port is the one exception, and the panel warns before you do it.)
-
-**Servers move themselves to a new version.** `tgwp-agent upgrade` asks the panel what this server
-should be running, replaces only what differs after verifying the panel's sha256, restarts the unit,
-waits for it to report healthy, and puts the previous binary back if it does not. Updating telemt
-goes further: drain, swap, verify, and reopen admission, and the rollback path reports whether
-reopening actually succeeded.
-
-Beyond that: shared and personal keys with batch creation, public subscription pages, a fleet
-overview that leads with a verdict, Prometheus metrics and a Grafana dashboard, Telegram alerts,
-an activity log, TOTP with recovery codes, nightly backups and master-key rotation.
+- Gives out keys with links. Every key comes with two proxy links. Fake-TLS works in every
+  Telegram app. The WEB proxy runs over plain HTTPS and is harder to block, but for now only
+  Telegram Desktop and recent Android versions understand it. Each link has a QR code, and a
+  subscription page collects all of a person's links in one place.
+- Disguises the proxy as a website. The domain of every proxy server opens an ordinary site, such
+  as a coffee shop or a blog. Fifteen ready-made sites are included, and each server gets its own
+  slightly rearranged copy, so servers can't be matched by identical pages.
+- Limits keys. Every key can have an expiry date, and on telemt servers also a traffic quota, a
+  speed limit and a cap on unique IP addresses.
+- Keeps people connected. New and revoked keys are applied without restarting the proxy, so
+  connected users don't notice.
+- Watches the servers. The overview tells you straight away what is broken and where. The panel
+  checks DNS, ports and certificates, sends alerts to Telegram and exports metrics for Prometheus
+  and Grafana.
+- Upgrades with one command. If a new proxy version fails to start, the server goes back to the
+  previous one on its own.
+- Protects access. Two-factor sign-in, an activity log of every admin action and scheduled daily
+  database backups.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="49%" alt="Overview: fleet verdict, what needs attention, and every server at a glance">
-  <img src="docs/screenshots/websites.png" width="49%" alt="Websites: fifteen built-in decoy sites, each uniquified per node">
+  <img src="docs/screenshots/dashboard.png" width="49%" alt="Overview: the verdict for all servers, what needs attention and every server at a glance">
+  <img src="docs/screenshots/websites.png" width="49%" alt="Cover websites: fifteen ready-made sites">
 </p>
 
-## Quick start
+## What you need
 
-A fresh Ubuntu 22.04+ or Debian 12+ host, root, ports 80 and 443 free, and a DNS A record for the
-panel's domain already pointing at it. The installer brings Docker if it is missing, writes the
-compose files and a generated `.env`, starts the stack and creates the first admin.
+- Two VPS with Ubuntu 22.04+ or Debian 12+: one for the panel and one for the proxy. The panel
+  is fine with 1 CPU and 1 GB of RAM. The proxy server needs ports 80 and 443, so it can't share
+  a VPS with the panel. You can add as many proxy servers later as you like.
+- A domain such as `example.com`, with DNS records that point at your servers.
+- SSH access to the servers as root.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash
-```
+If some of these words are new to you, start with the [From scratch](docs/start.en.md) guide. It
+walks through everything step by step: which server to rent, how to buy a domain, how to connect
+to a server and how to send a friend your first link.
 
-It prints the URL and the admin password once. Then add your first server in the UI, and the panel
-gives you a command to paste into a root shell on the server:
+## Quick install
 
-```bash
-curl -fsSL https://panel.example.com/api/v1/install/<token>.sh | sudo bash
-```
+1. On the panel server, run:
 
-The server script checks DNS, ports and architecture before it installs anything, and registers with
-the panel only once TLS is up and the proxy reports ready. Keeping a server current later is one
-command on the server:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash
+   ```
 
-```bash
-tgwp-agent upgrade
-```
+   The script asks for the panel's domain, an e-mail for the certificate and the admin
+   credentials. At the end it prints the panel address, and the password if you didn't set one.
 
-The [setup guide](docs/setup.en.md) walks the same path with screenshots, and the
-[reference](docs/reference.md) covers installing by hand, local mode without a domain, and the
-installer's options.
+2. In the panel, open Servers → Add server and enter the proxy server's domain. The panel gives
+   you a command: run it on the proxy server. A couple of minutes later the server shows up in the
+   list.
+
+3. Open Access keys → New key, pick the servers and send the person the link or the QR code.
+
+To upgrade the panel: `sudo /opt/tgproxy-panel/install.sh --update`. To upgrade a proxy server:
+`tgwp-agent upgrade` on that server.
 
 ## Documentation
 
-| | |
+| Document | Who it is for |
 |---|---|
-| [Setup guide](docs/setup.en.md) · [Русский](docs/setup.ru.md) | Install the panel and your first server, with screenshots |
-| [Reference](docs/reference.md) | Server engines, architecture, every screen and every environment variable |
-| [Runbook](docs/runbook.md) | Backups, restore, key rotation, and what to do when something breaks |
-| [Monitoring](docs/monitoring.md) | The `/metrics` endpoint and the Grafana dashboard |
-| [Contributing](CONTRIBUTING.md) | Local development, the test suites, and how changes are reviewed |
-| [Security](SECURITY.md) | Reporting a vulnerability, and what the panel does to protect a deployment |
+| [From scratch](docs/start.en.md) | Renting a server for the first time: every step, plus a glossary |
+| [Installation](docs/setup.en.md) | Comfortable with Linux: installing the panel and servers in detail, every option |
+| [Reference](docs/reference.md) | How it all works: engines, panel screens, environment variables |
+| [Runbook](docs/runbook.md) | Upgrades, backups and what to do when something breaks |
+| [Monitoring](docs/monitoring.md) | Prometheus metrics and the Grafana dashboard |
+| [Contributing](CONTRIBUTING.md) | Building the project, running the tests and sending changes |
+| [Security](SECURITY.md) | How to report a vulnerability |
+
+Questions and ideas go to [Discussions](https://github.com/greenpandorik/tgproxy-panel/discussions).
 
 ## Credits
 
-[telemt](https://github.com/telemt/telemt) is the proxy that runs on telemt servers: one process
-serving the WEB transport, Fake-TLS, the cover site and a control API. The panel pins a release
-and verifies its sha256 before installing it. telemt is distributed under its own license,
-TELEMT PL 3; the license notice stays with the binary they ship.
+[telemt](https://github.com/telemt/telemt) is the proxy that runs on the servers. One telemt
+process serves the WEB proxy, Fake-TLS, the cover site and the control API. The panel installs a
+specific vetted release and checks its checksum. telemt is distributed under its own TELEMT PL 3
+licence, whose text ships with the program.
 
-[MTPROTO_FIX_By_MEKO](https://github.com/Mekotofeuka/MTPROTO_FIX_By_MEKO) is the SYN rate-limit fix
-for the connection problems Telegram proxies started seeing in June 2026. telemt carries that fix
-as `synlimit`, which the panel enables on every Fake-TLS listener. The sysctl tuning the installer
-writes to `/etc/sysctl.d/90-tgwp.conf` is taken from that project.
+[MTPROTO_FIX_By_MEKO](https://github.com/Mekotofeuka/MTPROTO_FIX_By_MEKO) is the fix for the
+SYN-flood connection problems Telegram proxies started hitting in June 2026. telemt carries it as
+`synlimit`, and the panel turns it on for every server. The network settings the installer writes
+to `/etc/sysctl.d/90-tgwp.conf` come from the same place.
 
-[tproxy-server](https://github.com/telegramdesktop/tproxy-server) and MTProxy are what the tproxy
-engine runs: Telegram's WEB proxy relay and the official MTProxy behind it.
+[tproxy-server](https://github.com/telegramdesktop/tproxy-server) and the official MTProxy run on
+servers with the older tproxy engine.
 
-[Remnawave](https://github.com/remnawave/panel) is the panel whose look this interface borrows: the
-floating sidebar with grouped sections, the stat cards and the dark palette with a cyan accent. The
-interface code is our own, written on TGProxy Panel's components.
+[Remnawave](https://github.com/remnawave/panel) is the panel whose look this interface borrows:
+the floating sectioned menu, the metric cards and the dark palette with a cyan accent. The
+interface code is our own.
 
-## Star it
+## Give it a star
 
-If you run this, [give it a star](https://github.com/greenpandorik/tgproxy-panel). It is how other
-people running Telegram proxies find the project.
+If the panel is useful to you, [give it a star](https://github.com/greenpandorik/tgproxy-panel):
+that is how other people setting up Telegram proxies find the project.
 
-<a href="https://www.star-history.com/#greenpandorik/tgproxy-panel&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=greenpandorik/tgproxy-panel&type=Date&theme=dark">
-    <img src="https://api.star-history.com/svg?repos=greenpandorik/tgproxy-panel&type=Date" alt="Star history" width="60%">
-  </picture>
-</a>
-
-## License
+## Licence
 
 [AGPL-3.0](LICENSE).

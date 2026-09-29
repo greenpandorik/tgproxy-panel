@@ -1,63 +1,114 @@
 # Monitoring
 
-The Monitoring page is for charts and history: **Whole fleet** for the fleet's totals,
-**Servers** for each server's series, **WEB transport** for carrier and overload observations
-and **Metrics export** for Prometheus. Open incidents and what to do about them are on
-the Overview page, the one place the panel lists problems.
+**English** · [Русский](monitoring.ru.md)
 
-## WEB runtime and carriers
+The panel watches your servers on its own. The Monitoring page draws charts, the Overview page
+lists what is broken, and alerts can come to Telegram. None of this needs extra software. This
+document covers the optional part: sending the panel's numbers to Prometheus and Grafana. If a
+term is unfamiliar, see the [glossary](start.en.md#glossary).
 
-WEB Transport reports runtime and admission, the endpoint, the last certificate check and
-whether negotiation and learning are supported. The UI's carrier window is 24 hours, read from
-`GET /api/v1/nodes/{id}/web/carriers?from&to`; fleet data comes from
-`GET /api/v1/monitoring/web/carriers?from&to`.
+## Do you need Prometheus and Grafana?
 
-Selections count choices, not unique users. Reported failures and rejections are counters,
-so they cannot be read as a general client failure rate. Missing metric families, offline
-servers and unsupported capabilities stay distinct from zero. Do not derive setup-latency
-P50/P95 from the timings of panel-to-node external checks. Diagnostics history and its JSON export
-keep both executed and not-run results, but they do not vouch for every Telegram client
-and fallback path.
+Prometheus is a monitoring program. Every minute or so it visits a list of addresses, collects
+numbers from them (metrics) and keeps their history. Grafana draws charts and dashboards from
+those numbers. Both are free and installed separately from the panel.
 
-The panel exposes fleet-level metrics for Prometheus at `/metrics`. The Monitoring
-page in the UI (`/monitoring`) already has per-node charts with no setup at all, so
-you only need this document to get the panel's own metrics into Grafana or Prometheus,
-or to understand what a relay server exposes and how to reach it.
+You don't need them if this panel is all you watch. Set them up if you already run Prometheus
+and Grafana for other systems and want the panel on the same screen, or if you want your own
+alert rules.
 
-## 1. Enable `/metrics`
+The panel exports only a few numbers: servers and keys by status, and live sessions per
+server. Traffic, per-key statistics and WEB transport data stay in the panel.
 
-Set `METRICS_TOKEN` in the panel's environment to a random secret:
+## What the panel shows without them
 
-```bash
-openssl rand -hex 32   # put the result in .env as METRICS_TOKEN=<value>
-```
+The Monitoring page has four tabs and a period switch (1h, 6h, 24h, 7d):
 
-`/metrics` sits outside the panel's session-authenticated routes, since Prometheus cannot
-log in with a cookie. This bearer token protects it instead:
+- "All servers" shows totals: servers online, healthy, running with errors, live sessions and
+  current traffic.
+- "Servers" shows a card of charts for each server: live sessions and streams, upload and
+  download speed. A telemt server counts one thing where tproxy counts two, so its card has one
+  "Connections" line and one "Traffic" line.
+- "WEB transport" shows which WEB carriers clients chose on all telemt servers over the last
+  24 hours, plus counters of failures, rejected attempts, evicted sessions and bridge recoveries.
+- "Metrics export" has a short Prometheus snippet and points to this document.
+
+The panel reads each online server once a minute and keeps this history for 30 days. The
+Overview page is the one place that lists problems, under "Needs attention". Details for one
+server are on its page: the "Stats" tab has the same charts, and on a telemt server also the
+WEB carriers of that server. Telegram alerts are set up in "Settings" → "Notifications". The
+panel sends a message when a server goes offline or comes back, when changes fail to apply,
+and about other problems it finds on servers.
+
+How to read the WEB transport numbers:
+
+- A selection is one choice of a carrier by a client. It does not count people or live
+  sessions.
+- Failures, rejections, evictions and recoveries are counters over the window. They are not a
+  failure rate, since the panel does not know how many attempts succeeded.
+- "Not available" is not zero. A server that is offline, did not report a counter or does not
+  support the feature shows up as a gap.
+- The timings in a server's "Checks" tab measure the path from the panel to the server. They do
+  not tell you how long a user's connection takes to set up.
+
+## 1. Get the token
+
+The panel serves its metrics at `/metrics` on its own domain, for example
+`https://panel.example.com/metrics`. Prometheus cannot sign in with a password, so this address
+is protected by a separate token, `METRICS_TOKEN`. Every request must carry it in a header:
 
 ```
 GET /metrics
 Authorization: Bearer <METRICS_TOKEN>
 ```
 
-`METRICS_TOKEN` is **required** when `NODE_DRIVER=gateway`. In that mode `/metrics` is
-reachable on the public domain, so the panel will not start without the token. With other
-server drivers it is optional but still recommended, because without it `/metrics` is open to
-anyone who can reach the panel.
+Without the header, or with a wrong token, the panel answers `401`.
 
-Keep the token out of the browser and out of version control. The only thing that needs
-it is your scraper.
-
-## 2. Scrape it with Prometheus
-
-Copy the `tgwp-panel` job from [`deploy/prometheus.example.yml`](../deploy/prometheus.example.yml)
-into your `prometheus.yml`, put the token in a file Prometheus can read, and replace
-the target placeholder with your panel's hostname:
+If you installed the panel with `install.sh`, the token already exists: the installer generated
+it and wrote it to `/opt/tgproxy-panel/.env`. Show it on the panel's server:
 
 ```bash
-echo -n "<METRICS_TOKEN value>" > /etc/prometheus/tgwp-token
+sudo grep '^METRICS_TOKEN=' /opt/tgproxy-panel/.env
+```
+
+If you set up the panel by hand, generate a token with `openssl rand -hex 32`, put it in `.env`
+as `METRICS_TOKEN=<value>` and restart the panel with `docker compose up -d` in the folder with
+its `docker-compose.yml`.
+
+With `NODE_DRIVER=gateway`, the default and the only mode that works with real servers, the
+panel refuses to start without `METRICS_TOKEN`, because `/metrics` is on the public domain. Only
+`NODE_DRIVER=mock` (tests and demos) allows an empty token, and then `/metrics` is open to
+anyone.
+
+Check that it works:
+
+```bash
+curl -H "Authorization: Bearer <METRICS_TOKEN>" https://panel.example.com/metrics
+```
+
+The answer is plain text with lines like `tgwp_nodes{status="online"} 3`.
+
+Give the token only to Prometheus. Keep it out of the browser and out of git. To change it, put
+a new value in `.env`, restart the panel and update the token file on the Prometheus side. On an
+`install.sh` install the restart is:
+
+```bash
+cd /opt/tgproxy-panel && sudo docker compose up -d
+```
+
+## 2. Add the panel to Prometheus
+
+Put the token in a file that Prometheus can read. The file must be readable by the user
+Prometheus runs as:
+
+```bash
+echo -n "<METRICS_TOKEN>" > /etc/prometheus/tgwp-token
 chmod 600 /etc/prometheus/tgwp-token
 ```
+
+Copy the `tgwp-panel` job from [`deploy/prometheus.example.yml`](../deploy/prometheus.example.yml)
+into the `scrape_configs` of your `prometheus.yml` and replace the target with your panel's
+domain:
 
 ```yaml
 scrape_configs:
@@ -71,72 +122,107 @@ scrape_configs:
       - targets: ["panel.example.com"]
 ```
 
-A 60s scrape interval matches the dashboard's `1m` refresh. Scraping more often gains
-nothing: the server and key counts and the live-session gauges are read from the database
-once per scrape, not streamed.
+Reload Prometheus. On its "Status" → "Targets" page the `tgwp-panel` job should be `UP`. A
+`401` there means the token in the file is wrong.
 
-## 3. Import the dashboard
+Keep the interval at 60 seconds. Server and key counts are read from the database at each
+scrape, but the live session numbers change only once a minute, when the panel reads the
+servers.
 
-1. In Grafana: **Dashboards → New → Import**.
-2. Upload [`deploy/grafana/tgwp-panel.json`](../deploy/grafana/tgwp-panel.json), or
-   paste its contents.
-3. When asked for the `Prometheus` datasource input, pick the datasource you
-   configured for the scrape job above.
-4. Import. The dashboard opens on `now-24h` with a 1-minute auto-refresh; you can
-   change both with the dashboard's own time and refresh controls afterwards.
+## 3. Import the Grafana dashboard
 
-The dashboard's uid is `tgwp-panel`, so importing the same file again updates it in place
-instead of creating a duplicate.
+The ready dashboard is in [`deploy/grafana/tgwp-panel.json`](../deploy/grafana/tgwp-panel.json).
+It needs Grafana 10 or newer.
+
+1. In Grafana, open "Dashboards" → "New" → "Import".
+2. Upload `tgwp-panel.json` or paste its contents.
+3. For the `Prometheus` data source, pick the Prometheus that scrapes the panel.
+4. Press "Import".
+
+The dashboard shows the last 24 hours and refreshes every minute; both can be changed in
+Grafana. It has tiles for servers and keys by status, charts of live sessions and streams per
+server, and the `Sessions live by node` table. Its uid is `tgwp-panel`, so importing the file
+again updates the dashboard in place.
 
 ## 4. Metric reference
 
-All of these come from the panel's own `/metrics` endpoint (job `tgwp-panel` above).
-Prometheus adds its usual `job`/`instance` labels to each of them on top of what is
-listed here.
+Everything below comes from the panel's `/metrics`. Prometheus adds its own `job` and
+`instance` labels on top.
 
 | Metric | Type | Labels | Meaning |
 | --- | --- | --- | --- |
-| `tgwp_nodes` | gauge | `status` (`pending`, `online`, `offline`, `degraded`) | Number of servers currently in each status. All four labels are always present, even at 0. |
-| `tgwp_keys` | gauge | `status` (`pending`, `active`, `revoked`) | Number of access keys currently in each status. All three labels are always present, even at 0. |
-| `tgwp_node_sessions_live` | gauge | `node` (server UUID) | Live MTProto sessions on that server, from its latest stats snapshot. |
-| `tgwp_node_streams_live` | gauge | `node` (server UUID) | Live relay streams on that server, from its latest stats snapshot. |
-| `go_*`, `process_*` | various | — | Standard Go runtime and process collectors (goroutines, GC, memory, open FDs, CPU). Useful for panel-process health, not for the relay fleet. |
+| `tgwp_nodes` | gauge | `status`: `pending`, `online`, `offline`, `degraded` | Number of servers in each status. All four series are always present, even at 0. |
+| `tgwp_keys` | gauge | `status`: `pending`, `active`, `revoked` | Number of access keys in each status. All three series are always present, even at 0. |
+| `tgwp_node_sessions_live` | gauge | `node`: server UUID | Live sessions on the server, from its latest snapshot. On telemt, the current connections of all its keys added up. |
+| `tgwp_node_streams_live` | gauge | `node`: server UUID | Live relay streams on the server, from its latest snapshot. On telemt, the same number as `tgwp_node_sessions_live`. |
+| `go_*`, `process_*` | various | | Standard Go runtime and process metrics of the panel itself: goroutines, memory, garbage collection, open files, CPU. |
 
-`tgwp_node_sessions_live` and `tgwp_node_streams_live` appear only for servers that
-have at least one stats snapshot. A brand-new server with no successful check yet has no
-series until its first snapshot lands.
+What the statuses mean:
 
-The `node` label is the server's UUID rather than its hostname or display name, because labels
-on a `const` metric cannot join against the database at scrape time. The dashboard's table
-panel (`Sessions live by node`) is the quickest way to match a UUID with a live count. To
-match a UUID with a hostname, open that server's page in the panel UI; its URL contains the
-same UUID.
+- A `pending` server ("Pending" in the panel) was created, but its install command has not been
+  run yet.
+- An `online` server ("Online") has an agent that keeps in touch.
+- An `offline` server ("Offline") sent no heartbeat for longer than the offline threshold. The
+  threshold is 90 seconds by default and can be changed in "Settings" → "Notifications".
+- A `degraded` server ("Degraded") has an agent that answers, but one of the proxy's services is
+  not working.
+- A `pending` key has not yet reached all of its servers. It turns `active` once every server
+  has it.
+- A `revoked` key was revoked by hand or because it expired.
 
-## 5. Per-node relay metrics (not a Prometheus target)
+Things to know about the per-server metrics:
 
-Each relay server's own metrics (on a tproxy server, the `tproxy_*` family: bytes up and down,
-sessions created, limit hits, plus the two live gauges mirrored into `tgwp_node_*_live`
-above) are **not** scraped by Prometheus. Servers are not reachable from the internet and
-do not carry the panel's bearer-token auth. The panel proxies them through its own
-session-authenticated API instead:
+- The `node` label holds the server's UUID. The same UUID is in the address of the
+  server's page in the panel: `https://panel.example.com/nodes/<uuid>`.
+- A new server has no series until the panel takes its first snapshot.
+- The value is the server's latest snapshot, whatever its age. A server that went offline keeps
+  showing its last numbers until its snapshots age out after 30 days. Check `tgwp_nodes` for
+  offline servers before trusting these numbers.
+- When a server is deleted, its series disappear.
+
+A few queries to start with:
+
+```
+tgwp_nodes{status="offline"} > 0      # some server is offline
+tgwp_nodes{status="degraded"} > 0     # some server has a broken service
+sum(tgwp_node_sessions_live)          # live sessions on all servers
+up{job="tgwp-panel"} == 0             # Prometheus cannot reach the panel
+```
+
+## 5. Metrics of a single server
+
+Prometheus cannot scrape the servers themselves. The agent reads the proxy engine's metrics on
+the server itself and passes them to the panel over the connection it keeps open to the panel.
+On telemt servers the metrics port listens only on the server's loopback interface, and a
+firewall rule closes it from outside as well.
+
+To see the raw metrics of one server, ask the panel:
 
 ```
 GET /api/v1/nodes/{id}/metrics
 ```
 
-This needs a logged-in panel session (cookie auth, any role). It is not a
-Prometheus scrape target and has no bearer-token option. The panel's own Monitoring page
-(`/monitoring`) already draws these per-node series as charts, so you will rarely call
-the endpoint directly; it exists mainly as something for the UI to read. If you do call it
-yourself, for example from a script, you get raw Prometheus text format: the same
-`tproxy_sessions_live`, `tproxy_streams_live`, `tproxy_bytes_up_total`,
-`tproxy_bytes_down_total`, `tproxy_sessions_created_total` and `tproxy_limit_hits_total`
-names the relay exposes, without labels, one server per request.
+This address needs a signed-in panel session (any role) and does not accept `METRICS_TOKEN`.
+The panel fetches the text from the server at that moment and returns it unchanged, in
+Prometheus text format:
 
-## 6. Per-key statistics are not a Prometheus metric
+- On a tproxy server, this is the `tproxy-server` metrics. The panel charts
+  `tproxy_sessions_live`, `tproxy_streams_live`, `tproxy_bytes_up_total`,
+  `tproxy_bytes_down_total`, `tproxy_sessions_created_total` and `tproxy_limit_hits_total`.
+  These have no labels.
+- On a telemt server, this is telemt's own metrics. The panel reads `telemt_connections_total`,
+  `telemt_user_connections_current` and `telemt_user_unique_ips_current`. The last two have a
+  `user` label: `k` followed by the first 12 hex digits of the key's UUID.
 
-There is no `tgwp_key_*` metric; the panel's metrics only count servers and keys by status. On a
-telemt server the panel does record traffic per key, and shows it in the keys list and on
-each key's page. On a tproxy server there is nothing to record: the `tproxy-server` relay's
-own metrics carry no per-profile (per-key) label, only counters per server, so per-key usage
-there would need a change in the relay upstream.
+You will rarely need this address. The Monitoring page and the server's "Stats" tab already
+draw these numbers.
+
+## 6. Per-key statistics
+
+There is no `tgwp_key_*` metric. On telemt servers the panel records traffic, connections and
+unique IP addresses for each key, and shows them in "Access keys": the "Traffic (30d)" column
+in the list and the "Traffic and connections" block when you open a key. tproxy servers do not
+measure traffic per key: `tproxy-server` counts only per server.
+
+How the panel is built is described in the [reference](reference.md), installation in the
+[setup guide](setup.en.md). What to do when something breaks is in the [runbook](runbook.md).
