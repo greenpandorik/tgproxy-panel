@@ -253,6 +253,8 @@ export interface Node {
   engine: NodeEngine;
   /** SNI the Fake-TLS listener masks behind. telemt only; defaults to the hostname. */
   tls_domain: string;
+  /** Backup Fake-TLS domains; every key gets one more Fake-TLS link per domain. telemt only. */
+  tls_domains: string[];
   /** Port of the Fake-TLS listener. telemt only. */
   classic_port: number;
   /** Sponsor-channel tag from @MTProxybot, or empty. telemt only. */
@@ -290,6 +292,7 @@ export interface PatchNodeInput {
   max_profiles?: number;
   acme_email?: string;
   tls_domain?: string;
+  tls_domains?: string[];
   classic_port?: number;
   ad_tag?: string;
 }
@@ -404,6 +407,8 @@ export interface Link {
   node_name: string;
   hostname: string;
   kind: LinkKind;
+  /** The Fake-TLS domain of a tls link. */
+  domain?: string;
   tme: string;
   tg: string;
 }
@@ -411,6 +416,8 @@ export interface Link {
 /** One link form of one kind, inside a node's group. */
 export interface KindLink {
   kind: LinkKind;
+  /** The Fake-TLS domain of a tls link. */
+  domain?: string;
   tme: string;
   tg: string;
 }

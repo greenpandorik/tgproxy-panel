@@ -281,6 +281,12 @@
     "listeners_saved": "Addresses and Fake-TLS settings saved",
     "listeners_confirm_title": "Change the Fake-TLS settings?",
     "listeners_confirm_description": "The next apply pushes this to the node: the agent rewrites telemt's config and restarts telemt, dropping live connections. Every Fake-TLS link already handed out stops working — the domain and port are baked into its secret — so reissue them. WEB links are unaffected.",
+    "field_extra_domains": "Backup masking domains",
+    "field_extra_domains_hint": "One per line. Every key gets its own Fake-TLS link for each domain, so if a provider blocks the main one, the user switches to a link with another. Use only real sites that answer HTTPS on 443 and are reachable from the node: telemt takes the TLS fingerprint of each domain at startup.",
+    "validation_extra_domains": "Each domain lowercase and with a dot, at most {{max}}",
+    "extra_domains_note": "The next apply restarts telemt, dropping live connections. Links already handed out keep working, and keys get links for the new domains.",
+    "extra_domains_confirm_title": "Change the backup domains?",
+    "extra_domains_confirm_description": "The next apply pushes this to the node and restarts telemt, dropping live connections. Links already handed out keep working. If a domain does not answer HTTPS, telemt refuses the config and the apply rolls back.",
     "overview_agent_version": "Agent",
     "overview_last_apply": "Last apply",
     "overview_never": "never run",
@@ -569,6 +575,7 @@
     "link_pending_hint": "The key will be active once applied on the node (usually within a minute).",
     "link_qr_alt_kind": "{{kind}} QR code for {{hostname}}",
     "link_web_only": "WEB only on this engine",
+    "link_tls_domain": "Masking domain",
     "link_no_nodes": "This key is not bound to any node.",
     "link_copy_tme": "Copy t.me link",
     "link_copy_tg": "Copy tg:// link",
@@ -1451,6 +1458,12 @@
             "what": "The site the port masquerades as. The right choice is the node's own host: it has a real cover site and a certificate. A foreign domain is acceptable only if it is a real site answering HTTPS on 443 that the node can reach. Spelling rules as for the host: lowercase, with a dot, no scheme.",
             "example": "ams1.example.com",
             "tip": "After changing it, run \"Readiness check\": the \"Fake-TLS masking\" line tells you whether the new domain works."
+          },
+          "tls_domains": {
+            "name": "Backup masking domains",
+            "what": "Extra domains the Fake-TLS port also masquerades as. Each one gives every key its own link, and the main link stays as it was. If a provider starts blocking the main domain by SNI, the user takes the link with another domain, with no need to reinstall the node. Saving restarts telemt but does not break links already handed out.",
+            "example": "www.example.org",
+            "tip": "Use real sites with HTTPS on 443 that the node can reach: telemt takes the TLS fingerprint of each domain at startup, and if one is unreachable the apply rolls back. Needs agent 2.9.2 or later."
           },
           "classic_port": {
             "name": "Fake-TLS port",

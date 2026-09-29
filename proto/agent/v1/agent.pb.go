@@ -2371,7 +2371,8 @@ type ApplyRequest struct {
 	ClassicPort    uint32                 `protobuf:"varint,6,opt,name=classic_port,json=classicPort,proto3" json:"classic_port,omitempty"`
 	PublicIp       string                 `protobuf:"bytes,7,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
 	AdTag          string                 `protobuf:"bytes,8,opt,name=ad_tag,json=adTag,proto3" json:"ad_tag,omitempty"`
-	WebPolicy      *WebPolicy             `protobuf:"bytes,9,opt,name=web_policy,json=webPolicy,proto3" json:"web_policy,omitempty"` // nil = leave the node's WEB policy untouched
+	WebPolicy      *WebPolicy             `protobuf:"bytes,9,opt,name=web_policy,json=webPolicy,proto3" json:"web_policy,omitempty"`     // nil = leave the node's WEB policy untouched
+	TlsDomains     []string               `protobuf:"bytes,10,rep,name=tls_domains,json=tlsDomains,proto3" json:"tls_domains,omitempty"` // extra Fake-TLS domains; reconciled only when tls_domain is set
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2465,6 +2466,13 @@ func (x *ApplyRequest) GetAdTag() string {
 func (x *ApplyRequest) GetWebPolicy() *WebPolicy {
 	if x != nil {
 		return x.WebPolicy
+	}
+	return nil
+}
+
+func (x *ApplyRequest) GetTlsDomains() []string {
+	if x != nil {
+		return x.TlsDomains
 	}
 	return nil
 }
@@ -3902,7 +3910,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\"\x0f\n" +
 	"\rHealthRequest\"\x14\n" +
-	"\x12GetProfilesRequest\"\xe1\x02\n" +
+	"\x12GetProfilesRequest\"\x82\x03\n" +
 	"\fApplyRequest\x12%\n" +
 	"\x0eapply_profiles\x18\x01 \x01(\bR\rapplyProfiles\x12-\n" +
 	"\bprofiles\x18\x02 \x03(\v2\x11.agent.v1.ProfileR\bprofiles\x12'\n" +
@@ -3914,7 +3922,10 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\tpublic_ip\x18\a \x01(\tR\bpublicIp\x12\x15\n" +
 	"\x06ad_tag\x18\b \x01(\tR\x05adTag\x122\n" +
 	"\n" +
-	"web_policy\x18\t \x01(\v2\x13.agent.v1.WebPolicyR\twebPolicy\"\xac\x01\n" +
+	"web_policy\x18\t \x01(\v2\x13.agent.v1.WebPolicyR\twebPolicy\x12\x1f\n" +
+	"\vtls_domains\x18\n" +
+	" \x03(\tR\n" +
+	"tlsDomains\"\xac\x01\n" +
 	"\x13UpdateTelemtRequest\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
 	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12\x10\n" +

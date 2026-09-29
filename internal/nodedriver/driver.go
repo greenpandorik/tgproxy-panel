@@ -74,6 +74,7 @@ type ApplyRequest struct {
 	Site           *SiteBundle
 
 	TLSDomain   string
+	TLSDomains  []string
 	ClassicPort uint32
 	PublicIP    string
 	// AdTag is the sponsor-channel tag; empty means no sponsor channel, not "no opinion".

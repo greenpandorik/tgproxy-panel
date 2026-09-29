@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -317,6 +318,10 @@ func (h *Handler) reconcileTelemtListeners(ctx context.Context, lg *applyLog, re
 	if wantDomain != "" && !validHostname(wantDomain) {
 		return false, fmt.Errorf("invalid tls domain %q", wantDomain)
 	}
+	wantExtra, err := extraTLSDomains(wantDomain, req.GetTlsDomains())
+	if err != nil {
+		return false, err
+	}
 	if wantPort != 0 {
 		if wantPort > 65535 {
 			return false, fmt.Errorf("classic port %d out of range", wantPort)
@@ -332,6 +337,7 @@ func (h *Handler) reconcileTelemtListeners(ctx context.Context, lg *applyLog, re
 	}
 	censorship, _ := cfg["censorship"].(map[string]any)
 	curDomain, _ := censorship["tls_domain"].(string)
+	curExtra := stringList(censorship["tls_domains"])
 	server, _ := cfg["server"].(map[string]any)
 	listeners, _ := server["listeners"].([]any)
 	idx := telemtFakeTLSListener(listeners)
@@ -342,8 +348,9 @@ func (h *Handler) reconcileTelemtListeners(ctx context.Context, lg *applyLog, re
 	}
 
 	domainChanged := wantDomain != "" && wantDomain != curDomain
+	extraChanged := wantDomain != "" && !slices.Equal(wantExtra, curExtra)
 	portChanged := wantPort != 0 && wantPort != curPort
-	if !domainChanged && !portChanged {
+	if !domainChanged && !extraChanged && !portChanged {
 		return false, nil
 	}
 	if portChanged && idx < 0 {
@@ -351,8 +358,15 @@ func (h *Handler) reconcileTelemtListeners(ctx context.Context, lg *applyLog, re
 	}
 
 	undo := map[string]any{}
+	undoCensorship, patchCensorship := map[string]any{}, map[string]any{}
 	if domainChanged {
-		undo["censorship"] = map[string]any{"tls_domain": curDomain}
+		undoCensorship["tls_domain"], patchCensorship["tls_domain"] = curDomain, wantDomain
+	}
+	if extraChanged {
+		undoCensorship["tls_domains"], patchCensorship["tls_domains"] = curExtra, wantExtra
+	}
+	if len(undoCensorship) > 0 {
+		undo["censorship"] = undoCensorship
 	}
 	general, _ := cfg["general"].(map[string]any)
 	links, _ := general["links"].(map[string]any)
@@ -369,11 +383,16 @@ func (h *Handler) reconcileTelemtListeners(ctx context.Context, lg *applyLog, re
 	}
 	rb.prevListeners = undo
 
-	if domainChanged {
-		if _, err := h.tm.PatchConfig(ctx, map[string]any{"censorship": map[string]any{"tls_domain": wantDomain}}, false); err != nil {
-			return true, fmt.Errorf("patch censorship.tls_domain: %w", err)
+	if len(patchCensorship) > 0 {
+		if _, err := h.tm.PatchConfig(ctx, map[string]any{"censorship": patchCensorship}, false); err != nil {
+			return true, fmt.Errorf("patch censorship: %w", err)
 		}
-		lg.f("censorship.tls_domain %s -> %s", curDomain, wantDomain)
+		if domainChanged {
+			lg.f("censorship.tls_domain %s -> %s", curDomain, wantDomain)
+		}
+		if extraChanged {
+			lg.f("censorship.tls_domains [%s] -> [%s]", strings.Join(curExtra, ", "), strings.Join(wantExtra, ", "))
+		}
 	}
 	if portChanged {
 		next, err := cloneJSON(listeners)
@@ -394,6 +413,34 @@ func (h *Handler) reconcileTelemtListeners(ctx context.Context, lg *applyLog, re
 		}
 	}
 	return true, nil
+}
+
+// extraTLSDomains normalises the panel's extra Fake-TLS domains: lower-case, valid, without the primary and without repeats.
+func extraTLSDomains(primary string, domains []string) ([]string, error) {
+	out := make([]string, 0, len(domains))
+	for _, d := range domains {
+		d = strings.ToLower(strings.TrimSpace(d))
+		if d == "" || d == primary || slices.Contains(out, d) {
+			continue
+		}
+		if !validHostname(d) {
+			return nil, fmt.Errorf("invalid tls domain %q", d)
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+// stringList reads a JSON array of strings from a decoded config value; anything else is an empty list.
+func stringList(v any) []string {
+	items, _ := v.([]any)
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		if s, ok := item.(string); ok {
+			out = append(out, strings.ToLower(s))
+		}
+	}
+	return out
 }
 
 // telemtPublicAddr is the WEB vhost's public socket address for a panel-supplied IP; IPv6 needs brackets.

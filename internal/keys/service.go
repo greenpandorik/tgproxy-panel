@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -386,8 +387,10 @@ const (
 // KindLink is one link form of one kind, for one node.
 type KindLink struct {
 	Kind string `json:"kind"`
-	TMe  string `json:"tme"`
-	Tg   string `json:"tg"`
+	// Domain is the Fake-TLS domain a tls link masks as; empty for web links.
+	Domain string `json:"domain,omitempty"`
+	TMe    string `json:"tme"`
+	Tg     string `json:"tg"`
 }
 
 // NodeLinks groups every link a key has on one node.
@@ -405,6 +408,7 @@ type Link struct {
 	NodeName string    `json:"node_name"`
 	Hostname string    `json:"hostname"`
 	Kind     string    `json:"kind"`
+	Domain   string    `json:"domain,omitempty"`
 	TMe      string    `json:"tme"`
 	Tg       string    `json:"tg"`
 }
@@ -430,11 +434,19 @@ func (s *Service) NodeLinks(ctx context.Context, keyID uuid.UUID) ([]NodeLinks, 
 			Links: []KindLink{{Kind: LinkWeb, TMe: qrlink.TMe(b.Hostname, secret), Tg: qrlink.Tg(b.Hostname, secret)}},
 		}
 		if b.Engine == db.NodeEngineTelemt && b.TlsDomain != "" {
-			fake := qrlink.FakeTLSSecret(secret, b.TlsDomain)
 			port := int(b.ClassicPort)
-			item.Links = append(item.Links, KindLink{
-				Kind: LinkTLS, TMe: qrlink.TMeProxy(b.Hostname, port, fake), Tg: qrlink.TgProxy(b.Hostname, port, fake),
-			})
+			domains := []string{b.TlsDomain}
+			for _, d := range b.TlsDomains {
+				if !slices.Contains(domains, d) {
+					domains = append(domains, d)
+				}
+			}
+			for _, d := range domains {
+				fake := qrlink.FakeTLSSecret(secret, d)
+				item.Links = append(item.Links, KindLink{
+					Kind: LinkTLS, Domain: d, TMe: qrlink.TMeProxy(b.Hostname, port, fake), Tg: qrlink.TgProxy(b.Hostname, port, fake),
+				})
+			}
 		}
 		out = append(out, item)
 	}
@@ -450,7 +462,7 @@ func (s *Service) Links(ctx context.Context, keyID uuid.UUID) ([]Link, error) {
 	out := make([]Link, 0, len(grouped))
 	for _, g := range grouped {
 		for _, l := range g.Links {
-			out = append(out, Link{NodeID: g.NodeID, NodeName: g.NodeName, Hostname: g.Hostname, Kind: l.Kind, TMe: l.TMe, Tg: l.Tg})
+			out = append(out, Link{NodeID: g.NodeID, NodeName: g.NodeName, Hostname: g.Hostname, Kind: l.Kind, Domain: l.Domain, TMe: l.TMe, Tg: l.Tg})
 		}
 	}
 	return out, nil

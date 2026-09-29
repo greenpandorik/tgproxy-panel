@@ -229,6 +229,8 @@ The node must also be able to reach **its own public address on 443**. An unknow
 
 The node's "Addresses and Fake-TLS" card also lets you correct `public_ip` after install (on a NAT host the installer can register the egress address instead of the interface one). The next apply rewrites telemt's WEB vhost address and restarts telemt; links are unaffected. Changing `tls_domain` or `classic_port` on the same card is the panel action that both restarts telemt *and* invalidates links. The next apply rewrites the node's config and restarts the process, dropping live connections, and **every Fake-TLS link already issued for that node stops working**, because the domain and port are baked into the link's secret. Reissue the links afterwards. WEB links are unaffected.
 
+The same card holds **backup masking domains**. Each domain in the list gives every key one more Fake-TLS link, and the main link stays as it was. If a provider starts blocking the main domain by SNI, the user takes the link with another domain, with no need to reinstall the node. Saving restarts telemt, but links already handed out keep working. Use only real sites that answer HTTPS on 443 and are reachable from the node: telemt takes the TLS fingerprint of each domain at startup, and if one is unreachable the apply rolls back. Needs agent 2.9.2 or later, up to eight domains per node.
+
 What this changes in the panel:
 
 - **Two links per key.** On a telemt node a key offers both a WEB link (`https://t.me/webproxy?server=…`) and a Fake-TLS one (`https://t.me/proxy?server=…&port=<classic_port>&secret=ee…`). A tproxy node offers the WEB link only.

@@ -489,6 +489,19 @@ type BrandingProfile struct {
 	LogoDarkPath string    `json:"logo_dark_path"`
 }
 
+type FleetRollout struct {
+	ID         uuid.UUID     `json:"id"`
+	Status     string        `json:"status"`
+	Request    []byte        `json:"request"`
+	NodeIds    []byte        `json:"node_ids"`
+	Cursor     int32         `json:"cursor"`
+	DispatchAt *time.Time    `json:"dispatch_at"`
+	JobID      uuid.NullUUID `json:"job_id"`
+	Error      string        `json:"error"`
+	CreatedAt  time.Time     `json:"created_at"`
+	UpdatedAt  time.Time     `json:"updated_at"`
+}
+
 type KeyBinding struct {
 	AccessKeyID uuid.UUID `json:"access_key_id"`
 	NodeID      uuid.UUID `json:"node_id"`
@@ -536,6 +549,7 @@ type Node struct {
 	TelemtCapabilitiesCheckedAt *time.Time `json:"telemt_capabilities_checked_at"`
 	TelemtUpdateAvailable       string     `json:"telemt_update_available"`
 	TelemtWebPolicy             []byte     `json:"telemt_web_policy"`
+	TlsDomains                  []string   `json:"tls_domains"`
 }
 
 type NodeDiagnostic struct {
@@ -584,6 +598,13 @@ type NodeStatsSnapshot struct {
 	WebLearningEntries                 pgtype.Int4   `json:"web_learning_entries"`
 	CpuUtilisationPercent              pgtype.Float4 `json:"cpu_utilisation_percent"`
 	LoadAverage1                       pgtype.Float4 `json:"load_average_1"`
+}
+
+type ProbeReport struct {
+	NodeID     uuid.UUID `json:"node_id"`
+	Location   string    `json:"location"`
+	MeasuredAt time.Time `json:"measured_at"`
+	Report     []byte    `json:"report"`
 }
 
 type Profile struct {

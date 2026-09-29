@@ -7,6 +7,7 @@ import (
 	"mime"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -451,13 +452,14 @@ func (s *Server) handleKeyQR(w http.ResponseWriter, r *http.Request) {
 	if size < 128 || size > 1024 {
 		size = 256
 	}
+	tlsDomain := strings.ToLower(r.URL.Query().Get("domain"))
 	links, err := s.keys.Links(r.Context(), k.ID)
 	if err != nil {
 		s.keysErr(w, err)
 		return
 	}
 	for _, l := range links {
-		if l.NodeID == nodeID && l.Kind == kind {
+		if l.NodeID == nodeID && l.Kind == kind && (tlsDomain == "" || l.Domain == tlsDomain) {
 			png, err := qrlink.PNG(l.TMe, size)
 			if err != nil {
 				internal(w)

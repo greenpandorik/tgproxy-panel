@@ -66,6 +66,7 @@ function node(name: string, status: Node['status'], h?: NodeHealth): Node {
     online: status !== 'offline',
     engine: 'telemt',
     tls_domain: `${name}.test`,
+    tls_domains: [],
     classic_port: 8443,
     ad_tag: '',
     telemt_version: '3.5.5',

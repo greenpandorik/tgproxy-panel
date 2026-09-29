@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/mail"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"tgwebproxy/internal/nodecheck"
 	"tgwebproxy/internal/nodedriver"
 	"tgwebproxy/internal/store/db"
+	"tgwebproxy/internal/updates"
 )
 
 const installTokenTTL = 24 * time.Hour
@@ -35,6 +37,7 @@ type nodeJSON struct {
 	Online        bool      `json:"online"`
 	Engine        string    `json:"engine"`
 	TLSDomain     string    `json:"tls_domain"`
+	TLSDomains    []string  `json:"tls_domains"`
 	ClassicPort   int       `json:"classic_port"`
 	AdTag         string    `json:"ad_tag"`
 	TelemtVersion string    `json:"telemt_version"`
@@ -67,7 +70,7 @@ func (s *Server) nodeJSON(r *http.Request, n db.Node) nodeJSON {
 func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) nodeJSON {
 	out := nodeJSON{
 		ID: n.ID, Name: n.Name, Hostname: n.Hostname, PublicIP: n.PublicIp, ACMEEmail: n.AcmeEmail, Status: string(n.Status),
-		Online: s.driver != nil && s.driver.Online(n.ID), Engine: string(n.Engine), TLSDomain: n.TlsDomain,
+		Online: s.driver != nil && s.driver.Online(n.ID), Engine: string(n.Engine), TLSDomain: n.TlsDomain, TLSDomains: n.TlsDomains,
 		ClassicPort: int(n.ClassicPort), AdTag: n.AdTag, TelemtVersion: n.TelemtVersion,
 		TelemtBuild: n.TelemtBuild, TelemtUpdateAvailable: n.TelemtUpdateAvailable,
 		TelemtCapabilities:          json.RawMessage(n.TelemtCapabilities),
@@ -278,13 +281,14 @@ func (s *Server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 }
 
 type patchNodeReq struct {
-	Name        *string `json:"name"`
-	PublicIP    *string `json:"public_ip"`
-	MaxProfiles *int    `json:"max_profiles"`
-	ACMEEmail   *string `json:"acme_email"`
-	TLSDomain   *string `json:"tls_domain"`
-	ClassicPort *int    `json:"classic_port"`
-	AdTag       *string `json:"ad_tag"`
+	Name        *string   `json:"name"`
+	PublicIP    *string   `json:"public_ip"`
+	MaxProfiles *int      `json:"max_profiles"`
+	ACMEEmail   *string   `json:"acme_email"`
+	TLSDomain   *string   `json:"tls_domain"`
+	TLSDomains  *[]string `json:"tls_domains"`
+	ClassicPort *int      `json:"classic_port"`
+	AdTag       *string   `json:"ad_tag"`
 }
 
 func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
@@ -334,6 +338,24 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 		listeners.TlsDomain = &d
 		dirty = dirty || d != n.TlsDomain
 	}
+	if req.TLSDomains != nil {
+		primary := n.TlsDomain
+		if listeners.TlsDomain != nil {
+			primary = *listeners.TlsDomain
+		}
+		extra, msg := normalizeExtraTLSDomains(primary, *req.TLSDomains)
+		if msg == "" && len(extra) > 0 {
+			msg = extraTLSDomainsUnsupported(n)
+		}
+		if msg != "" {
+			validation(w, map[string]string{"tls_domains": msg})
+			return
+		}
+		listeners.TlsDomains = extra
+		dirty = dirty || !slices.Equal(extra, n.TlsDomains)
+	} else if listeners.TlsDomain != nil && slices.Contains(n.TlsDomains, *listeners.TlsDomain) {
+		listeners.TlsDomains = slices.DeleteFunc(slices.Clone(n.TlsDomains), func(d string) bool { return d == *listeners.TlsDomain })
+	}
 	if req.ClassicPort != nil {
 		if msg := validateClassicPort(*req.ClassicPort); msg != "" {
 			validation(w, map[string]string{"classic_port": msg})
@@ -368,6 +390,42 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Audit(r.Context(), "node.update", "node", n.ID.String(), nil)
 	writeJSON(w, 200, s.nodeJSON(r, updated))
+}
+
+// maxExtraTLSDomains bounds the extra Fake-TLS domains of one node; each adds a link per key and a TLS profile telemt fetches at startup.
+const maxExtraTLSDomains = 8
+
+// minAgentForExtraTLSDomains is the first agent release that writes censorship.tls_domains.
+const minAgentForExtraTLSDomains = "2.9.2"
+
+// normalizeExtraTLSDomains lower-cases and validates the extra domains, dropping the primary and repeats.
+func normalizeExtraTLSDomains(primary string, domains []string) ([]string, string) {
+	out := make([]string, 0, len(domains))
+	for _, d := range domains {
+		d = strings.ToLower(strings.TrimSpace(d))
+		if d == "" || d == primary || slices.Contains(out, d) {
+			continue
+		}
+		if err := domain.ValidateHostname(d); err != nil {
+			return nil, d + ": " + err.Error()
+		}
+		out = append(out, d)
+	}
+	if len(out) > maxExtraTLSDomains {
+		return nil, "at most " + strconv.Itoa(maxExtraTLSDomains) + " extra domains"
+	}
+	return out, ""
+}
+
+// extraTLSDomainsUnsupported explains why a node cannot take extra domains, or returns "".
+func extraTLSDomainsUnsupported(n db.Node) string {
+	if n.Engine != db.NodeEngineTelemt {
+		return "extra Fake-TLS domains need a telemt node"
+	}
+	if n.AgentVersion != "" && updates.Newer(minAgentForExtraTLSDomains, n.AgentVersion) {
+		return "agent " + n.AgentVersion + " cannot apply extra domains; run tgwp-agent upgrade on the node first (needs " + minAgentForExtraTLSDomains + ")"
+	}
+	return ""
 }
 
 func (s *Server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {

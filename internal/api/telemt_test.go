@@ -537,3 +537,106 @@ func TestNodeProfilesCarryKeyLabelAndLimits(t *testing.T) {
 		t.Errorf("default profile carries key fields: %+v", d)
 	}
 }
+
+func TestPatchNodeExtraTLSDomains(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createEngineNode(t, c, map[string]any{"name": "n1", "hostname": "n1.test", "acme_email": "a@b.co"})
+	path := "/api/v1/nodes/" + n.ID.String()
+
+	var got struct {
+		TLSDomain  string   `json:"tls_domain"`
+		TLSDomains []string `json:"tls_domains"`
+		Dirty      bool     `json:"dirty"`
+	}
+	c.JSON(c.Patch(path, map[string]any{"tls_domains": []string{" Alt.Example.org", "n1.test", "alt.example.org", "cdn.example.net"}}), &got)
+	if strings.Join(got.TLSDomains, ",") != "alt.example.org,cdn.example.net" || !got.Dirty {
+		t.Fatalf("extra domains must be normalised and mark the node dirty: %+v", got)
+	}
+
+	for name, body := range map[string]any{
+		"bad domain": []string{"no dots"},
+		"too many":   []string{"a1.example.org", "a2.example.org", "a3.example.org", "a4.example.org", "a5.example.org", "a6.example.org", "a7.example.org", "a8.example.org", "a9.example.org"},
+	} {
+		resp := c.Patch(path, map[string]any{"tls_domains": body})
+		if resp.StatusCode != 422 {
+			t.Errorf("%s: expected 422, got %d", name, resp.StatusCode)
+		}
+		resp.Body.Close() //nolint:errcheck
+	}
+
+	c.JSON(c.Patch(path, map[string]any{"tls_domain": "alt.example.org"}), &got)
+	if got.TLSDomain != "alt.example.org" || strings.Join(got.TLSDomains, ",") != "cdn.example.net" {
+		t.Fatalf("a domain promoted to primary must leave the extra list: %+v", got)
+	}
+
+	if _, err := h.Store.Pool.Exec(t.Context(), "UPDATE nodes SET agent_version = '2.9.1' WHERE id = $1", n.ID); err != nil {
+		t.Fatal(err)
+	}
+	resp := c.Patch(path, map[string]any{"tls_domains": []string{"new.example.org"}})
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 422 || !strings.Contains(string(body), "tgwp-agent upgrade") {
+		t.Fatalf("an agent without tls_domains support must be refused with a way out: %d %s", resp.StatusCode, body)
+	}
+	c.JSON(c.Patch(path, map[string]any{"tls_domains": []string{}}), &got)
+	if len(got.TLSDomains) != 0 {
+		t.Fatalf("clearing must work on any agent: %+v", got)
+	}
+
+	old, _ := createEngineNode(t, c, map[string]any{"name": "old", "hostname": "old.test", "acme_email": "a@b.co", "engine": "tproxy"})
+	resp = c.Patch("/api/v1/nodes/"+old.ID.String(), map[string]any{"tls_domains": []string{"alt.example.org"}})
+	if resp.StatusCode != 422 {
+		t.Fatalf("a tproxy node has no Fake-TLS listener; got %d", resp.StatusCode)
+	}
+	resp.Body.Close() //nolint:errcheck
+}
+
+func TestKeyLinksCarryOneFakeTLSLinkPerDomain(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	tel, _ := createEngineNode(t, c, map[string]any{"name": "tel", "hostname": "tel.test", "acme_email": "a@b.co", "classic_port": 9443})
+	resp := c.Patch("/api/v1/nodes/"+tel.ID.String(), map[string]any{"tls_domains": []string{"alt.example.org"}})
+	if resp.StatusCode != 200 {
+		t.Fatalf("set extra domains: %d", resp.StatusCode)
+	}
+	resp.Body.Close() //nolint:errcheck
+
+	var k keyTelemtResp
+	resp = c.Post("/api/v1/keys", map[string]any{"label": "Ivan", "type": "PERSONAL", "carrier_mode": "https", "node_ids": []string{tel.ID.String()}})
+	if resp.StatusCode != 201 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("create %d %s", resp.StatusCode, b)
+	}
+	c.JSON(resp, &k)
+
+	var links struct {
+		Items []struct {
+			Links []struct {
+				Kind   string `json:"kind"`
+				Domain string `json:"domain"`
+				TMe    string `json:"tme"`
+			} `json:"links"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/keys/"+k.ID.String()+"/links"), &links)
+	if len(links.Items) != 1 || len(links.Items[0].Links) != 3 {
+		t.Fatalf("want web + two Fake-TLS links: %+v", links.Items)
+	}
+	for i, want := range []string{"tel.test", "alt.example.org"} {
+		l := links.Items[0].Links[i+1]
+		wantSecret := "ee" + k.Secret + hex.EncodeToString([]byte(want))
+		if l.Kind != "tls" || l.Domain != want || l.TMe != "https://t.me/proxy?server=tel.test&port=9443&secret="+wantSecret {
+			t.Errorf("Fake-TLS link %d = %+v, want domain %s", i, l, want)
+		}
+	}
+
+	for q, want := range map[string]int{"&kind=tls": 200, "&kind=tls&domain=alt.example.org": 200, "&kind=tls&domain=ALT.example.org": 200, "&kind=tls&domain=gone.example.org": 404} {
+		resp := c.Get("/api/v1/keys/" + k.ID.String() + "/qr?node=" + tel.ID.String() + q)
+		resp.Body.Close() //nolint:errcheck
+		if resp.StatusCode != want {
+			t.Errorf("qr%s: %d, want %d", q, resp.StatusCode, want)
+		}
+	}
+}

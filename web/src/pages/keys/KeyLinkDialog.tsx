@@ -1,4 +1,5 @@
 import { Ban, Download, Lock, RefreshCw, Server, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { keyQrUrl, linkKindLabel, useKey, useKeyLinks } from '@/api/keys';
@@ -7,6 +8,7 @@ import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { ClientSupportNotice } from '@/components/common/ClientSupportNotice';
 import { CopyButton } from '@/components/common/CopyButton';
 import { EmptyState } from '@/components/common/EmptyState';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -81,8 +83,11 @@ function LinkPanel({ keyId, group, link, onDownload }: LinkPanelProps) {
   return (
     <div className="flex flex-col gap-4 p-4 sm:flex-row">
       <img
-        src={keyQrUrl(keyId, group.node_id, 256, link.kind)}
-        alt={t('keys.link_qr_alt_kind', { hostname: group.hostname, kind: linkKindLabel(link.kind) })}
+        src={keyQrUrl(keyId, group.node_id, 256, link.kind, link.domain)}
+        alt={t('keys.link_qr_alt_kind', {
+          hostname: group.hostname,
+          kind: link.domain ? `${linkKindLabel(link.kind)} ${link.domain}` : linkKindLabel(link.kind),
+        })}
         width={112}
         height={112}
         className="size-28 shrink-0 self-start rounded-surface bg-white p-3"
@@ -101,6 +106,31 @@ function LinkPanel({ keyId, group, link, onDownload }: LinkPanelProps) {
   );
 }
 
+/** The links of one kind on one node; several Fake-TLS domains get a switcher above the link. */
+function KindLinks({ keyId, group, links, onDownload }: Omit<LinkPanelProps, 'link'> & { links: KindLink[] }) {
+  const { t } = useTranslation();
+  const [domain, setDomain] = useState(links[0].domain ?? '');
+  const link = links.find((l) => (l.domain ?? '') === domain) ?? links[0];
+
+  return (
+    <>
+      {links.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 px-4 pt-4">
+          <span className="text-label text-mute">{t('keys.link_tls_domain')}</span>
+          <SegmentedControl
+            value={domain}
+            options={links.map((l) => ({ value: l.domain ?? '', label: l.domain ?? '' }))}
+            onChange={setDomain}
+            label={t('keys.link_tls_domain')}
+            className="max-w-full flex-wrap"
+          />
+        </div>
+      )}
+      <LinkPanel keyId={keyId} group={group} link={link} onDownload={onDownload} />
+    </>
+  );
+}
+
 function NodeLinksCard({
   keyId,
   group,
@@ -113,8 +143,8 @@ function NodeLinksCard({
   onDownload: (group: NodeLinkGroup, link: KindLink) => void;
 }) {
   const { t } = useTranslation();
-  const multi = group.links.length > 1;
-  // A telemt node with a single link has not been given a Fake-TLS domain yet.
+  const kinds = [...new Set(group.links.map((link) => link.kind))];
+  const multi = kinds.length > 1;
   const webOnly = !multi && group.engine === 'tproxy';
   const arrival = enter(index);
 
@@ -127,7 +157,7 @@ function NodeLinksCard({
       </div>
 
       {multi ? (
-        <Tabs defaultValue={group.links[0].kind} className="gap-0">
+        <Tabs defaultValue={kinds[0]} className="gap-0">
           {/*
             The two kinds are not variants of one link, and the tab row is what
             says so: it spans the card as its own band on --bg-3, with the
@@ -137,20 +167,25 @@ function NodeLinksCard({
             selected.
           */}
           <TabsList variant="line" className="w-full justify-start gap-4 bg-elevated px-4">
-            {group.links.map((link) => (
-              <TabsTrigger key={link.kind} value={link.kind}>
-                {linkKindLabel(link.kind)}
+            {kinds.map((kind) => (
+              <TabsTrigger key={kind} value={kind}>
+                {linkKindLabel(kind)}
               </TabsTrigger>
             ))}
           </TabsList>
-          {group.links.map((link) => (
-            <TabsContent key={link.kind} value={link.kind}>
-              <LinkPanel keyId={keyId} group={group} link={link} onDownload={(l) => onDownload(group, l)} />
+          {kinds.map((kind) => (
+            <TabsContent key={kind} value={kind}>
+              <KindLinks
+                keyId={keyId}
+                group={group}
+                links={group.links.filter((link) => link.kind === kind)}
+                onDownload={(l) => onDownload(group, l)}
+              />
             </TabsContent>
           ))}
         </Tabs>
       ) : (
-        <LinkPanel keyId={keyId} group={group} link={group.links[0]} onDownload={(l) => onDownload(group, l)} />
+        <KindLinks keyId={keyId} group={group} links={group.links} onDownload={(l) => onDownload(group, l)} />
       )}
     </div>
   );
@@ -169,13 +204,13 @@ export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDi
   const handleDownload = async (group: NodeLinkGroup, link: KindLink) => {
     if (!keyId || !key) return;
     try {
-      const res = await fetch(keyQrUrl(keyId, group.node_id, 256, link.kind), { credentials: 'same-origin' });
+      const res = await fetch(keyQrUrl(keyId, group.node_id, 256, link.kind, link.domain), { credentials: 'same-origin' });
       if (!res.ok) throw new Error('qr fetch failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${key.label}-${group.hostname}-${link.kind}.png`;
+      a.download = `${key.label}-${group.hostname}-${link.kind}${link.domain && link.domain !== group.hostname ? `-${link.domain}` : ''}.png`;
       document.body.appendChild(a);
       a.click();
       a.remove();

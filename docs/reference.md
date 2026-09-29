@@ -105,7 +105,7 @@ An installed node moves to a newer pin on its own: `tgwp-agent upgrade` on the h
 
 Keys behave differently per engine. A telemt node gives every key two links (WEB and Fake-TLS), enforces the key's `telemt_limits` (quota, up/down rate, max unique IPs, max connections) itself, and applies profile changes over its control API without restarting anything. A tproxy node offers the WEB link only, ignores those limits, and restarts the relay on every apply. `GET /api/v1/keys/{id}/links` returns one entry per node, `[{node_id, node_name, hostname, engine, links:[{kind, tme, tg}]}]`, with `kind` being `web` or `faketls`.
 
-Changing `tls_domain` or `classic_port` on a telemt node is the one panel action that restarts telemt, and every Fake-TLS link already issued for that node stops working, because the domain and port are part of the link's secret. WEB links are unaffected.
+Changing `tls_domain` or `classic_port` on a telemt node is the one panel action that restarts telemt, and every Fake-TLS link already issued for that node stops working, because the domain and port are part of the link's secret. WEB links are unaffected. Changing the node's backup masking domains (`tls_domains`, up to eight) also restarts telemt, but existing links keep working: each backup domain adds one Fake-TLS link per key.
 
 The node readiness check includes a `pq_kex` probe: a TLS handshake to the node on 443 that reports whether the front negotiated the post-quantum hybrid group `X25519MLKEM768`. It is advisory and never fails the check.
 

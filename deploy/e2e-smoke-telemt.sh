@@ -276,6 +276,22 @@ $JOB_LOG"
 	jq -e 'has("nodes")' >/dev/null <<<"$LAST_BODY" || die "key stats has no nodes field: $LAST_BODY"
 	log "key stats ok"
 
+	log "adding a backup Fake-TLS domain to the node"
+	http PATCH "/api/v1/nodes/$NODE_ID" '{"tls_domains":["backup.example.org"]}'
+	expect_status 200 "$LAST_STATUS" "set backup domain"
+	apply_and_wait "$NODE_ID"
+	grep -q "censorship.tls_domains" <<<"$JOB_LOG" || die "apply job log does not mention the backup domain:
+$JOB_LOG"
+	cfg="$(telemt_api /v1/config)"
+	jq -e '.data.censorship.tls_domains | index("backup.example.org")' >/dev/null 2>&1 <<<"$cfg" ||
+		die "telemt config has no backup domain after the apply: $(head -c 2000 <<<"$cfg")"
+	http GET "/api/v1/keys/$key_id/links"
+	expect_status 200 "$LAST_STATUS" "key links after the backup domain"
+	local tls_domains
+	tls_domains="$(jq -r '[.items[0].links[] | select(.kind=="tls") | .domain] | join(",")' <<<"$LAST_BODY")"
+	[[ "$tls_domains" == "$NODE_HOSTNAME,backup.example.org" ]] || die "expected a Fake-TLS link per domain, got: $tls_domains (body: $LAST_BODY)"
+	log "backup domain live: telemt restarted with it, the key has a Fake-TLS link per domain"
+
 	log "revoking the key"
 	http POST "/api/v1/keys/$key_id/revoke" ""
 	[[ "$LAST_STATUS" == "200" || "$LAST_STATUS" == "204" ]] || die "revoke key: expected HTTP 200/204, got $LAST_STATUS: $LAST_BODY"

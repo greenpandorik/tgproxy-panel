@@ -158,8 +158,9 @@ export const useUnbindKey = (id: string) => {
   });
 };
 
-export function keyQrUrl(id: string, nodeId: string, size = 256, kind: LinkKind = 'web'): string {
-  return `/api/v1/keys/${id}/qr?node=${nodeId}&kind=${kind}&size=${size}`;
+export function keyQrUrl(id: string, nodeId: string, size = 256, kind: LinkKind = 'web', domain?: string): string {
+  const base = `/api/v1/keys/${id}/qr?node=${nodeId}&kind=${kind}&size=${size}`;
+  return domain ? `${base}&domain=${encodeURIComponent(domain)}` : base;
 }
 
 /** Display name of a link kind. Both are product names, not translated copy. */

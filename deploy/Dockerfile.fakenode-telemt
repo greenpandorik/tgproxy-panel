@@ -10,7 +10,8 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -o /out/tgwp-agent ./cmd/agent
+RUN v="$(sed -n 's/^var Version = "\(.*\)"$/\1/p' internal/version/version.go)"; \
+	CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags "-X tgwebproxy/internal/agent.Version=$v" -o /out/tgwp-agent ./cmd/agent
 
 FROM debian:bookworm-slim
 # Same release the panel pins for real nodes (TELEMT_VERSION), but the musl asset: it is

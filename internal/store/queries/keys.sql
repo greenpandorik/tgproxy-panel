@@ -50,7 +50,7 @@ INSERT INTO key_bindings (access_key_id, node_id, profile_id) VALUES ($1, $2, $3
 DELETE FROM key_bindings WHERE access_key_id = $1 AND node_id = $2;
 
 -- name: ListKeyBindings :many
-SELECT b.*, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.classic_port, p.sync_state FROM key_bindings b
+SELECT b.*, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
 WHERE b.access_key_id = $1 ORDER BY n.name;
 
@@ -65,7 +65,7 @@ UPDATE access_keys k SET status = 'active' WHERE k.status = 'pending'
 -- ListBindingsForKeys is ListKeyBindings for a whole page of keys at once, so
 -- the list endpoint no longer issues one binding query per key.
 -- name: ListBindingsForKeys :many
-SELECT b.*, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.classic_port, p.sync_state FROM key_bindings b
+SELECT b.*, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
 WHERE b.access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) ORDER BY b.access_key_id, n.name;
 

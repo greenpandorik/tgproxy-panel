@@ -476,6 +476,7 @@ summary {
   background: color-mix(in srgb, var(--brand-primary) 10%, var(--bg-2));
 }
 [data-slot='input'],
+[data-slot='textarea'],
 .ops-select {
   background-color: var(--field-bg);
 }

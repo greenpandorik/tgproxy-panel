@@ -140,7 +140,7 @@ func TestDesiredStateCarriesListenersForTelemtOnly(t *testing.T) {
 	if _, err := tel.st.Q.UpdateNode(ctx, db.UpdateNodeParams{
 		ID: tel.node.ID, Name: tel.node.Name, PublicIp: tel.node.PublicIp,
 		MaxProfiles: tel.node.MaxProfiles, AcmeEmail: tel.node.AcmeEmail,
-		TlsDomain: &dom, ClassicPort: pgtype.Int4{Int32: 9443, Valid: true},
+		TlsDomain: &dom, ClassicPort: pgtype.Int4{Int32: 9443, Valid: true}, TlsDomains: []string{"alt.example.org"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -148,8 +148,8 @@ func TestDesiredStateCarriesListenersForTelemtOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if des.Req.TLSDomain != dom || des.Req.ClassicPort != 9443 {
-		t.Fatalf("telemt node must carry its listener: %q %d", des.Req.TLSDomain, des.Req.ClassicPort)
+	if des.Req.TLSDomain != dom || des.Req.ClassicPort != 9443 || len(des.Req.TLSDomains) != 1 || des.Req.TLSDomains[0] != "alt.example.org" {
+		t.Fatalf("telemt node must carry its listener: %q %v %d", des.Req.TLSDomain, des.Req.TLSDomains, des.Req.ClassicPort)
 	}
 	if des.Req.PublicIP != tel.node.PublicIp {
 		t.Fatalf("telemt node must carry its public ip: %q want %q", des.Req.PublicIP, tel.node.PublicIp)
@@ -160,7 +160,7 @@ func TestDesiredStateCarriesListenersForTelemtOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tpDes.Req.TLSDomain != "" || tpDes.Req.ClassicPort != 0 || tpDes.Req.PublicIP != "" {
+	if tpDes.Req.TLSDomain != "" || len(tpDes.Req.TLSDomains) != 0 || tpDes.Req.ClassicPort != 0 || tpDes.Req.PublicIP != "" {
 		t.Fatalf("a tproxy node has no Fake-TLS listener: %q %d %q", tpDes.Req.TLSDomain, tpDes.Req.ClassicPort, tpDes.Req.PublicIP)
 	}
 }

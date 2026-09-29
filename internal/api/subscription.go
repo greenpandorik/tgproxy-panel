@@ -212,12 +212,22 @@ func (s *Server) subscriptionPage(r *http.Request, key db.AccessKey) (subscripti
 	locations := make([]subscription.Location, 0, len(links))
 	for _, l := range links {
 		methods := make([]subscription.LocationLink, 0, len(l.Links))
+		tlsLinks := 0
+		for _, m := range l.Links {
+			if m.Kind == keys.LinkTLS {
+				tlsLinks++
+			}
+		}
 		for _, m := range l.Links {
 			qr, err := qrlink.DataURI(m.TMe, subscriptionQRSize)
 			if err != nil {
 				return subscription.Page{}, err
 			}
-			methods = append(methods, subscription.LocationLink{Kind: m.Kind, Label: linkKindLabel(m.Kind), TMe: m.TMe, Tg: m.Tg, QRDataURI: qr})
+			label := linkKindLabel(m.Kind)
+			if m.Kind == keys.LinkTLS && tlsLinks > 1 {
+				label += " · " + m.Domain
+			}
+			methods = append(methods, subscription.LocationLink{Kind: m.Kind, Label: label, TMe: m.TMe, Tg: m.Tg, QRDataURI: qr})
 		}
 		locations = append(locations, subscription.Location{Name: l.NodeName, Hostname: l.Hostname, Links: methods})
 	}

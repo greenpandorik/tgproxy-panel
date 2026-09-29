@@ -109,6 +109,7 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 	req := nodedriver.ApplyRequest{ApplyProfiles: true}
 	if node.Engine == db.NodeEngineTelemt {
 		req.TLSDomain, req.ClassicPort, req.PublicIP = node.TlsDomain, uint32(node.ClassicPort), node.PublicIp
+		req.TLSDomains = node.TlsDomains
 		req.AdTag = node.AdTag
 		policy := nodesvc.WebPolicyOf(node.TelemtWebPolicy)
 		req.WebPolicy = &policy

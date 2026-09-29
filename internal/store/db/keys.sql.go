@@ -275,7 +275,7 @@ func (q *Queries) ListActiveSubscriptionAccessKeyIDs(ctx context.Context, keyIds
 }
 
 const listBindingsForKeys = `-- name: ListBindingsForKeys :many
-SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.classic_port, p.sync_state FROM key_bindings b
+SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
 WHERE b.access_key_id = ANY($1::uuid[]) ORDER BY b.access_key_id, n.name
 `
@@ -288,6 +288,7 @@ type ListBindingsForKeysRow struct {
 	Hostname    string     `json:"hostname"`
 	Engine      NodeEngine `json:"engine"`
 	TlsDomain   string     `json:"tls_domain"`
+	TlsDomains  []string   `json:"tls_domains"`
 	ClassicPort int32      `json:"classic_port"`
 	SyncState   SyncState  `json:"sync_state"`
 }
@@ -311,6 +312,7 @@ func (q *Queries) ListBindingsForKeys(ctx context.Context, keyIds []uuid.UUID) (
 			&i.Hostname,
 			&i.Engine,
 			&i.TlsDomain,
+			&i.TlsDomains,
 			&i.ClassicPort,
 			&i.SyncState,
 		); err != nil {
@@ -364,7 +366,7 @@ func (q *Queries) ListExpiredActiveKeys(ctx context.Context) ([]AccessKey, error
 }
 
 const listKeyBindings = `-- name: ListKeyBindings :many
-SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.classic_port, p.sync_state FROM key_bindings b
+SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
 WHERE b.access_key_id = $1 ORDER BY n.name
 `
@@ -377,6 +379,7 @@ type ListKeyBindingsRow struct {
 	Hostname    string     `json:"hostname"`
 	Engine      NodeEngine `json:"engine"`
 	TlsDomain   string     `json:"tls_domain"`
+	TlsDomains  []string   `json:"tls_domains"`
 	ClassicPort int32      `json:"classic_port"`
 	SyncState   SyncState  `json:"sync_state"`
 }
@@ -398,6 +401,7 @@ func (q *Queries) ListKeyBindings(ctx context.Context, accessKeyID uuid.UUID) ([
 			&i.Hostname,
 			&i.Engine,
 			&i.TlsDomain,
+			&i.TlsDomains,
 			&i.ClassicPort,
 			&i.SyncState,
 		); err != nil {

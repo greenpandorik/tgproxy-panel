@@ -3,6 +3,7 @@ package nodedriver
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -21,6 +22,7 @@ type mockNode struct {
 	failMsg     string
 	restarts    int
 	tlsDomain   string
+	tlsDomains  []string
 	classicPort uint32
 	publicIP    string
 	deferred    []string
@@ -176,9 +178,11 @@ func (m *Mock) Apply(_ context.Context, id uuid.UUID, req ApplyRequest) (ApplyRe
 		n.site = *req.Site
 		res.RestartedRelay = true
 	}
-	if (req.TLSDomain != "" && req.TLSDomain != n.tlsDomain) || (req.ClassicPort != 0 && req.ClassicPort != n.classicPort) {
+	domainsChanged := req.TLSDomain != "" && !slices.Equal(req.TLSDomains, n.tlsDomains)
+	if (req.TLSDomain != "" && req.TLSDomain != n.tlsDomain) || (req.ClassicPort != 0 && req.ClassicPort != n.classicPort) || domainsChanged {
 		if req.TLSDomain != "" {
 			n.tlsDomain = req.TLSDomain
+			n.tlsDomains = append([]string(nil), req.TLSDomains...)
 		}
 		if req.ClassicPort != 0 {
 			n.classicPort = req.ClassicPort

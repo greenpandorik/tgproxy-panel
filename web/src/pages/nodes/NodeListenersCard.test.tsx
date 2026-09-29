@@ -97,6 +97,7 @@ describe('NodeListenersCard', () => {
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
     expect(mutateAsync).toHaveBeenCalledWith({
       tls_domain: 'n1.test',
+      tls_domains: [],
       classic_port: 8443,
       public_ip: '104.239.66.129',
       ad_tag: '',
@@ -152,10 +153,48 @@ describe('NodeListenersCard', () => {
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
     expect(mutateAsync).toHaveBeenCalledWith({
       tls_domain: 'n1.test',
+      tls_domains: [],
       classic_port: 8443,
       public_ip: '104.239.66.187',
       ad_tag: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     });
+  });
+
+  it('saves backup domains after their own confirmation, without the link-reissue warning', async () => {
+    const user = userEvent.setup();
+    render(wrap(<NodeListenersCard node={node} canEdit />));
+    await user.click(screen.getByRole('button', { name: 'Backup masking domains' }));
+    await user.type(screen.getByLabelText('Backup masking domains'), 'Alt.Example.org{enter}n1.test{enter}alt.example.org');
+
+    expect(screen.getByTestId('extra-domains-note')).toBeInTheDocument();
+    expect(screen.queryByTestId('listeners-restart-note')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Change the backup domains?')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+    expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ tls_domain: 'n1.test', tls_domains: ['alt.example.org'] }));
+  });
+
+  it('rejects a backup domain that is not a hostname before asking to confirm', async () => {
+    const user = userEvent.setup();
+    render(wrap(<NodeListenersCard node={node} canEdit />));
+    await user.click(screen.getByRole('button', { name: 'Backup masking domains' }));
+    await user.type(screen.getByLabelText('Backup masking domains'), 'no_dots');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Each domain lowercase and with a dot, at most 8')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens the backup domains when the node has some and lists them for viewers', () => {
+    const withExtra = { ...node, tls_domains: ['alt.example.org', 'cdn.example.net'] } as Node;
+    const { unmount } = render(wrap(<NodeListenersCard node={withExtra} canEdit />));
+    expect(screen.getByLabelText('Backup masking domains')).toHaveValue('alt.example.org\ncdn.example.net');
+    unmount();
+    render(wrap(<NodeListenersCard node={withExtra} canEdit={false} />));
+    expect(screen.getByText('alt.example.org, cdn.example.net')).toBeInTheDocument();
   });
 
   it('offers a link to @MTProxybot and a way to copy what it needs', async () => {

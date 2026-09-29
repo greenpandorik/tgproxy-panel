@@ -58,7 +58,7 @@ export const HELP_TOPICS = {
     docs: 'engine',
   },
   'nodes.listeners': {
-    fields: ['tls_domain', 'classic_port', 'public_ip'],
+    fields: ['tls_domain', 'tls_domains', 'classic_port', 'public_ip'],
     docs: 'engine',
   },
   'nodes.dcs': {

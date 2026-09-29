@@ -26,6 +26,7 @@ function node(id: string, name: string, engine: Node['engine']): Node {
     online: true,
     engine,
     tls_domain: '',
+    tls_domains: [],
     classic_port: 0,
     ad_tag: '',
     telemt_version: '',

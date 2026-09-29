@@ -117,6 +117,33 @@ describe('KeyLinkDialog link kinds', () => {
     expect(qr).toHaveAttribute('src', expect.stringContaining('kind=tls'));
   });
 
+  it('offers a domain switcher when the node masks as several Fake-TLS domains', async () => {
+    const group: NodeLinkGroup = {
+      ...TELEMT_GROUP,
+      links: [
+        TELEMT_GROUP.links[0],
+        { ...TELEMT_GROUP.links[1], domain: 'ams1.proxy-demo.net' },
+        {
+          kind: 'tls',
+          domain: 'www.example.org',
+          tme: 'https://t.me/proxy?server=ams1.proxy-demo.net&port=8443&secret=eebb',
+          tg: 'tg://proxy?server=ams1&port=8443&secret=eebb',
+        },
+      ],
+    };
+    mockApi([group]);
+    renderDialog();
+
+    expect(await screen.findAllByRole('tab')).toHaveLength(2);
+    await userEvent.click(screen.getByRole('tab', { name: 'Fake-TLS' }));
+    expect(await screen.findByDisplayValue(group.links[1].tme)).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Домен маскировки' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'www.example.org' }));
+    expect(await screen.findByDisplayValue(group.links[2].tme)).toBeInTheDocument();
+    expect(screen.getByAltText(/www\.example\.org/)).toHaveAttribute('src', expect.stringContaining('domain=www.example.org'));
+  });
+
   it('shows a tproxy node its single WEB link with a note instead of tabs', async () => {
     mockApi([TPROXY_GROUP]);
     renderDialog();

@@ -266,6 +266,7 @@ message ApplyRequest {
   string public_ip = 7;
   string ad_tag = 8;
   WebPolicy web_policy = 9;   // nil = leave the node's WEB policy untouched
+  repeated string tls_domains = 10;   // extra Fake-TLS domains; reconciled only when tls_domain is set
 }
 // UpdateTelemtRequest asks the node to replace its telemt binary with the build the panel
 // pinned. sha256 is the panel's pin for the artifact at url and the node refuses a download

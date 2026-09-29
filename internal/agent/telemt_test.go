@@ -1277,6 +1277,91 @@ func TestTelemtApplyMovesTheFakeTLSListener(t *testing.T) {
 	}
 }
 
+func TestTelemtApplySetsExtraFakeTLSDomains(t *testing.T) {
+	ex := &fakeExec{}
+	h, _, ft := telemtHandler(t, ex)
+	req := &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode),
+		TlsDomain: "n1.example.com", ClassicPort: 8443,
+		TlsDomains: []string{" Alt.Example.org", "n1.example.com", "alt.example.org", "cdn.example.net"},
+	}
+	res := h.Apply(context.Background(), req)
+	if !res.Ok || !res.RestartedRelay {
+		t.Fatalf("extra domains must apply with a restart: ok=%v restarted=%v %s", res.Ok, res.RestartedRelay, res.Log)
+	}
+	_, _, patches, _ := ft.snapshot()
+	var sawDomains bool
+	for _, raw := range patches {
+		var p map[string]any
+		if err := json.Unmarshal([]byte(raw), &p); err != nil {
+			t.Fatalf("patch is not json: %v", err)
+		}
+		if c, ok := p["censorship"].(map[string]any); ok {
+			if _, touched := c["tls_domain"]; touched {
+				t.Fatalf("the unchanged primary domain must not be patched: %s", raw)
+			}
+			got, _ := json.Marshal(c["tls_domains"])
+			if string(got) != `["alt.example.org","cdn.example.net"]` {
+				t.Fatalf("tls_domains must be lower-cased, without the primary and repeats: %s", raw)
+			}
+			sawDomains = true
+		}
+	}
+	if !sawDomains {
+		t.Fatalf("no censorship.tls_domains patch: %v", patches)
+	}
+	if !ex.has("systemctl restart telemt") {
+		t.Fatalf("telemt must restart for new Fake-TLS domains: %v", ex.list())
+	}
+
+	ex2 := &fakeExec{}
+	h.exec = ex2
+	res = h.Apply(context.Background(), req)
+	if !res.Ok || res.RestartedRelay || ex2.has("systemctl restart telemt") {
+		t.Fatalf("the same domains again must not restart telemt: %s %v", res.Log, ex2.list())
+	}
+
+	res = h.Apply(context.Background(), &agentv1.ApplyRequest{ApplyProfiles: true, Profiles: profiles("node", secretNode)})
+	if !res.Ok {
+		t.Fatalf("apply without listener fields failed: %s", res.Log)
+	}
+	got, _ := json.Marshal(ft.section("censorship")["tls_domains"])
+	if string(got) != `["alt.example.org","cdn.example.net"]` {
+		t.Fatalf("a request without tls_domain must leave the extra domains alone: %s", got)
+	}
+}
+
+func TestTelemtApplyRestoresExtraDomainsWhenTheRestartFails(t *testing.T) {
+	ex := &fakeExec{failNth: "restart telemt", failNthCount: 1, failMsg: "job failed"}
+	h, _, ft := telemtHandler(t, ex)
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode),
+		TlsDomain: "n1.example.com", ClassicPort: 8443, TlsDomains: []string{"alt.example.org"},
+	})
+	if res.Ok || !res.RolledBack {
+		t.Fatalf("a failed restart must roll the domains back: ok=%v rolledBack=%v %s", res.Ok, res.RolledBack, res.Log)
+	}
+	got, _ := json.Marshal(ft.section("censorship")["tls_domains"])
+	if string(got) != `[]` {
+		t.Fatalf("tls_domains not restored: %s", got)
+	}
+}
+
+func TestTelemtApplyRejectsAnInvalidExtraDomain(t *testing.T) {
+	ex := &fakeExec{}
+	h, _, ft := telemtHandler(t, ex)
+	res := h.Apply(context.Background(), &agentv1.ApplyRequest{
+		ApplyProfiles: true, Profiles: profiles("node", secretNode),
+		TlsDomain: "n1.example.com", ClassicPort: 8443, TlsDomains: []string{"not a domain"},
+	})
+	if res.Ok {
+		t.Fatalf("an invalid domain must fail the apply: %s", res.Log)
+	}
+	if _, set := ft.section("censorship")["tls_domains"]; set {
+		t.Fatalf("nothing may be written for an invalid domain: %#v", ft.section("censorship"))
+	}
+}
+
 func TestTelemtApplyRewritesThePublicAddr(t *testing.T) {
 	ex := &fakeExec{}
 	h, _, ft := telemtHandler(t, ex)

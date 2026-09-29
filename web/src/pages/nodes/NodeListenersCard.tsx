@@ -13,6 +13,7 @@ import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
@@ -24,10 +25,27 @@ const HOSTNAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 // Four dotted decimal octets, each 0..255 - what validatePublicIP on the server accepts.
 const IPV4_RE = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 const AD_TAG_RE = /^[0-9a-f]{32}$/;
+// Mirrors maxExtraTLSDomains in internal/api/nodes.go.
+const MAX_EXTRA_DOMAINS = 8;
+
+const isHostname = (d: string) => HOSTNAME_RE.test(d) && d.includes('.');
+
+/** The backup domains typed one per line (or comma-separated), lower-cased, without the primary and repeats. */
+function parseExtraDomains(text: string, primary: string): string[] {
+  const out: string[] = [];
+  for (const raw of text.split(/[\s,]+/)) {
+    const d = raw.trim().toLowerCase();
+    if (d && d !== primary && !out.includes(d)) out.push(d);
+  }
+  return out;
+}
+
+const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((d, i) => d === b[i]);
 
 const schema = z
   .object({
     tls_domain: z.string().trim().toLowerCase(),
+    tls_domains: z.string(),
     classic_port: z.coerce.number().int(),
     public_ip: z.string().trim(),
     ad_tag: z.string().trim().toLowerCase(),
@@ -35,6 +53,10 @@ const schema = z
   .superRefine((val, ctx) => {
     if (!HOSTNAME_RE.test(val.tls_domain) || !val.tls_domain.includes('.')) {
       ctx.addIssue({ code: 'custom', path: ['tls_domain'], message: 'hostname' });
+    }
+    const extra = parseExtraDomains(val.tls_domains, val.tls_domain);
+    if (extra.length > MAX_EXTRA_DOMAINS || !extra.every(isHostname)) {
+      ctx.addIssue({ code: 'custom', path: ['tls_domains'], message: 'extra_domains' });
     }
     if (!Number.isInteger(val.classic_port) || val.classic_port < 1024 || val.classic_port > 65535) {
       ctx.addIssue({ code: 'custom', path: ['classic_port'], message: 'range' });
@@ -50,10 +72,11 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-type Pending = { kind: 'fake_tls' | 'public_ip'; values: FormValues } | null;
+type Pending = { kind: 'fake_tls' | 'extra_domains' | 'public_ip'; values: FormValues } | null;
 
 const valuesOf = (node: Node): FormValues => ({
   tls_domain: node.tls_domain,
+  tls_domains: (node.tls_domains ?? []).join('\n'),
   classic_port: node.classic_port,
   public_ip: node.public_ip,
   ad_tag: node.ad_tag,
@@ -77,22 +100,33 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
     defaultValues: valuesOf(node),
   });
 
+  const savedExtra = node.tls_domains ?? [];
+  const savedExtraText = savedExtra.join('\n');
   useEffect(() => {
-    reset({ tls_domain: node.tls_domain, classic_port: node.classic_port, public_ip: node.public_ip, ad_tag: node.ad_tag });
-  }, [node.tls_domain, node.classic_port, node.public_ip, node.ad_tag, reset]);
+    reset({
+      tls_domain: node.tls_domain,
+      tls_domains: savedExtraText,
+      classic_port: node.classic_port,
+      public_ip: node.public_ip,
+      ad_tag: node.ad_tag,
+    });
+  }, [node.tls_domain, savedExtraText, node.classic_port, node.public_ip, node.ad_tag, reset]);
 
-  const [draftDomain, draftPort] = useWatch({ control, name: ['tls_domain', 'classic_port'] });
+  const [draftDomain, draftExtra, draftPort] = useWatch({ control, name: ['tls_domain', 'tls_domains', 'classic_port'] });
   const fakeTlsEdited = draftDomain !== node.tls_domain || Number(draftPort) !== node.classic_port;
+  const extraEdited = !sameList(parseExtraDomains(draftExtra ?? '', (draftDomain ?? '').trim().toLowerCase()), savedExtra);
 
   const askToSave = (values: FormValues) => {
     const fakeTLS = values.tls_domain !== node.tls_domain || values.classic_port !== node.classic_port;
-    setPending({ kind: fakeTLS ? 'fake_tls' : 'public_ip', values });
+    const extra = !sameList(parseExtraDomains(values.tls_domains, values.tls_domain), savedExtra);
+    setPending({ kind: fakeTLS ? 'fake_tls' : extra ? 'extra_domains' : 'public_ip', values });
   };
 
   const onSubmit = async (values: FormValues) => {
     try {
       await patchNode.mutateAsync({
         tls_domain: values.tls_domain,
+        tls_domains: parseExtraDomains(values.tls_domains, values.tls_domain),
         classic_port: values.classic_port,
         public_ip: values.public_ip,
         ad_tag: values.ad_tag,
@@ -144,6 +178,26 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
 
           <p className="text-label text-mute">{t('nodes.field_public_ip_hint')}</p>
 
+          <AdvancedSettings
+            label={t('nodes.field_extra_domains')}
+            defaultOpen={savedExtra.length > 0}
+            contentClassName="space-y-2"
+          >
+            <Label htmlFor="node-extra-domains-edit">{t('nodes.field_extra_domains')}</Label>
+            <Textarea
+              id="node-extra-domains-edit"
+              rows={3}
+              className="mono"
+              placeholder={'www.example.org\ncdn.example.net'}
+              {...register('tls_domains')}
+              aria-invalid={!!errors.tls_domains}
+            />
+            {errors.tls_domains && (
+              <p className="text-label text-destructive">{t('nodes.validation_extra_domains', { max: MAX_EXTRA_DOMAINS })}</p>
+            )}
+            <p className="text-label text-mute">{t('nodes.field_extra_domains_hint')}</p>
+          </AdvancedSettings>
+
           <AdvancedSettings label={t('nodes.field_ad_tag')} defaultOpen={!!node.ad_tag} contentClassName="space-y-2">
             <Label htmlFor="node-ad-tag-edit">{t('nodes.field_ad_tag')}</Label>
             <Input
@@ -183,11 +237,18 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
               )}
             </div>
           </AdvancedSettings>
-          {fakeTlsEdited && (
+          {fakeTlsEdited ? (
             <p data-testid="listeners-restart-note" className="flex items-start gap-2 text-label text-warn">
               <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
               {t('nodes.listeners_restart_note')}
             </p>
+          ) : (
+            extraEdited && (
+              <p data-testid="extra-domains-note" className="flex items-start gap-2 text-label text-warn">
+                <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
+                {t('nodes.extra_domains_note')}
+              </p>
+            )
           )}
 
           <div className="flex justify-end">
@@ -202,6 +263,12 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
             <dt className="truncate text-label text-mute">{t('nodes.field_tls_domain')}</dt>
             <dd className="mono shrink-0 text-mono text-foreground">{node.tls_domain || '—'}</dd>
           </div>
+          {savedExtra.length > 0 && (
+            <div className="flex items-start justify-between gap-3 bg-card px-4 py-3 sm:col-span-2">
+              <dt className="truncate text-label text-mute">{t('nodes.field_extra_domains')}</dt>
+              <dd className="mono text-right text-mono text-foreground">{savedExtra.join(', ')}</dd>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
             <dt className="truncate text-label text-mute">{t('nodes.field_classic_port')}</dt>
             <dd className="mono shrink-0 text-mono text-foreground">{node.classic_port}</dd>
@@ -222,11 +289,21 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
         onOpenChange={(open) => {
           if (!open) setPending(null);
         }}
-        title={t(pending?.kind === 'public_ip' ? 'nodes.public_ip_confirm_title' : 'nodes.listeners_confirm_title')}
-        description={t(
-          pending?.kind === 'public_ip' ? 'nodes.public_ip_confirm_description' : 'nodes.listeners_confirm_description',
+        title={t(
+          pending?.kind === 'public_ip'
+            ? 'nodes.public_ip_confirm_title'
+            : pending?.kind === 'extra_domains'
+              ? 'nodes.extra_domains_confirm_title'
+              : 'nodes.listeners_confirm_title',
         )}
-        destructive={pending?.kind !== 'public_ip'}
+        description={t(
+          pending?.kind === 'public_ip'
+            ? 'nodes.public_ip_confirm_description'
+            : pending?.kind === 'extra_domains'
+              ? 'nodes.extra_domains_confirm_description'
+              : 'nodes.listeners_confirm_description',
+        )}
+        destructive={pending?.kind === 'fake_tls'}
         confirmLabel={t('common.save')}
         onConfirm={() => (pending ? onSubmit(pending.values) : undefined)}
       />

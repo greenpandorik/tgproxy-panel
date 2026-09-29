@@ -29,7 +29,8 @@ SELECT * FROM nodes ORDER BY created_at;
 UPDATE nodes SET name = $2, public_ip = $3, max_profiles = $4, acme_email = $5,
   tls_domain = COALESCE(sqlc.narg('tls_domain')::text, tls_domain),
   classic_port = COALESCE(sqlc.narg('classic_port')::int, classic_port),
-  ad_tag = COALESCE(sqlc.narg('ad_tag')::text, ad_tag)
+  ad_tag = COALESCE(sqlc.narg('ad_tag')::text, ad_tag),
+  tls_domains = COALESCE(sqlc.narg('tls_domains')::text[], tls_domains)
 WHERE id = $1 RETURNING *;
 
 -- SetNodeWebPolicy stores only what the operator set differently from the panel default,
