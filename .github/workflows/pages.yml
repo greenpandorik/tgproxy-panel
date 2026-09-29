@@ -1,0 +1,43 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - docs/screenshots/ru/dashboard.png
+      - docs/screenshots/ru/key-link-dialog.png
+      - docs/brand/social-preview.png
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/img
+          cp -R site/. _site/
+          cp docs/screenshots/ru/dashboard.png docs/screenshots/ru/key-link-dialog.png _site/img/
+          cp docs/brand/social-preview.png _site/og.png
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v5

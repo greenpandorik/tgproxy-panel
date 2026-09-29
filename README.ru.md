@@ -10,7 +10,7 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/greenpandorik/tgproxy-panel)](go.mod)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-[English](README.md) · **Русский**
+[English](README.md) · **Русский** · [Сайт проекта](https://greenpandorik.github.io/tgproxy-panel/)
 
 Панель управления парком Telegram-прокси, которую вы ставите на свой сервер. Она выдаёт и
 отзывает ключи, доставляет настройки на серверы по gRPC, разворачивает на каждом сайт-прикрытие и
