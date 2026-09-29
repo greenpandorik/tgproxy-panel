@@ -22,7 +22,7 @@
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="../fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../fonts/onest-latin.woff2" as="font" type="font/woff2" crossorigin>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -59,19 +59,40 @@
 </header>
 
 <main>
-  <div class="hero">
-    <div class="wrap">
+  <div class="wrap hero">
+    <div>
       <h1>Control panel for MTProxy with <span class="nowrap">Fake-TLS</span> and <span class="nowrap">WEB proxy</span></h1>
       <p class="lead">TGProxy Panel runs on one VPS and manages Telegram proxies on the rest. It issues keys with Fake-TLS and WEB links, puts a cover website on every server and keeps an eye on all of them. It is open source and free to use.</p>
       <div class="actions">
-        <a class="btn btn-primary" href="#install">How to install</a>
-        <a class="btn btn-ghost" href="https://github.com/greenpandorik/tgproxy-panel">Source code on GitHub</a>
+        <a class="btn" href="#install">How to install</a>
+        <a class="textlink" href="https://github.com/greenpandorik/tgproxy-panel">Source code on GitHub</a>
       </div>
-      <figure class="shot">
-        <img src="img/dashboard.png" width="1440" height="900" fetchpriority="high" alt="The panel overview: server summary, load, latency to Telegram and the server list">
+    </div>
+    <figure class="masq">
+      <div class="stage">
+        <div class="window">
+          <div class="window-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="address mono">https://<span class="domain">ams1.proxy-demo.net</span></span></div>
+          <img src="../img/cover-site.jpg" width="1200" height="760" fetchpriority="high" alt="A cover site on the proxy server domain: the Kanso Coffee page">
+        </div>
+        <div class="ticket">
+          <div class="ticket-head"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/></svg><span>Link for Telegram</span></div>
+          <code>https://t.me/proxy?server=<span class="domain">ams1.proxy-demo.net</span>&amp;port=…&amp;secret=ee…</code>
+        </div>
+      </div>
+      <figcaption>On the proxy server domain a visitor sees an ordinary website, a coffee shop in this case. Telegram connects to the same domain as a proxy.</figcaption>
+    </figure>
+  </div>
+
+  <section id="panel">
+    <div class="wrap">
+      <h2>Every server and key in one panel</h2>
+      <p class="mute prose intro">The overview starts with a verdict: what is broken and where. Below it are load, latency to Telegram and the server list, and each server opens into its own page with checks, logs and statistics.</p>
+      <figure class="window">
+        <div class="window-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="address mono">https://<span class="domain">panel.example.com</span></span></div>
+        <img src="img/dashboard.png" width="1440" height="900" loading="lazy" alt="The panel overview: server summary, load, latency to Telegram and the server list">
       </figure>
     </div>
-  </div>
+  </section>
 
   <section id="links">
     <div class="wrap split">
@@ -80,27 +101,25 @@
         <p class="mute">A key gives one person or a group access to your servers. For every server the key is bound to, the panel issues two links with QR codes, and people connect with whichever one works on their network.</p>
         <div class="links">
           <div class="link">
-            <h3>Fake-TLS</h3>
-            <span class="shape">https://t.me/proxy?server=…&amp;secret=ee…</span>
+            <h3><span class="eye" aria-hidden="true"></span>Fake-TLS</h3>
+            <span class="shape mono">https://t.me/proxy?server=…&amp;secret=ee…</span>
             <p>MTProxy that looks like an ordinary website visit from the outside: the TLS handshake uses your server's domain, and that domain serves a real cover site. Every official Telegram app understands these links.</p>
           </div>
-          <div class="link web">
-            <h3>WEB proxy</h3>
-            <span class="shape">https://t.me/webproxy?server=…&amp;secret=…</span>
+          <div class="link">
+            <h3><span class="eye" aria-hidden="true"></span>WEB proxy</h3>
+            <span class="shape mono">https://t.me/webproxy?server=…&amp;secret=…</span>
             <p>A proxy over plain HTTPS on port 443. The server picks the transport that suits the user's network, so the proxy keeps working even where a corporate network blocks WebSocket. Telegram Desktop supports these links, and Android support is experimental.</p>
           </div>
         </div>
         <p class="mute">If a server has backup domains, each one gives the key another Fake-TLS link. A subscription page gathers all of a person's links and QR codes behind a single address.</p>
       </div>
-      <figure class="shot dialog" style="--ratio: 510 / 752; --top: -14.51%">
+      <figure class="dialog" style="--ratio: 510 / 752; --top: -14.51%">
         <img src="img/key-link-dialog.png" width="1440" height="900" loading="lazy" alt="The key links dialog: WEB and Fake-TLS links with a QR code for each server">
       </figure>
     </div>
   </section>
 
-  <div class="wrap"><hr class="rule"></div>
-
-  <section id="install" class="after-rule">
+  <section id="install" class="band">
     <div class="wrap">
       <h2>How to set up MTProxy with Fake-TLS on your own server</h2>
       <p class="mute prose">You need two VPS: one for the panel and one for the proxy. The proxy takes ports 80 and 443, so it can't share a host with the panel. After that it's five steps.</p>

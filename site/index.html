@@ -21,7 +21,7 @@
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="fonts/inter-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/onest-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -58,19 +58,40 @@
 </header>
 
 <main>
-  <div class="hero">
-    <div class="wrap">
+  <div class="wrap hero">
+    <div>
       <h1>Панель для MTProxy с&nbsp;<span class="nowrap">Fake-TLS</span> и&nbsp;<span class="nowrap">WEB-прокси</span></h1>
       <p class="lead">TGProxy Panel ставится на ваш VPS и управляет Telegram-прокси на остальных серверах. Она выдаёт ключи со ссылками Fake-TLS и WEB, поднимает на каждом сервере сайт-прикрытие и следит, чтобы прокси работали. Код открыт, пользоваться бесплатно.</p>
       <div class="actions">
-        <a class="btn btn-primary" href="#install">Как установить</a>
-        <a class="btn btn-ghost" href="https://github.com/greenpandorik/tgproxy-panel">Исходный код на GitHub</a>
+        <a class="btn" href="#install">Как установить</a>
+        <a class="textlink" href="https://github.com/greenpandorik/tgproxy-panel">Исходный код на GitHub</a>
       </div>
-      <figure class="shot">
-        <img src="img/dashboard.png" width="1440" height="900" fetchpriority="high" alt="Главная страница панели: сводка по серверам, нагрузка, задержка до Telegram и список серверов">
+    </div>
+    <figure class="masq">
+      <div class="stage">
+        <div class="window">
+          <div class="window-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="address mono">https://<span class="domain">ams1.proxy-demo.net</span></span></div>
+          <img src="img/cover-site.jpg" width="1200" height="760" fetchpriority="high" alt="Сайт-прикрытие на домене прокси-сервера: страница кофейни Kanso Coffee">
+        </div>
+        <div class="ticket">
+          <div class="ticket-head"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/></svg><span>Ссылка для Telegram</span></div>
+          <code>https://t.me/proxy?server=<span class="domain">ams1.proxy-demo.net</span>&amp;port=…&amp;secret=ee…</code>
+        </div>
+      </div>
+      <figcaption>На домене прокси-сервера посетитель видит обычный сайт, здесь это кофейня. Telegram подключается к тому же домену как к прокси.</figcaption>
+    </figure>
+  </div>
+
+  <section id="panel">
+    <div class="wrap">
+      <h2>Все серверы и ключи в&nbsp;одной панели</h2>
+      <p class="mute prose intro">Главная страница начинается с вердикта: что сломалось и где. Ниже нагрузка, задержка до Telegram и список серверов, а каждый сервер открывается отдельной страницей с проверками, логами и статистикой.</p>
+      <figure class="window">
+        <div class="window-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="address mono">https://<span class="domain">panel.example.com</span></span></div>
+        <img src="img/dashboard.png" width="1440" height="900" loading="lazy" alt="Главная страница панели: сводка по серверам, нагрузка, задержка до Telegram и список серверов">
       </figure>
     </div>
-  </div>
+  </section>
 
   <section id="links">
     <div class="wrap split">
@@ -79,27 +100,25 @@
         <p class="mute">Ключ даёт доступ одному человеку или группе. Для каждого сервера, к которому он привязан, панель выдаёт две ссылки с QR-кодами, и человек подключается той, что работает в его сети.</p>
         <div class="links">
           <div class="link">
-            <h3>Fake-TLS</h3>
-            <span class="shape">https://t.me/proxy?server=…&amp;secret=ee…</span>
+            <h3><span class="eye" aria-hidden="true"></span>Fake-TLS</h3>
+            <span class="shape mono">https://t.me/proxy?server=…&amp;secret=ee…</span>
             <p>MTProxy, который снаружи выглядит как обычный заход на сайт: TLS-рукопожатие идёт с доменом вашего сервера, а по этому домену открывается сайт-прикрытие. Такие ссылки понимают все официальные клиенты Telegram.</p>
           </div>
-          <div class="link web">
-            <h3>WEB-прокси</h3>
-            <span class="shape">https://t.me/webproxy?server=…&amp;secret=…</span>
+          <div class="link">
+            <h3><span class="eye" aria-hidden="true"></span>WEB-прокси</h3>
+            <span class="shape mono">https://t.me/webproxy?server=…&amp;secret=…</span>
             <p>Прокси поверх обычного HTTPS на порту 443. Сервер сам подбирает способ передачи под сеть пользователя, так что прокси работает, даже если корпоративная сеть режет WebSocket. Telegram Desktop поддерживает такие ссылки стабильно, Android пока экспериментально.</p>
           </div>
         </div>
         <p class="mute">Если у сервера есть запасные домены маскировки, каждый из них даёт ключу ещё одну Fake-TLS-ссылку. Страница подписки собирает все ссылки и QR-коды человека по одному адресу.</p>
       </div>
-      <figure class="shot dialog" style="--ratio: 510 / 796; --top: -10.196%">
+      <figure class="dialog" style="--ratio: 510 / 796; --top: -10.196%">
         <img src="img/key-link-dialog.png" width="1440" height="900" loading="lazy" alt="Окно ссылок ключа: WEB и Fake-TLS ссылки с QR-кодом для каждого сервера">
       </figure>
     </div>
   </section>
 
-  <div class="wrap"><hr class="rule"></div>
-
-  <section id="install" class="after-rule">
+  <section id="install" class="band">
     <div class="wrap">
       <h2>Как поднять MTProxy с Fake-TLS на своём сервере</h2>
       <p class="mute prose">Понадобятся два VPS: один для панели, второй для прокси. Прокси занимает порты 80 и 443, поэтому на одном сервере с панелью он не уживётся. Дальше пять шагов.</p>
