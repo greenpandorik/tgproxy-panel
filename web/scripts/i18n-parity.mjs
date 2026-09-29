@@ -21,8 +21,14 @@ function leafKeys(obj, prefix = '') {
   return out;
 }
 
-const ru = leafKeys(load('ru.json'));
-const en = leafKeys(load('en.json'));
+const PLURAL = /_(zero|one|two|few|many|other)$/;
+
+function comparable(keys) {
+  return new Set([...keys].map((k) => (PLURAL.test(k) && keys.has(k.replace(PLURAL, '_other')) ? k.replace(PLURAL, '_{plural}') : k)));
+}
+
+const ru = comparable(leafKeys(load('ru.json')));
+const en = comparable(leafKeys(load('en.json')));
 const missingInEn = [...ru].filter((k) => !en.has(k)).sort();
 const missingInRu = [...en].filter((k) => !ru.has(k)).sort();
 
