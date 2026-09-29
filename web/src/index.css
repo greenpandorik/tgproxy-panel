@@ -1,4 +1,4 @@
-/* Tabler-inspired fluid operations panel. Shared semantic tokens; brand values can be overridden at runtime. */
+/* Operations panel. Shared semantic tokens; brand values can be overridden at runtime. */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
@@ -6,30 +6,30 @@
 @custom-variant dark (&:is([data-theme="dark"] *));
 
 :root {
-  --bg: #10120f;
-  --bg-2: #1b1f19;
-  --bg-3: #2b3227;
-  --field-bg: #121610;
+  --bg: #171b21;
+  --bg-2: #1b2026;
+  --bg-3: #242a31;
+  --field-bg: #13171c;
 
-  --line: #30382b;
-  --line-2: #4a5743;
+  --line: #2a3038;
+  --line-2: #3c434c;
 
-  --fg: #eef3e8;
-  --mute: #b0bca7;
-  --dim: #97a58d;
+  --fg: #e9edf1;
+  --mute: #9ba4ae;
+  --dim: #737c86;
 
-  --status-ok: #85d5ac;
-  --status-warn: #e9c76b;
-  --status-err: #f4948e;
-  --status-info: #a7c8ee;
+  --status-ok: #4fd18b;
+  --status-warn: #f5c451;
+  --status-err: #ff6b6b;
+  --status-info: #4dabf7;
 
   --destructive-solid: #da1313;
   --destructive-solid-hover: #b81010;
 
-  --brand-primary: #c4ed79;
-  --brand-accent: #c0a8ed;
+  --brand-primary: #3fc0d6;
+  --brand-accent: #20c997;
 
-  --brand-ink: color-mix(in srgb, var(--brand-primary) 40%, white);
+  --brand-ink: color-mix(in srgb, var(--brand-primary) 60%, white);
 
   --status-online: var(--status-ok);
   --status-offline: var(--status-err);
@@ -56,7 +56,7 @@
   --input: var(--line-2);
   --ring: var(--brand-primary);
 
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
 
   --t-display: 26px;
   --t-display-lh: 30px;
@@ -71,8 +71,8 @@
   --t-mono: 12.5px;
   --t-mono-lh: 18px;
 
-  --r-control: 4px;
-  --r-surface: 4px;
+  --r-control: 8px;
+  --r-surface: 8px;
   --r-pill: 9999px;
 
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
@@ -81,15 +81,15 @@
 
   --series-1: var(--brand-primary);
   --series-2: var(--brand-accent);
-  --series-3: #a7c8ee;
-  --series-4: #e9c76b;
-  --series-5: #85d5ac;
-  --series-6: #f4948e;
+  --series-3: #4dabf7;
+  --series-4: #fcc419;
+  --series-5: #9775fa;
+  --series-6: #f06595;
   --series-7: #199e70;
   --series-8: #e66767;
   --series-other: var(--dim);
 
-  --sidebar: #151913;
+  --sidebar: #14191f;
   --sidebar-foreground: var(--fg);
   --sidebar-primary: var(--brand-primary);
   --sidebar-primary-foreground: var(--primary-foreground);
@@ -100,38 +100,36 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #eeede5;
-  --bg-2: #fffdf6;
-  --bg-3: #e2e7db;
-  --field-bg: #f5f5ed;
-  --sidebar: #e0e5d9;
-  --brand-primary: #365b46;
-  --brand-accent: #a35336;
+  --bg: #f3f5f8;
+  --bg-2: #ffffff;
+  --bg-3: #e9edf2;
+  --field-bg: #f8fafc;
+  --sidebar: #ffffff;
+  --brand-primary: #0c8599;
+  --brand-accent: #099268;
   --primary-foreground: #ffffff;
-  --r-control: 8px;
-  --r-surface: 8px;
 
-  --line: #d5d8c9;
-  --line-2: #98a68f;
+  --line: #e1e6ec;
+  --line-2: #cfd6de;
 
-  --fg: #28362b;
-  --mute: #596551;
-  --dim: #596650;
+  --fg: #1b2330;
+  --mute: #5b6673;
+  --dim: #6b7682;
 
-  --status-ok: #346842;
-  --status-warn: #835e0f;
-  --status-err: #ae3d35;
-  --status-info: #365f88;
+  --status-ok: #2b8a3e;
+  --status-warn: #9c6a00;
+  --status-err: #c92a2a;
+  --status-info: #1c6fbf;
 
-  --brand-ink: color-mix(in srgb, var(--brand-primary) 40%, black);
+  --brand-ink: color-mix(in srgb, var(--brand-primary) 70%, black);
 
-  --destructive-foreground: #fffdf6;
-  --shadow-popover: 0 8px 24px #98a68f;
+  --destructive-foreground: #ffffff;
+  --shadow-popover: 0 12px 32px rgba(27, 35, 48, 0.14);
 
-  --series-3: #365f88;
-  --series-4: #835e0f;
-  --series-5: #6a4f8f;
-  --series-6: #8e3f6f;
+  --series-3: #1971c2;
+  --series-4: #e67700;
+  --series-5: #6741d9;
+  --series-6: #c2255c;
   --series-7: #12855e;
   --series-8: #d23a3a;
 }
@@ -286,6 +284,12 @@
     --tw-duration: var(--dur-base);
     transition-duration: var(--dur-base);
     animation-duration: var(--dur-base);
+  }
+
+  .tgwp-tone-plate {
+    background-color: color-mix(in srgb, var(--tone) 13%, var(--bg-2));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 16%, transparent);
+    color: var(--tone);
   }
 
   .tgwp-tone-tint {
@@ -462,18 +466,41 @@ summary {
   }
 }
 
-/* Carbon / Linen control states share the same semantic roles. */
+/* Wave: tinted states outlined in the brand hue, never a solid fill. */
+.panel-nav-link {
+  border: 1px solid transparent;
+}
 .panel-nav-link[aria-current='page'] {
-  background: var(--brand-primary);
-  color: var(--primary-foreground);
-  font-weight: 600;
+  background: color-mix(in srgb, var(--brand-primary) 13%, transparent);
+  border-color: color-mix(in srgb, var(--brand-primary) 75%, transparent);
+  color: var(--brand-ink);
+  font-weight: 500;
+}
+.panel-nav-link[aria-current='page'] svg {
+  color: var(--brand-primary);
 }
 .panel-nav-link[aria-current='page'] .text-mute {
   color: inherit;
 }
 .section-nav button[aria-current='page'] {
-  border-color: var(--brand-primary);
+  border-color: color-mix(in srgb, var(--brand-primary) 75%, transparent);
   background: color-mix(in srgb, var(--brand-primary) 10%, var(--bg-2));
+}
+.wave-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand-primary) 7%, transparent) 0%, transparent 38%), var(--sidebar);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.wave-group-label::before {
+  content: '';
+  width: 2px;
+  height: 11px;
+  border-radius: 1px;
+  background: var(--brand-primary);
+}
+.wave-rule {
+  border-top: 1px dashed var(--line-2);
 }
 [data-slot='input'],
 [data-slot='textarea'],
@@ -490,7 +517,4 @@ summary {
   opacity: 1;
   background: var(--bg-3);
   color: var(--mute);
-}
-[data-slot='button'].bg-primary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: color-mix(in srgb, var(--brand-primary) 90%, var(--fg));
 }

@@ -42,7 +42,7 @@ beforeEach(() => {
     ),
   );
 });
-it('uses Carbon and Linen for legacy defaults and updates chart identity when toggled', async () => {
+it('maps every earlier default pair to the theme pair and updates chart identity when toggled', async () => {
   vi.mocked(fetch).mockResolvedValue(
     new Response(
       JSON.stringify({ primary_color: '#e23c92', accent_color: '#12a198', theme_default: 'light', panel_name: 'Legacy' }),
@@ -51,11 +51,11 @@ it('uses Carbon and Linen for legacy defaults and updates chart identity when to
   );
   mount();
   await waitFor(() => expect(document.title).toBe('Legacy'));
-  expect(screen.getByTestId('primary')).toHaveTextContent('#365b46');
-  expect(document.documentElement.style.getPropertyValue('--primary-foreground')).toBe('#ffffff');
+  expect(screen.getByTestId('primary')).toHaveTextContent('#0c8599');
+  expect(document.documentElement.style.getPropertyValue('--primary-foreground')).toBe('#000000');
   await userEvent.click(screen.getByText('Toggle'));
-  expect(screen.getByTestId('primary')).toHaveTextContent('#c4ed79');
-  expect(document.documentElement.style.getPropertyValue('--brand-accent')).toBe('#c0a8ed');
+  expect(screen.getByTestId('primary')).toHaveTextContent('#3fc0d6');
+  expect(document.documentElement.style.getPropertyValue('--brand-accent')).toBe('#20c997');
   expect(document.documentElement.style.getPropertyValue('--primary-foreground')).toBe('#000000');
 });
 it('keeps custom brand colors in both themes', async () => {

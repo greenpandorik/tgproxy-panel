@@ -46,39 +46,35 @@ export function StatTile({
   style,
 }: StatTileProps) {
   const body = (
-    <>
-      <div className="flex items-center gap-2.5">
-        <span
-          className="tgwp-tone-tint flex size-7 shrink-0 sm:size-9 items-center justify-center rounded-control border"
-          style={{ '--tone': TONE_VAR[tone] } as CSSProperties}
-          aria-hidden="true"
-        >
-          <Icon size={16} strokeWidth={1.8} />
-        </span>
-        <span className="min-w-0 text-label text-mute">{label}</span>
+    <div className="flex items-center gap-4">
+      <span
+        className="tgwp-tone-plate flex size-11 shrink-0 items-center justify-center rounded-pill"
+        style={{ '--tone': tone === 'neutral' ? 'var(--brand-primary)' : TONE_VAR[tone] } as CSSProperties}
+        aria-hidden="true"
+      >
+        <Icon size={20} strokeWidth={1.7} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-label text-mute">{label}</p>
+        {loading ? (
+          <Skeleton className="mt-1.5 h-6 w-16" />
+        ) : (
+          <p className="mono mt-0.5 flex items-baseline gap-1 text-[19px] leading-7 font-semibold text-foreground">
+            <span className="truncate">{value}</span>
+            {unit && <span className="shrink-0 text-mono font-normal text-mute">{unit}</span>}
+          </p>
+        )}
+        {loading ? (
+          <Skeleton className="mt-1.5 h-3 w-24" />
+        ) : (
+          <p className="truncate text-micro text-mute">{[delta, context].filter(Boolean).join(' ') || '\u00a0'}</p>
+        )}
       </div>
-
-      {loading ? (
-        <Skeleton className="mt-2.5 h-6 w-16" />
-      ) : (
-        <p className="mt-2 flex items-baseline gap-1 text-display tabular text-foreground">
-          <span className="truncate">{value}</span>
-          {unit && <span className="mono shrink-0 text-mono font-normal text-mute">{unit}</span>}
-        </p>
-      )}
-
-      {/* A tile with nothing to say still keeps this line, so eleven tiles in
-          a grid are eleven boxes of one height and the row does not comb. */}
-      {loading ? (
-        <Skeleton className="mt-2 h-3 w-24" />
-      ) : (
-        <p className="mt-2 text-label text-mute">{[delta, context].filter(Boolean).join(' ') || '\u00a0'}</p>
-      )}
-    </>
+    </div>
   );
 
   const shell = cn(
-    'block rounded-surface border border-hairline-strong bg-card px-5 py-4',
+    'block rounded-surface border border-hairline-strong bg-card px-5 py-4.5',
     to && 'transition-[background-color,border-color,scale] active:scale-[0.985] hover:bg-elevated',
     className,
   );

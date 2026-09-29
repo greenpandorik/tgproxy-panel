@@ -11,7 +11,7 @@ import type { ReactElement, ReactNode } from 'react';
 
 // Sized to match the square controls beside it in the header, so the row reads as one strip.
 const CHIP =
-  'mono inline-flex h-9 shrink-0 items-center gap-1.5 rounded-surface border border-hairline-strong px-2.5 text-micro text-mute transition-[background-color,border-color,color,scale] duration-fast ease-out hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985]';
+  'mono inline-flex h-10 shrink-0 items-center gap-1.5 rounded-surface border border-hairline-strong bg-surface px-3 text-micro text-mute transition-[background-color,border-color,color,scale] duration-fast ease-out hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.985]';
 
 type NodesTone = 'ok' | 'warn' | 'err' | 'dim';
 

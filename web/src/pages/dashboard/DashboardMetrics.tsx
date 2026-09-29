@@ -4,14 +4,13 @@ import { Link } from 'react-router-dom';
 
 import { MetricValue } from '@/components/common/MetricValue';
 import { isMetricPresent } from '@/components/common/metric';
-import { Panel } from '@/components/common/Panel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber, splitBytes } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import type { Metric } from '@/components/common/metric';
 import type { LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export interface DashboardMetricsProps {
   nodesOnline: Metric<number>;
@@ -28,16 +27,8 @@ interface Cell {
   icon: LucideIcon;
   label: string;
   to: string;
+  tone: string;
   value: ReactNode;
-}
-
-function cellBorder(index: number): string {
-  return cn(
-    'border-hairline',
-    index < 2 && 'border-b sm:border-b-0',
-    index % 2 === 0 && 'border-r',
-    index === 1 && 'sm:border-r',
-  );
 }
 
 /** The four numbers that give the verdict its context. Compact on purpose. */
@@ -45,6 +36,7 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
   const { t, i18n } = useTranslation();
   const num = (value: number) => formatNumber(value, i18n.language);
   const bytes = isMetricPresent(traffic) ? splitBytes(traffic) : null;
+  const someOffline = isMetricPresent(nodesOnline) && isMetricPresent(nodesTotal) && nodesOnline < nodesTotal;
 
   const cells: Cell[] = [
     {
@@ -52,6 +44,7 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
       icon: Server,
       label: t('dashboard.nodes_online'),
       to: '/nodes',
+      tone: someOffline ? 'var(--status-warn)' : 'var(--status-ok)',
       value: (
         <>
           <MetricValue value={nodesOnline} format={num} />
@@ -67,6 +60,7 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
       icon: KeyRound,
       label: t('dashboard.keys_active'),
       to: '/keys',
+      tone: 'var(--brand-primary)',
       value: <MetricValue value={keysActive} format={num} />,
     },
     {
@@ -74,6 +68,7 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
       icon: Radio,
       label: t('dashboard.sessions_live'),
       to: '/monitoring',
+      tone: 'var(--status-info)',
       value: <MetricValue value={sessions} format={num} />,
     },
     {
@@ -81,29 +76,34 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
       icon: ArrowDownUp,
       label: t('dashboard.total_traffic'),
       to: '/monitoring',
+      tone: 'var(--brand-accent)',
       value: <MetricValue value={bytes ? bytes.value : null} unit={bytes?.unit} />,
     },
   ];
 
   return (
-    <Panel>
-      <div className="grid grid-cols-2 sm:grid-cols-4">
-        {cells.map((cell, index) => (
-          <Link
-            key={cell.id}
-            to={cell.to}
-            className={cn('block px-5 py-3.5 transition-colors hover:bg-elevated', cellBorder(index))}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {cells.map((cell) => (
+        <Link
+          key={cell.id}
+          to={cell.to}
+          className="flex items-center gap-4 rounded-surface border border-hairline-strong bg-card px-5 py-4 transition-[background-color,border-color] hover:border-brand-primary/40 hover:bg-elevated/40"
+        >
+          <span
+            className="tgwp-tone-plate flex size-11 shrink-0 items-center justify-center rounded-pill"
+            style={{ '--tone': cell.tone } as CSSProperties}
+            aria-hidden="true"
           >
-            <span className="flex min-h-8 items-start gap-2 text-label text-mute sm:min-h-0 sm:items-center">
-              <cell.icon size={14} strokeWidth={1.8} className="mt-px shrink-0 sm:mt-0" aria-hidden="true" />
-              <span className="line-clamp-2 min-w-0">{cell.label}</span>
+            <cell.icon size={20} strokeWidth={1.7} />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-label text-mute">{cell.label}</span>
+            <span className={cn('mono mt-0.5 block text-[19px] leading-7 font-semibold tabular')}>
+              {loading ? <Skeleton className="h-6 w-16" /> : cell.value}
             </span>
-            <span className="mt-1.5 block text-title tabular">
-              {loading ? <Skeleton className="h-5 w-16" /> : cell.value}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </Panel>
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }

@@ -33,8 +33,8 @@ import type { Node, SeriesPoint } from '@/api/types';
 // recharts stays out of the shell bundle - only SessionsChart.tsx imports it.
 const SessionsChart = lazy(() => import('./dashboard/SessionsChart').then((m) => ({ default: m.SessionsChart })));
 
-const DEFAULT_BRAND_PRIMARY = '#365b46';
-const DEFAULT_BRAND_ACCENT = '#a35336';
+const DEFAULT_BRAND_PRIMARY = '#0c8599';
+const DEFAULT_BRAND_ACCENT = '#099268';
 
 const RECENT_JOBS_LIMIT = 6;
 

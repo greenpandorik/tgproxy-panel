@@ -41,8 +41,8 @@ export function AppShell() {
       <div className="flex h-dvh overflow-hidden bg-background">
         <aside
           className={
-            'hidden shrink-0 border-r border-hairline transition-[width] duration-base ease-out lg:block ' +
-            (collapsed ? 'w-15' : 'w-64')
+            'hidden shrink-0 py-3 pl-3 transition-[width] duration-base ease-out lg:block ' +
+            (collapsed ? 'w-[84px]' : 'w-[276px]')
           }
         >
           <Sidebar collapsed={collapsed} showToggle onToggle={() => setCollapsed(!collapsed)} />
@@ -63,7 +63,7 @@ export function AppShell() {
             block still sit 16px apart, so a row of tiles reads as one thing and
             the sections read as several.
           */}
-          <main ref={mainRef} id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <main ref={mainRef} id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto px-4 pt-1 pb-6 sm:px-6">
             <div className="flex w-full flex-col gap-6">
               <Outlet />
             </div>

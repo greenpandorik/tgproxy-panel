@@ -24,8 +24,8 @@ const KeyTrafficChart = lazy(() => import('./KeyTrafficChart').then((m) => ({ de
 
 const RANGES: KeyStatsRange[] = ['24h', '7d'];
 
-const DEFAULT_BRAND_PRIMARY = '#365b46';
-const DEFAULT_BRAND_ACCENT = '#a35336';
+const DEFAULT_BRAND_PRIMARY = '#0c8599';
+const DEFAULT_BRAND_ACCENT = '#099268';
 
 export function trafficDeltas(points: KeyStatsNode['points']): TrafficPoint[] {
   const out: TrafficPoint[] = [];

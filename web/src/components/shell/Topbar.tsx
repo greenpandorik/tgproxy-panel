@@ -1,6 +1,5 @@
 import { LogOut, Menu, Moon, Search, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +19,6 @@ import { setLang } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/theme/ThemeProvider';
 
-import { navItemForPath } from './nav';
 import { StatusChips, StatusMenuRows } from './StatusChips';
 
 const ROLE_KEY: Record<string, string> = {
@@ -30,7 +28,7 @@ const ROLE_KEY: Record<string, string> = {
 };
 
 /** One square in the header's control row. The chips next to it carry the same height and radius. */
-const SQUARE = 'size-9 rounded-surface border border-hairline-strong text-mute hover:text-foreground';
+const SQUARE = 'size-10 rounded-surface border border-hairline-strong bg-surface text-mute hover:text-foreground';
 
 function HeaderButton({
   label,
@@ -47,7 +45,14 @@ function HeaderButton({
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button type="button" variant="ghost" size="icon-sm" onClick={onClick} aria-label={label} className={cn(SQUARE, className)} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onClick}
+            aria-label={label}
+            className={cn(SQUARE, className)}
+          />
         }
       >
         {children}
@@ -66,13 +71,11 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const location = useLocation();
-  const section = navItemForPath(location.pathname);
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const lang = (i18n.language?.startsWith('en') ? 'en' : 'ru') as Lang;
 
   return (
-    <header className="flex min-h-16 shrink-0 items-center gap-2 border-b border-hairline bg-card px-3 sm:px-5">
+    <header className="flex min-h-16 shrink-0 items-center gap-2 px-3 sm:px-6">
       <Button
         type="button"
         variant="ghost"
@@ -84,15 +87,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
         <Menu />
       </Button>
 
-      <p className="min-w-0 flex-1 truncate text-label text-mute">
-        {t('shell.breadcrumb_root')}
-        {section && (
-          <>
-            <span className="px-1.5">/</span>
-            <span className="text-foreground">{t(section.labelKey)}</span>
-          </>
-        )}
-      </p>
+      <div className="min-w-0 flex-1" />
 
       {/* The palette is the only search in the product, so this opens it rather than taking text. */}
       <HeaderButton label={`${t('shell.command_placeholder')} (${isMac ? '⌘K' : 'Ctrl K'})`} onClick={onOpenCommand}>
@@ -102,11 +97,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
       {/* Below lg the row would not fit; the same facts are rows in the menu. */}
       <StatusChips className="hidden lg:flex" />
 
-      <HeaderButton
-        label={t('common.language')}
-        onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}
-        className="mono text-micro"
-      >
+      <HeaderButton label={t('common.language')} onClick={() => setLang(lang === 'en' ? 'ru' : 'en')} className="mono text-micro">
         {lang.toUpperCase()}
       </HeaderButton>
 
@@ -116,7 +107,14 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger
-          render={<Button type="button" variant="ghost" size="sm" className="h-9 gap-2 rounded-surface border border-hairline-strong px-1.5 pr-2.5" />}
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-10 gap-2 rounded-surface border border-hairline-strong bg-surface px-2 pr-3"
+            />
+          }
         >
           <span className="flex size-5 items-center justify-center rounded-pill border border-hairline-strong text-micro font-medium text-foreground">
             {(user?.username ?? '?').charAt(0).toUpperCase()}

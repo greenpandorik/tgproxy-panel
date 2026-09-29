@@ -1,8 +1,8 @@
 import type { Branding } from '@/api/types';
 
 export const THEME_COLORS = {
-  dark: { primary_color: '#c4ed79', accent_color: '#c0a8ed' },
-  light: { primary_color: '#365b46', accent_color: '#a35336' },
+  dark: { primary_color: '#3fc0d6', accent_color: '#20c997' },
+  light: { primary_color: '#0c8599', accent_color: '#099268' },
 } as const;
 
 /** Existing default profiles follow the selected theme; custom brand pairs stay intact. */
@@ -12,6 +12,8 @@ export function themeColors(branding: Partial<Branding> | undefined, theme: 'dar
   const defaults = [
     ['#e23c92', '#12a198'],
     ['#3b82f6', '#22c55e'],
+    ['#c4ed79', '#c0a8ed'],
+    ['#365b46', '#a35336'],
     [THEME_COLORS.dark.primary_color, THEME_COLORS.dark.accent_color],
     [THEME_COLORS.light.primary_color, THEME_COLORS.light.accent_color],
   ];

@@ -56,9 +56,9 @@ function NavRow({
       aria-label={collapsed ? label : undefined}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'panel-nav-link relative flex h-11 items-center gap-3 rounded-control px-3 text-body transition-[background-color,color,scale] duration-fast ease-out active:scale-[0.985]',
+        'panel-nav-link relative flex h-10 items-center gap-3 rounded-control px-3 text-body transition-[background-color,border-color,color,scale] duration-fast ease-out active:scale-[0.985]',
         collapsed && 'justify-center px-0',
-        isActive ? 'bg-elevated text-brand-ink font-medium' : 'text-muted-foreground hover:bg-elevated/60 hover:text-foreground',
+        !isActive && 'text-sidebar-foreground/85 hover:bg-elevated/60 hover:text-foreground',
       )}
     >
       <item.icon className="size-[18px] shrink-0" strokeWidth={1.8} aria-hidden="true" />
@@ -91,14 +91,14 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
 
   return (
     <nav
-      className="flex h-full flex-col bg-sidebar px-2.5 py-3 text-sidebar-foreground"
+      className="wave-sidebar flex h-full flex-col px-3 py-4 text-sidebar-foreground"
       aria-label={t('shell.primary_navigation')}
     >
       {/* The drawer (no rail toggle) has the Sheet's own close button floating in
           this corner, so the version chip keeps clear of it. */}
       <div
         className={cn(
-          'flex items-center gap-3 px-2 pt-1 pb-5',
+          'flex items-center gap-3 border-b border-hairline px-2 pt-1 pb-4',
           collapsed && 'justify-center px-0',
           !showToggle && !collapsed && 'pr-7',
         )}
@@ -114,18 +114,19 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
         )}
         {!collapsed && (
           <>
-            <span className="truncate text-body font-semibold">{branding?.panel_name || DEFAULT_PANEL_NAME}</span>
+            <span className="truncate text-title font-semibold tracking-tight">{branding?.panel_name || DEFAULT_PANEL_NAME}</span>
           </>
         )}
       </div>
 
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.map((group, index) => (
           <div key={group.labelKey}>
-            {collapsed ? (
-              <div className="mx-2 my-2 h-px bg-hairline" aria-hidden="true" />
-            ) : (
-              <p className="px-3 pt-5 pb-2 text-label font-medium text-mute">{t(group.labelKey)}</p>
+            {index > 0 && <div className={cn('wave-rule mt-3', collapsed ? 'mx-2 mb-3' : 'mx-1')} aria-hidden="true" />}
+            {!collapsed && (
+              <p className="wave-group-label flex items-center gap-2 px-3 pt-4 pb-2 text-[11px] leading-4 font-semibold tracking-[0.12em] text-mute uppercase">
+                {t(group.labelKey)}
+              </p>
             )}
             <ul className="space-y-1">
               {group.items.map((item) => (
@@ -136,7 +137,7 @@ export function Sidebar({ collapsed = false, showToggle = false, onToggle, onNav
         ))}
       </div>
 
-      <div className="mt-4 flex items-end gap-1 border-t border-hairline pt-3">
+      <div className="wave-rule mt-4 flex items-end gap-1 pt-3">
         <div className={cn('mono min-w-0 flex-1 text-micro text-mute', collapsed ? 'text-center' : 'px-2')}>
           {collapsed ? (
             <span
