@@ -42,6 +42,7 @@
 }
 </script>
 <link rel="stylesheet" href="../style.css">
+<script defer src="https://cloud.umami.is/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="greenpandorik.github.io"></script>
 </head>
 <body>
 
@@ -54,8 +55,8 @@
     <a href="#links">Links</a>
     <a href="#install">Install</a>
     <a href="#faq">FAQ</a>
-    <a class="lang" href="../" hreflang="ru" lang="ru">Русский</a>
-    <a class="gh" href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
+    <a class="lang" data-umami-event="language" href="../" hreflang="ru" lang="ru">Русский</a>
+    <a class="gh" href="https://github.com/greenpandorik/tgproxy-panel" data-umami-event="github" data-umami-event-place="header">GitHub</a>
   </nav>
 </header>
 
@@ -65,8 +66,8 @@
       <h1>Control panel for MTProxy with <span class="nowrap">Fake-TLS</span> and <span class="nowrap">WEB proxy</span></h1>
       <p class="lead">TGProxy Panel runs on one VPS and manages Telegram proxies on the rest. It issues keys with Fake-TLS and WEB links, puts a cover website on every server and keeps an eye on all of them. It is open source and free to use.</p>
       <div class="actions">
-        <a class="btn" href="#install">How to install</a>
-        <a class="textlink" href="https://github.com/greenpandorik/tgproxy-panel">Source code on GitHub</a>
+        <a class="btn" href="#install" data-umami-event="install-button">How to install</a>
+        <a class="textlink" href="https://github.com/greenpandorik/tgproxy-panel" data-umami-event="github" data-umami-event-place="hero">Source code on GitHub</a>
       </div>
     </div>
     <figure class="masq">
@@ -139,7 +140,7 @@
           <div>
             <h3>Install the panel</h3>
             <p>On the panel server, run as root:</p>
-            <div class="cmd"><pre><code>curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash</code></pre></div>
+            <div class="cmd" data-command="panel-install"><pre><code>curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash</code></pre></div>
             <p>The script asks for the domain, an e-mail for the Let's Encrypt certificate and the admin credentials, installs Docker if needed and prints the panel address at the end.</p>
           </div>
         </li>
@@ -147,7 +148,7 @@
           <div>
             <h3>Connect the proxy server</h3>
             <p>In the panel, open Servers → Add server and enter a name, the server's domain and an e-mail. The panel gives you a one-time command that is valid for 24 hours. Run it on the proxy server as root:</p>
-            <div class="cmd"><pre><code>curl -fsSL https://panel.example.com/api/v1/install/&lt;token&gt;.sh | sudo bash</code></pre></div>
+            <div class="cmd" data-command="server-install"><pre><code>curl -fsSL https://panel.example.com/api/v1/install/&lt;token&gt;.sh | sudo bash</code></pre></div>
             <p>The script checks DNS, ports and the CPU architecture before it installs anything, then sets up the <a href="https://github.com/telemt/telemt">telemt</a> proxy, the Caddy web server and the panel agent. It gets a certificate, waits for the proxy to report ready and registers the server. A minute later the server shows up in the panel.</p>
           </div>
         </li>
@@ -161,12 +162,12 @@
           <div>
             <h3>Upgrade with one command</h3>
             <p>To upgrade a proxy server:</p>
-            <div class="cmd"><pre><code>tgwp-agent upgrade</code></pre></div>
+            <div class="cmd" data-command="agent-upgrade"><pre><code>tgwp-agent upgrade</code></pre></div>
             <p>The agent checks the sha256, replaces only what changed and rolls back if the new version doesn't come up. The panel upgrades with <code>sudo /opt/tgproxy-panel/install.sh --update</code>.</p>
           </div>
         </li>
       </ol>
-      <p class="more">The <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md">full setup guide with screenshots</a> walks through every step and what to do when something goes wrong.</p>
+      <p class="more">The <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md" data-umami-event="setup-guide" data-umami-event-place="install">full setup guide with screenshots</a> walks through every step and what to do when something goes wrong.</p>
     </div>
   </section>
 
@@ -223,10 +224,10 @@
   <div class="wrap">
     <span>TGProxy Panel, an open-source project under AGPL-3.0</span>
     <nav aria-label="Project links">
-      <a href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
-      <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md">Setup guide</a>
-      <a href="https://github.com/greenpandorik/tgproxy-panel/releases">Releases</a>
-      <a href="https://github.com/greenpandorik/tgproxy-panel/discussions">Discussions</a>
+      <a href="https://github.com/greenpandorik/tgproxy-panel" data-umami-event="github" data-umami-event-place="footer">GitHub</a>
+      <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md" data-umami-event="setup-guide" data-umami-event-place="footer">Setup guide</a>
+      <a href="https://github.com/greenpandorik/tgproxy-panel/releases" data-umami-event="releases">Releases</a>
+      <a href="https://github.com/greenpandorik/tgproxy-panel/discussions" data-umami-event="discussions">Discussions</a>
     </nav>
   </div>
 </footer>

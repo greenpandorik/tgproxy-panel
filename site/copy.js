@@ -11,6 +11,7 @@ document.querySelectorAll('.cmd').forEach(function (block) {
   button.addEventListener('click', function () {
     navigator.clipboard.writeText(block.querySelector('code').textContent).then(function () {
       button.textContent = labels.done;
+      if (window.umami) window.umami.track('copy-command', { command: block.dataset.command });
       setTimeout(function () { button.textContent = labels.copy; }, 1600);
     });
   });
