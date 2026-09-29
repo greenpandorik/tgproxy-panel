@@ -94,7 +94,7 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    const label = await screen.findByLabelText('Метка');
+    const label = await screen.findByLabelText('Название ключа');
     await user.type(label, 'Команда поддержки');
     expect(screen.queryByRole('status')).toBeNull();
 
@@ -104,12 +104,12 @@ describe('CreateKeyDialog drafts', () => {
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
     // The form itself comes back clean; the draft is an offer, not a surprise.
-    expect(await screen.findByLabelText('Метка')).toHaveValue('');
+    expect(await screen.findByLabelText('Название ключа')).toHaveValue('');
     const banner = await screen.findByRole('status');
     expect(banner).toHaveTextContent(/Черновик от \d{2}:\d{2}/);
 
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
-    expect(screen.getByLabelText('Метка')).toHaveValue('Команда поддержки');
+    await user.click(screen.getByRole('button', { name: 'Восстановить' }));
+    expect(screen.getByLabelText('Название ключа')).toHaveValue('Команда поддержки');
     expect(screen.queryByRole('status')).toBeNull();
   });
 
@@ -123,8 +123,8 @@ describe('CreateKeyDialog drafts', () => {
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
     // Reopens on the default tab; continuing switches back to the batch.
-    expect(await screen.findByLabelText('Метка')).toBeInTheDocument();
-    await user.click(await screen.findByRole('button', { name: 'Продолжить' }));
+    expect(await screen.findByLabelText('Название ключа')).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Восстановить' }));
     expect(screen.getByRole('tab', { name: 'Несколько ключей' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('Префикс')).toHaveValue('vip');
   });
@@ -133,13 +133,13 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText('Метка'), 'черновик');
+    await user.type(await screen.findByLabelText('Название ключа'), 'черновик');
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
-    await user.click(await screen.findByRole('button', { name: 'Начать заново' }));
+    await user.click(await screen.findByRole('button', { name: 'Удалить черновик' }));
     expect(screen.queryByRole('status')).toBeNull();
-    expect(screen.getByLabelText('Метка')).toHaveValue('');
+    expect(screen.getByLabelText('Название ключа')).toHaveValue('');
     expect(window.localStorage.getItem(draftStorageKey(DRAFT_KEY))).toBeNull();
   });
 
@@ -147,11 +147,11 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await screen.findByLabelText('Метка');
+    await screen.findByLabelText('Название ключа');
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
-    await screen.findByLabelText('Метка');
+    await screen.findByLabelText('Название ключа');
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
     expect(window.localStorage.getItem(draftStorageKey(DRAFT_KEY))).toBeNull();
   });
@@ -238,7 +238,7 @@ describe('CreateKeyDialog limits and summary', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText('Метка'), 'Поддержка');
+    await user.type(await screen.findByLabelText('Название ключа'), 'Поддержка');
     await user.click(screen.getByText('Amsterdam'));
 
     expect(screen.getByText(/Общий ключ «Поддержка»/)).toHaveTextContent(

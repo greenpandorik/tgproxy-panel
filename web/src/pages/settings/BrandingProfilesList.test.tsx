@@ -81,7 +81,7 @@ describe('BrandingProfilesList', () => {
   it('shows the active badge on the active profile and hides Delete for it, while offering it for others', async () => {
     renderList();
 
-    const list = within(await screen.findByRole('list', { name: 'Profiles' }));
+    const list = within(await screen.findByRole('list', { name: 'Branding variants' }));
     const activeRow = list.getByText('Default').closest('li');
     const otherRow = list.getByText('Winter').closest('li');
     if (!activeRow || !otherRow) throw new Error('profile rows not found');

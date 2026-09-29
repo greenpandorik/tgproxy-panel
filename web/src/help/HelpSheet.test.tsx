@@ -51,9 +51,9 @@ describe('HelpButton', () => {
     const user = userEvent.setup();
     render(<HelpButton topic="audit" />);
 
-    expect(screen.queryByText('Журнал аудита')).not.toBeInTheDocument();
+    expect(screen.queryByText('Журнал действий')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Справка' }));
-    expect(await screen.findByText('Журнал аудита')).toBeInTheDocument();
+    expect(await screen.findByText('Журнал действий')).toBeInTheDocument();
   });
 });
 

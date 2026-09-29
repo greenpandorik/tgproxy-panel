@@ -61,8 +61,10 @@ export function NodeDetailPage() {
   const [section, setSection] = useSection(
     nodeQuery.data?.engine === 'tproxy'
       ? ['overview', 'stats', 'diagnostics', 'logs', 'profiles', 'site', 'settings']
-      : ['overview', 'web', 'stats', 'diagnostics', 'logs', 'proxy', 'profiles', 'site', 'settings'],
+      : ['overview', 'stats', 'diagnostics', 'logs', 'proxy', 'profiles', 'site', 'settings'],
     'overview',
+    'section',
+    { web: 'stats' },
   );
   const [restartOpen, setRestartOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -197,7 +199,6 @@ export function NodeDetailPage() {
             onChange={setSection}
             items={[
               { value: 'overview', label: t('workspace.tab_overview'), group: t('workspace.observe') },
-              ...(node.engine === 'telemt' ? [{ value: 'web', label: t('workspace.tab_web'), group: t('workspace.observe') }] : []),
               { value: 'stats', label: t('workspace.tab_stats'), group: t('workspace.observe') },
               { value: 'diagnostics', label: t('workspace.tab_diagnostics'), group: t('workspace.observe') },
               { value: 'logs', label: t('workspace.tab_logs'), group: t('workspace.observe') },
@@ -215,8 +216,12 @@ export function NodeDetailPage() {
               <p className="max-w-[72ch] text-body text-mute">{t(`workspace.description_${section}`)}</p>
             </div>
             {section === 'overview' && <NodeOverviewTab node={node} />}
-            {section === 'web' && <NodeWebTab node={node} />}
-            {section === 'stats' && <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />}
+            {section === 'stats' && (
+              <>
+                <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />
+                {node.engine === 'telemt' && <NodeWebTab node={node} />}
+              </>
+            )}
             {section === 'diagnostics' && (
               <>
                 {node.engine === 'telemt' && <WebDiagnosticsCard nodeId={node.id} />}

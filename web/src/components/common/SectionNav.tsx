@@ -6,9 +6,15 @@ import { cn } from '@/lib/utils';
 export type SectionItem = { value: string; label: string; description?: string; group?: string };
 
 /** URL-backed sections preserve Back, refresh and direct links without discarding other filters. */
-export function useSection(values: readonly string[], fallback: string, key = 'section') {
+export function useSection(
+  values: readonly string[],
+  fallback: string,
+  key = 'section',
+  aliases: Readonly<Record<string, string>> = {},
+) {
   const [params, setParams] = useSearchParams();
-  const raw = params.get(key);
+  const param = params.get(key);
+  const raw = param ? (aliases[param] ?? param) : null;
   const section = raw && values.includes(raw) ? raw : fallback;
   const setSection = (value: string) => {
     if (!values.includes(value)) return;

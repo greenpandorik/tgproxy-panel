@@ -1,15 +1,15 @@
 {
   "nav": {
     "dashboard": "Overview",
-    "nodes": "Server fleet",
+    "nodes": "Servers",
     "keys": "Access keys",
     "sites": "Cover websites",
     "monitoring": "Monitoring",
-    "audit": "Audit log",
-    "settings": "Panel settings",
+    "audit": "Activity log",
+    "settings": "Settings",
     "logout": "Log out",
     "group_overview": "Observe",
-    "group_infrastructure": "Manage fleet",
+    "group_infrastructure": "Infrastructure",
     "group_access": "Access",
     "group_system": "System"
   },
@@ -109,7 +109,7 @@
     "traffic_title": "Traffic today",
     "alerts_title": "Needs attention",
     "alerts_empty": "No open notifications",
-    "alert_resolve": "Dismiss notification",
+    "alert_resolve": "Mark resolved",
     "alert_resolved": "Alert resolved",
     "sessions_chart_title": "Connections over 24 hours",
     "sessions_chart_empty": "No monitoring data yet",
@@ -125,7 +125,7 @@
     "sessions_chart_meta": "24h · {{step}} step",
     "alerts_open_count": "{{count}} open",
     "col_node": "Server",
-    "col_relay": "Proxy version",
+    "col_relay": "Engine",
     "col_sessions": "Sessions",
     "col_heartbeat": "Last response",
     "alert_panel_scope": "Panel",
@@ -155,7 +155,7 @@
     "fleet_hint": "Reachable servers / total",
     "total_traffic": "Traffic over 24 hours",
     "traffic_both": "Combined incoming and outgoing",
-    "manage_access": "Manage access",
+    "manage_access": "Issue a key",
     "all_servers": "All servers",
     "alert_node_offline": "Server is not responding",
     "alert_node_degraded": "Some services are unavailable",
@@ -166,8 +166,8 @@
     "alert_backup_protection": "A backup could not be encrypted or uploaded",
     "alert_diagnostic_address": "Diagnostics: address {{address}}",
     "alert_diagnostic": "Diagnostics: {{check}}",
-    "alert_probe_stale": "Probe {{location}} has not reported recently",
-    "alert_probe_failed": "Probe {{location}}: the {{check}} check failed",
+    "alert_probe_stale": "External check {{location}} has not reported for a while",
+    "alert_probe_failed": "External check {{location}}: \"{{check}}\" failed",
     "alert_apply_failed": "Could not apply settings",
     "alert_unknown": "Check the server status",
     "alert_config_deferred": "Settings are saved but will not take effect until a restart",
@@ -205,7 +205,7 @@
     "empty_description": "Add your first server to issue keys and serve traffic.",
     "column_name": "Name",
     "column_hostname": "Hostname",
-    "column_profiles": "Profiles",
+    "column_profiles": "Keys",
     "last_seen_never": "never connected",
     "action_apply_now": "Apply now",
     "action_install_command": "Install command",
@@ -256,7 +256,7 @@
     "restart_confirm_description": "Active sessions will drop. Telegram clients reconnect automatically.",
     "restart_success": "Restart command sent",
     "tab_overview": "Overview",
-    "tab_profiles": "Profiles",
+    "tab_profiles": "Keys",
     "tab_logs": "Logs",
     "tab_site": "Website",
     "tab_stats": "Stats",
@@ -267,8 +267,8 @@
     "overview_telemt_active": "telemt",
     "overview_mtproxy_active": "MTProxy",
     "overview_caddy_active": "Caddy",
-    "overview_healthz": "Answers health checks",
-    "overview_readyz": "Ready for connections",
+    "overview_healthz": "API responds",
+    "overview_readyz": "Accepts connections",
     "overview_uptime": "Uptime",
     "overview_cpu": "CPU",
     "overview_mem": "Memory",
@@ -290,12 +290,12 @@
     "overview_agent_version": "Agent",
     "overview_last_apply": "Last apply",
     "overview_never": "never run",
-    "overview_jobs_title": "Recent applies",
+    "overview_jobs_title": "Apply history",
     "overview_jobs_empty": "No applies yet",
     "job_log_empty": "Log is empty",
     "job_started": "Started",
     "job_finished": "Finished",
-    "profiles_title": "Profiles on the server",
+    "profiles_title": "Keys on this server",
     "profiles_column_name": "Name",
     "profiles_column_key": "Key",
     "profiles_column_carrier": "Mode",
@@ -312,11 +312,11 @@
     "limit_ips": "IPs ≤ {{count}}",
     "limit_conns": "connections ≤ {{count}}",
     "profiles_empty": "No profiles on this server yet",
-    "profiles_compare": "Compare with server",
+    "profiles_compare": "Compare with the server",
     "profiles_compare_title": "Comparison with the live server",
     "profiles_compare_db_only": "Only in the panel database",
     "profiles_compare_node_only": "Only on the server",
-    "profiles_compare_in_sync": "Profiles match",
+    "profiles_compare_in_sync": "Keys match",
     "sync_pending": "Pending apply",
     "logs_title": "Logs",
     "logs_service_tproxy": "tproxy-server",
@@ -340,7 +340,7 @@
     "site_assign_button": "Assign",
     "site_assign_success": "Website saved and queued for deployment.",
     "site_no_preview": "The preview appears once a template is assigned",
-    "stats_title": "MTProxy stats",
+    "stats_title": "Proxy statistics",
     "stats_empty": "No stats available",
     "load_title": "Server load",
     "load_cpu": "CPU",
@@ -360,7 +360,7 @@
     "dcs_unavailable_engine": "Not available on this engine",
     "dc_latency_title": "Latency to datacenters",
     "dc_latency_empty": "No latency data yet",
-    "check_title": "Prerequisite check",
+    "check_title": "Check from the panel",
     "check_passed_toggle": "Passed checks: {{count}}",
     "check_run": "Run check",
     "check_empty": "Not run yet",
@@ -376,9 +376,9 @@
     "check_pq_kex": "Post-quantum key exchange",
     "check_pq_kex_hint": "Caddy on the server negotiates X25519MLKEM768 with modern clients. Informational.",
     "header_online": "{{online}} / {{total}} online",
-    "column_relay": "Relay",
+    "column_relay": "Engine",
     "column_heartbeat": "Last response",
-    "column_changes": "Changes",
+    "column_changes": "Pending apply",
     "dirty_tag": "pending",
     "state_up": "up",
     "state_down": "down",
@@ -443,7 +443,7 @@
     "status_pending_hint": "Becomes active after the next apply on the server",
     "no_expiry": "No expiry",
     "select_all": "Select all",
-    "column_label": "Label",
+    "column_label": "Name",
     "column_type": "Type",
     "column_status": "Status",
     "column_nodes": "Servers",
@@ -502,8 +502,8 @@
     "tab_shared": "Shared",
     "tab_personal": "Personal",
     "tab_batch": "Several keys",
-    "field_label": "Label",
-    "field_owner_label": "Owner label",
+    "field_label": "Key name",
+    "field_owner_label": "Issued to",
     "field_owner_label_hint": "Who this key is issued to, e.g. a name or e-mail.",
     "field_prefix": "Prefix",
     "field_prefix_hint": "Keys are labeled \"prefix-1\", \"prefix-2\", …",
@@ -532,7 +532,7 @@
     "telemt_limits_hint": "An empty field means no limit. telemt enforces these on the server.",
     "web_limits_hint": "Advanced Telemt WEB limits. An empty field inherits the node-wide ceiling; a value above it is rejected before apply.",
     "legacy_limits_hint": "Advanced limits. Legacy fields apply only to tproxy servers; Telemt receives session and stream limits only.",
-    "telemt_limits_unavailable": "not available on this engine",
+    "telemt_limits_unavailable": "appear once a telemt server is selected",
     "telemt_limit_quota_gb": "Traffic quota, GB",
     "telemt_limit_rate_up_mbit": "Upload speed, Mbit/s",
     "telemt_limit_rate_down_mbit": "Download speed, Mbit/s",
@@ -619,7 +619,7 @@
     "danger_zone": "Danger zone"
   },
   "sites": {
-    "title": "Websites",
+    "title": "Cover sites",
     "create": "Custom website",
     "empty_title": "No templates yet",
     "empty_description": "Create a cover-site template to assign it to servers.",
@@ -649,7 +649,7 @@
     "create_success": "Template created",
     "assign_button": "Assign to server…",
     "assign_dialog_title": "Assign template \"{{name}}\"",
-    "assign_dialog_description": "Pick a server to assign this template to. It applies on the next \"Apply now\".",
+    "assign_dialog_description": "Pick a server for this template. The site reaches the server with the next apply, usually within a minute, or right away with \"Apply now\" on the server page.",
     "assign_node_label": "Server",
     "assign_submit": "Assign",
     "assign_success": "Website queued for {{node}}. Deployment status is on the server’s Website tab.",
@@ -714,13 +714,13 @@
   "monitoring": {
     "title": "Monitoring",
     "view_label": "Monitoring section",
-    "view_overview": "Whole fleet",
+    "view_overview": "All servers",
     "view_nodes": "Servers",
     "view_web": "WEB transport",
     "fleet_title": "Fleet health",
     "fleet_online": "Servers online",
     "fleet_healthy": "Healthy",
-    "fleet_degraded": "Need attention",
+    "fleet_degraded": "Running with errors",
     "fleet_sessions": "Live sessions",
     "fleet_traffic": "Current traffic",
     "range_label": "Range",
@@ -805,7 +805,7 @@
     "diagnostics_not_run_hint": "Checks the panel could not perform are counted separately and are neither passes nor failures.",
     "diagnostics_passed": "{{passed}} of {{total}} checks passed",
     "diagnostics_run": "Run diagnostics",
-    "diagnostics_title": "WEB diagnostics",
+    "diagnostics_title": "Full server check",
     "diagnostics_warned": "{{count}} with warnings",
     "distribution_absent_description": "Not one server exported a carrier selection counter over this window. That is nothing measured, not a run of zeros.",
     "distribution_absent_title": "No carrier selections reported",
@@ -884,7 +884,7 @@
     "deadlines": "Negotiation deadlines, seconds",
     "update_title": "Telemt updates",
     "update_installed": "Installed",
-    "update_recommended": "Pinned stable release",
+    "update_recommended": "Recommended version",
     "update_action": "Update Telemt",
     "update_running": "Updating…",
     "update_up_to_date": "Running the current release",
@@ -947,10 +947,10 @@
     "group_public_addresses": "Reachability of each IP address"
   },
   "audit": {
-    "title": "Audit log",
+    "title": "Activity log",
     "filter_action_all": "All actions",
     "action_auth": "Login",
-    "action_admin": "Admins",
+    "action_admin": "Accounts",
     "action_node": "Servers",
     "action_key": "Keys",
     "action_site_template": "Site templates",
@@ -979,8 +979,8 @@
   "settings": {
     "title": "Settings",
     "tab_branding": "Appearance",
-    "tab_security": "Security",
-    "tab_admins": "Admins",
+    "tab_security": "Password and 2FA",
+    "tab_admins": "Accounts",
     "tab_panel": "Panel",
     "branding_panel_name": "Panel name",
     "branding_logo": "Logo",
@@ -992,7 +992,7 @@
     "branding_upload_too_large": "That file is over 2 MB — shrink it and try again",
     "branding_upload_bad_type": "Only PNG, JPEG, ICO and SVG work here",
     "branding_upload_success": "File uploaded",
-    "branding_theme_palette_hint": "Default palette: Carbon in dark mode, Linen in light mode. Resetting colors enables this theme pair. Custom brand colors apply to both modes.",
+    "branding_theme_palette_hint": "The default colors are cyan and follow the dark and light theme on their own. Your own brand colors apply to both themes.",
     "branding_primary_color": "Primary color",
     "branding_accent_color": "Accent color",
     "branding_color_invalid": "Enter a color as #rgb or #rrggbb",
@@ -1004,7 +1004,7 @@
     "branding_custom_css": "Custom CSS",
     "branding_save_success": "Branding saved",
     "branding_css_removed_title": "Disallowed CSS was removed:",
-    "branding_profiles_title": "Profiles",
+    "branding_profiles_title": "Branding variants",
     "branding_create_from_active": "Create from active",
     "branding_create_dialog_title": "New profile",
     "branding_create_dialog_description": "Copies the active profile's settings and files under a new name.",
@@ -1034,23 +1034,23 @@
     "security_error_mismatch": "Passwords don't match",
     "security_error_current": "Wrong current password",
     "security_error_min": "At least 10 characters",
-    "admins_create_title": "New admin",
+    "admins_create_title": "New account",
     "admins_field_username": "Username",
     "admins_field_password": "Password",
     "admins_field_role": "Role",
     "admins_password_hint": "At least 10 characters",
     "admins_username_error": "At least 2 characters, or already taken",
     "admins_create_submit": "Create admin",
-    "admins_create_success": "Admin created",
+    "admins_create_success": "Account created",
     "admins_delete_confirm_title": "Delete admin \"{{username}}\"?",
     "admins_delete_confirm_description": "This cannot be undone.",
-    "admins_delete_success": "Admin deleted",
+    "admins_delete_success": "Account deleted",
     "admins_column_username": "Username",
     "admins_column_role": "Role",
     "admins_column_created": "Created",
-    "panel_apply_interval": "Apply interval, sec",
+    "panel_apply_interval": "How often to apply changes, sec",
     "panel_apply_interval_hint": "10 to 3600 seconds",
-    "panel_offline_after": "Offline threshold, sec",
+    "panel_offline_after": "Treat a server as down after, sec",
     "panel_offline_after_hint": "30 to 3600 seconds",
     "panel_owner_only_note": "Only the owner can change these settings.",
     "panel_save_success": "Settings saved",
@@ -1137,8 +1137,8 @@
   },
   "drafts": {
     "banner": "Draft from <time>{{time}}</time>",
-    "resume": "Continue",
-    "discard": "Start over"
+    "resume": "Restore",
+    "discard": "Delete draft"
   },
   "shell": {
     "toggle_sidebar": "Collapse/expand sidebar",
@@ -1200,7 +1200,7 @@
           "keys_active": {
             "name": "Active keys",
             "what": "Keys with Active status. The total number of keys appears below. Open the card to manage keys and inspect pending changes.",
-            "tip": "If the pending count never shrinks, an apply is failing on some server: open the server → Overview → Recent applies."
+            "tip": "If the pending count never shrinks, an apply is failing on some server: open the server → Maintenance → Apply history."
           },
           "sessions": {
             "name": "Connections",
@@ -1217,7 +1217,7 @@
           "alerts": {
             "name": "Needs attention",
             "what": "Open notifications about problems. Select a server name to inspect its status. Dismiss notification removes the entry but does not fix the cause.",
-            "tip": "The same events arrive in Telegram once notifications are on: Panel settings → Behavior and notifications."
+            "tip": "The same events arrive in Telegram once notifications are on: Settings → Notifications and polling."
           },
           "jobs": {
             "name": "Recent changes",
@@ -1235,7 +1235,7 @@
         "fields": {
           "status": {
             "name": "Status",
-            "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Panel settings → Behavior and notifications). \"Degraded\" - the server answers but one of its services is down. \"Pending\" - the server was created, but the install command has not been run yet."
+            "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Settings → Notifications and polling). \"Degraded\" - the server answers but one of its services is down. \"Pending\" - the server was created, but the install command has not been run yet."
           },
           "engine": {
             "name": "Engine",
@@ -1264,15 +1264,15 @@
           },
           "changes": {
             "name": "Changes",
-            "what": "The \"pending\" tag means the panel holds changes (new or revoked keys, a different site) not yet sent to the server. They go out on the next apply, or right away with \"Apply\"."
+            "what": "The \"pending\" tag means the panel holds changes (new or revoked keys, a different site) not yet sent to the server. They go out on the next apply, or right away with \"Apply now\"."
           },
           "actions": {
             "name": "Actions",
-            "what": "\"Apply\" - send the accumulated changes now. \"Install command\" - mint a new one-time token and show the command (the old command stops working). \"Delete\" - remove the server together with its profiles and bindings. Keys bound only to this server are left with no servers."
+            "what": "\"Apply now\" - send the accumulated changes now. \"Install command\" - mint a new one-time token and show the command (the old command stops working). \"Delete\" - remove the server together with its profiles and bindings. Keys bound only to this server are left with no servers."
           }
         },
         "notes": {
-          "1": "Applies run on their own every \"Apply interval\" (45 seconds by default). On a tproxy server every apply restarts the relay and drops live sessions; on a telemt server key changes go through the API without a restart.",
+          "1": "Applies run on their own every \"How often to apply changes\" (45 seconds by default). On a tproxy server every apply restarts the relay and drops live sessions; on a telemt server key changes go through the API without a restart.",
           "2": "Servers and the panel must be separate servers: the proxy on a server takes ports 80 and 443.",
           "3": "A server that stays \"offline\" usually cannot reach the panel's address (PANEL_PUBLIC_URL). On the VPS: journalctl -u tgwp-agent -n 100."
         }
@@ -1317,7 +1317,7 @@
           },
           "public_ip": {
             "name": "Public IP",
-            "what": "The server's IPv4 address. Optional: a telemt server detects it during install. If set, the install script and \"Readiness check\" compare the domain's A record against it.",
+            "what": "The server's IPv4 address. Optional: a telemt server detects it during install. If set, the install script and \"Check from the panel\" compare the domain's A record against it.",
             "example": "203.0.113.10",
             "tip": "Set it when the server has several addresses or sits behind NAT with a forwarded public IP - auto-detection may pick the wrong one there."
           }
@@ -1362,7 +1362,7 @@
         }
       },
       "nodes.check": {
-        "title": "Readiness check",
+        "title": "Check from the panel",
         "intro": "From its own side, the panel walks the same steps a Telegram client takes when connecting: resolve the domain, knock on the ports, verify the certificate and the site. Run it after install, after a DNS change, and whenever \"the server is online but clients cannot connect\".",
         "fields": {
           "dns_a": {
@@ -1402,52 +1402,64 @@
       },
       "nodes.detail": {
         "title": "Server page",
-        "intro": "Everything about one server: service health and resources, which keys are on it, live logs, the cover site and statistics. The header buttons are the only actions that change something on the server itself.",
+        "intro": "Everything about one server on eight tabs: three to observe it, three to configure it and one for maintenance. \"Apply now\" in the header sends the accumulated changes without waiting for the next cycle.",
         "fields": {
           "header": {
             "name": "Header",
-            "what": "Status dot, name, host with a copy button and tags: telemt or relay version, the Fake-TLS endpoint (domain:port) on a telemt server, agent version."
+            "what": "Status dot, name, domain with a copy button and tags: the telemt or relay version, the Fake-TLS address (domain:port) and the agent version."
           },
           "apply": {
-            "name": "Apply",
-            "what": "Send the accumulated changes to the server now instead of waiting for the next cycle. On a telemt server keys go through the API without a restart; on a tproxy server the relay restarts and live sessions drop (clients reconnect on their own)."
-          },
-          "restart": {
-            "name": "Restart relay / telemt",
-            "what": "Forces a restart of the proxy process. Every current connection drops. Rarely needed - when the process hangs while \"Readiness check\" says the network is fine."
-          },
-          "install": {
-            "name": "Show install command",
-            "what": "Mints a new one-time token (24 hours) and shows the command. Use it to reinstall, or if the first install never reached registration. The old command stops working immediately."
-          },
-          "delete": {
-            "name": "Delete server",
-            "what": "Removes the server from the panel with its profiles and bindings. The server itself is untouched - the proxy on it keeps running with its old configuration until you stop it. Keys bound only to this server are left with no servers."
+            "name": "Apply now",
+            "what": "Send the accumulated changes to the server now. The panel applies them on its own about once a minute anyway (set under Settings → Notifications and polling). On a telemt server keys go through the API without a restart; on a tproxy server the relay restarts and live sessions drop."
           },
           "tab_overview": {
-            "name": "Overview",
-            "what": "Service health (relay/telemt, MTProxy, Caddy), uptime, CPU/memory/disk, versions, \"Readiness check\", Fake-TLS settings (telemt) and recent applies with the agent log - look here first when keys sit in \"Pending\"."
-          },
-          "tab_profiles": {
-            "name": "Profiles",
-            "what": "Keys the panel has put, or is about to put, on this server, with mode, limits and expiry. \"Compare with server\" asks the live server for its list and shows the differences: what exists only in the panel's database and what only on the server."
-          },
-          "tab_logs": {
-            "name": "Logs",
-            "what": "Live journals of the server's services (telemt, or tproxy-server and mtproxy, and caddy). Only while the server is online."
-          },
-          "tab_site": {
-            "name": "Site",
-            "what": "Which cover-site template is assigned and whether it is deployed, a preview, and a switch to another template. A new template reaches the server on the next apply."
+            "name": "Health",
+            "what": "A one-line verdict, services, uptime, CPU, memory, disk and the connection to the Telegram datacenters. Look here first."
           },
           "tab_stats": {
             "name": "Statistics",
-            "what": "Sessions, connections and traffic of the server over the chosen range, plus server load (CPU, RAM, disk)."
+            "what": "Load and Telegram latency charts over the chosen period and, on a telemt server, the WEB transport: which transports clients pick, sessions and failures."
+          },
+          "tab_checks": {
+            "name": "Checks",
+            "what": "\"Full server check\" runs through the agent and checks DNS, TLS, the site, telemt and the Telegram connection. \"Check from the panel\" looks at the server from outside: DNS, ports, certificate and Fake-TLS masking. Below are external checks from other networks, if connected."
+          },
+          "tab_logs": {
+            "name": "Logs",
+            "what": "Live service logs: telemt or tproxy-server and mtproxy, caddy, the agent. Available while the server's agent is connected."
+          },
+          "tab_settings": {
+            "name": "Settings",
+            "what": "The Fake-TLS address, port and domains, the public IP, the sponsor channel tag, the WEB transport strategy and the route to Telegram. Changing the Fake-TLS domain or port breaks links already handed out; nothing else does."
+          },
+          "tab_keys": {
+            "name": "Keys",
+            "what": "The access keys installed on the server or waiting to be applied, with limits and expiry. \"Compare with the server\" asks the server for its list and shows where it differs from the panel."
+          },
+          "tab_site": {
+            "name": "Cover site",
+            "what": "Which site an ordinary visitor of the server domain sees, a preview and a template switch. A new site reaches the server with the next apply."
+          },
+          "tab_maintenance": {
+            "name": "Maintenance",
+            "what": "The telemt update, versions, apply history and actions: restart the proxy, the install command and deleting the server."
+          },
+          "restart": {
+            "name": "Restart relay / telemt",
+            "what": "On the Maintenance tab. A forced restart of the proxy process; every current connection drops. Rarely needed: when the process hangs and the checks show the network is fine."
+          },
+          "install": {
+            "name": "Show install command",
+            "what": "On the Maintenance tab. Issues a new single-use token valid for 24 hours and shows the command. Use it to reinstall the agent or when the first install never reached registration. The old command stops working at once."
+          },
+          "delete": {
+            "name": "Delete server",
+            "what": "On the Maintenance tab. Removes the server from the panel together with its keys on it and bindings. The VPS itself is untouched: the proxy keeps running on the old configuration until you stop it. Keys bound only to this server are left without servers."
           }
         },
         "notes": {
-          "1": "While the server is offline the \"Profiles\" and \"Logs\" tabs and live statistics are unavailable until the agent reconnects.",
-          "2": "\"Degraded\" (yellow) on a running server usually means one of the services died: check \"Service health\" and that service's logs."
+          "1": "While the server is not connected, the Keys and Logs tabs and live statistics stay empty until the agent connects. The card on Health tells you what to check.",
+          "2": "A yellow status on a running server usually means one service is down: see Health and that service's logs."
         }
       },
       "nodes.listeners": {
@@ -1458,7 +1470,7 @@
             "name": "Fake-TLS domain",
             "what": "The site the port masquerades as. The right choice is the server's own host: it has a real cover site and a certificate. A foreign domain is acceptable only if it is a real site answering HTTPS on 443 that the server can reach. Spelling rules as for the host: lowercase, with a dot, no scheme.",
             "example": "ams1.example.com",
-            "tip": "After changing it, run \"Readiness check\": the \"Fake-TLS masking\" line tells you whether the new domain works."
+            "tip": "After changing it, run \"Check from the panel\": the \"Fake-TLS masking\" line tells you whether the new domain works."
           },
           "tls_domains": {
             "name": "Backup masking domains",
@@ -1473,14 +1485,14 @@
           },
           "public_ip": {
             "name": "Public IP",
-            "what": "The IPv4 address the server is reachable at from the internet. telemt names it in the WEB vhost (public_addr) and \"Readiness check\" compares the host's A record against it. The install script detects it and reports it at registration; correct it here when it picked the wrong one.",
+            "what": "The IPv4 address the server is reachable at from the internet. telemt names it in the WEB vhost (public_addr) and \"Check from the panel\" compares the host's A record against it. The install script detects it and reports it at registration; correct it here when it picked the wrong one.",
             "example": "203.0.113.10",
             "tip": "It must be the address the A record points at. On a NAT host the interface address and the one the internet sees can differ - the installer shows both; \"connection refused\" on 80/443 means the wrong one is recorded."
           }
         },
         "notes": {
           "1": "Change these only as a last resort, and plan to send new links to everyone holding a Fake-TLS link of this server. Subscription pages update on their own.",
-          "2": "Saving only records the intent: the next apply (automatic, or the \"Apply\" button) sends it to the server."
+          "2": "Saving only records the intent: the next apply (automatic, or the \"Apply now\" button) sends it to the server."
         }
       },
       "nodes.dcs": {
@@ -1548,7 +1560,7 @@
           }
         },
         "notes": {
-          "1": "Every change reaches clients only after an apply on the server - on schedule (every 45 seconds by default) or via \"Apply\" on the server. On telemt without a restart, on tproxy with a relay restart.",
+          "1": "Every change reaches clients only after an apply on the server - on schedule (every 45 seconds by default) or via \"Apply now\" on the server page. On telemt without a restart, on tproxy with a relay restart.",
           "2": "A server has a limited number of profiles (128 by default). When it is full, the panel refuses the binding and names the server.",
           "3": "Viewers see the list but not the links or secrets."
         }
@@ -1564,7 +1576,7 @@
             "tip": "Labels are what you search by: write it so it still makes sense a year from now."
           },
           "owner_label": {
-            "name": "Owner label",
+            "name": "Issued to",
             "what": "Personal keys only, required. Who exactly holds it: a name, Telegram handle or e-mail. It is how you find and revoke one person's access.",
             "example": "Ivan Petrov · @ivan"
           },
@@ -1595,7 +1607,7 @@
           }
         },
         "notes": {
-          "1": "A key created in \"Pending\" starts working after an apply on the server - automatically after the interval (45 seconds by default) or right away with \"Apply\" on the server.",
+          "1": "A key created in \"Pending\" starts working after an apply on the server - automatically after the interval (45 seconds by default) or right away with \"Apply now\" on the server page.",
           "2": "On a telemt server the key gets two links: WEB and Fake-TLS. On a tproxy server only WEB (Telegram Desktop stable, Android experimental, iOS planned).",
           "3": "Closed the dialog half-way? The panel keeps a draft and offers to continue next time."
         }
@@ -1833,7 +1845,7 @@
           },
           "assign": {
             "name": "Assign to server",
-            "what": "In the editor - the \"Assign to server…\" button; on the server page - the \"Site\" tab. Every server gets a uniquified copy: block order, class and file names differ, so servers do not share a signature."
+            "what": "In the editor - the \"Assign to server…\" button; on the server page - the \"Cover site\" tab. Every server gets a uniquified copy: block order, class and file names differ, so servers do not share a signature."
           }
         },
         "notes": {
@@ -1888,7 +1900,7 @@
         },
         "notes": {
           "1": "On a tproxy server the apply restarts the relay and drops live sessions; on a telemt server a site change also goes through an apply.",
-          "2": "The current template and its deployment status are on the server page → \"Site\" tab."
+          "2": "The current template and its deployment status are on the server page → \"Cover site\" tab."
         }
       },
       "monitoring": {
@@ -1926,7 +1938,7 @@
         }
       },
       "audit": {
-        "title": "Audit log",
+        "title": "Activity log",
         "intro": "Who did what and when in the panel: logins, key creation and revocation, server, settings and branding changes. The panel writes the entries itself; they cannot be edited or deleted from the UI. Use it to trace where a change came from and who issued a key.",
         "fields": {
           "action": {
@@ -1964,7 +1976,7 @@
         "intro": "Two numbers that decide how fast the panel reacts. Only the owner can change them; the values from .env (APPLY_INTERVAL, OFFLINE_AFTER) are the initial ones, overridden here without a restart.",
         "fields": {
           "apply_interval": {
-            "name": "Apply interval, s",
+            "name": "How often to apply changes, s",
             "what": "How often the worker checks the servers for unsent changes and sends them. 10 to 3600 seconds, default 45. A key created in the panel starts working no later than this interval.",
             "example": "45",
             "tip": "On tproxy servers every apply restarts the relay. If keys are issued often, a longer interval (120-300) means fewer restarts - the changes simply pile into one batch."
@@ -1977,7 +1989,7 @@
           }
         },
         "notes": {
-          "1": "\"Apply\" on a server and \"Apply everywhere\" in the command palette do not wait for the interval."
+          "1": "\"Apply now\" on a server and \"Apply everywhere\" in the command palette do not wait for the interval."
         }
       },
       "settings.telegram": {
@@ -2000,7 +2012,7 @@
           },
           "test": {
             "name": "Send a test message",
-            "what": "Sends a probe with the token and chat id as typed, without saving them. If it arrives, save. The test result is written to the audit log."
+            "what": "Sends a probe with the token and chat id as typed, without saving them. If it arrives, save. The test result is written to the activity log."
           }
         },
         "notes": {
@@ -2009,7 +2021,7 @@
         }
       },
       "settings.security": {
-        "title": "Security",
+        "title": "Password and 2FA",
         "intro": "Your account's password and second factor. The panel is the one place from which access to every server can be issued, so right after install change the password and turn on two-factor authentication.",
         "fields": {
           "password": {
@@ -2036,7 +2048,7 @@
       },
       "settings.admins": {
         "title": "Admins",
-        "intro": "Accounts that can log in to the panel. Only the owner creates and deletes them. Give every person their own account - then the audit log says who did what.",
+        "intro": "Accounts that can log in to the panel. Only the owner creates and deletes them. Give every person their own account - then the activity log says who did what.",
         "fields": {
           "username": {
             "name": "Username",
@@ -2045,7 +2057,7 @@
           },
           "password": {
             "name": "Password",
-            "what": "At least 10 characters. Tell it to the person and ask them to change it right away under Panel settings → Security."
+            "what": "At least 10 characters. Tell it to the person and ask them to change it right away under Settings → Password and 2FA."
           },
           "role": {
             "name": "Role",
@@ -2129,7 +2141,7 @@
       },
       "settings.backups": {
         "title": "Backups",
-        "intro": "A backup is a dump of the whole panel database: servers, keys, secrets, settings, the audit log. Files live on the panel's server in the /data/backups/ volume. Owner only. Secrets in the dump stay encrypted with the MASTER_KEY from .env - without it a restored database is useless, so keep the key away from the server.",
+        "intro": "A backup is a dump of the whole panel database: servers, keys, secrets, settings, the activity log. Files live on the panel's server in the /data/backups/ volume. Owner only. Secrets in the dump stay encrypted with the MASTER_KEY from .env - without it a restored database is useless, so keep the key away from the server.",
         "fields": {
           "create": {
             "name": "Create backup",
@@ -2189,53 +2201,50 @@
   },
   "workspace": {
     "tab_overview": "Health",
-    "tab_web": "WEB",
     "tab_stats": "Stats",
-    "tab_diagnostics": "Diagnostics",
+    "tab_diagnostics": "Checks",
     "tab_logs": "Logs",
-    "tab_proxy": "Proxy",
-    "tab_profiles": "Profiles",
-    "tab_site": "Website",
+    "tab_proxy": "Settings",
+    "tab_profiles": "Keys",
+    "tab_site": "Cover site",
     "tab_settings": "Maintenance",
     "node_navigation": "Server sections",
-    "observe": "Monitor",
+    "observe": "Observe",
     "configure": "Configure",
     "service": "Maintain",
     "section_overview": "Server health",
-    "description_overview": "Inspect services, resource usage and Telegram connectivity. Change connection parameters in Proxy settings.",
-    "section_web": "WEB monitoring",
-    "description_web": "Live connections, transport selection and available capacity. Transport policy lives in Proxy settings.",
-    "section_stats": "Load history",
-    "description_stats": "Compare traffic and connections over time to locate a degradation.",
-    "section_diagnostics": "Connection diagnostics",
-    "description_diagnostics": "Check DNS, certificates and proxy reachability. Results are saved; a successful website check does not certify every Telegram client.",
+    "description_overview": "Services, load and the connection to the Telegram datacenters. The address, port and domains are changed on the Settings tab.",
+    "section_stats": "Server statistics",
+    "description_stats": "Load, latency to Telegram and the WEB transport over time, so you can see when things got worse.",
+    "section_diagnostics": "Server checks",
+    "description_diagnostics": "The full server check and the check from the panel: DNS, certificate, ports and proxy reachability. Results are kept; a passing check does not guarantee every Telegram client connects.",
     "section_logs": "Service logs",
     "description_logs": "Select a service to investigate a failure. Remove credentials before sharing logs.",
-    "section_proxy": "Proxy settings",
-    "description_proxy": "Settings for this server. Changing the Fake-TLS address or port affects existing links. WEB changes depend on engine capabilities.",
-    "section_profiles": "Server access",
-    "description_profiles": "Profiles delivered to this server. Create a key and choose its servers in Access keys.",
-    "section_site": "Server website",
-    "description_site": "Choose what a regular visitor sees on this domain. Shared templates live in Cover websites.",
+    "section_proxy": "Server settings",
+    "description_proxy": "The Fake-TLS address, port and domains, the WEB transport and the route to Telegram. Changing the Fake-TLS address or port breaks links already handed out.",
+    "section_profiles": "Keys on this server",
+    "description_profiles": "The access keys installed on this server. Create a key and pick its servers under Access keys.",
+    "section_site": "Cover site",
+    "description_site": "The site an ordinary visitor of the server domain sees. All templates are under Cover sites.",
     "section_settings": "Server maintenance",
     "description_settings": "Engine updates, apply history and service actions. Restarting can interrupt active connections.",
     "service_actions": "Server actions",
     "service_warning": "Restarting interrupts connections. Removing a server unregisters it from the panel; check users’ backup links first.",
-    "panel_settings": "Panel settings",
+    "panel_settings": "Settings",
     "panel_settings_hint": "Panel behavior, notifications and security. Configure proxy ports and transports on each server’s page.",
-    "settings_panel": "Behavior and notifications",
+    "settings_panel": "Notifications and polling",
     "settings_panel_hint": "Refresh intervals and incident notifications. These settings apply to the entire panel.",
     "settings_preferences": "My preferences",
     "settings_preferences_hint": "Theme, density and navigation. These changes are saved only in your browser.",
     "settings_branding": "Project identity",
     "settings_branding_hint": "The name, logo and colors everyone using the panel sees.",
-    "settings_security": "Security",
+    "settings_security": "Password and 2FA",
     "settings_security_hint": "Two-factor authentication and account protection.",
-    "settings_admins": "Administrators",
+    "settings_admins": "Accounts",
     "settings_admins_hint": "Panel accounts and access permissions.",
     "settings_backups": "Backups",
     "settings_backups_hint": "Schedule, download and restore the database. Decrypting credentials also requires the master key.",
-    "monitoring_hint": "Inspect availability, failures and load. Configure servers in Server fleet.",
+    "monitoring_hint": "Inspect availability, failures and load. Configure servers under Servers.",
     "fleet_hint": "Add servers and configure their proxies. Open a server to change addresses, transports, access or its website.",
     "home_hint": "Fleet health and problems requiring action.",
     "history_details": "Connection chart and recent operations",
@@ -2284,10 +2293,10 @@
     "restore_primary": "Check and restore primary route"
   },
   "fleet": {
-    "title": "Fleet updates",
+    "title": "Update telemt on servers",
     "hint": "Select servers in order. Each update is followed by health checks and one minute of observation. An error stops the queue. Stopping the queue allows the current update to finish.",
     "select": "Servers and update order",
-    "empty": "No online telemt servers available.",
+    "empty": "No telemt server is connected right now. Only a server whose agent is connected to the panel can be updated.",
     "start": "Start sequential update",
     "confirm": "Update selected servers ({{count}}) to the pinned version? Server 1 goes first. Active WEB sessions are drained on each server.",
     "running": "Running",
@@ -2298,10 +2307,10 @@
   },
   "probe": {
     "title": "External network checks",
-    "hint": "Reports from independent probes. TLS and website checks measure reachability. FakeTLS and WEB require a configured test client; without one, success is not confirmed.",
-    "none": "No probes connected: the server is not checked from other networks.",
-    "setup_toggle": "How to connect probes",
-    "empty": "No probes configured. The panel host administrator sets PROBE_LOCATIONS and runs tgwp-probe in external networks.",
+    "hint": "Results of checks from external networks. TLS and site checks show reachability. FakeTLS and WEB checks need a connected test client; without one a success is not confirmed.",
+    "none": "No external checks are connected: the server is not checked from other networks.",
+    "setup_toggle": "How to connect external checks",
+    "empty": "No external checks are connected. The panel host administrator sets PROBE_LOCATIONS and runs tgwp-probe in external networks.",
     "stale": "No fresh report",
     "tls": "TLS certificate",
     "http": "Cover website",
