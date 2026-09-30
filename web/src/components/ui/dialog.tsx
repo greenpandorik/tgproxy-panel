@@ -40,19 +40,41 @@ function DialogOverlay({
   )
 }
 
+const TABBABLE =
+  'a[href], button:not(:disabled), input:not(:disabled):not([type="hidden"]), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])'
+const TEXT_FIELD =
+  'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="file"]):not([readonly]), textarea:not([readonly]), select, [role="combobox"]'
+
+function initialFocusTarget(popup: HTMLElement | null): HTMLElement | true {
+  if (!popup) return true
+  const usable = (el: Element): el is HTMLElement =>
+    el instanceof HTMLElement &&
+    el.tabIndex >= 0 &&
+    el.getClientRects().length > 0 &&
+    !el.closest("[data-help-button], [aria-hidden='true']")
+  const active = document.activeElement
+  if (active && active !== popup && popup.contains(active) && usable(active)) return active
+  const first = [...popup.querySelectorAll(TABBABLE)].find(usable)
+  return first?.matches(TEXT_FIELD) ? first : popup
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  initialFocus,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
 }) {
   const { t } = useTranslation()
+  const popupRef = React.useRef<HTMLDivElement>(null)
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
+        ref={popupRef}
+        initialFocus={initialFocus ?? ((openType) => (openType === "touch" ? true : initialFocusTarget(popupRef.current)))}
         data-slot="dialog-content"
         data-close-button={showCloseButton ? "" : undefined}
         className={cn(
