@@ -259,6 +259,10 @@
     outline: 2px solid var(--brand-ink);
     outline-offset: 3px;
   }
+
+  :where(button, [role='button'], summary, select):not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {
