@@ -9,9 +9,18 @@ import { WebCounters } from './WebCounters';
 import type { WebCarrierStats } from '@/api/types';
 
 const stats = (over: Partial<WebCarrierStats> = {}): WebCarrierStats => ({
-  from: '2026-09-27T10:00:00Z', to: '2026-09-28T10:00:00Z', samples: 1440, counter_resets: 0,
-  carrier_selections: 812, carrier_failures: 0, rejected_attempts: 0, evicted_sessions: 0, bridge_recoveries: 0,
-  learning_entries: 14, carrier_selection_distribution: [], ...over,
+  from: '2026-09-27T10:00:00Z',
+  to: '2026-09-28T10:00:00Z',
+  samples: 1440,
+  counter_resets: 0,
+  carrier_selections: 812,
+  carrier_failures: 0,
+  rejected_attempts: 0,
+  evicted_sessions: 0,
+  bridge_recoveries: 0,
+  learning_entries: 14,
+  carrier_selection_distribution: [],
+  ...over,
 });
 
 beforeEach(() => setLang('en'));
@@ -30,5 +39,14 @@ it('shows every counter as soon as one of them is not zero', () => {
 
 it('does not claim a quiet window when a counter was not reported', () => {
   render(<WebCounters stats={stats({ evicted_sessions: null })} />);
-  expect(screen.getByTestId('web-counters-summary')).toHaveTextContent('does not report some of these counters');
+  expect(screen.getByTestId('web-counters-summary')).toHaveTextContent('does not send some of these counters');
+});
+
+it('does not speak of failures when the server reported no counter at all', () => {
+  render(
+    <WebCounters
+      stats={stats({ carrier_failures: null, rejected_attempts: null, evicted_sessions: null, bridge_recoveries: null })}
+    />,
+  );
+  expect(screen.getByTestId('web-counters-summary')).toHaveTextContent('The server sent no failure counters in this window.');
 });

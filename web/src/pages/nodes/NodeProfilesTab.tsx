@@ -84,8 +84,8 @@ function ProfilesTable({
       <TableBody>
         {profiles.map((p, i) => (
           <TableRow key={isDbProfile(p) ? p.id : `${p.name}-${i}`}>
-            <TableCell className="font-medium text-foreground">{p.name}</TableCell>
-            <TableCell className="max-w-40 truncate text-mute">{keyCell(p, t)}</TableCell>
+            <TableCell className="mono text-mono text-mute">{p.name}</TableCell>
+            <TableCell className="max-w-48 truncate text-foreground">{keyCell(p, t)}</TableCell>
             <TableCell className="mono text-mono text-mute">{p.carrier_mode}</TableCell>
             <TableCell className="mono max-w-72 text-mono whitespace-normal text-mute">
               {telemt ? telemtLimitsSummary(isDbProfile(p) ? p.telemt_limits : undefined, t) : limitsSummary(p.limits, t)}
@@ -183,7 +183,7 @@ export function NodeProfilesTab({ nodeId, online, engine }: { nodeId: string; on
     </Button>
   );
 
-  if (liveOffline || liveQuery.isLoading || (dbOnly.length === 0 && nodeOnly.length === 0)) {
+  if (liveOffline || liveQuery.isLoading || liveQuery.isError || (dbOnly.length === 0 && nodeOnly.length === 0)) {
     return (
       <Section title={t('nodes.profiles_compare_title')} actions={back}>
         {liveOffline ? (

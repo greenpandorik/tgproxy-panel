@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 import type {
   ApplyJob,
@@ -40,6 +40,7 @@ export const useNode = (id: string) =>
     queryFn: () => api.get<Node>(`/api/v1/nodes/${id}`),
     refetchInterval: REFRESH_MS,
     enabled: !!id,
+    retry: (count, error) => !(error instanceof ApiError && [401, 403, 404].includes(error.status)) && count < 2,
   });
 
 export const useCreateNode = () => {
@@ -87,7 +88,8 @@ export const useNodeHealth = (id: string, enabled = true) =>
   useQuery({
     queryKey: nodeKeys.health(id),
     queryFn: () => api.get<NodeHealth>(`/api/v1/nodes/${id}/health`),
-    refetchInterval: (q) => ['draining', 'force_closing'].includes(q.state.data?.web_runtime?.lifecycle?.state ?? '') ? 2000 : REFRESH_MS,
+    refetchInterval: (q) =>
+      ['draining', 'force_closing'].includes(q.state.data?.web_runtime?.lifecycle?.state ?? '') ? 2000 : REFRESH_MS,
     enabled: !!id && enabled,
     retry: false,
   });
@@ -146,7 +148,12 @@ export const useRunNodeCheck = (id: string) => {
 };
 
 export const useNodeSite = (id: string) =>
-  useQuery({ queryKey: nodeKeys.site(id), queryFn: () => api.get<NodeSite>(`/api/v1/nodes/${id}/site`), enabled: !!id, refetchInterval: (q) => q.state.data?.bundle_hash !== q.state.data?.deployed_hash ? 3000 : false });
+  useQuery({
+    queryKey: nodeKeys.site(id),
+    queryFn: () => api.get<NodeSite>(`/api/v1/nodes/${id}/site`),
+    enabled: !!id,
+    refetchInterval: (q) => (q.state.data?.bundle_hash !== q.state.data?.deployed_hash ? 3000 : false),
+  });
 
 export const useAssignSite = (id: string) => {
   const qc = useQueryClient();

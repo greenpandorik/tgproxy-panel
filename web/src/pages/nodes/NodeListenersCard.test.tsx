@@ -175,7 +175,9 @@ describe('NodeListenersCard', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
-    expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ tls_domain: 'n1.test', tls_domains: ['alt.example.org'] }));
+    expect(mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ tls_domain: 'n1.test', tls_domains: ['alt.example.org'] }),
+    );
   });
 
   it('rejects a backup domain that is not a hostname before asking to confirm', async () => {

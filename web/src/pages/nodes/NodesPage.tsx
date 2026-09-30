@@ -116,21 +116,28 @@ function DirtyTag({ dirty }: { dirty: boolean }) {
 }
 
 /** Hostname with a copy affordance that stays out of the way until the row is pointed at. */
-function HostCell({ hostname }: { hostname: string }) {
+function HostLine({ hostname }: { hostname: string }) {
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className="mono text-mono text-mute">{hostname}</span>
+    <span className="flex items-center gap-1 pl-[15px]">
+      <span className="mono truncate text-mono text-mute">{hostname}</span>
       <CopyButton
         value={hostname}
-        className="size-6 opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 [&_svg]:size-3"
+        className="-my-1 size-6 opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 [&_svg]:size-3"
       />
     </span>
   );
 }
 
+interface InstallResult {
+  command: string;
+  expires_at: string;
+  nodeId: string;
+  regenerated: boolean;
+}
+
 interface RowActionsProps {
   node: Node;
-  onShowInstall: (result: { command: string; expires_at: string }) => void;
+  onShowInstall: (result: InstallResult) => void;
   onDelete: (node: Node) => void;
 }
 
@@ -151,7 +158,7 @@ function RowActions({ node, onShowInstall, onDelete }: RowActionsProps) {
   const handleInstall = async () => {
     try {
       const result = await installCommand.mutateAsync();
-      onShowInstall(result);
+      onShowInstall({ ...result, nodeId: node.id, regenerated: true });
     } catch {
       toast.add({ description: t('common.error_generic'), type: 'error' });
     }
@@ -249,14 +256,15 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
 
   return (
     <TableRow className="group/row cursor-pointer" onClick={openNode}>
-      <TableCell className="font-medium text-foreground">
-        <Link to={`/nodes/${node.id}`} className="inline-flex items-center gap-2 hover:underline">
+      <TableCell className="max-w-72">
+        <Link
+          to={`/nodes/${node.id}`}
+          className="flex w-fit max-w-full items-center gap-2 font-medium text-foreground hover:underline"
+        >
           <StatusBadge status={nodeStatus(node)} hideLabel />
           <span className="truncate">{node.name}</span>
         </Link>
-      </TableCell>
-      <TableCell>
-        <HostCell hostname={node.hostname} />
+        <HostLine hostname={node.hostname} />
       </TableCell>
       <TableCell>
         <EngineCell node={node} />
@@ -270,7 +278,7 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
       <TableCell>
         <LoadBar percent={row.load?.mem} />
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="hidden text-right @min-[64rem]:table-cell">
         <DcLatencyText ms={row.telegram} />
       </TableCell>
       <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
@@ -290,14 +298,19 @@ export function NodesPage() {
   const deleteNode = useDeleteNode();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [installResult, setInstallResult] = useState<{ command: string; expires_at: string; nodeId?: string } | null>(null);
+  const [installResult, setInstallResult] = useState<InstallResult | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Node | null>(null);
 
   const nodes = data?.items ?? [];
   const online = nodes.filter((n) => nodeStatus(n) === 'online').length;
 
   const handleCreated = (result: CreateNodeResult) => {
-    setInstallResult({ command: result.install_command, expires_at: result.expires_at, nodeId: result.node.id });
+    setInstallResult({
+      command: result.install_command,
+      expires_at: result.expires_at,
+      nodeId: result.node.id,
+      regenerated: false,
+    });
   };
 
   const handleDelete = async () => {
@@ -332,9 +345,9 @@ export function NodesPage() {
           }
         />
 
-        <FleetUpdates nodes={nodes} />
+        {nodes.some((n) => n.engine === 'telemt') && <FleetUpdates nodes={nodes} />}
         {isLoading ? (
-          <DataTableSkeleton columns={isWriter ? 10 : 9} rows={4} />
+          <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
         ) : nodes.length === 0 ? (
           <EmptyState
             icon={Server}
@@ -351,12 +364,11 @@ export function NodesPage() {
           />
         ) : (
           <Panel className={ENTER_CLASS}>
-            <div className="hidden md:block">
+            <div className="@container hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('nodes.column_name')}</TableHead>
-                    <TableHead>{t('nodes.column_hostname')}</TableHead>
                     <TableHead>{t('nodes.column_relay')}</TableHead>
                     <TableHead>{t('nodes.column_profiles')}</TableHead>
                     <TableHead>{t('nodes.load_cpu')}</TableHead>
@@ -364,7 +376,7 @@ export function NodesPage() {
                     {/* Wide layout only: the card list below md carries the
                         fields that decide where a key goes, and this one is
                         read on the node page when it matters. */}
-                    <TableHead className="text-right">{t('nodes.column_telegram')}</TableHead>
+                    <TableHead className="hidden text-right @min-[64rem]:table-cell">{t('nodes.column_telegram')}</TableHead>
                     <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
                     <TableHead className="text-right">{t('nodes.column_changes')}</TableHead>
                     {isWriter && <TableHead className="w-0" />}
@@ -396,6 +408,7 @@ export function NodesPage() {
           nodeId={installResult.nodeId}
           command={installResult.command}
           expiresAt={installResult.expires_at}
+          regenerated={installResult.regenerated}
         />
       )}
 

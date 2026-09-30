@@ -46,10 +46,18 @@ export function NodeVerdict({ node }: { node: Node }) {
       };
     }
     if (alerts.length > 0) {
-      return { tone: 'warn', headline: t('nodes.verdict_attention', { count: alerts.length }), lines: alerts.map((a) => alertTitle(a, t, i18n)) };
+      return {
+        tone: 'warn',
+        headline: t('nodes.verdict_attention', { count: alerts.length }),
+        lines: alerts.map((a) => alertTitle(a, t, i18n)),
+      };
     }
     if (tally.failed + tally.warned > 0) {
-      return { tone: 'warn', headline: t('nodes.verdict_diagnostics', { count: tally.failed + tally.warned }), lines: [t('nodes.verdict_diagnostics_hint')] };
+      return {
+        tone: 'warn',
+        headline: t('nodes.verdict_diagnostics', { count: tally.failed + tally.warned }),
+        lines: [t('nodes.verdict_diagnostics_hint')],
+      };
     }
     if (node.status === 'degraded') {
       return { tone: 'warn', headline: t('nodes.verdict_degraded'), lines: [t('nodes.verdict_degraded_hint')] };
@@ -65,9 +73,13 @@ export function NodeVerdict({ node }: { node: Node }) {
   return (
     <div data-testid="node-verdict" data-tone={verdict.tone}>
       <Panel>
-        <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <span className="mt-[9px] size-2 shrink-0 rounded-pill" style={{ background: TONE_VAR[verdict.tone] }} aria-hidden="true" />
+            <span
+              className="mt-[9px] size-2 shrink-0 rounded-pill"
+              style={{ background: TONE_VAR[verdict.tone] }}
+              aria-hidden="true"
+            />
             <div className="min-w-0">
               <p className="text-title text-foreground">{verdict.headline}</p>
               {verdict.lines.length > 0 && (
@@ -80,19 +92,31 @@ export function NodeVerdict({ node }: { node: Node }) {
             </div>
           </div>
           {!node.online ? (
-            <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link to="?section=settings" />}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              nativeButton={false}
+              render={<Link to="?section=settings" />}
+            >
               {t('nodes.verdict_open_install')}
             </Button>
           ) : (
             telemt && (
-              <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link to="?section=diagnostics" />}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                nativeButton={false}
+                render={<Link to="?section=diagnostics" />}
+              >
                 {t('nodes.verdict_open_diagnostics')}
               </Button>
             )
           )}
         </div>
         {!node.online && (
-          <div className="space-y-2 border-t border-hairline px-4 py-3">
+          <div className="space-y-2 border-t border-hairline px-5 py-4">
             <p className="text-label text-mute">{t('nodes.verdict_offline_commands')}</p>
             {AGENT_COMMANDS.map((cmd) => (
               <div key={cmd} className="flex items-center gap-2">

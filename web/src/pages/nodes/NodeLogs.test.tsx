@@ -107,10 +107,10 @@ describe('NodeLogs per engine', () => {
   // The agent's own journal is where an apply that never arrived shows up, on either engine.
   it('offers the agent journal on both engines', async () => {
     const { unmount } = render(wrap(<NodeLogs nodeId="11111111-1111-4111-8111-111111111111" online engine="telemt" />));
-    expect(screen.getByRole('switch', { name: 'Agent' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'tgwp-agent' })).toBeInTheDocument();
     unmount();
     render(wrap(<NodeLogs nodeId="11111111-1111-4111-8111-111111111111" online engine="tproxy" />));
-    expect(screen.getByRole('switch', { name: 'Agent' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'tgwp-agent' })).toBeInTheDocument();
   });
 
   // A stream that drops after delivering lines used to say nothing: the tail just stopped moving.

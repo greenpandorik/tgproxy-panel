@@ -59,24 +59,26 @@ function NodeLoadPanel({ nodeId }: { nodeId: string }) {
           />
         }
       />
-      <PanelBody>
-        {seriesQuery.isLoading ? (
-          <Skeleton className="h-[152px] w-full" />
-        ) : seriesQuery.isError ? (
-          <ErrorState
-            inset
-            message={t('common.error_generic')}
-            retryLabel={t('common.refresh')}
-            onRetry={() => void seriesQuery.refetch()}
-          />
-        ) : points.length === 0 ? (
-          <PanelEmpty>{t('nodes.load_empty')}</PanelEmpty>
-        ) : (
-          <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
-            <LoadChart points={points} colors={colors} />
-          </Suspense>
-        )}
-      </PanelBody>
+      {seriesQuery.isError ? (
+        <ErrorState
+          inset
+          message={t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void seriesQuery.refetch()}
+        />
+      ) : !seriesQuery.isLoading && points.length === 0 ? (
+        <PanelEmpty>{t('nodes.load_empty')}</PanelEmpty>
+      ) : (
+        <PanelBody>
+          {seriesQuery.isLoading ? (
+            <Skeleton className="h-[152px] w-full" />
+          ) : (
+            <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
+              <LoadChart points={points} colors={colors} />
+            </Suspense>
+          )}
+        </PanelBody>
+      )}
     </Panel>
   );
 }
@@ -106,26 +108,28 @@ function NodeDcLatencyPanel({ nodeId, engine }: { nodeId: string; engine: NodeEn
           )
         }
       />
-      <PanelBody>
-        {!telemt ? (
-          <PanelEmpty>{t('nodes.dcs_unavailable_engine')}</PanelEmpty>
-        ) : seriesQuery.isLoading ? (
-          <Skeleton className="h-[152px] w-full" />
-        ) : seriesQuery.isError ? (
-          <ErrorState
-            inset
-            message={t('common.error_generic')}
-            retryLabel={t('common.refresh')}
-            onRetry={() => void seriesQuery.refetch()}
-          />
-        ) : chart.rows.length === 0 ? (
-          <PanelEmpty>{t('nodes.dc_latency_empty')}</PanelEmpty>
-        ) : (
-          <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
-            <DcLatencyChart dcs={chart.dcs} rows={chart.rows} />
-          </Suspense>
-        )}
-      </PanelBody>
+      {!telemt ? (
+        <PanelEmpty>{t('nodes.dcs_unavailable_engine')}</PanelEmpty>
+      ) : seriesQuery.isError ? (
+        <ErrorState
+          inset
+          message={t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void seriesQuery.refetch()}
+        />
+      ) : !seriesQuery.isLoading && chart.rows.length === 0 ? (
+        <PanelEmpty>{t('nodes.dc_latency_empty')}</PanelEmpty>
+      ) : (
+        <PanelBody>
+          {seriesQuery.isLoading ? (
+            <Skeleton className="h-[152px] w-full" />
+          ) : (
+            <Suspense fallback={<Skeleton className="h-[152px] w-full" />}>
+              <DcLatencyChart dcs={chart.dcs} rows={chart.rows} />
+            </Suspense>
+          )}
+        </PanelBody>
+      )}
     </Panel>
   );
 }
@@ -200,7 +204,7 @@ export function NodeStatsTab({ nodeId, online, engine }: { nodeId: string; onlin
   return (
     <div className={cn(ENTER_CLASS, 'space-y-4')}>
       <NodeLoadPanel nodeId={nodeId} />
-      <NodeDcLatencyPanel nodeId={nodeId} engine={engine} />
+      {engine === 'telemt' && <NodeDcLatencyPanel nodeId={nodeId} engine={engine} />}
       <NodeCountersPanel nodeId={nodeId} online={online} />
     </div>
   );

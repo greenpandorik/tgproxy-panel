@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Stethoscope } from 'lucide-react';
+import { Download, Stethoscope } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useNodeDiagnostics, useRunWebDiagnostics } from '@/api/web';
@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { TONE_VAR } from '@/components/common/statTone';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { formatCompactAge, formatDateTime } from '@/lib/format';
@@ -38,7 +39,10 @@ function CheckRow({ check, group, showDetail }: { check: DiagnosticCheck; group?
       <span className="flex min-w-0 items-start gap-2">
         <span
           className="mt-[7px] size-[7px] shrink-0 rounded-pill"
-          style={{ background: skipped ? 'transparent' : TONE_VAR[tone], boxShadow: skipped ? 'inset 0 0 0 1px var(--line-2)' : undefined }}
+          style={{
+            background: skipped ? 'transparent' : TONE_VAR[tone],
+            boxShadow: skipped ? 'inset 0 0 0 1px var(--line-2)' : undefined,
+          }}
           aria-hidden="true"
         />
         <span className="flex min-w-0 flex-col">
@@ -46,7 +50,9 @@ function CheckRow({ check, group, showDetail }: { check: DiagnosticCheck; group?
             {t(`web.check_${check.key}`, check.key)}
             {group && <span className="text-label text-mute"> · {t(`web.group_${group}`, group)}</span>}
           </span>
-          {problem && <span className="mt-1 text-label text-foreground">{t(`web.remedy_${check.key}`, t('web.remedy_default'))}</span>}
+          {problem && (
+            <span className="mt-1 text-label text-foreground">{t(`web.remedy_${check.key}`, t('web.remedy_default'))}</span>
+          )}
           {check.detail && (problem || showDetail) && (
             <span className="mt-0.5 text-label text-mute">
               {problem && <span className="text-mute">{t('web.diagnostics_technical')}: </span>}
@@ -84,7 +90,9 @@ function GroupedChecks({ groups, keep }: { groups: DiagnosticGroup[]; keep: (che
         if (checks.length === 0) return null;
         return (
           <section key={group.key} data-group={group.key}>
-            <h3 className="border-b border-hairline bg-elevated/50 px-4 py-1.5 text-label text-mute">{t(`web.group_${group.key}`, group.key)}</h3>
+            <h3 className="border-b border-hairline bg-elevated/50 px-4 py-1.5 text-label text-mute">
+              {t(`web.group_${group.key}`, group.key)}
+            </h3>
             <ul className="divide-y divide-hairline">
               {checks.map((check) => (
                 <CheckRow key={check.key} check={check} showDetail />
@@ -97,6 +105,8 @@ function GroupedChecks({ groups, keep }: { groups: DiagnosticGroup[]; keep: (che
   );
 }
 
+const LATEST = 'latest';
+
 const PROBLEM_ORDER: Record<string, number> = { fail: 0, warn: 1 };
 
 /** A pass read problems first: what needs doing is listed, everything that passed waits behind a toggle. */
@@ -104,24 +114,37 @@ function RunReport({ run }: { run: DiagnosticsRun }) {
   const { t } = useTranslation();
   const tally = tallyChecks(run.groups);
   const problems = run.groups
-    .flatMap((group) => group.checks.filter((c) => c.status === 'fail' || c.status === 'warn').map((check) => ({ group: group.key, check })))
+    .flatMap((group) =>
+      group.checks.filter((c) => c.status === 'fail' || c.status === 'warn').map((check) => ({ group: group.key, check })),
+    )
     .sort((a, b) => PROBLEM_ORDER[a.check.status] - PROBLEM_ORDER[b.check.status]);
   const attention = tally.failed + tally.warned;
 
   return (
     <div className="flex flex-col">
-      <div data-testid="diagnostics-summary" className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-hairline px-4 py-3 text-body">
+      <div
+        data-testid="diagnostics-summary"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-hairline px-4 py-3 text-body"
+      >
         {attention === 0 ? (
           <span className="text-ok">{t('web.diagnostics_all_clear', { passed: tally.passed, total: tally.total })}</span>
         ) : (
           <>
             <span className="text-foreground">{t('web.diagnostics_attention', { count: attention })}</span>
-            {tally.failed > 0 && <span className="text-label text-err">{t('web.diagnostics_failed', { count: tally.failed })}</span>}
-            {tally.warned > 0 && <span className="text-label text-warn">{t('web.diagnostics_warned', { count: tally.warned })}</span>}
-            <span className="text-label text-mute">{t('web.diagnostics_passed', { passed: tally.passed, total: tally.total })}</span>
+            {tally.failed > 0 && (
+              <span className="text-label text-err">{t('web.diagnostics_failed', { count: tally.failed })}</span>
+            )}
+            {tally.warned > 0 && (
+              <span className="text-label text-warn">{t('web.diagnostics_warned', { count: tally.warned })}</span>
+            )}
+            <span className="text-label text-mute">
+              {t('web.diagnostics_passed', { passed: tally.passed, total: tally.total })}
+            </span>
           </>
         )}
-        {tally.notRun > 0 && <span className="text-label text-mute">{t('web.diagnostics_not_run', { count: tally.notRun })}</span>}
+        {tally.notRun > 0 && (
+          <span className="text-label text-mute">{t('web.diagnostics_not_run', { count: tally.notRun })}</span>
+        )}
       </div>
 
       {problems.length > 0 && (
@@ -157,12 +180,27 @@ export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
   const [selected, setSelected] = useState<number | null>(null);
   const runDiagnostics = useRunWebDiagnostics(nodeId);
 
-  const run = selected === null ? runDiagnostics.data ?? stored.data?.items?.[0] : stored.data?.items?.find((item) => item.id === selected);
+  const run =
+    selected === null
+      ? (runDiagnostics.data ?? stored.data?.items?.[0])
+      : stored.data?.items?.find((item) => item.id === selected);
   const ranAt = run?.finished_at ?? run?.started_at ?? null;
   const age = ranAt ? formatCompactAge(ranAt, i18n.language) : null;
 
+  const historyLabel = (item: DiagnosticsRun) =>
+    `${formatDateTime(item.started_at, i18n.language)} · ${t(`web.diagnostics_status_${item.overall_status}`, item.overall_status)}`;
+
   const runButton = isWriter && (
-    <Button type="button" variant="outline" size="sm" onClick={() => { setSelected(null); runDiagnostics.mutate(); }} disabled={runDiagnostics.isPending}>
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        setSelected(null);
+        runDiagnostics.mutate();
+      }}
+      disabled={runDiagnostics.isPending}
+    >
       <Stethoscope className={cn(runDiagnostics.isPending && 'animate-pulse')} />
       {t('web.diagnostics_run')}
     </Button>
@@ -177,10 +215,55 @@ export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
         actions={runButton}
       />
 
-      {stored.data && stored.data.items.length > 1 && <div className="flex flex-wrap items-center gap-3 border-b border-hairline px-4 py-3"><label htmlFor={`diag-history-${nodeId}`} className="text-label text-mute">{t('web.diagnostics_history')}</label><select id={`diag-history-${nodeId}`} className="max-w-full rounded-control border border-hairline bg-background p-2 text-label" value={selected ?? ''} onChange={(e) => setSelected(e.target.value ? Number(e.target.value) : null)}><option value="">{t('web.diagnostics_latest')}</option>{stored.data.items.map((item) => <option key={item.id} value={item.id}>{formatDateTime(item.started_at, i18n.language)} · {t(`web.diagnostics_status_${item.overall_status}`, item.overall_status)}</option>)}</select></div>}
-      {run && <div className="px-4 pt-3"><Button variant="ghost" size="sm" onClick={() => {
-        const blob = new Blob([JSON.stringify(run, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href=url; link.download=`diagnostics-${nodeId}-${run.id}.json`; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }}>{t('web.diagnostics_export')}</Button></div>}
+      {run && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-hairline px-4 py-3">
+          {stored.data && stored.data.items.length > 1 && (
+            <>
+              <label htmlFor={`diag-history-${nodeId}`} className="text-label text-mute">
+                {t('web.diagnostics_history')}
+              </label>
+              <Select
+                value={selected === null ? LATEST : String(selected)}
+                onValueChange={(v) => setSelected(v && v !== LATEST ? Number(v) : null)}
+              >
+                <SelectTrigger id={`diag-history-${nodeId}`} className="max-w-full min-w-0 text-label">
+                  <SelectValue>
+                    {(v: string) => {
+                      const item = stored.data?.items.find((i) => String(i.id) === v);
+                      return item ? historyLabel(item) : t('web.diagnostics_latest');
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={LATEST}>{t('web.diagnostics_latest')}</SelectItem>
+                  {stored.data.items.map((item) => (
+                    <SelectItem key={item.id} value={String(item.id)}>
+                      {historyLabel(item)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={() => {
+              const blob = new Blob([JSON.stringify(run, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `diagnostics-${nodeId}-${run.id}.json`;
+              link.click();
+              window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }}
+          >
+            <Download />
+            {t('web.diagnostics_export')}
+          </Button>
+        </div>
+      )}
       {runDiagnostics.isPending ? (
         <ul className="divide-y divide-hairline">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -197,7 +280,9 @@ export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
           retryLabel={t('web.diagnostics_run')}
           onRetry={() => runDiagnostics.mutate()}
         />
-      ) : stored.isError && !run ? <ErrorState inset message={stored.error.message} retryLabel={t('common.refresh')} onRetry={() => void stored.refetch()} /> : stored.isLoading ? (
+      ) : stored.isError && !run ? (
+        <ErrorState inset message={stored.error.message} retryLabel={t('common.refresh')} onRetry={() => void stored.refetch()} />
+      ) : stored.isLoading ? (
         <div className="space-y-3 p-4">
           <Skeleton className="h-3 w-40" />
           <Skeleton className="h-3 w-full" />

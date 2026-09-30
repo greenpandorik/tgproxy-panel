@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/i18n';
 import { setLang } from '@/i18n';
-import { useNodes } from '@/api/nodes';
+import { useInstallCommand, useNode, useNodeHealth, useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 
 import { NodesPage } from './NodesPage';
@@ -19,6 +19,9 @@ vi.mock('@/auth/AuthProvider', () => ({ useAuth: vi.fn() }));
 vi.mock('@/api/nodes', async (importOriginal) => ({
   ...(await importOriginal<typeof NodesApi>()),
   useNodes: vi.fn(),
+  useInstallCommand: vi.fn(),
+  useNode: vi.fn(),
+  useNodeHealth: vi.fn(),
 }));
 vi.mock('./CreateNodeDialog', () => ({ CreateNodeDialog: () => null }));
 
@@ -222,8 +225,8 @@ describe('NodesPage Telegram column', () => {
     expect(screen.queryByText(/42 ms/)).toBeNull();
     for (const name of ['n4', 'n5', 'n6']) {
       const cells = within(rowOf(name)).getAllByRole('cell');
-      // Name, host, relay, profiles, CPU, RAM, Telegram, heartbeat, changes.
-      expect(cells[6]).toHaveTextContent('—');
+      // Server, engine, users, CPU, RAM, Telegram, heartbeat, changes.
+      expect(cells[5]).toHaveTextContent('—');
     }
   });
 });
@@ -270,5 +273,59 @@ describe('NodesPage row click', () => {
     await userEvent.click(within(rowOf('n1')).getByRole('button', { name: 'Actions' }));
     expect(await screen.findByRole('menuitem', { name: 'Apply now' })).toBeInTheDocument();
     expect(screen.queryByText('node detail page')).toBeNull();
+  });
+});
+
+describe('NodesPage install command', () => {
+  beforeEach(() => setLang('en'));
+
+  it('warns that the previous command stops working when a new one is issued from the list', async () => {
+    vi.mocked(useAuth).mockReturnValue({ isWriter: true } as unknown as ReturnType<typeof useAuth>);
+    vi.mocked(useNodes).mockReturnValue({
+      data: { items: [node('n1', 'online', health(42, 85))], total: 1 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+    vi.mocked(useInstallCommand).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ command: 'curl -fsSL install | sh', expires_at: '2026-09-30T12:00:00Z' }),
+    } as unknown as ReturnType<typeof useInstallCommand>);
+    vi.mocked(useNode).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useNode>);
+    vi.mocked(useNodeHealth).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useNodeHealth>);
+
+    render(wrap(<NodesPage />));
+
+    await userEvent.click(within(rowOf('n1')).getByRole('button', { name: 'Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Install command' }));
+
+    expect(await screen.findByText('curl -fsSL install | sh')).toBeInTheDocument();
+    expect(screen.getByText('The old install command stops working.')).toBeInTheDocument();
+  });
+});
+
+describe('NodesPage fleet update', () => {
+  beforeEach(() => {
+    setLang('en');
+    vi.mocked(useAuth).mockReturnValue({ isWriter: true } as unknown as ReturnType<typeof useAuth>);
+  });
+
+  it('does not offer a telemt update when no server runs telemt', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: { items: [{ ...node('n1', 'online'), engine: 'tproxy' }], total: 1 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    expect(screen.queryByRole('button', { name: 'Update telemt on servers' })).toBeNull();
+  });
+
+  it('offers it once a telemt server is in the list', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: { items: [node('n1', 'online')], total: 1 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    expect(screen.getByRole('button', { name: 'Update telemt on servers' })).toBeInTheDocument();
   });
 });

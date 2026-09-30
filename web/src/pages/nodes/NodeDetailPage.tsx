@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Server, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -7,7 +7,8 @@ import { useApplyNode, useDeleteNode, useInstallCommand, useNode, useRestartNode
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
-import { PageHeader } from '@/components/common/PageHeader';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,16 @@ function MetaTag({ label, value }: { label: string; value: string }) {
   );
 }
 
+function BackLink() {
+  const { t } = useTranslation();
+  return (
+    <Link to="/nodes" className="inline-flex w-fit items-center gap-1 text-label text-mute hover:text-foreground">
+      <ArrowLeft className="size-3" />
+      {t('nodes.title')}
+    </Link>
+  );
+}
+
 export function NodeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
@@ -76,6 +87,7 @@ export function NodeDetailPage() {
     return (
       <div className="space-y-6">
         <div className="space-y-3">
+          <BackLink />
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-4 w-80 max-w-full" />
         </div>
@@ -86,13 +98,29 @@ export function NodeDetailPage() {
   }
 
   if (nodeQuery.isError || !nodeQuery.data) {
+    const missing = nodeQuery.error instanceof ApiError && nodeQuery.error.status === 404;
     return (
-      <>
-        <PageHeader title={t('nodes.title')} />
-        <p className="rounded-surface border border-hairline px-6 py-10 text-center text-body text-mute">
-          {nodeQuery.error instanceof ApiError ? nodeQuery.error.message : t('common.error_generic')}
-        </p>
-      </>
+      <div className="flex flex-col gap-6">
+        <BackLink />
+        {missing ? (
+          <EmptyState
+            icon={Server}
+            title={t('nodes.detail_not_found_title')}
+            description={t('nodes.detail_not_found_description')}
+            action={
+              <Button variant="outline" nativeButton={false} render={<Link to="/nodes" />}>
+                {t('nodes.detail_back_to_list')}
+              </Button>
+            }
+          />
+        ) : (
+          <ErrorState
+            message={t('common.error_generic')}
+            retryLabel={t('common.refresh')}
+            onRetry={() => void nodeQuery.refetch()}
+          />
+        )}
+      </div>
     );
   }
 
@@ -140,10 +168,7 @@ export function NodeDetailPage() {
     <>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
-          <Link to="/nodes" className="inline-flex w-fit items-center gap-1 text-label text-mute hover:text-foreground">
-            <ArrowLeft className="size-3" />
-            {t('nodes.title')}
-          </Link>
+          <BackLink />
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
@@ -213,7 +238,13 @@ export function NodeDetailPage() {
           <section className="min-w-0 space-y-5" aria-label={t(`workspace.section_${section}`)}>
             <div className="space-y-1">
               <h2 className="text-title">{t(`workspace.section_${section}`)}</h2>
-              <p className="max-w-[72ch] text-body text-mute">{t(`workspace.description_${section}`)}</p>
+              <p className="max-w-[72ch] text-body text-mute">
+                {t(
+                  node.engine === 'tproxy' && (section === 'overview' || section === 'stats')
+                    ? `workspace.description_${section}_tproxy`
+                    : `workspace.description_${section}`,
+                )}
+              </p>
             </div>
             {section === 'overview' && <NodeOverviewTab node={node} />}
             {section === 'stats' && (
@@ -233,7 +264,7 @@ export function NodeDetailPage() {
             {section === 'proxy' && node.engine === 'telemt' && (
               <>
                 <NodeListenersCard node={node} canEdit={isWriter} />
-                <WebPolicyCard nodeId={node.id} enabled={nodeCapability(node, CAP_CARRIER_NEGOTIATION) === 'supported'} />
+                <WebPolicyCard nodeId={node.id} capability={nodeCapability(node, CAP_CARRIER_NEGOTIATION)} />
                 <NodeReliability node={node} />
               </>
             )}
@@ -245,9 +276,9 @@ export function NodeDetailPage() {
                 <NodeOverviewTab node={node} maintenance />
                 {isWriter && (
                   <Panel>
-                    <PanelHeader title={t('workspace.service_actions')} />
+                    <PanelHeader icon={Wrench} title={t('workspace.service_actions')} />
                     <PanelBody className="space-y-4">
-                      <p className="text-body text-mute">{t('workspace.service_warning')}</p>
+                      <p className="max-w-[72ch] text-body text-mute">{t('workspace.service_warning')}</p>
                       <div className="flex flex-wrap gap-3">
                         <Button type="button" variant="outline" size="sm" onClick={() => setRestartOpen(true)}>
                           {restartLabel}
@@ -277,7 +308,10 @@ export function NodeDetailPage() {
       <ConfirmDialog
         open={restartOpen}
         onOpenChange={setRestartOpen}
-        title={t('nodes.restart_confirm_title', { name: node.name })}
+        title={t('nodes.restart_confirm_title_service', {
+          name: node.name,
+          service: node.engine === 'telemt' ? 'telemt' : 'relay',
+        })}
         description={t('nodes.restart_confirm_description')}
         destructive
         confirmLabel={restartLabel}

@@ -31,7 +31,7 @@ export function DcLatencyChart({ dcs, rows, height = DEFAULT_HEIGHT }: DcLatency
     <div>
       <div className={chartTextClass}>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={rows} margin={{ top: 4, right: 24, bottom: 0, left: 0 }}>
+          <LineChart data={rows} margin={{ top: 4, right: 36, bottom: 0, left: 0 }}>
             <CartesianGrid {...gridProps} />
             <XAxis {...xAxisProps} tickFormatter={(v: string) => formatTimeTick(v, locale)} />
             <YAxis {...yAxisProps} width={60} domain={[0, 'auto']} allowDecimals={false} tickFormatter={formatMs} />

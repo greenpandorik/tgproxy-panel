@@ -44,9 +44,9 @@ function RouteLine({ health }: { health: NodeHealth }) {
   ].filter((p): p is string => p !== null);
 
   return (
-    <p className="flex items-center gap-2 border-b border-hairline px-4 py-2" data-testid="dc-route" data-tone={tone}>
+    <p className="flex items-center gap-2 border-b border-hairline px-4 py-2.5" data-testid="dc-route" data-tone={tone}>
       <span className={cn('size-[7px] shrink-0 rounded-pill', DC_TONE_DOT[tone])} aria-hidden="true" />
-      <span className={cn('mono text-mono', DC_TONE_TEXT[tone])}>{parts.join(' · ')}</span>
+      <span className={cn('text-label', DC_TONE_TEXT[tone])}>{parts.join(' · ')}</span>
     </p>
   );
 }
@@ -119,8 +119,8 @@ export function NodeDcsCard({ engine, offline, health, error, onRetry }: NodeDcs
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('nodes.dcs_column_dc')}</TableHead>
-                <TableHead className="text-right">{t('nodes.dcs_column_latency')}</TableHead>
+                <TableHead className="w-24">{t('nodes.dcs_column_dc')}</TableHead>
+                <TableHead className="w-32 text-right">{t('nodes.dcs_column_latency')}</TableHead>
                 <TableHead className="text-right">{t('nodes.dcs_column_ip')}</TableHead>
               </TableRow>
             </TableHeader>

@@ -1,3 +1,4 @@
+import { Activity, LifeBuoy } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReliability, useSaveReliability } from '@/api/reliability';
@@ -5,6 +6,7 @@ import type { RecoveryPolicy, RecoveryState, ReliabilityReport } from '@/api/rel
 import type { Node } from '@/api/types';
 import { useAuth } from '@/auth/AuthProvider';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
+import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { Button } from '@/components/ui/button';
@@ -13,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
   const { t } = useTranslation();
@@ -38,7 +41,7 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
       }}
     >
       <fieldset disabled={!isWriter || save.isPending} className="space-y-5 disabled:opacity-70">
-        <div className="space-y-2">
+        <div className="max-w-xl space-y-2">
           <Label htmlFor="recovery-mode">{t('reliability.recovery')}</Label>
           <select
             id="recovery-mode"
@@ -64,7 +67,7 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
           </span>
         </label>
         <AdvancedSettings label={t('reliability.thresholds')}>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid max-w-2xl gap-4 sm:grid-cols-3">
             {(['failure_threshold', 'cooldown_seconds', 'max_actions_hour'] as const).map((key) => (
               <div className="space-y-2" key={key}>
                 <Label htmlFor={key}>{t(`reliability.${key}`)}</Label>
@@ -81,69 +84,75 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
             ))}
           </div>
         </AdvancedSettings>
-        <AdvancedSettings label={t('reliability.routing_toggle')} defaultOpen={state.policy.egress !== 'unmanaged'} className="border-t border-hairline pt-5">
+        <AdvancedSettings
+          label={t('reliability.routing_toggle')}
+          defaultOpen={state.policy.egress !== 'unmanaged'}
+          className="border-t border-hairline pt-5"
+        >
           <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="egress-mode">{t('reliability.egress')}</Label>
-            <select
-              id="egress-mode"
-              className="ops-select"
-              value={policy.egress}
-              onChange={(e) => {
-                change('egress', e.target.value as RecoveryPolicy['egress']);
-                if (e.target.value === 'unmanaged') change('automatic_failover', false);
-              }}
-            >
-              <option value="unmanaged" disabled={state.policy.egress !== 'unmanaged' && state.active !== 'direct'}>
-                {t('reliability.unmanaged')}
-              </option>
-              <option value="direct">{t('reliability.direct')}</option>
-              <option value="socks5">{t('reliability.socks5')}</option>
-            </select>
-            <p className="max-w-[72ch] text-label text-mute">{t('reliability.egress_hint')}</p>
-          </div>
-          {policy.egress === 'socks5' && (
-            <div className="space-y-2">
-              <Label htmlFor="primary-socks">{t('reliability.primary')}</Label>
-              <Input
-                id="primary-socks"
-                placeholder="127.0.0.1:1080"
-                value={policy.socks_address}
-                onChange={(e) => change('socks_address', e.target.value)}
-                required
-              />
+            <div className="max-w-xl space-y-2">
+              <Label htmlFor="egress-mode">{t('reliability.egress')}</Label>
+              <select
+                id="egress-mode"
+                className="ops-select"
+                value={policy.egress}
+                onChange={(e) => {
+                  change('egress', e.target.value as RecoveryPolicy['egress']);
+                  if (e.target.value === 'unmanaged') change('automatic_failover', false);
+                }}
+              >
+                <option value="unmanaged" disabled={state.policy.egress !== 'unmanaged' && state.active !== 'direct'}>
+                  {t('reliability.unmanaged')}
+                </option>
+                <option value="direct">{t('reliability.direct')}</option>
+                <option value="socks5">{t('reliability.socks5')}</option>
+              </select>
+              <p className="text-label text-mute">{t('reliability.egress_hint')}</p>
             </div>
-          )}
-          {policy.egress !== 'unmanaged' && (
-            <>
-              <label className="flex items-center gap-3 text-body">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={policy.automatic_failover}
-                  onChange={(e) => change('automatic_failover', e.target.checked)}
+            {policy.egress === 'socks5' && (
+              <div className="max-w-xl space-y-2">
+                <Label htmlFor="primary-socks">{t('reliability.primary')}</Label>
+                <Input
+                  id="primary-socks"
+                  className="mono"
+                  placeholder="127.0.0.1:1080"
+                  value={policy.socks_address}
+                  onChange={(e) => change('socks_address', e.target.value)}
+                  required
                 />
-                {t('reliability.failover')}
-              </label>
-              {policy.automatic_failover && (
-                <div className="space-y-2">
-                  <Label htmlFor="reserve-socks">{t('reliability.reserve')}</Label>
-                  <Input
-                    id="reserve-socks"
-                    placeholder="127.0.0.1:1081"
-                    value={policy.reserve_socks_address}
-                    onChange={(e) => change('reserve_socks_address', e.target.value)}
-                    required
+              </div>
+            )}
+            {policy.egress !== 'unmanaged' && (
+              <>
+                <label className="flex items-center gap-3 text-body">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={policy.automatic_failover}
+                    onChange={(e) => change('automatic_failover', e.target.checked)}
                   />
-                  <p className="text-label text-mute">{t('reliability.reserve_hint')}</p>
-                </div>
-              )}
-            </>
-          )}
+                  {t('reliability.failover')}
+                </label>
+                {policy.automatic_failover && (
+                  <div className="max-w-xl space-y-2">
+                    <Label htmlFor="reserve-socks">{t('reliability.reserve')}</Label>
+                    <Input
+                      id="reserve-socks"
+                      className="mono"
+                      placeholder="127.0.0.1:1081"
+                      value={policy.reserve_socks_address}
+                      onChange={(e) => change('reserve_socks_address', e.target.value)}
+                      required
+                    />
+                    <p className="text-label text-mute">{t('reliability.reserve_hint')}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </AdvancedSettings>
       </fieldset>
-      <p className="text-label text-mute">{t('reliability.apply_hint')}</p>
+      <p className="max-w-[72ch] text-label text-mute">{t('reliability.apply_hint')}</p>
       {save.isError && (
         <p role="alert" className="text-body text-err">
           {save.error instanceof ApiError ? save.error.message : t('common.error_generic')}
@@ -177,26 +186,27 @@ export function NodeReliability({ node }: { node: Node }) {
   const query = useReliability(node.id, node.online);
   return (
     <Panel>
-      <PanelHeader title={t('reliability.title')} />
-      <PanelBody>
-        {!node.online ? (
-          <p className="text-body text-mute">{t('nodes.offline_message')}</p>
-        ) : query.isLoading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : query.isError ? (
-          <ErrorState
-            inset
-            message={query.error instanceof ApiError ? query.error.message : t('common.error_generic')}
-            retryLabel={t('common.refresh')}
-            onRetry={() => void query.refetch()}
-          />
-        ) : query.data ? (
-          <PolicyForm node={node} state={query.data} />
-        ) : null}
-      </PanelBody>
+      <PanelHeader icon={LifeBuoy} title={t('reliability.title')} />
+      {!node.online ? (
+        <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
+      ) : query.isError ? (
+        <ErrorState
+          inset
+          message={query.error instanceof ApiError ? query.error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void query.refetch()}
+        />
+      ) : (
+        <PanelBody>
+          {query.isLoading ? <Skeleton className="h-48 w-full" /> : query.data && <PolicyForm node={node} state={query.data} />}
+        </PanelBody>
+      )}
     </Panel>
   );
 }
+
+const ROUTE_DOT = { healthy: 'bg-ok', failed: 'bg-err', stale: 'border border-hairline-strong' } as const;
+
 export function ReliabilityReadings({ report }: { report?: ReliabilityReport | null }) {
   const { t, i18n } = useTranslation();
   if (!report) return null;
@@ -220,11 +230,9 @@ export function ReliabilityReadings({ report }: { report?: ReliabilityReport | n
   ];
   return (
     <Panel>
-      <PanelHeader title={t('reliability.readings')} />
+      <PanelHeader icon={Activity} title={t('reliability.readings')} meta={formatDateTime(report.at, i18n.language)} />
       <PanelBody className="space-y-4">
-        <p className="text-label text-mute">
-          {formatDateTime(report.at, i18n.language)} · {t('reliability.counters_hint')}
-        </p>
+        <p className="text-label text-mute">{t('reliability.counters_hint')}</p>
         <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
           {readings.map(([key, v]) => (
             <div key={key} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-3">
@@ -233,14 +241,27 @@ export function ReliabilityReadings({ report }: { report?: ReliabilityReport | n
             </div>
           ))}
         </dl>
-        {report.routes.map((r, index) => (
-          <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 text-body">
-            <span>{r.kind}</span>
-            <span>
-              {r.age_seconds > 120 ? t('reliability.stale') : t(r.healthy ? 'reliability.healthy' : 'reliability.failed')}
-            </span>
+        {report.routes.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-label text-mute">{t('reliability.routes')}</p>
+            <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+              {report.routes.map((r, index) => {
+                const state = r.age_seconds > 120 ? 'stale' : r.healthy ? 'healthy' : 'failed';
+                return (
+                  <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-3">
+                    <dt className="text-label text-mute">{t(`reliability.${r.kind}`, r.kind)}</dt>
+                    <dd className="inline-flex items-center gap-2 text-label">
+                      <span className={cn('size-[7px] shrink-0 rounded-pill', ROUTE_DOT[state])} aria-hidden="true" />
+                      <span className={state === 'failed' ? 'text-err' : state === 'stale' ? 'text-mute' : 'text-foreground'}>
+                        {t(`reliability.${state}`)}
+                      </span>
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
           </div>
-        ))}
+        )}
         {report.events.length > 0 && (
           <AdvancedSettings label={t('reliability.events')}>
             <ul className="divide-y divide-hairline">

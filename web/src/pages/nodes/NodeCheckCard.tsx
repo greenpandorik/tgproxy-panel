@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useRunNodeCheck } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
+import { PanelEmpty } from '@/components/common/EmptyState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -83,11 +84,6 @@ export function NodeCheckCard({ node }: { node: Node }) {
         meta={ranAt ? (age ? t('common.ago', { value: age }) : formatDateTime(ranAt, i18n.language)) : undefined}
         actions={
           <>
-            {allOk !== undefined && (
-              <span className={cn('text-micro', allOk ? 'text-ok' : 'text-err')}>
-                {t(allOk ? 'nodes.check_status_ok' : 'nodes.check_status_failed')}
-              </span>
-            )}
             {isWriter && (
               <Button type="button" variant="outline" size="sm" onClick={() => void handleRun()} disabled={runCheck.isPending}>
                 <RefreshCw className={cn(runCheck.isPending && 'animate-spin')} />
@@ -125,22 +121,24 @@ export function NodeCheckCard({ node }: { node: Node }) {
           )}
         </div>
       ) : !results ? (
-        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-          <p className="text-body text-mute">{t('nodes.check_empty')}</p>
-          {isWriter && (
-            <Button type="button" variant="outline" size="sm" onClick={() => void handleRun()}>
-              <RefreshCw />
-              {t('nodes.check_run')}
-            </Button>
-          )}
-        </div>
+        <PanelEmpty>{t('nodes.check_empty')}</PanelEmpty>
       ) : (
         (() => {
-          const ordered = CHECK_NAMES.map((name) => results.find((r) => r.name === name)).filter((r): r is NodeCheckResult => Boolean(r));
+          const ordered = CHECK_NAMES.map((name) => results.find((r) => r.name === name)).filter((r): r is NodeCheckResult =>
+            Boolean(r),
+          );
           const failing = ordered.filter((r) => !r.ok);
           const passing = ordered.filter((r) => r.ok);
           return (
             <>
+              {allOk !== undefined && (
+                <p
+                  data-testid="node-check-summary"
+                  className={cn('border-b border-hairline px-4 py-3 text-body', allOk ? 'text-ok' : 'text-foreground')}
+                >
+                  {t(allOk ? 'nodes.check_status_ok' : 'nodes.check_status_failed')}
+                </p>
+              )}
               {failing.length > 0 && (
                 <ul data-testid="node-check-failing" className="divide-y divide-hairline">
                   {failing.map((result) => (

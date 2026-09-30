@@ -1,5 +1,4 @@
 import {
-  Activity,
   ChevronDown,
   ChevronRight,
   Cpu,
@@ -67,7 +66,10 @@ function ServiceState({ active }: { active: boolean }) {
   );
 }
 
-const HEALTH_GRID = 'border-t border-hairline p-4 sm:grid-cols-2 lg:grid-cols-4';
+const HEALTH_GRID = 'grid-cols-1 border-t border-hairline p-4 sm:grid-cols-2 lg:grid-cols-4';
+
+const serviceGrid = (telemt: boolean) =>
+  cn('grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2', telemt ? '@min-[68rem]:grid-cols-4' : '@min-[52rem]:grid-cols-3');
 
 function healthTiles(health: NodeHealth | undefined, t: TFunction, language: string): StatGridTile[] {
   const loading = !health;
@@ -82,6 +84,10 @@ function healthTiles(health: NodeHealth | undefined, t: TFunction, language: str
     loading,
   });
 
+  const loadAverage = isMetricPresent(health?.load_average_1)
+    ? t('nodes.overview_load_context', { value: health.load_average_1.toFixed(2) })
+    : undefined;
+
   return [
     {
       id: 'uptime',
@@ -95,43 +101,31 @@ function healthTiles(health: NodeHealth | undefined, t: TFunction, language: str
     // over core count: showing it under a CPU label sends an operator hunting a busy processor
     // that is not busy, so a node that has not reported utilisation says so instead.
     isMetricPresent(health?.cpu_utilisation_percent)
-      ? resource('cpu', Cpu, t('nodes.overview_cpu'), health?.cpu_utilisation_percent)
+      ? { ...resource('cpu', Cpu, t('nodes.overview_cpu'), health?.cpu_utilisation_percent), context: loadAverage }
       : {
           id: 'cpu',
           icon: Cpu,
           tone: 'neutral' as const,
           label: t('nodes.overview_cpu'),
           value: t('common.not_available'),
+          context: loadAverage,
           loading,
         },
-    {
-      id: 'load',
-      icon: Activity,
-      tone: statTone({ kind: 'stateless' }),
-      label: t('nodes.overview_load'),
-      value: isMetricPresent(health?.load_average_1) ? health.load_average_1.toFixed(2) : t('common.not_available'),
-      loading,
-    },
     resource('mem', MemoryStick, t('nodes.overview_mem'), health?.mem_used_percent),
     resource('disk', HardDrive, t('nodes.overview_disk'), health?.disk_used_percent),
   ];
 }
 
 function ServiceGridFiller({ telemt }: { telemt: boolean }) {
-  if (!telemt) return <div className="hidden bg-card sm:block" aria-hidden="true" />;
-  return (
-    <>
-      <div className="hidden bg-card lg:block" aria-hidden="true" />
-      <div className="hidden bg-card lg:block" aria-hidden="true" />
-    </>
-  );
+  if (telemt) return null;
+  return <div className="hidden bg-card sm:block" aria-hidden="true" />;
 }
 
 function HealthSkeleton({ telemt }: { telemt: boolean }) {
   const { t, i18n } = useTranslation();
   return (
     <>
-      <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2 lg:grid-cols-3">
+      <div className={serviceGrid(telemt)}>
         {Array.from({ length: telemt ? 4 : 5 }).map((_, i) => (
           <div key={i} className="flex items-center justify-between gap-3 bg-card px-4 py-3">
             <Skeleton className="h-3 w-24" />
@@ -170,7 +164,7 @@ function JobRow({ job }: { job: ApplyJob }) {
             {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </button>
         </TableCell>
-        <TableCell className="mono text-mono text-mute">{t(`nodes.job_kind_${job.kind}`, job.kind)}</TableCell>
+        <TableCell className="text-mute">{t(`nodes.job_kind_${job.kind}`, job.kind)}</TableCell>
         <TableCell className="mono text-mono text-mute">{formatDateTime(job.created_at, i18n.language)}</TableCell>
         <TableCell className="mono text-right text-mono text-mute">
           {job.started_at && job.finished_at
@@ -180,7 +174,9 @@ function JobRow({ job }: { job: ApplyJob }) {
               )
             : DASH}
         </TableCell>
-        <TableCell className={cn('mono text-right text-mono', failed ? 'text-err' : 'text-mute')}>{t(`nodes.job_status_${job.status}`, job.status)}</TableCell>
+        <TableCell className={cn('text-right', failed ? 'text-err' : 'text-mute')}>
+          {t(`nodes.job_status_${job.status}`, job.status)}
+        </TableCell>
       </TableRow>
       {expanded && (
         <TableRow className="hover:bg-transparent">
@@ -220,7 +216,7 @@ export function NodeOverviewTab({ node, maintenance = false }: { node: Node; mai
       {!maintenance && (
         <>
           <NodeVerdict node={node} />
-          <Panel>
+          <Panel className="@container">
             <PanelHeader icon={HeartPulse} title={t('nodes.overview_health')} />
             {offline ? (
               <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
@@ -230,7 +226,7 @@ export function NodeOverviewTab({ node, maintenance = false }: { node: Node; mai
               <HealthSkeleton telemt={telemt} />
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2 lg:grid-cols-3">
+                <div className={serviceGrid(telemt)}>
                   <Cell label={t(telemt ? 'nodes.overview_telemt_active' : 'nodes.overview_relay_active')}>
                     <ServiceState active={health.relay_active} />
                   </Cell>
@@ -264,13 +260,15 @@ export function NodeOverviewTab({ node, maintenance = false }: { node: Node; mai
           {/* The same health readout, read for its other half: how the node reaches
           Telegram. It follows the services panel because the two answer the
           same question in order - is the proxy up, and can it get through. */}
-          <NodeDcsCard
-            engine={node.engine}
-            offline={offline}
-            health={health}
-            error={healthQuery.isError}
-            onRetry={() => void healthQuery.refetch()}
-          />
+          {telemt && (
+            <NodeDcsCard
+              engine={node.engine}
+              offline={offline}
+              health={health}
+              error={healthQuery.isError}
+              onRetry={() => void healthQuery.refetch()}
+            />
+          )}
 
           <ReliabilityReadings report={health?.reliability} />
         </>

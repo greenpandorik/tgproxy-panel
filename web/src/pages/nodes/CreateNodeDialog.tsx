@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { useMutation } from '@tanstack/react-query';
 import { useCreateNode } from '@/api/nodes';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { DraftBanner } from '@/components/common/DraftBanner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -43,7 +44,11 @@ const schema = z
     name: z.string().trim().min(1),
     hostname,
     acme_email: z.string().trim().email(),
-    public_ip: z.string().trim().refine((v) => !v || z.string().ip().safeParse(v).success).optional(),
+    public_ip: z
+      .string()
+      .trim()
+      .refine((v) => !v || z.string().ip().safeParse(v).success)
+      .optional(),
     engine: z.enum(['telemt', 'tproxy']),
     tls_domain: z.string().trim().toLowerCase(),
     classic_port: z.coerce.number().int(),
@@ -85,7 +90,7 @@ function EngineCards({ value, onChange }: { value: NodeEngine; onChange: (engine
             aria-checked={active}
             onClick={() => onChange(engine)}
             className={cn(
-              'rounded-control border px-3 py-3 text-left transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
+              'flex flex-col items-start justify-start rounded-control border px-3 py-3 text-left transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
               active ? 'border-hairline-strong bg-elevated' : 'border-hairline hover:bg-elevated/60',
             )}
           >
@@ -118,7 +123,10 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
   const { t } = useTranslation();
   const createNode = useCreateNode();
   const [step, setStep] = useState(1);
-  const dns = useMutation({ mutationFn: (body: { hostname: string; public_ip?: string }) => api.post<{ addresses: string[]; matches: boolean; error: string }>('/api/v1/nodes/preflight/dns', body) });
+  const dns = useMutation({
+    mutationFn: (body: { hostname: string; public_ip?: string }) =>
+      api.post<{ addresses: string[]; matches: boolean; error: string }>('/api/v1/nodes/preflight/dns', body),
+  });
   // The Fake-TLS domain follows the hostname until the operator types their own.
   const tlsDomainEdited = useRef(false);
 
@@ -176,7 +184,11 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
       onOpenChange(false);
       onCreated(result);
     } catch (err) {
-      if (err instanceof ApiError && (err.fields.hostname || err.fields.public_ip || err.fields.acme_email || err.code === 'conflict')) setStep(1);
+      if (
+        err instanceof ApiError &&
+        (err.fields.hostname || err.fields.public_ip || err.fields.acme_email || err.code === 'conflict')
+      )
+        setStep(1);
       if (err instanceof ApiError && err.code === 'conflict') {
         setError('hostname', { message: t('nodes.hostname_exists') });
         return;
@@ -211,104 +223,154 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
           <DialogDescription>{t('nodes.create_description')}</DialogDescription>
         </DialogHeader>
 
-        <ol className="flex gap-4 border-b border-hairline pb-3 text-label">{[1, 2, 3].map((n) => <li key={n} aria-current={step === n ? 'step' : undefined} className={step === n ? 'font-semibold text-foreground' : 'text-mute'}>{n}. {t(`nodes.wizard_step_${n}`)}</li>)}</ol>
+        <ol className="flex gap-4 border-b border-hairline pb-3 text-label">
+          {[1, 2, 3].map((n) => (
+            <li
+              key={n}
+              aria-current={step === n ? 'step' : undefined}
+              className={step === n ? 'font-semibold text-foreground' : 'text-mute'}
+            >
+              {n}. {t(`nodes.wizard_step_${n}`)}
+            </li>
+          ))}
+        </ol>
         {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         <form
           id={FORM_ID}
           className="max-h-[62vh] space-y-4 overflow-y-auto pr-1"
-          onSubmit={(e) => { if (step === 1) { e.preventDefault(); void trigger(['name', 'hostname', 'public_ip', 'acme_email']).then((valid) => { if (valid) setStep(2); }); } else { void handleSubmit(onSubmit)(e); } }}
+          onSubmit={(e) => {
+            if (step === 1) {
+              e.preventDefault();
+              void trigger(['name', 'hostname', 'public_ip', 'acme_email']).then((valid) => {
+                if (valid) setStep(2);
+              });
+            } else {
+              void handleSubmit(onSubmit)(e);
+            }
+          }}
           noValidate
         >
           <div hidden={step !== 1} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="node-name">{t('nodes.field_name')}</Label>
-            <Input id="node-name" autoFocus {...register('name')} aria-invalid={!!errors.name} />
-            {errors.name && <p className="text-label text-destructive">{t('common.required')}</p>}
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-name">{t('nodes.field_name')}</Label>
+              <Input id="node-name" autoFocus {...register('name')} aria-invalid={!!errors.name} />
+              {errors.name && <p className="text-label text-destructive">{t('common.required')}</p>}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="node-hostname">{t('nodes.field_hostname')}</Label>
-            <Input
-              id="node-hostname"
-              className="mono"
-              placeholder="node1.example.com"
-              {...hostnameField}
-              onChange={(e) => {
-                void hostnameField.onChange(e);
-                if (!tlsDomainEdited.current) setValue('tls_domain', e.target.value.trim().toLowerCase());
-              }}
-              aria-invalid={!!errors.hostname}
-            />
-            <p className="text-label text-mute">{t('nodes.field_hostname_hint')}</p>
-            {errors.hostname && <p className="text-label text-destructive">{t('nodes.validation_hostname')}</p>}
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-hostname">{t('nodes.field_hostname')}</Label>
+              <Input
+                id="node-hostname"
+                className="mono"
+                placeholder="node1.example.com"
+                {...hostnameField}
+                onChange={(e) => {
+                  void hostnameField.onChange(e);
+                  if (!tlsDomainEdited.current) setValue('tls_domain', e.target.value.trim().toLowerCase());
+                }}
+                aria-invalid={!!errors.hostname}
+              />
+              <p className="text-label text-mute">{t('nodes.field_hostname_hint')}</p>
+              {errors.hostname && <p className="text-label text-destructive">{t('nodes.validation_hostname')}</p>}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="node-acme-email">{t('nodes.field_acme_email')}</Label>
-            <Input id="node-acme-email" type="email" {...register('acme_email')} aria-invalid={!!errors.acme_email} />
-            {errors.acme_email && <p className="text-label text-destructive">{t('nodes.validation_email')}</p>}
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-acme-email">{t('nodes.field_acme_email')}</Label>
+              <Input id="node-acme-email" type="email" {...register('acme_email')} aria-invalid={!!errors.acme_email} />
+              {errors.acme_email && <p className="text-label text-destructive">{t('nodes.validation_email')}</p>}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="node-public-ip">
-              {t('nodes.field_public_ip')}{' '}
-              <span className="font-normal text-mute">
-                ({t(engine === 'telemt' ? 'nodes.field_public_ip_telemt' : 'nodes.field_public_ip_optional')})
-              </span>
-            </Label>
-            <Input id="node-public-ip" className="mono" {...register('public_ip')} aria-invalid={!!errors.public_ip} />
-            {errors.public_ip && (
-              <p className="text-label text-destructive">{errors.public_ip.message || t('nodes.validation_ipv4')}</p>
+            <div className="space-y-2">
+              <Label htmlFor="node-public-ip">
+                {t('nodes.field_public_ip')}{' '}
+                <span className="font-normal text-mute">
+                  ({t(engine === 'telemt' ? 'nodes.field_public_ip_telemt' : 'nodes.field_public_ip_optional')})
+                </span>
+              </Label>
+              <Input id="node-public-ip" className="mono" {...register('public_ip')} aria-invalid={!!errors.public_ip} />
+              {errors.public_ip && (
+                <p className="text-label text-destructive">{errors.public_ip.message || t('nodes.validation_ipv4')}</p>
+              )}
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!values.hostname || dns.isPending}
+              onClick={() => dns.mutate({ hostname: values.hostname, public_ip: values.public_ip })}
+            >
+              {t('nodes.wizard_check_dns')}
+            </Button>
+            {dns.isError && (
+              <p role="alert" className="text-label text-destructive">
+                {dns.error.message}
+              </p>
+            )}
+            {dns.data && dns.variables?.hostname === values.hostname && dns.variables?.public_ip === values.public_ip && (
+              <div role="status" className="space-y-1 text-label">
+                <p className={dns.data.matches ? 'text-ok' : 'text-warn'}>
+                  {t(dns.data.matches ? 'nodes.wizard_dns_ok' : 'nodes.wizard_dns_fix')}
+                </p>
+                <p className="mono break-all">
+                  {values.hostname} → {dns.data.addresses.join(', ') || '—'}
+                </p>
+                {!dns.data.matches && values.public_ip && (
+                  <p className="mono">
+                    A / AAAA · {values.hostname} · {values.public_ip}
+                  </p>
+                )}
+              </div>
             )}
           </div>
-
-          <Button type="button" variant="outline" disabled={!values.hostname || dns.isPending} onClick={() => dns.mutate({ hostname: values.hostname, public_ip: values.public_ip })}>{t('nodes.wizard_check_dns')}</Button>
-          {dns.isError && <p role="alert" className="text-destructive">{dns.error.message}</p>}
-          {dns.data && dns.variables?.hostname === values.hostname && dns.variables?.public_ip === values.public_ip && <div role="status" className="space-y-1 text-label"><p className={dns.data.matches ? 'text-ok' : 'text-warn'}>{t(dns.data.matches ? 'nodes.wizard_dns_ok' : 'nodes.wizard_dns_fix')}</p><p className="mono break-all">{values.hostname} → {dns.data.addresses.join(', ') || '—'}</p>{!dns.data.matches && values.public_ip && <p className="mono">A / AAAA · {values.hostname} · {values.public_ip}</p>}</div>}
-          </div>
           <div hidden={step !== 2} className="space-y-4">
-          <div className="space-y-2">
-            <Label>{t('nodes.field_engine')}</Label>
-            <Controller
-              control={control}
-              name="engine"
-              render={({ field }) => <EngineCards value={field.value} onChange={field.onChange} />}
-            />
-            <p className="text-label text-mute">{t(`nodes.engine_${engine}_links`)}</p>
-          </div>
+            <div className="space-y-2">
+              <Label>{t('nodes.field_engine')}</Label>
+              <Controller
+                control={control}
+                name="engine"
+                render={({ field }) => <EngineCards value={field.value} onChange={field.onChange} />}
+              />
+              <p className="text-label text-mute">{t(`nodes.engine_${engine}_links`)}</p>
+            </div>
 
-          {engine === 'telemt' && (
-            <details><summary className="cursor-pointer text-label text-mute">{t('nodes.wizard_advanced')}</summary><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
-              <div className="space-y-2">
-                <Label htmlFor="node-tls-domain">{t('nodes.field_tls_domain')}</Label>
-                <Input
-                  id="node-tls-domain"
-                  className="mono"
-                  placeholder="node1.example.com"
-                  {...register('tls_domain', { onChange: () => (tlsDomainEdited.current = true) })}
-                  aria-invalid={!!errors.tls_domain}
-                />
-                <p className="text-label text-mute">{t('nodes.field_tls_domain_hint')}</p>
-                {errors.tls_domain && <p className="text-label text-destructive">{t('nodes.validation_hostname')}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="node-classic-port">{t('nodes.field_classic_port')}</Label>
-                <Input
-                  id="node-classic-port"
-                  type="number"
-                  min={1024}
-                  max={65535}
-                  className="mono w-28"
-                  {...register('classic_port')}
-                  aria-invalid={!!errors.classic_port}
-                />
-                {errors.classic_port && <p className="text-label text-destructive">{t('nodes.validation_classic_port')}</p>}
-              </div>
-            </div></details>
-          )}
+            {engine === 'telemt' && (
+              <AdvancedSettings label={t('nodes.wizard_advanced')}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+                  <div className="space-y-2">
+                    <Label htmlFor="node-tls-domain">{t('nodes.field_tls_domain')}</Label>
+                    <Input
+                      id="node-tls-domain"
+                      className="mono"
+                      placeholder="node1.example.com"
+                      {...register('tls_domain', { onChange: () => (tlsDomainEdited.current = true) })}
+                      aria-invalid={!!errors.tls_domain}
+                    />
+                    <p className="text-label text-mute">{t('nodes.field_tls_domain_hint')}</p>
+                    {errors.tls_domain && <p className="text-label text-destructive">{t('nodes.validation_hostname')}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="node-classic-port">{t('nodes.field_classic_port')}</Label>
+                    <Input
+                      id="node-classic-port"
+                      type="number"
+                      min={1024}
+                      max={65535}
+                      className="mono w-28"
+                      {...register('classic_port')}
+                      aria-invalid={!!errors.classic_port}
+                    />
+                    {errors.classic_port && <p className="text-label text-destructive">{t('nodes.validation_classic_port')}</p>}
+                  </div>
+                </div>
+              </AdvancedSettings>
+            )}
 
-          {engine === 'telemt' && <p className="rounded-control bg-elevated p-3 text-label">{t('nodes.wizard_proxy_summary', { port: values.classic_port })}</p>}
+            {engine === 'telemt' && (
+              <p className="rounded-control bg-elevated p-3 text-label">
+                {t('nodes.wizard_proxy_summary', { port: values.classic_port })}
+              </p>
+            )}
           </div>
           {errors.root && (
             <p role="alert" className="flex items-start gap-2 text-body text-destructive">
@@ -322,7 +384,11 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             {t('common.cancel')}
           </Button>
-          {step === 2 && <Button type="button" variant="outline" onClick={() => setStep(1)}>{t('nodes.wizard_back')}</Button>}
+          {step === 2 && (
+            <Button type="button" variant="outline" onClick={() => setStep(1)}>
+              {t('nodes.wizard_back')}
+            </Button>
+          )}
           <Button type="submit" form={FORM_ID} disabled={isSubmitting}>
             {t(step === 1 ? 'nodes.wizard_next' : 'nodes.create_submit')}
           </Button>

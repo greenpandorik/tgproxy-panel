@@ -142,7 +142,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
     <Panel>
       <PanelHeader icon={Network} title={t('nodes.listeners_title')} actions={<HelpButton topic="nodes.listeners" />} />
       {canEdit ? (
-        <form className="space-y-4 p-4" onSubmit={(e) => void handleSubmit(askToSave)(e)} noValidate>
+        <form className="space-y-4 p-5" onSubmit={(e) => void handleSubmit(askToSave)(e)} noValidate>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_auto]">
             <div className="space-y-2">
               <Label htmlFor="node-tls-domain-edit">{t('nodes.field_tls_domain')}</Label>
@@ -176,7 +176,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
             </div>
           </div>
 
-          <p className="text-label text-mute">{t('nodes.field_public_ip_hint')}</p>
+          <p className="max-w-[72ch] text-label text-mute">{t('nodes.field_public_ip_hint')}</p>
 
           <AdvancedSettings
             label={t('nodes.field_extra_domains')}
@@ -195,7 +195,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
             {errors.tls_domains && (
               <p className="text-label text-destructive">{t('nodes.validation_extra_domains', { max: MAX_EXTRA_DOMAINS })}</p>
             )}
-            <p className="text-label text-mute">{t('nodes.field_extra_domains_hint')}</p>
+            <p className="max-w-[72ch] text-label text-mute">{t('nodes.field_extra_domains_hint')}</p>
           </AdvancedSettings>
 
           <AdvancedSettings label={t('nodes.field_ad_tag')} defaultOpen={!!node.ad_tag} contentClassName="space-y-2">
@@ -208,7 +208,7 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
               aria-invalid={!!errors.ad_tag}
             />
             {errors.ad_tag && <p className="text-label text-destructive">{t('nodes.validation_ad_tag')}</p>}
-            <p className="text-label text-mute">{t('nodes.field_ad_tag_hint')}</p>
+            <p className="max-w-[72ch] text-label text-mute">{t('nodes.field_ad_tag_hint')}</p>
             <div className="flex flex-wrap items-center gap-2">
               <a
                 href="https://t.me/MTProxybot"
@@ -251,11 +251,9 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
             )
           )}
 
-          <div className="flex justify-end">
-            <Button type="submit" size="sm" disabled={isSubmitting || !isDirty}>
-              {t('common.save')}
-            </Button>
-          </div>
+          <Button type="submit" disabled={isSubmitting || !isDirty}>
+            {t('common.save')}
+          </Button>
         </form>
       ) : (
         <dl className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2">

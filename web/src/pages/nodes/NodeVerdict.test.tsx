@@ -16,16 +16,40 @@ vi.mock('@/api/dashboard', () => ({ useAlerts: vi.fn() }));
 vi.mock('@/api/web', () => ({ useNodeDiagnostics: vi.fn() }));
 
 const node = (over: Partial<Node> = {}) =>
-  ({ id: 'n1', name: 'Test2', engine: 'telemt', status: 'online', online: true, last_seen_at: new Date().toISOString(), ...over }) as Node;
+  ({
+    id: 'n1',
+    name: 'Test2',
+    engine: 'telemt',
+    status: 'online',
+    online: true,
+    last_seen_at: new Date().toISOString(),
+    ...over,
+  }) as Node;
 
 function setup(alerts: { node_id?: string; kind: string; message: string }[], checks: { key: string; status: string }[] = []) {
-  vi.mocked(useAlerts).mockReturnValue({ data: { items: alerts.map((a, i) => ({ id: i, created_at: new Date().toISOString(), ...a })) } } as unknown as ReturnType<typeof useAlerts>);
+  vi.mocked(useAlerts).mockReturnValue({
+    data: { items: alerts.map((a, i) => ({ id: i, created_at: new Date().toISOString(), ...a })) },
+  } as unknown as ReturnType<typeof useAlerts>);
   vi.mocked(useNodeDiagnostics).mockReturnValue({
-    data: { items: [{ id: 1, finished_at: new Date().toISOString(), started_at: new Date().toISOString(), groups: [{ key: 'telemt', checks }] }] },
+    data: {
+      items: [
+        {
+          id: 1,
+          finished_at: new Date().toISOString(),
+          started_at: new Date().toISOString(),
+          groups: [{ key: 'telemt', checks }],
+        },
+      ],
+    },
   } as unknown as ReturnType<typeof useNodeDiagnostics>);
 }
 
-const renderVerdict = (n: Node) => render(<MemoryRouter><NodeVerdict node={n} /></MemoryRouter>);
+const renderVerdict = (n: Node) =>
+  render(
+    <MemoryRouter>
+      <NodeVerdict node={n} />
+    </MemoryRouter>,
+  );
 
 describe('NodeVerdict', () => {
   beforeEach(() => setLang('ru'));
@@ -46,7 +70,7 @@ describe('NodeVerdict', () => {
     expect(screen.getByText('Требует внимания: 1')).toBeInTheDocument();
     expect(screen.getByText('Диагностика: Сбои TLS-рукопожатий')).toBeInTheDocument();
     expect(screen.queryByText(/Scheduled check/)).toBeNull();
-    expect(screen.getByText('Открыть диагностику').closest('a')).toHaveAttribute('href', '/?section=diagnostics');
+    expect(screen.getByText('Открыть проверки').closest('a')).toHaveAttribute('href', '/?section=diagnostics');
   });
 
   it('says all is well when nothing is open and the last diagnostics were clean', () => {
