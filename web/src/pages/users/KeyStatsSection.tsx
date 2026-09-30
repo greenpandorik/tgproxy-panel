@@ -1,11 +1,10 @@
 import { Activity, ArrowDownUp, Radio, RefreshCw, TriangleAlert } from 'lucide-react';
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useBrandingIdentity } from '@/theme/ThemeProvider';
 import { useKeyStats } from '@/api/keys';
 import { EmptyState } from '@/components/common/EmptyState';
-import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { StatGrid } from '@/components/common/StatGrid';
 import { statTone } from '@/components/common/statTone';
 import { Button } from '@/components/ui/button';
@@ -21,8 +20,6 @@ import type { TrafficPoint } from './KeyTrafficChart';
 
 // recharts stays out of the keys bundle - only KeyTrafficChart.tsx imports it.
 const KeyTrafficChart = lazy(() => import('./KeyTrafficChart').then((m) => ({ default: m.KeyTrafficChart })));
-
-const RANGES: KeyStatsRange[] = ['24h', '7d'];
 
 const DEFAULT_BRAND_PRIMARY = '#0b7285';
 const DEFAULT_BRAND_ACCENT = '#099268';
@@ -104,11 +101,11 @@ interface KeyStatsSectionProps {
   keyId: string;
   /** False when the key is bound only to tproxy nodes, which report no per-key figures. */
   hasTelemtNode: boolean;
+  range: KeyStatsRange;
 }
 
-export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) {
+export function KeyStatsSection({ keyId, hasTelemtNode, range }: KeyStatsSectionProps) {
   const { t, i18n } = useTranslation();
-  const [range, setRange] = useState<KeyStatsRange>('24h');
   const statsQuery = useKeyStats(keyId, range, hasTelemtNode);
   const { branding } = useBrandingIdentity();
 
@@ -124,19 +121,7 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
   const traffic = formatBytes(totals?.octets_delta ?? 0).split(' ');
 
   return (
-    <section className="space-y-4 border-t border-hairline pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="micro text-mute">{t('keys.stats_title')}</h3>
-        {hasTelemtNode && (
-          <SegmentedControl
-            label={t('keys.stats_range_label')}
-            value={range}
-            onChange={setRange}
-            options={RANGES.map((r) => ({ value: r, label: t(`keys.stats_range_${r}`) }))}
-          />
-        )}
-      </div>
-
+    <section className="space-y-4">
       {!hasTelemtNode ? (
         <EmptyState className="py-8" icon={Activity} title={t('keys.stats_unavailable')} />
       ) : statsQuery.isLoading ? (
@@ -174,19 +159,28 @@ export function KeyStatsSection({ keyId, hasTelemtNode }: KeyStatsSectionProps) 
           />
 
           <div className="space-y-4">
-            {nodes.map((node) => (
-              <div key={node.node_id}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="truncate text-label text-foreground">{node.node_name}</span>
-                  <span className="mono shrink-0 text-mono text-mute">
-                    {t('keys.stats_node_connections', { count: connectionsNow(node) })}
-                  </span>
+            {nodes.map((node) => {
+              const points = trafficDeltas(node.points);
+              return (
+                <div key={node.node_id} className="space-y-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-label text-foreground">{node.node_name}</span>
+                    <span className="mono shrink-0 text-mono text-mute">
+                      {t('keys.stats_node_connections', { count: connectionsNow(node) })}
+                    </span>
+                  </div>
+                  {points.length < 2 ? (
+                    <p className="flex h-[110px] items-center justify-center rounded-control border border-dashed border-hairline px-4 text-center text-label text-mute">
+                      {t('keys.stats_chart_empty')}
+                    </p>
+                  ) : (
+                    <Suspense fallback={<Skeleton className="h-[110px] w-full" />}>
+                      <KeyTrafficChart points={points} color={color} />
+                    </Suspense>
+                  )}
                 </div>
-                <Suspense fallback={<Skeleton className="mt-2 h-[110px] w-full" />}>
-                  <KeyTrafficChart points={trafficDeltas(node.points)} color={color} />
-                </Suspense>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

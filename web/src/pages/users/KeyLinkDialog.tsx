@@ -34,7 +34,7 @@ function LinkRow({ scheme, value, copyLabel }: { scheme: string; value: string; 
       <CopyButton
         value={value}
         label={copyLabel}
-        className="size-8 shrink-0 border-hairline-strong bg-surface text-foreground hover:bg-elevated"
+        className="size-(--control-height) shrink-0 border-hairline-strong bg-surface text-foreground hover:bg-elevated"
       />
     </div>
   );

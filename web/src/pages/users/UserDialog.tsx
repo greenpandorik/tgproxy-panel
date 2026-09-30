@@ -1,12 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  Activity,
   Ban,
   CalendarClock,
   ChartLine,
+  Download,
   ExternalLink,
   Gauge,
   Link2,
   MoreHorizontal,
+  Plus,
   Power,
   QrCode,
   RefreshCw,
@@ -38,6 +41,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
 import { DraftBanner } from '@/components/common/DraftBanner';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -69,21 +73,27 @@ import { TONE_TEXT, expiryTone } from './userState';
 import { patchPayload, userSchema, valuesFromUser, NEW_USER } from './userForm';
 
 import type { UserFormValues } from './userForm';
+import type { KeyStatsRange } from '@/api/keys';
 import type { AccessKey } from '@/api/types';
 import type { ReactNode } from 'react';
 
 const FORM_ID = 'user-form';
+const STATS_RANGES: KeyStatsRange[] = ['24h', '7d'];
 
 function errText(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
 }
 
-function Tile({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: string }) {
+function Tile({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: string; tone?: string }) {
   return (
     <div className="min-w-0 rounded-control border border-hairline bg-surface px-3 py-2">
       <p className="truncate text-label text-mute">{label}</p>
-      <p className={cn('truncate text-body font-semibold', tone)}>{value}</p>
-      {sub && <p className="truncate text-label text-mute">{sub}</p>}
+      <p className={cn('text-body font-semibold wrap-break-word', tone)}>{value}</p>
+      {sub && (
+        <p className="line-clamp-2 text-label wrap-break-word text-mute" title={sub}>
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
@@ -117,11 +127,11 @@ function OverviewCard({
     user.live.connections > 0
       ? { value: t('users.online_now', { count: user.live.connections }), sub: t('users.online_ips', { count: user.live.ips }), tone: 'text-ok' }
       : user.last_seen_at
-        ? { value: t('users.seen_ago', { ago: formatRelativeTime(user.last_seen_at, lang) }), sub: formatDateTime(user.last_seen_at, lang) }
+        ? { value: formatRelativeTime(user.last_seen_at, lang), sub: formatDateTime(user.last_seen_at, lang) }
         : { value: t('users.never_seen'), sub: undefined };
 
   return (
-    <UserCard icon={UserRound} title={t('users.card_overview')}>
+    <UserCard icon={Activity} title={t('users.card_overview')}>
       {!revoked && (
         <label className="flex items-center justify-between gap-4 rounded-control border border-hairline bg-surface px-3 py-2">
           <span className="min-w-0">
@@ -141,7 +151,7 @@ function OverviewCard({
           tone={user.expires_at ? TONE_TEXT[tone] : undefined}
         />
         <Tile
-          label={t('keys.column_traffic')}
+          label={t('users.column_traffic')}
           value={measured ? formatBytes(user.traffic_30d) : '—'}
           sub={measured ? undefined : t('users.traffic_unmeasured')}
         />
@@ -149,7 +159,7 @@ function OverviewCard({
         <Tile
           label={t('keys.column_nodes')}
           value={user.nodes.length}
-          sub={user.nodes.map((n) => n.node_name).join(', ') || undefined}
+          sub={user.nodes.map((n) => n.node_name || n.hostname).join(', ') || undefined}
         />
       </div>
 
@@ -166,7 +176,7 @@ function OverviewCard({
                 <CopyButton
                   value={link}
                   label={t('keys.subscription_copy')}
-                  className="size-9 shrink-0 border-hairline-strong bg-surface text-foreground hover:bg-elevated"
+                  className="size-(--control-height) shrink-0 border-hairline-strong bg-surface text-foreground hover:bg-elevated"
                 />
               </div>
               {user.subscription_short_url && user.subscription_url && (
@@ -191,7 +201,7 @@ function OverviewCard({
                 {user.subscription_legacy ? t('users.subscription_legacy') : t('users.subscription_none')}
               </p>
               <Button type="button" size="sm" onClick={onIssueLink}>
-                <RefreshCw />
+                {user.subscription_legacy ? <RefreshCw /> : <Plus />}
                 {user.subscription_legacy ? t('users.subscription_reissue') : t('keys.subscription_create')}
               </Button>
             </div>
@@ -199,17 +209,19 @@ function OverviewCard({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 border-t border-hairline pt-3">
-        {!revoked && (
-          <Button type="button" variant="ghost" size="sm" onClick={onShowLinks}>
-            <Link2 />
-            {t('users.direct_links')}
+      <div className="border-t border-hairline pt-3">
+        <div className="-ml-3 flex flex-wrap gap-1">
+          {!revoked && (
+            <Button type="button" variant="ghost" size="sm" onClick={onShowLinks}>
+              <Link2 />
+              {t('users.direct_links')}
+            </Button>
+          )}
+          <Button type="button" variant="ghost" size="sm" onClick={onShowStats}>
+            <ChartLine />
+            {t('keys.stats_title')}
           </Button>
-        )}
-        <Button type="button" variant="ghost" size="sm" onClick={onShowStats}>
-          <ChartLine />
-          {t('keys.stats_title')}
-        </Button>
+        </div>
       </div>
     </UserCard>
   );
@@ -244,6 +256,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
   const [linksOpen, setLinksOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [statsRange, setStatsRange] = useState<KeyStatsRange>('24h');
   const [confirm, setConfirm] = useState<null | 'rotate' | 'reissue' | 'unlink' | 'revoke' | 'delete'>(null);
 
   const {
@@ -333,7 +346,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
         reissue: {
           title: t('keys.subscription_rotate_confirm_title'),
           description: t('keys.subscription_rotate_confirm_description'),
-          label: t('users.subscription_new'),
+          label: t('users.subscription_reissue'),
           destructive: false,
           action: () => run(() => issueLink.mutateAsync(), t('keys.subscription_rotate_success')),
         },
@@ -492,12 +505,12 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                 </p>
               )}
 
-              <DialogFooter className="sm:justify-between">
+              <DialogFooter className="sticky -bottom-4 z-10 flex-row items-center justify-between bg-popover sm:justify-between">
                 {isWriter ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button type="button" variant="outline" />}>
                       <MoreHorizontal />
-                      {t('users.more_actions')}
+                      <span className="sr-only sm:not-sr-only">{t('users.more_actions')}</span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="min-w-64">
                       {!revoked && (
@@ -522,7 +535,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                             <>
                               <DropdownMenuItem onClick={() => setConfirm('reissue')}>
                                 <RefreshCw />
-                                {t('users.subscription_new')}
+                                {t('users.subscription_reissue')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setConfirm('unlink')}>
                                 <Ban />
@@ -533,7 +546,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                             <DropdownMenuItem
                               onClick={() => void run(() => issueLink.mutateAsync(), t('keys.subscription_create_success'))}
                             >
-                              <RefreshCw />
+                              <Plus />
                               {t('keys.subscription_create')}
                             </DropdownMenuItem>
                           )}
@@ -558,8 +571,8 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                 ) : (
                   <span />
                 )}
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {isDirty && !revoked && <span className="text-label text-warn">{t('users.unsaved')}</span>}
+                <div className="flex items-center justify-end gap-2">
+                  {isDirty && !revoked && <span className="hidden text-label text-warn sm:inline">{t('users.unsaved')}</span>}
                   <Button type="button" variant="outline" onClick={close}>
                     {t('common.close')}
                   </Button>
@@ -582,9 +595,19 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
           <Dialog open={statsOpen} onOpenChange={setStatsOpen}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>{t('users.stats_title', { label: user.label })}</DialogTitle>
+                <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+                  <DialogTitle className="min-w-0 wrap-break-word">{t('users.stats_title', { label: user.label })}</DialogTitle>
+                  {measured && (
+                    <SegmentedControl
+                      label={t('keys.stats_range_label')}
+                      value={statsRange}
+                      onChange={setStatsRange}
+                      options={STATS_RANGES.map((r) => ({ value: r, label: t(`keys.stats_range_${r}`) }))}
+                    />
+                  )}
+                </div>
               </DialogHeader>
-              <KeyStatsSection keyId={user.id} hasTelemtNode={measured} />
+              <KeyStatsSection keyId={user.id} hasTelemtNode={measured} range={statsRange} />
             </DialogContent>
           </Dialog>
 
@@ -608,6 +631,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                   nativeButton={false}
                   render={<a href={subscriptionQrUrl(user.id, !!user.subscription_short_url, 640)} download={`${user.label}-subscription.png`} />}
                 >
+                  <Download />
                   {t('keys.link_download_qr')}
                 </Button>
               </DialogFooter>

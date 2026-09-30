@@ -18,7 +18,7 @@ export const TELEMT_LIMIT_FIELDS = [
 ] as const satisfies readonly { name: keyof TelemtLimitsForm; step: string; placeholder: string; max?: number }[];
 
 const NUMBER_FIELD_CLASS =
-  'mono text-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+  'mono text-mono placeholder:font-sans placeholder:tracking-normal [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 
 interface TelemtLimitsFieldsProps {
   value: TelemtLimitsForm;
