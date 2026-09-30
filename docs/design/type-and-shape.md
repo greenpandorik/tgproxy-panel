@@ -243,10 +243,8 @@ theme redefines the surfaces, lines, text tones, the brand pair,
 to 8 and the popover shadow. `docs/design/brand.md` lists the values and their
 ratios.
 
-In the dark theme all four status colours clear 4.5:1 on every surface. In the light
-theme only `--status-err` does. Ok is under 4.5:1 on all three light surfaces, warn on
-`--bg` and `--bg-3`, and info on `--bg-3`. Every status colour clears 3:1 in both
-themes, which covers the 7px status dots and the status icons.
+All four status colours clear 4.5:1 on every surface in both themes, so they can carry
+words as well as the 7px status dots and the status icons.
 
 Three tokens exist so that a fill and a word can be different values of one colour:
 
@@ -280,8 +278,8 @@ from `TONE_VAR` (`components/common/statTone.ts`) or a brand variable:
   pills in `WebDiagnosticsCard.tsx`.
 
 On a plate or a tint the tone colours icons and borders. The one place it colours
-words is the diagnostics status pill. In the light theme ok (3.85:1) and warn (4.13:1)
-fall under 4.5:1 there.
+words is the diagnostics status pill. It sits on a card, and every status colour clears
+4.5:1 on its own tint over `--bg` and `--bg-2` in both themes.
 
 ## 5. Fixed values
 

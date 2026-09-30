@@ -169,15 +169,14 @@ Status colours are reserved for state. Each theme has its own values.
 
 | Role | Dark | on `--bg` / `--bg-2` / `--bg-3` | Light | on `--bg` / `--bg-2` / `--bg-3` |
 |---|---|---|---|---|
-| ok | `#4fd18b` | 8.91 / 8.45 / 7.46 | `#2b8a3e` | 4.00 / 4.37 / 3.72 |
-| warn | `#f5c451` | 10.61 / 10.07 / 8.89 | `#9c6a00` | 4.30 / 4.69 / 3.99 |
-| err | `#ff6b6b` | 6.23 / 5.91 / 5.22 | `#c92a2a` | 5.00 / 5.46 / 4.64 |
-| info | `#4dabf7` | 6.98 / 6.62 / 5.85 | `#1c6fbf` | 4.72 / 5.15 / 4.38 |
+| ok | `#4fd18b` | 8.91 / 8.45 / 7.46 | `#237233` | 5.45 / 5.96 / 5.07 |
+| warn | `#f5c451` | 10.61 / 10.07 / 8.89 | `#875b00` | 5.45 / 5.95 / 5.06 |
+| err | `#ff6b6b` | 6.23 / 5.91 / 5.22 | `#bc2727` | 5.56 / 6.07 / 5.17 |
+| info | `#4dabf7` | 6.98 / 6.62 / 5.85 | `#1a65ae` | 5.47 / 5.97 / 5.08 |
 
-In the dark theme all four clear 4.5 : 1 on every surface. In the light theme only
-err does. Ok is under 4.5 : 1 on all three light surfaces, warn on `--bg` and
-`--bg-3`, info on `--bg-3`. All eight values clear 3 : 1 everywhere, which covers
-status dots, icons and plates.
+All four clear 4.5 : 1 on every surface in both themes. The light values were picked
+so that a word in the status colour also clears 4.5 : 1 on its own 13 % tint over
+`--bg` and `--bg-2`, which is how the diagnostics pill uses them.
 
 `--status-online`, `--status-offline` and `--status-degraded` point at ok, err and
 warn. `--status-pending` is `--mute`.
@@ -195,7 +194,7 @@ Charts sit on `--bg-2`.
 | 1 (`--series-1`) | brand primary | 7.59 : 1 | brand primary | 5.59 : 1 |
 | 2 (`--series-2`) | brand accent | 7.70 : 1 | brand accent | 3.95 : 1 |
 | 3 | `#4dabf7` | 6.62 : 1 | `#1971c2` | 5.02 : 1 |
-| 4 | `#fcc419` | 10.19 : 1 | `#e67700` | 2.998 : 1 |
+| 4 | `#fcc419` | 10.19 : 1 | `#d26c00` | 3.57 : 1 |
 | 5 | `#9775fa` | 4.87 : 1 | `#6741d9` | 6.30 : 1 |
 | 6 | `#f06595` | 5.46 : 1 | `#c2255c` | 5.66 : 1 |
 | 7 | `#199e70` | 4.81 : 1 | `#12855e` | 4.62 : 1 |
@@ -226,8 +225,8 @@ Keep these in step:
 - `internal/branding/defaults_test.go`: contrast checks for both pairs, the
   `ThemeColors` cases and `Foreground`.
 - `web/src/theme/colors.ts`: `THEME_COLORS`, `DEFAULT_PAIRS`, `isDefaultPair` and
-  `themeColors`. `DEFAULT_PAIRS` holds one pair that the Go `defaultPairs` does not,
-  `#0c8599` / `#099268`. A new default pair goes into both lists.
+  `themeColors`. `DEFAULT_PAIRS` and the Go `defaultPairs` hold the same pairs; a new
+  default pair goes into both lists.
 - `web/src/components/brand/brand.ts`: `DEFAULT_PANEL_NAME` and the dark pair the
   Branding form restores.
 - `web/src/index.css`: every token, with the light values under

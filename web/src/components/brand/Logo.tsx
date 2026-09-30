@@ -12,7 +12,7 @@ export const MARK_EYES = [
 export type LogoSize = 16 | 24 | 40 | 72;
 
 interface LogoProps {
-  /** 16 in the sidebar rail, 24 on the login wordmark, 40 standalone, 72 on the login page. */
+  /** 24 in the sidebar and on the login wordmark, 40 standalone, 72 on the login page. */
   size?: LogoSize;
   className?: string;
   title?: string;

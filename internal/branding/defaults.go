@@ -22,6 +22,7 @@ var defaultPairs = [][2]string{
 	{"#3b82f6", "#22c55e"},
 	{"#c4ed79", "#c0a8ed"},
 	{"#365b46", "#a35336"},
+	{"#0c8599", "#099268"},
 	{DefaultPrimaryColor, DefaultAccentColor},
 	{LightPrimaryColor, LightAccentColor},
 }

@@ -58,7 +58,7 @@ function BrandMark() {
       ) : (
         <>
           <Logo size={72} />
-          <span className="max-w-[420px] truncate text-heading text-foreground">{name}</span>
+          <span className="max-w-[420px] truncate text-title text-foreground">{name}</span>
         </>
       )}
     </div>

@@ -116,10 +116,10 @@
   --mute: #5b6673;
   --dim: #6b7682;
 
-  --status-ok: #2b8a3e;
-  --status-warn: #9c6a00;
-  --status-err: #c92a2a;
-  --status-info: #1c6fbf;
+  --status-ok: #237233;
+  --status-warn: #875b00;
+  --status-err: #bc2727;
+  --status-info: #1a65ae;
 
   --brand-ink: color-mix(in srgb, var(--brand-primary) 70%, black);
 
@@ -127,7 +127,7 @@
   --shadow-popover: 0 12px 32px rgba(27, 35, 48, 0.14);
 
   --series-3: #1971c2;
-  --series-4: #e67700;
+  --series-4: #d26c00;
   --series-5: #6741d9;
   --series-6: #c2255c;
   --series-7: #12855e;
@@ -422,18 +422,18 @@ summary {
   }
 }
 .branding-preview[data-theme='light'] {
-  color: #182433;
-  background: #f1f5f9;
+  color: #1b2330;
+  background: #f3f5f8;
 }
 .branding-preview[data-theme='light'] .preview-header {
   background: #ffffff;
 }
 .branding-preview[data-theme='dark'] {
-  color: #edf2f7;
-  background: #151f2c;
+  color: #e9edf1;
+  background: #171b21;
 }
 .branding-preview[data-theme='dark'] .preview-header {
-  background: #1d2939;
+  background: #1b2026;
 }
 
 /* Native selections share the same visible boundary and keyboard focus as inputs. */
