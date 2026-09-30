@@ -1,13 +1,23 @@
 
-const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const;
+import i18next from 'i18next';
 
-/** Formats a byte count as a short "12.3 MB" style string (base 1024). */
-export function formatBytes(bytes: number, digits = 1): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
-  if (bytes === 0) return '0 B';
-  const exp = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), BYTE_UNITS.length - 1);
+const BYTE_UNITS = {
+  en: ['B', 'KB', 'MB', 'GB', 'TB', 'PB'],
+  ru: ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ', 'ПБ'],
+} as const;
+
+/** Byte units in the UI language, smallest first. */
+export function byteUnits(lang: string | undefined = i18next.language): readonly string[] {
+  return lang?.startsWith('ru') ? BYTE_UNITS.ru : BYTE_UNITS.en;
+}
+
+/** Formats a byte count as a short "12.3 MB" style string (base 1024), with units in the UI language. */
+export function formatBytes(bytes: number, digits = 1, lang?: string): string {
+  const units = byteUnits(lang);
+  if (!Number.isFinite(bytes) || bytes <= 0) return `0 ${units[0]}`;
+  const exp = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   const value = bytes / 1024 ** exp;
-  return `${value.toFixed(exp === 0 ? 0 : digits)} ${BYTE_UNITS[exp]}`;
+  return `${value.toFixed(exp === 0 ? 0 : digits)} ${units[exp]}`;
 }
 
 /** Formats an absolute date/time using the given locale (defaults to browser locale). */
@@ -73,8 +83,8 @@ export function formatCompactAge(value: string | number | Date | null | undefine
 }
 
 /** Splits a byte count into the number and its unit, for a stat tile that sets them at different sizes. */
-export function splitBytes(bytes: number, digits = 1): { value: string; unit: string } {
-  const [value, unit = 'B'] = formatBytes(bytes, digits).split(' ');
+export function splitBytes(bytes: number, digits = 1, lang?: string): { value: string; unit: string } {
+  const [value, unit = byteUnits(lang)[0]] = formatBytes(bytes, digits, lang).split(' ');
   return { value, unit };
 }
 

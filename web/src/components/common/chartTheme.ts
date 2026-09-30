@@ -1,3 +1,4 @@
+import { byteUnits } from '@/lib/format';
 
 /** Applied to the chart wrapper: every SVG label inside becomes mono/tabular in --dim. */
 export const chartTextClass =
@@ -36,8 +37,8 @@ export function formatTimeTick(value: string, locale: string): string {
 }
 
 // A tick formatter for a byte axis, locked to one unit.
-export function bytesAxisFormatter(max: number): (value: number) => string {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const;
+export function bytesAxisFormatter(max: number, lang?: string): (value: number) => string {
+  const units = byteUnits(lang);
   const exp = max > 0 ? Math.min(Math.floor(Math.log(max) / Math.log(1024)), units.length - 1) : 0;
   const unit = units[exp];
   return (value: number) => {

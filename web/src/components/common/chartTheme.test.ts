@@ -15,6 +15,11 @@ describe('bytesAxisFormatter', () => {
     expect(tick(50 * 1024 ** 2)).toBe('50 MB');
   });
 
+  it('uses Russian units in the Russian UI', () => {
+    const tick = bytesAxisFormatter(3 * 1024 ** 3, 'ru');
+    expect(tick(700 * 1024 ** 2)).toBe('0.7 ГБ');
+  });
+
   it('falls back to bytes for an empty axis', () => {
     const tick = bytesAxisFormatter(0);
     expect(tick(0)).toBe('0 B');
