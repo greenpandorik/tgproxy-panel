@@ -134,7 +134,7 @@ func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Request, status int) {
-	panelName, theme := "TGWebProxy", "dark"
+	panelName, theme := branding.DefaultPanelName, "dark"
 	if b, err := s.store.Q.GetActiveBranding(r.Context()); err == nil {
 		if b.PanelName != "" {
 			panelName = b.PanelName
@@ -185,7 +185,7 @@ func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) 
 		locations = append(locations, loc)
 	}
 	b, err := s.store.Q.GetActiveBranding(r.Context())
-	panelName := "TGWebProxy"
+	panelName := branding.DefaultPanelName
 	if err == nil && b.PanelName != "" {
 		panelName = b.PanelName
 	}
