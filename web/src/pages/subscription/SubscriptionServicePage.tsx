@@ -39,11 +39,15 @@ function hostOf(url: string): string {
 
 function CommandBox({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex items-start gap-2">
-      <pre className="mono min-w-0 flex-1 overflow-x-auto rounded-control bg-surface px-3 py-2 text-mono whitespace-pre-wrap break-all">
+    <div className="mt-2 flex items-start gap-2">
+      <pre className="mono min-w-0 flex-1 overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2 text-mono whitespace-pre-wrap break-all">
         {value}
       </pre>
-      <CopyButton value={value} label={label} className="size-9 shrink-0 border-hairline-strong bg-surface" />
+      <CopyButton
+        value={value}
+        label={label}
+        className="size-(--control-height) shrink-0 border-hairline-strong bg-surface text-foreground hover:bg-elevated"
+      />
     </div>
   );
 }
@@ -218,8 +222,8 @@ function ServiceForm({ svc }: { svc: SubscriptionService }) {
                 </div>
                 <div>
                   <dt className="text-label text-mute">{t('service.service_version')}</dt>
-                  <dd className="mono">
-                    {svc.status.version || '—'}
+                  <dd>
+                    <span className="mono text-mono">{svc.status.version || '—'}</span>
                     {svc.status.version && svc.status.version !== svc.version && svc.status.version !== 'installer' && (
                       <span className="ml-2 text-label text-warn">{t('service.version_differs', { version: svc.version })}</span>
                     )}
@@ -227,7 +231,7 @@ function ServiceForm({ svc }: { svc: SubscriptionService }) {
                 </div>
                 <div>
                   <dt className="text-label text-mute">{t('service.address')}</dt>
-                  <dd className="mono">{svc.status.address || '—'}</dd>
+                  <dd className="mono text-mono">{svc.status.address || '—'}</dd>
                 </div>
               </dl>
             )}
