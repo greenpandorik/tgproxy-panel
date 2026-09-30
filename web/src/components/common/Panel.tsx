@@ -30,7 +30,7 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
         className,
       )}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 grow basis-32 items-center gap-3">
         {Icon && (
           <span
             className="flex size-9 shrink-0 items-center justify-center rounded-control bg-primary/12 text-brand-primary"

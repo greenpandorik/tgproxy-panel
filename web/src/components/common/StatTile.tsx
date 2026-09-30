@@ -81,7 +81,7 @@ export function StatTile({
   );
 
   const shell = cn(
-    'block rounded-surface border border-hairline-strong bg-card px-4 py-4.5 sm:px-5',
+    'block rounded-surface border border-hairline-strong bg-card px-3.5 py-4 sm:px-5 sm:py-4.5',
     to && 'transition-[background-color,border-color,scale] active:scale-[0.985] hover:bg-elevated',
     className,
   );
