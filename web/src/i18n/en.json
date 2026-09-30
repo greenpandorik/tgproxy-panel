@@ -673,7 +673,7 @@
     "create_success": "Template created",
     "assign_button": "Assign to server…",
     "assign_dialog_title": "Assign template \"{{name}}\"",
-    "assign_dialog_description": "Pick a server for this template. The site reaches the server with the next apply, usually within a minute, or right away with \"Apply now\" on the server page.",
+    "assign_dialog_description": "The site reaches the server with the next apply, usually within a minute, or right away with \"Apply now\" on the server page.",
     "assign_node_label": "Server",
     "assign_submit": "Assign",
     "assign_success": "Website queued for {{node}}. Deployment status is on the server’s Cover site tab.",
@@ -739,7 +739,11 @@
     "header_count_one": "{{count}} template",
     "header_count_other": "{{count}} templates",
     "description": "An ordinary site on the server domain: a casual visitor sees a page, not a proxy. Pick a template and assign it to servers.",
-    "validation_meta": "errors: {{errors}} · warnings: {{warnings}}"
+    "validation_meta": "errors: {{errors}} · warnings: {{warnings}}",
+    "assign_node_placeholder": "Choose a server",
+    "import_file": "ZIP archive",
+    "import_choose": "Choose archive",
+    "import_no_file": "No archive chosen"
   },
   "monitoring": {
     "title": "Monitoring",
