@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Info, ScrollText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, ScrollText, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -49,14 +49,17 @@ function metaCompact(meta: unknown, max = 3): string {
   return entries.length > max ? `${parts.join(', ')}, …` : parts.join(', ');
 }
 
+function hasMeta(meta: unknown): boolean {
+  return meta !== null && meta !== undefined && (typeof meta !== 'object' || Object.keys(meta as object).length > 0);
+}
+
 function MetaCell({ meta }: { meta: unknown }) {
   const { t } = useTranslation();
-  const hasMeta = meta !== null && meta !== undefined && (typeof meta !== 'object' || Object.keys(meta as object).length > 0);
 
   return (
     <div className="flex max-w-72 items-center gap-1">
       <span className="mono min-w-0 flex-1 truncate text-mono text-mute">{metaCompact(meta)}</span>
-      {hasMeta && (
+      {hasMeta(meta) && (
         <Popover>
           <PopoverTrigger render={<Button type="button" variant="ghost" size="icon-xs" className="-mr-1 shrink-0" />}>
             <Info />
@@ -79,19 +82,19 @@ function TargetCell({ type, id, names }: { type: string; id: string; names: Read
   const typeKey = `audit.target.${type}`;
   const name = names.get(id);
   return (
-    <div className="min-w-0">
-      {type && <div className="text-label text-mute">{i18n.exists(typeKey) ? t(typeKey) : type}</div>}
+    <span className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap">
+      {type && <span className="text-label text-mute">{i18n.exists(typeKey) ? t(typeKey) : type}</span>}
       {id &&
         (name ? (
-          <div className="truncate text-body text-foreground" title={id}>
+          <span className="truncate text-body text-foreground" title={id}>
             {name}
-          </div>
+          </span>
         ) : (
-          <div className="mono truncate text-mono text-mute" title={id}>
+          <span className="mono truncate text-mono text-mute" title={id}>
             {id.slice(0, 8)}
-          </div>
+          </span>
         ))}
-    </div>
+    </span>
   );
 }
 
@@ -146,6 +149,17 @@ export function AuditPage() {
     setPage(1);
   };
 
+  const filtered = action !== 'all' || userInput.trim() !== '' || from !== '' || to !== '';
+
+  const resetFilters = () => {
+    setAction('all');
+    setUserInput('');
+    setUser('');
+    setFrom('');
+    setTo('');
+    setPage(1);
+  };
+
   const filters = {
     page,
     per_page: PER_PAGE,
@@ -165,7 +179,7 @@ export function AuditPage() {
     <>
       <PageHeader
         title={t('audit.title')}
-        description={total > 0 ? t('audit.header_count', { count: total }) : undefined}
+        description={total > 0 || (filtered && auditQuery.data) ? t('audit.header_count', { count: total }) : undefined}
         actions={<HelpButton topic="audit" />}
       />
 
@@ -209,6 +223,12 @@ export function AuditPage() {
             className="mono min-w-0 text-mono sm:w-40"
           />
         </div>
+        {filtered && (
+          <Button type="button" variant="ghost" onClick={resetFilters} className="self-start sm:self-auto">
+            <X />
+            {t('audit.filters_reset')}
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -222,7 +242,19 @@ export function AuditPage() {
           onRetry={() => void auditQuery.refetch()}
         />
       ) : items.length === 0 ? (
-        <EmptyState icon={ScrollText} title={t('audit.empty_title')} description={t('audit.empty_description')} />
+        filtered ? (
+          <EmptyState
+            icon={ScrollText}
+            title={t('audit.empty_filtered_title')}
+            action={
+              <Button type="button" variant="outline" onClick={resetFilters}>
+                {t('audit.filters_reset')}
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState icon={ScrollText} title={t('audit.empty_title')} description={t('audit.empty_description')} />
+        )
       ) : (
         <>
           <Panel className={ENTER_CLASS}>
@@ -263,15 +295,17 @@ export function AuditPage() {
 
             <ul className="divide-y divide-hairline md:hidden">
               {items.map((entry) => (
-                <li key={entry.id} className="space-y-2 px-4 py-3">
-                  <div className="flex items-start justify-between gap-2">
+                <li key={entry.id} className="space-y-1.5 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
                     <ActionName action={entry.action} />
                     <span className="mono shrink-0 text-mono text-mute">{formatDateTime(entry.created_at, i18n.language)}</span>
                   </div>
-                  <p className="text-label text-foreground">{entry.username || t('audit.system_user')}</p>
-                  <TargetCell type={entry.target_type} id={entry.target_id} names={names} />
-                  <span className="mono block text-mono text-mute">{entry.ip || '—'}</span>
-                  <MetaCell meta={entry.meta} />
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className="text-label text-foreground">{entry.username || t('audit.system_user')}</span>
+                    <TargetCell type={entry.target_type} id={entry.target_id} names={names} />
+                    {entry.ip && <span className="mono text-mono text-mute">{entry.ip}</span>}
+                  </div>
+                  {hasMeta(entry.meta) && <MetaCell meta={entry.meta} />}
                 </li>
               ))}
             </ul>
@@ -279,7 +313,7 @@ export function AuditPage() {
 
           <div className={cn(ENTER_CLASS, 'flex items-center justify-between gap-2')} style={enterDelay(1)}>
             <p className="mono text-mono text-mute">{t('audit.pagination_summary', { page, totalPages, total })}</p>
-            <div className="flex items-center gap-2">
+            <div className={cn('flex items-center gap-2', totalPages <= 1 && 'hidden')}>
               <Button
                 type="button"
                 variant="outline"
