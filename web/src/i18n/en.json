@@ -71,7 +71,7 @@
   },
   "auth": {
     "login_title": "Sign in",
-    "login_subtitle": "Enter your admin username and password",
+    "login_subtitle": "Enter your panel username and password",
     "username": "Username",
     "password": "Password",
     "sign_in": "Sign in",

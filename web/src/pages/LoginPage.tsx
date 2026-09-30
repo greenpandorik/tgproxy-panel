@@ -62,7 +62,7 @@ function EnterHint() {
   return (
     <kbd
       aria-hidden="true"
-      className="mono ml-1.5 rounded-control border border-background/25 px-1.5 py-px text-micro text-background/55"
+      className="mono ml-1.5 rounded-control border border-current/30 px-1.5 py-px text-micro opacity-70"
     >
       ↵
     </kbd>
