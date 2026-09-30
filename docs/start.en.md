@@ -167,19 +167,21 @@ paste the command. The installer checks DNS, the ports and the server, installs 
 gets a certificate. A couple of minutes later the panel window changes to "Agent connected", and
 the server appears in the list with a green dot.
 
-## 7. Issue your first key
+## 7. Create your first user
 
-A key is access to the proxy for one person or for a group. Open "Access keys" and click "New
-key". On the "Personal" tab, fill in:
+In the panel, access to the proxy is given to users. A user can be one person or a group of
+people. Open "Users" and click "New user". On the "One person" tab, fill in:
 
-- "Key name", so you can find it in the list later, such as "Anna, phone";
-- "Issued to": the person's name or e-mail;
-- "Servers": tick your proxy server.
+- "Name", so you can find the person in the list later, such as "Anna";
+- "Servers" in the "Access" card: tick your proxy server.
 
-Click "Create key". The panel shows the links and QR codes. The key starts working in under a
-minute, once the panel sends it to the server.
+You can leave the other fields alone. Click "Create". The user's window opens with their
+subscription link. The user starts working in under a minute, once the panel sends them to the
+server.
 
-Every key has two links, switched by tabs:
+The subscription link leads to a page where the person picks their device and connects the proxy
+step by step. You can copy it or show it with "QR code". The separate proxy links are under
+"Direct links", and there are two of them:
 
 - Fake-TLS works in every Telegram app. If in doubt, send this one.
 - The WEB proxy is harder to block, but for now it only works in Telegram Desktop and recent
@@ -187,9 +189,10 @@ Every key has two links, switched by tabs:
 
 ## 8. Connect from Telegram
 
-Send the link to the person in any messenger, or show them the QR code. When they open the link on
-a device with Telegram, or scan the QR code with the phone camera, Telegram offers to connect the
-proxy. All that's left is to tap "Connect".
+Send the subscription link to the person in any messenger, or show them the QR code. When they
+open the link or scan the QR code with the phone camera, a page with the steps for their device
+opens. There they tap "Connect" next to the server, and Telegram asks whether to connect the
+proxy. All that's left is to tap "Connect" once more.
 
 Try it yourself: open the link on your phone. In the mobile Telegram app the connected proxy
 shows in the settings, under "Data and Storage" → "Proxy".
@@ -198,8 +201,8 @@ That's it: you have your own panel and your own proxy.
 
 ## What next
 
-Save a copy of the panel's secrets file. It holds the master key that encrypts the key secrets in
-the database: without it they can't be recovered even from a backup. If you connected as root,
+Save a copy of the panel's secrets file. It holds the master key that encrypts the secrets in the
+database: without it they can't be recovered even from a backup. If you connected as root,
 run this on your computer, not on the server:
 
 ```
@@ -243,4 +246,5 @@ can ask questions in [Discussions](https://github.com/greenpandorik/tgproxy-pane
 | Fake-TLS | A kind of MTProxy that looks like an ordinary website visit from the outside. |
 | WEB proxy | A newer kind of Telegram proxy. It works over plain HTTPS on port 443. |
 | Cover site | An ordinary website that opens on the proxy's domain. A stranger who visits the address sees it instead of the proxy. |
-| Key | Access to the proxy for one person or a group. Each key has its own links and can be revoked without touching the others. |
+| User | Access to the proxy for one person or a group. Each user has their own subscription link and can be turned off or revoked without touching the others. |
+| Subscription link | One link to a page where the person picks their device and connects the proxy step by step. |

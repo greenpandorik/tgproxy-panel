@@ -17,7 +17,7 @@ Grafana.
 - [How it works](#how-it-works)
 - [Server engines](#server-engines)
 - [Panel screens](#panel-screens)
-- [Keys and links](#keys-and-links)
+- [Users and links](#users-and-links)
 - [How cover sites work](#how-cover-sites-work)
 - [Checks, incidents and alerts](#checks-incidents-and-alerts)
 - [Accounts and security](#accounts-and-security)
@@ -33,7 +33,7 @@ Grafana.
 The system has two parts: the panel and the proxy servers.
 
 The panel is one program written in Go, with the web interface built in. It runs in Docker on
-its own server, next to a PostgreSQL database that holds everything: servers, keys, sites,
+its own server, next to a PostgreSQL database that holds everything: servers, users, sites,
 settings and history. Caddy stands in front of the panel and gets its HTTPS certificate.
 
 Each proxy server runs a proxy engine and a small program called the agent, `tgwp-agent`. The
@@ -69,21 +69,22 @@ statuses:
 
 ### How a change reaches a server
 
-When you add or revoke a key, change its limits or assign a cover site, the panel saves the
-change and marks the affected servers as having unapplied changes. Every `APPLY_INTERVAL`
+When you add, turn off or revoke a user, change their limits or assign a cover site, the panel
+saves the change and marks the affected servers as having unapplied changes. Every `APPLY_INTERVAL`
 seconds (45 by default) a background task sends the full configuration to each marked server.
 Both intervals can also be changed without a restart under Settings → Notifications.
 "Apply now" on the server page sends the changes at once.
 
 On a telemt server the agent applies the changes through telemt's control API, and connected
 users stay connected. On a tproxy server the agent rewrites the relay's files and restarts it,
-which drops live connections; Telegram clients reconnect by themselves. A new key starts
+which drops live connections; Telegram clients reconnect by themselves. A new user starts
 working after this step, usually within a minute.
 
 If an apply fails, the agent puts the previous configuration back. The runbook explains how to
 read such a job: [Changes do not reach a server](runbook.md#changes-do-not-reach-a-server).
 
-Once a minute the panel also revokes keys whose expiry date has passed.
+Once a minute the panel also finds users whose end date has passed and takes them off the
+servers. Such a user is not revoked: extend the date and access comes back.
 
 ## Server engines
 
@@ -92,9 +93,9 @@ can't be changed afterwards. telemt is the default and the one to pick for new s
 
 | | telemt | tproxy |
 |---|---|---|
-| Links per key | WEB and Fake-TLS, plus one Fake-TLS link per backup masking domain | WEB only |
-| Key limits: traffic quota, speed, unique IPs, connections | Yes, telemt enforces them | No |
-| Traffic per key | Yes | No |
+| Direct links per user | WEB and Fake-TLS, plus one Fake-TLS link per backup masking domain | WEB only |
+| User limits: traffic quota, speed, unique IPs, connections | Yes, telemt enforces them | No |
+| Traffic per user | Yes | No |
 | Applying changes | Without a restart | Restarts the relay |
 | Public ports | 80, 443 and the Fake-TLS port (8443 by default) | 80 and 443 |
 | Latency to Telegram data centres | Yes | No |
@@ -154,7 +155,7 @@ itself: it must return the cover site's headers.
 The older stack: `tproxy-server` from `https://github.com/telegramdesktop/tproxy-server` at
 the commit `TPROXY_COMMIT`, the official MTProxy, Caddy and the agent. The install script runs
 the upstream `deploy/install.sh` for the first three. A tproxy server uses ports 80 and 443 and
-gives each key a WEB link only.
+gives each user a WEB link only.
 
 Every apply restarts `tproxy-server`, and MTProxy too when its secrets change, so live sessions
 drop. The runbook has the details:
@@ -168,9 +169,9 @@ Restarting drops the server's live connections, and Telegram clients reconnect b
 
 | Change | Restarts telemt | What happens to links |
 |---|---|---|
-| Keys, key limits, the cover site | No | New keys get their links; the rest stay as they are |
+| Users, their limits, the cover site | No | New users get their links; the rest stay as they are |
 | Fake-TLS domain or port | Yes | Every Fake-TLS link issued for this server stops working. WEB links keep working |
-| Backup masking domains | Yes | Issued links keep working; each domain adds one Fake-TLS link per key |
+| Backup masking domains | Yes | Issued links keep working; each domain adds one Fake-TLS link per user |
 | Public IP | Yes | Nothing changes, because links contain the domain name |
 | "Restart telemt" on the Maintenance tab | Yes | Nothing changes |
 | A telemt update | Yes, after draining WEB sessions | Nothing changes |
@@ -236,17 +237,18 @@ covers the details and the outcomes: [Upgrading servers](runbook.md#upgrading-se
 
 ## Panel screens
 
-The side menu has seven sections: Overview and Monitoring for watching, Servers and Cover
-websites for the infrastructure, Access keys, and then Activity log and Settings.
+The side menu has eight sections: Overview and Monitoring for watching, Servers and Cover
+websites for the infrastructure, Users in the Access group, Page in the Subscription group, and
+then Activity log and Settings.
 
 ### Overview
 
 The home page shows whether everything works and what needs your attention. The top line gives
 the verdict for the whole fleet. Below it, "Needs attention" lists open problems,
 each with an action such as "Open server", "Apply again" or "Restart the proxy", and "Mark
-resolved". Then come four numbers (servers online, active keys, connections, traffic over 24
+resolved". Then come four numbers (servers online, active users, connections, traffic over 24
 hours), the table of all servers with their CPU load, and a folded block "Connection chart and
-recent operations". The "Issue a key" button opens key creation.
+recent operations". The "New user" button opens user creation.
 
 ### Monitoring
 
@@ -283,11 +285,11 @@ scrape_configs:
 
 A ready Grafana dashboard is in [`deploy/grafana/tgwp-panel.json`](../deploy/grafana/tgwp-panel.json),
 and a scrape example in [`deploy/prometheus.example.yml`](../deploy/prometheus.example.yml).
-[Monitoring](monitoring.md) explains the setup, the metrics and what per-key statistics exist.
+[Monitoring](monitoring.md) explains the setup, the metrics and what per-user statistics exist.
 
 ### Servers
 
-The list shows each server's name, domain, engine, number of keys, CPU and RAM, the time of its
+The list shows each server's name, domain, engine, number of users, CPU and RAM, the time of its
 last response, whether it has unapplied changes, and its latency to Telegram. "Add server"
 opens a three-step wizard:
 
@@ -313,7 +315,7 @@ into Observe, Configure and Maintain:
 | Checks | "Full server check" (telemt), "Check from the panel" and "External network checks". See [Checks, incidents and alerts](#checks-incidents-and-alerts) |
 | Logs | Live logs of telemt or tproxy-server and MTProxy, Caddy and the agent |
 | Settings | telemt only: "Addresses and Fake-TLS" (public IP, Fake-TLS domain and port, backup masking domains, sponsor channel tag), "Transport strategy" with overload protection, and "Recovery and Telegram egress" |
-| Keys | The keys installed on this server, and "Compare with the server" |
+| Users | The users set up on this server, and "Compare with the server" |
 | Cover site | The current template, choosing another one, and an existing HTTP website on telemt servers that support it |
 | Maintenance | "Telemt updates", versions, apply history with logs, and the actions: restart telemt or the relay, show the install command, delete the server |
 
@@ -324,7 +326,7 @@ its own health checks, the IPv4 or IPv6 preference and the state of the route. L
 The sponsor channel tag comes from @MTProxybot in Telegram. With a tag set, clients connected
 through this server see the sponsored channel. The card has buttons that copy the address and
 the secret the bot asks for. Don't hand out the link the bot prints afterwards: give people the
-links from the keys page.
+links from the Users section.
 
 "Recovery and Telegram egress" controls two things. Recovery decides what the agent does when
 telemt stops answering: only watch, or restart after several failed checks in a row. Egress can
@@ -340,12 +342,29 @@ by category, a preview on computer, tablet and phone sizes, "Customize website",
 from the gallery or from the server's Cover site tab. How it works inside:
 [How cover sites work](#how-cover-sites-work).
 
-### Access keys
+### Users
 
-The list of keys with filters by type, status and server, search by name or owner, the traffic
-of each key over 30 days, and bulk actions: revoke, delete, extend. "New key" creates one; the
-key's card shows its links, limits, traffic and subscription link. Everything about keys is in
-[Keys and links](#keys-and-links).
+At the top are the tiles Total, Active, Expiring (within the next 7 days), Expired and Turned off,
+and clicking a tile filters the list. Below is the list with search by name, contact, note and
+short address, filters by state, type and server, and bulk actions: extend, turn off, turn on,
+revoke access, delete. When nobody matches the filters, there is a "Reset filters" button.
+"Columns" hides and shows the link (with a copy button), type, servers, traffic over 30 days,
+connections, expiry and creation date, and the choice is remembered in the browser. The "⋯" menu of
+a row has "Copy link", "Extend by a month", "Turn off" or "Turn on", and "Delete". Clicking a row
+opens the user's window: the "Access is on" switch, the subscription link, expiry, traffic and
+connections on the left, access and limits on the right. The section used to be called Access keys;
+`/keys` and `/keys?key=<id>` lead to `/users` and `/users?user=<id>`. Everything about users is in
+[Users and links](#users-and-links).
+
+### Subscription
+
+The Subscription group has two items. Page sets up the public subscription page: the language,
+the first tab, the title and greeting, which links and servers to show. It has a live preview,
+which always runs on the panel. These settings used to be a tab in Settings. Service decides where
+pages open: on the panel's domain or on a domain of their own, on the panel server or on a
+separate one. The owner and admins can see it, only the owner can change it. The details are in
+[Subscription page](#subscription-page) and
+[Subscription pages on their own domain](#subscription-pages-on-their-own-domain).
 
 ### Activity log
 
@@ -379,8 +398,8 @@ of servers online. Once an hour the panel reads the latest release from GitHub. 
 version exists, the version chip is highlighted and links to the release. The panel sends
 nothing about your installation, and `UPDATE_CHECK=false` turns the check off.
 
-`⌘K` or `Ctrl+K` opens the command palette: jump to a section, find a server or a key, create a
-key, apply changes everywhere, switch the theme or the language.
+`⌘K` or `Ctrl+K` opens the command palette: jump to a section, find a server or a user, create a
+user, apply changes everywhere, switch the theme or the language.
 
 The `?` button in the header of every page and dialog opens help on that screen: what each field
 means, an example, what happens if it stays empty. The `?` key does the same.
@@ -389,28 +408,46 @@ Forms remember what you typed. If a dialog closes by accident, the next time it 
 offers to restore the draft. A draft lives in the browser for 24 hours, and passwords and tokens
 are never saved in it.
 
-## Keys and links
+## Users and links
 
-A key is access to the proxy for one person or a group. The "New key" dialog has three tabs:
+A user gives one person or a group of people access to the proxy. The API and the database still
+call a user a key: the `/api/v1/keys` routes, the `access_keys` table, the `key.*` actions in the
+activity log. The "New user" dialog has three tabs:
 
 | Tab | What it creates |
 |---|---|
-| Personal | One key for one person. Revoking it affects nobody else |
-| Shared | One key for a group of people |
-| Several keys | Up to 100 shared keys at once, named `prefix-1`, `prefix-2` and so on. The result offers "Download all links (.txt)" |
+| One person | A personal user (`PERSONAL`). You can turn them off or revoke them without touching anyone else |
+| Shared access | One user (`SHARED`) for a group of people sharing one link. It is turned off or revoked for everyone at once, and only shared access can have a short address |
+| Several | Up to 100 personal users at once, named `prefix-1`, `prefix-2` and so on. In this mode the dialog is called "Several users", and the prefix and count go into the "Names" card. The panel checks that every server has room and creates either all of them or none. The result has a copy button for each user's subscription link, and "Download all links (.txt)" saves a file with the subscription links first and then the direct links for each server |
 
-The fields: "Key name", so you can find the key later; "Issued to", a name or e-mail (required
-for a personal key); the servers; the expiry date (optional); a note; and limits. A key can be
-bound to several servers, and the person then gets links for each of them. A server holds up to
-128 keys by default.
+The fields: "Name", so you can find the user in the list later (required); "Contact", such as a
+Telegram username, phone or e-mail (optional); "Short address" for shared access; "Note"; "Access
+until" with "+1 month", "+3 months", "+1 year" or "No expiry"; the servers; and limits. A user can
+be on several servers, and the person then gets links for each of them. A server holds up to 128
+users by default. Every new user gets a subscription link straight away.
 
-A key has one of three statuses: `pending` (created, not yet applied on the servers), `active`
-and `revoked`. "Rotate" gives the key a new secret, and the old links stop working.
+A user's state shows in the list and in their window:
+
+| State | What it means |
+|---|---|
+| Setting up (`pending`) | The panel is setting up the servers, usually within a minute. There is nothing to press |
+| Active (`active`) | Access works |
+| Turned off (`disabled`) | Access is paused: the user is taken off the servers, the links and settings are kept. The "Access is on" switch in the user window, or "Turn on", brings access back |
+| Expired (`expired`) | The end date has passed and the user is taken off the servers. Move the date forward and save, and access comes back with the same links |
+| Revoked (`revoked`) | Access is closed for good. The user stays in the list for the record, and their settings are read-only |
+
+A telemt server keeps a turned-off or expired user in its configuration but disabled, and a
+tproxy server drops their secret. Users that earlier versions of the panel revoked on expiry stay
+revoked.
+
+"Change secret" gives the user a new secret: the direct links change and the old ones stop
+working, while the subscription link stays the same. "Revoke access" closes access for good, and
+"Delete" removes the user with their links and statistics.
 
 ### Links
 
-Each server gives a key its own links, with a QR code for each and a copy button for the
-`t.me` and `tg://` forms.
+Each server gives a user their own direct links. "Direct links" in the user window opens them,
+with a QR code for each and a copy button for the `t.me` and `tg://` forms.
 
 | Link | Format | Where it works |
 |---|---|---|
@@ -422,28 +459,35 @@ for each backup masking domain.
 
 ### Limits
 
-On telemt servers a key can have a traffic quota in GB, upload and download speed in Mbit/s, a
+On telemt servers a user can have a traffic quota in GB, upload and download speed in Mbit/s, a
 maximum of unique IP addresses and a maximum of connections. telemt enforces them itself. An
 empty field means no limit. The advanced limits (sessions, streams and the like) mostly apply to
 tproxy servers; telemt takes only the session and stream limits from them. On tproxy servers a
-key also has a carrier mode: HTTPS (the default), HTTPS lanes, WebSocket or WebSocket lanes. On
+user also has a carrier mode: HTTPS (the default), HTTPS lanes, WebSocket or WebSocket lanes. On
 telemt the WEB carrier is chosen automatically for each connection.
 
-On telemt servers the panel also counts traffic per key. The key's card shows connections now
-and traffic over 24 hours or 7 days.
+On telemt servers the panel also counts traffic per user. The user window shows the traffic
+over 30 days and the connections right now or the time of the last one, and "Traffic and
+connections" draws a chart over 24 hours or 7 days.
 
 ### Subscription page
 
-A key can have a public subscription link. It opens a page that walks the person through
-connecting: tabs for Android, iPhone and iPad, and a computer, and on each one three steps (install
-Telegram, press "Connect" next to a server, confirm in Telegram). The "Connect" button uses the link
-the device can open: Fake-TLS on iPhone, Fake-TLS with the WEB proxy as a fallback on Android, the
-WEB proxy with Fake-TLS as a fallback on a computer. Below, "All links and QR codes" lists every link.
-The page shows how long the access lasts and never shows the key's name, owner or note. The RU/EN
-switch at the top lets the visitor change the language, and the page remembers their language and
-tab in that browser.
+Every user has a public subscription link, which the panel creates together with the user. It opens
+a page that walks the person through connecting: tabs for Android, iPhone and iPad, and a computer,
+and on each one three steps (install Telegram, press "Connect" next to a server, confirm in
+Telegram). The "Connect" button uses the link the device can open: Fake-TLS on iPhone, Fake-TLS
+with the WEB proxy as a fallback on Android, the WEB proxy with Fake-TLS as a fallback on a
+computer. On iPhone the second choice is the Fake-TLS link on a backup masking domain, when the
+server has one. Below, "All links and QR codes" lists every link. The server cards on the page do
+not show the servers' domains. When the Computer tab is opened on a phone, the page suggests
+sending the link to yourself and opening it on a computer, with a "Copy the link to this page"
+button. When a phone tab is opened on a computer and QR codes are on, the page shows a QR code of
+itself so it can be opened on a phone. The page shows how long the access lasts and never shows the
+user's name, contact or note. The RU/EN switch at the top lets the visitor change the language, and
+the page remembers their language and tab in that browser.
 
-Settings → Subscription page decides what the page shows, with a live preview:
+What the page shows is set under Subscription → Page, with a live preview. The old address
+`/settings?section=subscription` leads there too.
 
 | Setting | What it does |
 |---|---|
@@ -452,18 +496,69 @@ Settings → Subscription page decides what the page shows, with a live preview:
 | Title and greeting | Text at the top, separately in Russian and in English; empty fields use "Connect Telegram" and a standard greeting in the page language |
 | Which links to show | Fake-TLS, WEB proxy, backup domains; at least one of the first two stays on |
 | What else to show | The step-by-step guide, the access end date, QR codes |
-| Servers on the page | An unticked server is left off every subscription page; its keys keep working |
+| Servers on the page | An unticked server is left off every subscription page; its users keep working |
 
 The same filters apply to the JSON view.
 
-- "Create link" makes the link. It is shown once, and the database keeps only its hash.
-- "Rotate link" makes a new one, and the old one stops working at once. It is also the only way to
-  see the link again: the key dialog shows only that a link is active.
-- "Revoke link" turns it off.
+- The panel keeps the subscription link in two forms: a SHA-256 hash, which it uses to find the
+  user when the page is opened, and a copy encrypted with `MASTER_KEY`. That is why the link can
+  be copied or shown as a QR code at any time.
+- Links issued by earlier versions of the panel are stored as a hash only. They work but cannot
+  be shown. "Issue a new link" in the user window, after a confirmation, replaces such a link with
+  a new one, and the old one stops opening.
+- "New subscription link" in the "More actions" menu replaces the link, and the old one stops
+  opening at once. Proxies already added in Telegram keep working.
+- "Revoke link" turns it off, and "Create link" then takes its place.
+- "Change secret" does not change the subscription link: to get the new direct links, the person
+  opens it and presses "Connect" again.
 
-The page lives at `/s/<token>`, and `/s/<token>.json` gives the same data as JSON. Both are
-public, limited to 60 requests a minute per IP address, and never cached. An unknown token
-answers 404, a token of a revoked key answers 410.
+Shared access can have a short address `/s/<slug>`: 3 to 32 characters, lowercase Latin letters,
+digits and dashes, not starting or ending with a dash. As you type, the panel turns Cyrillic into
+Latin letters and spaces into dashes. The address must be free. It opens the same
+page as the long link while the user has an active subscription link.
+
+The page lives at `/s/<token>` or `/s/<slug>`, and adding `.json` gives the same data as JSON.
+These addresses are public, limited to 60 requests a minute per IP address, and never cached. When
+the link gives no access, the page explains why, and the JSON answers with the same status code:
+
+| Case | Code | What the page says |
+|---|---|---|
+| Unknown or revoked subscription link | 404 | "This link was not found." |
+| Access revoked | 410 | "This link is no longer valid." |
+| Access turned off | 403 | "Access through this link is turned off for now. Message whoever sent you the link." |
+| Access expired | 410 | "Access through this link has expired. Ask whoever sent you the link to extend it." |
+
+### Subscription pages on their own domain
+
+By default subscription links are built on the panel's domain (`PANEL_PUBLIC_URL`). Under
+Subscription → Service you can choose "On my own domain" and enter another domain, just the domain
+without a path, such as `sub.example.com`. It must differ from the panel's domain, or the panel
+answers 422. Once it is saved, every subscription link, short address and QR code in the panel is
+built on that domain. Old `/s/…` links on the panel's domain answer with a 302 redirect to the same
+path on the new domain. The "Do not open pages on the panel domain" checkbox replaces the redirect
+with a "This link was not found" page and code 404: the panel's domain is never shown, but old
+links stop working. "Check the domain" opens `https://<domain>/healthz`.
+
+The domain can be served in two ways:
+
+| Way | How it works |
+|---|---|
+| On the panel server | `install.sh --update --sub-domain sub.example.com` writes `sites/subpage.caddy` into the panel directory, and the panel's Caddy picks it up and gets a certificate. From then on the panel serves only `/s/*`, `/healthz` and `robots.txt` there and answers 404 to the rest (it learns the domain from `SUBPAGE_DOMAIN` in `.env`). `--sub-domain off` removes the file |
+| On another server | `install.sh --subpage` sets up two containers in `/opt/tgproxy-subpage`: `subpage` (the panel's own image, run with the `subpage` command) and Caddy with a certificate for the domain. "Get the install command" gives the command with the token |
+
+The service on another server keeps no database. For every link it asks the panel
+(`GET /api/v1/subpage/pages/{token}` with `Authorization: Bearer <service token>`), keeps the
+answer for 30 seconds, and when the panel is unreachable shows the saved copy for up to 6 hours.
+With no copy, it answers 503 and asks to try again in a minute. It takes at most 60 requests a
+minute from one IP address. `/healthz` answers `{"ok":true,"panel_reachable":…,"version":…}`,
+where `panel_reachable` says whether the panel answered in the last three minutes. Once a minute
+the service sends the panel `POST /api/v1/subpage/heartbeat` with its version. Service in the panel
+shows "online" when such a signal arrived within the last three minutes, the time of the last
+one, the service version (with a warning when it differs from the panel's) and the address the
+signal came from. The panel keeps the service token only as a hash and shows it once, inside the
+install command. "New token", after a confirmation, invalidates the old one. "Disconnect the
+service" revokes the token: the panel starts answering the service with 401, and it lives on saved
+copies for a while.
 
 ## How cover sites work
 
@@ -582,8 +677,8 @@ and does not follow redirects. Each request is signed with HMAC-SHA256 in the
 | Role | What it can do |
 |---|---|
 | `owner` | Everything, including panel settings, the Telegram test message, accounts and backups |
-| `admin` | Everything else: servers, keys, cover sites, applies, checks, updates, resolving problems, branding |
-| `viewer` | Only look. The viewer cannot see key links and can change only their own password and second factor |
+| `admin` | Everything else: servers, users, cover sites, applies, checks, updates, resolving problems, branding |
+| `viewer` | Only look. The viewer cannot see users' subscription links, direct links or secrets, and the API does not send them to this role. The viewer can change only their own password and second factor |
 
 The installer creates the first account with the `owner` role. Other accounts are added under
 Settings → Accounts, with a password of at least 10 characters.
@@ -614,13 +709,16 @@ The runbook describes it: [Two-factor authentication lockout](runbook.md#two-fac
 
 ### How secrets are stored
 
-- Access key and profile secrets, TOTP secrets and the Telegram bot token are encrypted in the
-  database with `MASTER_KEY` (AES-256-GCM). Without this key they cannot be decrypted, not even from a backup.
-- Agent tokens, install tokens and subscription tokens are stored only as SHA-256 hashes. The
-  token itself is shown once, so a copy of the database gives no working token.
+- User and profile secrets, subscription links, TOTP secrets and the Telegram bot token are
+  encrypted in the database with `MASTER_KEY` (AES-256-GCM). Without this key they cannot be
+  decrypted, not even from a backup.
+- Agent tokens, install tokens and the subscription page service token are stored only as SHA-256
+  hashes. The token itself is shown
+  once, so a copy of the database gives no working token. A subscription link also has its hash
+  stored next to the encrypted copy: the panel uses it to find the user when the page is opened.
 - Session cookies are signed with `SESSION_SECRET` and are `HttpOnly`. Every change needs the
   `X-CSRF-Token` header to match the CSRF cookie.
-- `/metrics` shows server UUIDs and counts of servers and keys. It is protected by
+- `/metrics` shows server UUIDs and counts of servers and users. It is protected by
   `METRICS_TOKEN`, which is required when `NODE_DRIVER=gateway`. Give the token only to your
   Prometheus.
 - Uploaded SVG images are checked and rejected if they contain scripts. Branding files are served
@@ -654,10 +752,10 @@ Restoring replaces the whole database, so it is a command-line operation with th
 `MASTER_KEY` in `.env` encrypts the secrets in the database. A backup contains the database but
 not this key. Keep a copy of `.env` somewhere other than the panel's server: without
 `MASTER_KEY`, and the old `MASTER_KEY_V<n>` values if there are any, a restored database cannot
-decrypt a single key.
+decrypt a single secret.
 
-The key can be changed. `panel keys rotate` re-encrypts every secret with a new key in one
-transaction, with the panel stopped:
+The key can be changed. `panel keys rotate` re-encrypts every secret, subscription links
+included, with a new key in one transaction, with the panel stopped:
 
 ```bash
 docker compose stop panel
@@ -854,6 +952,18 @@ Paths and addresses have defaults and are changed only on test benches: `TGWP_ST
 | `TGWP_SKIP_PREFLIGHT`, `TGWP_DRY_RUN`, `TGWP_PUBLIC_IP` | The server install script, see [Server install script](#server-install-script) |
 | `TGWP_PROBE_TOKEN` | For `tgwp-probe`: the value of the panel's `PROBE_TOKEN` |
 
+### Read by the subscription page service
+
+`install.sh --subpage` writes them into `/opt/tgproxy-subpage/.env`.
+
+| Variable | Meaning |
+|---|---|
+| `SUBPAGE_PANEL_URL` | The panel address, such as `https://panel.example.com`. Required |
+| `SUBPAGE_TOKEN` | The service token from Subscription → Service. Required |
+| `SUBPAGE_LISTEN` | The address to listen on, `:8080` by default |
+| `SUBPAGE_DOMAIN`, `ACME_EMAIL` | The page domain and the certificate e-mail, read by the service's Caddy |
+| `SUBPAGE_VERSION`, `SUBPAGE_IMAGE` | Which image to run. The version should match the panel's |
+
 ## Command line
 
 ### `panel`
@@ -873,6 +983,7 @@ pending database migrations.
 | `panel db restore <file> --yes` | Replaces the database with a backup. Refuses while the panel is running |
 | `panel db verify <file>` | Restores a backup into a temporary database to test it; the working database is untouched |
 | `panel keys rotate [--dry-run]` | Re-encrypts every secret with `MASTER_KEY_NEW`. Refuses while the panel is running |
+| `panel subpage` | Runs the subscription page service instead of the panel. It needs no database and reads its settings from the `SUBPAGE_*` variables, see [Subscription pages on their own domain](#subscription-pages-on-their-own-domain) |
 
 ### `tgwp-agent`
 
@@ -923,6 +1034,9 @@ The panel installer. Every option can also be given as an environment variable `
 | `--image <ref>` | Another image reference, for mirrors and tests |
 | `--from-checkout` | Use the files next to the script instead of downloading them |
 | `--skip-preflight` | Skip the checks of DNS, ports and the install directory |
+| `--sub-domain <fqdn>` | Also serve subscription pages on this domain, from the panel server. Its A record must point at this server too. `off` removes it |
+| `--subpage` | Install, update (`--update`) or remove (`--uninstall`, `--purge`) the subscription page service instead of the panel. The default directory is `/opt/tgproxy-subpage` |
+| `--panel-url <url>`, `--token <token>` | With `--subpage`: the panel address and the service token from Subscription → Service. With `--subpage`, `--domain` sets the page domain |
 | `--yes` | Never ask. A missing required value is an error |
 | `--help` | List the options |
 
@@ -936,8 +1050,20 @@ header equal to the `tgwp_csrf` cookie. Some routes are useful on their own:
 |---|---|---|
 | `GET /healthz` | Public | `ok` while the panel runs |
 | `GET /metrics` | `METRICS_TOKEN` | Prometheus metrics, see [Monitoring](#monitoring) |
-| `GET /s/{token}`, `GET /s/{token}.json` | Public | The subscription page, see [Subscription page](#subscription-page) |
-| `GET /api/v1/keys/{id}/links` | Owner, admin | The key's links, grouped by server |
+| `GET /s/{token}`, `GET /s/{token}.json` | Public | The subscription page, see [Subscription page](#subscription-page). A short address works in place of the token |
+| `GET /api/v1/subscription-service` | Owner, admin | Settings and state of the subscription page service |
+| `PUT /api/v1/subscription-service` | Owner | Save `{public_url, hide_on_panel}` |
+| `POST /api/v1/subscription-service/token` | Owner | A new service token, answers `{token, command}` |
+| `DELETE /api/v1/subscription-service/token` | Owner | Revoke the service token |
+| `GET /api/v1/subpage/pages/{token}`, `POST /api/v1/subpage/heartbeat` | Service token | One page's data and the "online" signal, for the subscription page service |
+| `GET /api/v1/keys` | Any role | The list of users. Parameters `q`, `type`, `node`, `state`, `page`, `per_page` |
+| `GET /api/v1/keys/summary` | Any role | The counts for the tiles: `{total, active, expiring, expired, disabled, revoked}` |
+| `POST /api/v1/keys`, `PATCH /api/v1/keys/{id}` | Owner, admin | Create or change a user |
+| `POST /api/v1/keys/{id}/disable`, `POST /api/v1/keys/{id}/enable` | Owner, admin | Turn access off or on |
+| `POST /api/v1/keys/bulk` | Owner, admin | One action on several users: `extend`, `disable`, `enable`, `revoke` or `delete` |
+| `POST /api/v1/keys/{id}/subscription` | Owner, admin | A new subscription link in place of the old one, answers `{url, qr_data_uri}` |
+| `GET /api/v1/keys/{id}/subscription/qr` | Owner, admin | A PNG with the QR code of the current subscription link |
+| `GET /api/v1/keys/{id}/links` | Owner, admin | The user's direct links, grouped by server |
 | `GET /api/v1/monitoring/overview?from&to&step` | Any role | Series for the Monitoring charts |
 | `GET /api/v1/audit` | Any role | The activity log |
 | `GET /api/v1/nodes/{id}/metrics` | Any role | The server's own proxy metrics in Prometheus format |
@@ -947,6 +1073,27 @@ header equal to the `tgwp_csrf` cookie. Some routes are useful on their own:
 `GET /api/v1/keys/{id}/links` answers
 `{items: [{node_id, node_name, hostname, engine, links: [{kind, domain, tme, tg}]}], client_support}`.
 `kind` is `web` or `tls`, and `domain` names the masking domain of a `tls` link.
+
+In API answers a user is a key object. Besides the fields it always had (`id`, `label`, `type`,
+`owner_label`, `status`, `expires_at`, `nodes` and others) it has:
+
+| Field | Meaning |
+|---|---|
+| `state` | `active`, `pending`, `disabled`, `expired` or `revoked`, as in the list |
+| `disabled_at` | When access was turned off, or `null` |
+| `last_seen_at` | When the person last connected, or `null` |
+| `sub_slug` | The short address of shared access, or `null` |
+| `subscription_url`, `subscription_short_url` | The subscription link and the short link, or `null`. Sent only to the owner and admins |
+| `subscription_legacy` | `true` when the link was issued by an earlier version of the panel and cannot be shown. Also only for the owner and admins |
+| `live` | `{connections, ips}`: connections and IP addresses right now, from telemt servers |
+
+The `state` filter of `GET /api/v1/keys` takes `active`, `pending`, `expiring` (the end date is
+within the next 7 days), `expired`, `disabled` and `revoked`. `POST /api/v1/keys` and
+`PATCH /api/v1/keys/{id}` take `sub_slug`, for shared access only; an address that is taken
+answers 422 with `sub_slug: "taken"` in `error.fields`. `POST /api/v1/keys/bulk` takes
+`{action, ids, expires_at}` with 1 to 500 ids, and `expires_at` is needed only for `extend`.
+`GET /api/v1/keys/{id}/subscription/qr` takes `size` from 128 to 1024 (256 by default), and with
+`short=1` it draws the short address.
 
 `GET /api/v1/monitoring/overview` returns
 `{nodes: [{node_id, node_name, hostname, status}], series: {<node_id>: [{t, sessions_live, streams_live, bytes_up_rate, bytes_down_rate}]}}`.
@@ -998,7 +1145,7 @@ make e2e-telemt   # telemt engine: deploy/Dockerfile.fakenode-telemt (the real t
 ```
 
 Each target starts PostgreSQL and the panel on `:8080`, creates an administrator and a server,
-runs the demo server with a fresh install token, creates a key, applies it and checks that the
+runs the demo server with a fresh install token, creates a user, applies it and checks that the
 proxy received it. The tproxy run also assigns the `corporate` site. At the end it prints
 `SMOKE OK` and removes the stack with its volumes.
 

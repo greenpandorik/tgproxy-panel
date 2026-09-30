@@ -165,8 +165,8 @@ Open `https://panel.example.com` and log in.
 
 Things to know:
 
-- `MASTER_KEY` encrypts key secrets and tokens in the database. Lose it and every secret is gone,
-  so keep a copy off the server.
+- `MASTER_KEY` encrypts user secrets, subscription links and tokens in the database. Lose it and
+  every secret is gone, so keep a copy off the server.
 - `METRICS_TOKEN` is mandatory. The panel will not start without it, because `/metrics` is served
   on the public domain.
 - Data lives in the `pgdata`, `paneldata` and `caddydata` volumes. Never run
@@ -236,8 +236,8 @@ cd web && npm run typecheck && npm run lint && npm run test -- --run && npm run 
 Tests that use the database need `TEST_DATABASE_URL`, which is in `.env.example`. When it is not
 in the environment, those tests are skipped.
 
-The end-to-end checks start the panel and a test server in Docker, create a server and a key,
-check that the key reached the proxy, and tear the stack down with its volumes. They need Docker,
+The end-to-end checks start the panel and a test server in Docker, create a server and a user,
+check that the user reached the proxy, and tear the stack down with its volumes. They need Docker,
 `curl` and `jq`, and a passing run ends with the line `SMOKE OK`.
 
 ```bash
@@ -246,8 +246,8 @@ make e2e-telemt   # telemt engine, real telemt release binary (needs egress to T
 ```
 
 `make e2e-telemt` builds `deploy/Dockerfile.fakenode-telemt` from the telemt release with the
-checksum verified, creates a key with limits, and checks that telemt received it over the control
-API without a restart.
+checksum verified, creates a user with limits, and checks that telemt received it over the
+control API without a restart.
 
 ## 5. First login and two-factor authentication
 
@@ -285,8 +285,8 @@ This turns off the second factor and deletes the recovery codes for that one use
 in with the password and enrol again.
 
 The owner adds more administrators on the Settings → Accounts tab. The roles are: the owner can do
-everything; an admin manages servers, keys, sites and branding, but not panel settings or
-accounts; a viewer can only look.
+everything; an admin manages servers, users, sites and branding, but not panel settings or
+accounts; a viewer can only look and does not see users' links.
 
 ## 6. Adding a server
 
@@ -411,7 +411,7 @@ A server's page is split into tabs:
 - Logs: the server's service logs.
 - Settings, on telemt only: the Fake-TLS address, port and domains, the WEB transport and the route
   to Telegram.
-- Keys: the keys installed on this server.
+- Users: the users set up on this server.
 - Cover site: the website on the server's domain (section 9).
 - Maintenance: telemt updates, apply history, restart, the install command and deleting the
   server.
@@ -435,11 +435,11 @@ Monitoring → Servers.
 
 ### When changes reach the server
 
-New and revoked keys and site changes go to the server in batches, every 45 seconds by default.
-Change the interval under Settings → Notifications, in "How often to apply changes, sec" (10 to
-3600), or with `APPLY_INTERVAL`. "Apply now" on the server page sends the changes at once. A telemt
-server applies them without a restart, and connected people notice nothing. On a tproxy server
-every apply restarts the relay, and clients reconnect on their own.
+New, turned-off and revoked users and site changes go to the server in batches, every 45 seconds
+by default. Change the interval under Settings → Notifications, in "How often to apply changes,
+sec" (10 to 3600), or with `APPLY_INTERVAL`. "Apply now" on the server page sends the changes at
+once. A telemt server applies them without a restart, and connected people notice nothing. On a
+tproxy server every apply restarts the relay, and clients reconnect on their own.
 
 ## 7. Server engine: telemt or tproxy
 
@@ -487,12 +487,12 @@ return the cover site's response.
 
 ### What this changes in the panel
 
-- On a telemt server a key has two links: WEB (`https://t.me/webproxy?server=…`) and Fake-TLS
-  (`https://t.me/proxy?server=…&port=<classic_port>&secret=ee…`). A tproxy server offers the WEB
-  link only.
-- Key limits (traffic quota, upload and download speed, unique IPs, connections) work on telemt
+- On a telemt server a user has two direct links: WEB (`https://t.me/webproxy?server=…`) and
+  Fake-TLS (`https://t.me/proxy?server=…&port=<classic_port>&secret=ee…`). A tproxy server offers
+  the WEB link only.
+- User limits (traffic quota, upload and download speed, unique IPs, connections) work on telemt
   only, and telemt enforces them itself.
-- On telemt, key changes go over the control API and live sessions stay up. On tproxy every apply
+- On telemt, user changes go over the control API and live sessions stay up. On tproxy every apply
   restarts the relay.
 - The telemt version is pinned. The install script downloads and verifies what `TELEMT_VERSION`
   and `TELEMT_SHA256_X86_64` in the panel's `.env` name. Change them only as a pair.
@@ -510,7 +510,7 @@ that server**, because the domain and port are baked into the link's secret. The
 rewrites the config, restarts telemt and drops live connections. Reissue the links afterwards. WEB
 links are unaffected.
 
-"Backup masking domains" give every key one more Fake-TLS link per domain, and the main link stays
+"Backup masking domains" give every user one more Fake-TLS link per domain, and the main link stays
 as it was. If a provider starts blocking the main domain by SNI, people switch to a link with
 another domain, with no need to reinstall the server. Use only real sites that answer HTTPS on 443
 and are reachable from the server: telemt takes the TLS fingerprint of each domain at startup, and
@@ -553,53 +553,191 @@ servers.
 
 ## 8. Issuing keys
 
-A key gives one person or a group access to the proxy. Open Access keys and press "New key". There
-are three tabs at the top:
+In the panel, access to the proxy is given to users. A user can be one person or a group of
+people sharing one link. This section used to be called Access keys, and old `/keys` addresses
+still open it.
 
-- "Personal": a key for one person, which you can revoke without touching anyone else. Fill in
-  "Key name", "Issued to" (a name or e-mail) and tick the "Servers".
-- "Shared": one key for a group of people. Revoking it cuts off everyone who uses it.
-- "Several keys": a series of shared keys. Set a "Prefix" and a "Count" (1 to 100), and the keys
-  are named `prefix-1`, `prefix-2` and so on. Afterwards "Download all links (.txt)" saves every
-  link in one file.
+Open Users and press "New user". There are three tabs at the top:
 
-Optional fields: "Expires at", "Limits" and "Note". The traffic, speed, unique IP and connection
-limits appear once a telemt server is among the selected ones. The "What you get" block at the
-bottom sums up the key you are about to create. Press "Create key".
+- "One person": personal access. You can turn it off or revoke it without touching anyone else.
+- "Shared access": one link for a group of people. It can be turned off or revoked only for
+  everyone at once.
+- "Several": several personal users at once, all with the same settings. The dialog is then
+  called "Several users", and a "Names" card takes the place of "About the user". Set a "Prefix"
+  and a "Count" (1 to 100), and they are named `prefix-1`, `prefix-2` and so on.
 
-![Create key](screenshots/key-create-dialog.png)
+The fields are grouped into cards. In "About the user" only "Name" is required; it is how you find
+the person in the list later. "Contact" (a Telegram username, phone or e-mail) and "Note" are
+optional. In the "Access" card, tick the "Servers" and, if you want, set an end date: pick one or
+press "+1 month", "+3 months" or "+1 year". The default is "No expiry". The traffic, speed,
+unique IP and connection limits in the "Limits" card work on telemt servers. Press "Create".
 
-A key can be bound to several servers, and then it has links for each of them. One server holds up
-to 128 keys by default; the Keys column in the servers list shows how full it is.
+![New user](screenshots/key-create-dialog.png)
 
-![Keys](screenshots/keys.png)
+The panel gives every new user a subscription link straight away. After you create one user,
+their window opens with the link ready to copy and send. After the "Several" tab the panel shows a
+list with a copy button for each user's subscription link, and "Download all links (.txt)" saves
+a file with the subscription links first, one line per person, followed by the direct links for
+each server.
 
-Right after creation the panel shows the links and QR codes. Each link can be copied as a `t.me`
-or a `tg://` link, and each QR code downloaded as an image. If the server has backup domains, a
-"Masking domain" choice appears. Links for individual servers are under "Per-node links".
+A user can be on several servers. One server holds up to 128 users by default; the Users column in
+the servers list shows how full it is.
 
-![Link and QR](screenshots/key-link-dialog.png)
+A new user starts as "Setting up": the panel is setting up the servers, which usually takes under
+a minute, and there is nothing to press. The state then changes to "Active".
 
-A new key starts as "Pending" and works after the next apply on the server, usually in under a
-minute. Its status then changes to "Active".
+### The users list
 
-Which link to send:
+Five tiles sit above the list: "Total", "Active", "Expiring" (within the next 7 days), "Expired"
+and "Turned off". Clicking a tile leaves only those users in the list, and clicking it again clears
+the filter. The search looks at the name, contact, note and short address, and the filters narrow
+the list by state, type and server. When nobody matches, "Reset filters" brings the whole list
+back.
+
+"Columns" hides and shows the link, type, servers, traffic over 30 days, connections, expiry and
+creation date. The choice is remembered in this browser. The button in the Link column copies the
+subscription link. The Connections column shows how many connections the person has right now, or
+when they last connected. Only telemt servers count traffic and connections.
+
+![Users](screenshots/keys.png)
+
+Clicking a row opens the user's window. The "⋯" menu at the end of a row has "Copy link", "Extend
+by a month", "Turn off" or "Turn on", and "Delete". "Extend by a month" counts a month from the
+current end date, or from today if the date has passed or there was none. Tick several rows and
+buttons for "Extend", "Turn off", "Turn on", "Revoke access" and "Delete" appear above the list.
+
+### The user window
+
+On the left is the "Subscription and activity" card. At its top, a switch shows "Access is on" or
+"Access is off": you can turn access off for a while and back on later, and nothing is lost. Below
+are the expiry, the traffic over 30 days, the connections right now or the time of the last one,
+and the servers. The subscription link is in this card too, and it is always visible: copy it, show
+it with "QR code", or press "Open the page" to see what the person will see. "Traffic and
+connections" opens a chart per server. Below is the "About the user" card with the name, contact
+and note, and for shared access the short address.
+
+On the right are the "Access" card (expiry, servers and transport) and "Limits". When all of the
+user's servers run telemt, there is no transport choice: telemt picks it by itself. "+1 month",
+"+3 months" and "+1 year" extend from the current end date, or from today if it has already
+passed. "Save" at the bottom saves everything at once, servers included. Until you save, the
+window says "Unsaved changes". What you save reaches the servers with the next apply.
+
+"Direct links" in the left card shows the links for each server separately, with the Fake-TLS tab
+open first. Each link can be copied as a `t.me` or a `tg://` link, and each QR code downloaded as
+an image. If the server has backup domains, a "Masking domain" choice appears.
+
+![Direct links](screenshots/key-link-dialog.png)
+
+Which direct link to send:
 
 - Fake-TLS works in every Telegram app. If in doubt, send this one.
 - The WEB proxy goes through the server's site over plain HTTPS and is harder to block. For now it
   works only in Telegram Desktop and recent versions of Telegram for Android.
 
-"Create link" in the same dialog makes a subscription page: one public link where the person
-picks their device and follows three steps to connect, with every link and QR code further down.
-The key's name and notes never appear there. What the page shows is set under Settings →
-Subscription page ("Customize the page" next to the link leads there).
-The subscription link and its QR are shown only once, so save them right away. "Rotate link"
-issues a new one (the old one stops working), and "Revoke link" closes the page.
+Everything else is in the "More actions" menu at the bottom of the window. Under "Manage":
 
-In the keys list, each key has a menu: "Show link", "Rotate" and "Revoke". After "Rotate" the old
-links stop working and the new ones have to be sent out again. Tick several keys and buttons for
-"Extend", "Revoke" and "Delete" appear above the list. A revoke takes effect with the next apply.
-Keys whose expiry has passed are marked "Revoked" too.
+- "Turn off" and "Turn on" do the same as the switch at the top of the window (more on this
+  below).
+- "Change secret" changes the direct links, and the old ones stop working. The subscription link
+  stays the same: the person opens it and presses "Connect" again.
+- "New subscription link" replaces the subscription link. The old one stops opening, while
+  proxies already added in Telegram keep working.
+- "Revoke link" closes the subscription page. When there is no link, "Create link" takes the
+  place of these two items.
+
+"Danger zone" has two items: "Revoke access" closes access for good, and "Delete" removes the
+user with their links and statistics.
+
+### The subscription link
+
+Usually one subscription link is all the person needs. It opens a page where they pick their
+device and connect the proxy to all their servers in three steps, with every direct link and QR
+code further down. The name, contact and note never appear there.
+
+Subscription links are stored in the database encrypted with the master key, so the panel can
+show them at any time. Links issued by earlier versions of the panel keep working but cannot be
+shown: the user window says so and offers "Issue a new link". The panel asks you to confirm,
+because the old link then stops opening and the person needs the new one.
+
+Shared access can have a "Short address", for example `team`: a link like
+`https://panel.example.com/s/team` is easy to dictate and remember. When subscription pages open
+on their own domain (see below), the link uses that domain. It takes 3 to 32 characters:
+lowercase Latin letters, digits and dashes, not starting or ending with a dash. The panel turns
+Cyrillic into Latin letters and spaces into dashes as you type, and refuses an address that is
+already taken. The short address opens the same page as the long link while
+the user has an active subscription link.
+
+What the subscription page shows is set in the side menu under Subscription → Page, with a live
+preview. These settings used to be under Settings → Subscription page, and the old link leads to
+the new place.
+
+### Expiry, turning off and revoking
+
+When the end date passes, the panel takes the user off the servers and shows them as "Expired".
+There is no need to create them again: move the date forward or press "+1 month" and save. After
+the next apply the person connects again with the same links. Users that earlier versions of the
+panel revoked on expiry stay revoked.
+
+The "Access is on" switch in the user window, or "Turn off" in a menu, pauses access: the person
+cannot connect, while the links, end date, limits and the rest are kept. Turning it back on
+brings access back. "Revoke access" closes it for good, and revoked access cannot be brought back.
+Turning off, turning on and revoking take effect with the next apply.
+
+If the person opens the subscription link while access is turned off, the page says access
+through this link is turned off for now. If the access has expired, it says so. Either way the
+page suggests contacting whoever sent the link.
+
+### Subscription pages on their own domain
+
+By default subscription pages open on the panel's domain, and people see it in the link. You can
+move them to a separate domain such as `sub.example.com`, on the same server or on another one.
+This is set up under Subscription → Service. An admin can look at it, only the owner can change
+it. First bring the domain up in one of two ways, then save it in the panel.
+
+On the panel server. Create an A record for the second domain pointing at the panel server's IP
+address and run on that server:
+
+```bash
+sudo /opt/tgproxy-panel/install.sh --update --sub-domain sub.example.com
+```
+
+The command adds the domain to the panel's Caddy and restarts Caddy, which gets a certificate for
+it. On that domain the panel serves only subscription pages, `/healthz` and `robots.txt`, and
+answers 404 to everything else. Links move to the domain once you save it in the panel (see
+below). The command with `--sub-domain off` removes the domain from Caddy.
+
+On another server. You need a separate VPS with ports 80 and 443 free. In Service, press "Get the
+install command": the panel issues a service token and shows a command that contains it. The
+command is shown only once, so copy it right away. Create an A record for the domain pointing at
+the new server's IP address and run the command there. It looks like this:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | \
+  sudo bash -s -- --subpage --domain sub.example.com \
+  --panel-url https://panel.example.com --token <token> --version <panel version>
+```
+
+The installer checks DNS, ports 80 and 443 and that the panel accepts the token, installs Docker
+if needed, puts its files into `/opt/tgproxy-subpage` and starts the service together with Caddy,
+which gets a certificate. The service has no database of its own: it asks the panel about each
+link and keeps a fresh copy for 30 seconds. When the panel is unreachable, it shows the saved copy
+for up to 6 hours. Once a minute the service tells the panel it is alive, and Service shows
+"online" or "offline", the last contact, the service version and its address. When the service
+version differs from the panel's, a warning appears next to it: update the service with
+`sudo /opt/tgproxy-subpage/install.sh --subpage --update` on its server. "New token", after a
+confirmation, invalidates the old token, and the new command has to be run on the service server.
+"Disconnect the service" revokes the token: pages open from the saved copy for a while and then
+stop.
+
+Once the domain is up, choose "On my own domain" under "Where pages open", enter just the domain,
+such as `sub.example.com`, and save. It must differ from the panel's domain. From then on every
+subscription link in the panel is built on the new domain. Old links on the panel's domain
+redirect to the same address on the new one, so nothing breaks for people. The "Do not open pages
+on the panel domain" checkbox turns that off too: on the panel's domain pages then say the link
+was not found, the panel's domain is never shown, and old links stop working. "Check the domain"
+opens `https://<domain>/healthz`, and the answer should contain `ok`.
+
+The preview under Subscription → Page always runs on the panel.
 
 ## 9. Server cover site
 
@@ -675,7 +813,7 @@ The Activity log records every administrator action and can be filtered by actio
 ### Top bar, search and help
 
 The button in the top left corner collapses the sidebar. Search and commands open with `⌘K` or
-`Ctrl+K`: from there you can jump to a section, server or key, create a key, apply changes on
+`Ctrl+K`: from there you can jump to a section, server or user, create a user, apply changes on
 every server, or switch the theme or language.
 
 ![Command palette](screenshots/command-palette.png)
@@ -833,7 +971,7 @@ Every variable is described in full in [the reference](reference.md).
 
 ## 14. Troubleshooting
 
-Before you hand out keys, test a connection yourself, ideally from Telegram Desktop, where both
+Before you hand out links, test a connection yourself, ideally from Telegram Desktop, where both
 links work.
 
 - The panel does not start. Run `docker compose logs panel` in the install directory. The error
@@ -854,8 +992,9 @@ links work.
   `PANEL_PUBLIC_URL`. The proxy services: `systemctl status telemt caddy` on telemt,
   `systemctl status tproxy-server mtproxy caddy` on tproxy. If the agent will not start, reinstall
   it with the command from the Maintenance tab.
-- A key stays "Pending". The server is offline or the apply failed. Open the server's Maintenance
-  tab and look at "Apply history": the operation details include the agent log.
+- A user stays "Setting up" for more than a couple of minutes. The server is offline or the apply
+  failed. Open the server's
+  Maintenance tab and look at "Apply history": the operation details include the agent log.
 - The WEB link works but Fake-TLS does not. Look at Checks → "Check from the panel", the "Fake-TLS
   mask" row. Usually port 8443 is closed in the provider's firewall, or the server cannot connect
   to itself on 443 (section 7).

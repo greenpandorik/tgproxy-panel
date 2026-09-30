@@ -28,6 +28,7 @@ Planned work:
 - [Automatic restarts and the route to Telegram](#automatic-restarts-and-the-route-to-telegram)
 - [Checks from other networks](#checks-from-other-networks)
 - [Alerts to your own endpoint](#alerts-to-your-own-endpoint)
+- [The subscription page service](#the-subscription-page-service)
 
 When something is wrong:
 
@@ -42,6 +43,7 @@ When something is wrong:
 - [Telegram alerts do not arrive](#telegram-alerts-do-not-arrive)
 - [Reinstalling the agent](#reinstalling-the-agent)
 - [The cover site did not change](#the-cover-site-did-not-change)
+- [Subscription pages do not open on their own domain](#subscription-pages-do-not-open-on-their-own-domain)
 
 ## Where things are
 
@@ -58,7 +60,7 @@ servers" block.
 A server's page is split into tabs, arranged in three groups:
 
 - Observe: Health, Stats, Checks, Logs;
-- Configure: Settings (telemt servers only), Keys, Cover site;
+- Configure: Settings (telemt servers only), Users, Cover site;
 - Maintain: the Maintenance tab with versions, the telemt update, "Apply history", restarting the
   proxy, the install command and deleting the server.
 
@@ -67,7 +69,8 @@ without waiting for the next scheduled apply, and it is active only when there a
 
 The panel's Settings are split into tabs as well. For the whole panel: Notifications, Branding,
 Accounts, Backups. Just for you: My interface, Password and 2FA. Only the owner sees Accounts and
-Backups, and only the owner can change the panel settings.
+Backups, and only the owner can change the panel settings. The subscription page has its own
+section in the side menu: Subscription → Page.
 
 The open tab is stored in the page address, so reloading the page, links to a tab and the
 browser's Back button all work. Activity log shows who changed what in the panel, and when. It
@@ -77,8 +80,8 @@ keeps 180 days of entries, while server statistics and "Apply history" keep 30 d
 
 A panel installed with the one-line installer lives in `/opt/tgproxy-panel`. The main file there
 is `.env`: it holds the settings and the secrets, including the master key `MASTER_KEY` that
-encrypts key secrets in the database. Keep a copy of this file off the server. Next to it are
-`docker-compose.yml`, `Caddyfile` and a copy of `install.sh`.
+encrypts user secrets and subscription links in the database. Keep a copy of this file off the
+server. Next to it are `docker-compose.yml`, `Caddyfile` and a copy of `install.sh`.
 
 The panel runs in three Docker containers: `panel` (the panel itself), `postgres` (the database)
 and `caddy` (the certificate and HTTPS). Run `docker compose` commands from the panel directory:
@@ -181,6 +184,10 @@ A panel built from source is upgraded like this:
 git pull
 cd deploy && docker compose up -d --build panel
 ```
+
+A second domain for subscription pages added with `--sub-domain` stays in place through a plain
+`--update`. If subscription pages run on a separate server, upgrade it too so the versions match,
+see [The subscription page service](#the-subscription-page-service).
 
 A panel upgrade does not touch the servers: they keep their telemt and agent. If the script
 reported a new telemt version, upgrade the servers as the [next section](#upgrading-servers)
@@ -311,11 +318,11 @@ commit, reinstall the server with a new install command (see
 
 ## Backups and restore
 
-A backup holds the whole database: servers, keys, settings and the activity log. Key secrets in
-it stay encrypted with the master key, and the master key itself lives in `.env` and is not part
-of the backup. **A database restored without the same `MASTER_KEY` and every earlier
-`MASTER_KEY_V<n>` cannot decrypt a single secret.** So keep both the backups and the `.env` file
-off the server. The [start guide](start.en.md#what-next) shows how to download `.env` to your
+A backup holds the whole database: servers, users, settings and the activity log. User secrets and
+subscription links in it stay encrypted with the master key, and the master key itself lives in
+`.env` and is not part of the backup. **A database restored without the same `MASTER_KEY` and every
+earlier `MASTER_KEY_V<n>` cannot decrypt a single secret.** So keep both the backups and the `.env`
+file off the server. The [start guide](start.en.md#what-next) shows how to download `.env` to your
 computer.
 
 Uploaded logos, favicons and login backgrounds are stored in the `paneldata` volume, under
@@ -411,7 +418,7 @@ age --decrypt -i tgproxy-backup.key -o tgwp-20260101T030000Z-manual.dump tgwp-20
 
 ### Restoring on the same server
 
-Use this when you deleted keys or servers by mistake, or broke the settings, and want the
+Use this when you deleted users or servers by mistake, or broke the settings, and want the
 database back as it was when the backup was taken. Everything changed after the backup is lost.
 
 **Restore a backup with the same panel version that took it.** A restore does not remove tables
@@ -442,13 +449,13 @@ After the restore:
 - The backups list in the panel shows what existed when the backup was taken, minus that backup
   itself: its row is written to the database only after the file is ready. The files on disk are
   not touched.
-- The servers keep running whatever they were sent last. To send them the keys from the restored
-  database, open Servers and pick "Apply now" in the "⋯" menu of each server. "Compare with the
-  server" on a server's Keys tab shows whether the keys match.
+- The servers keep running whatever they were sent last. To send them the users from the
+  restored database, open Servers and pick "Apply now" in the "⋯" menu of each server. "Compare
+  with the server" on a server's Users tab shows whether the users match.
 
 It worked if the command printed
 `restore complete; restart the panel so it picks up the restored state`, the panel opens, and
-the keys and servers are as they were when the backup was taken.
+the users and servers are as they were when the backup was taken.
 
 How the panel knows it is running: a running panel holds a PostgreSQL lock on a dedicated
 connection. Restore and master key rotation try to take the same lock and refuse when they
@@ -508,8 +515,8 @@ backup and the `.env` file saved from the old server.
    `sudo /opt/tgproxy-panel/install.sh --update`.
 8. Upload the logo and other images again: Settings → Branding.
 
-It worked if you log in with the old login and password, the keys and servers are in place, and
-key links open, which means the master key matched. The proxy servers do not need reinstalling.
+It worked if you log in with the old login and password, the users and servers are in place, and
+their links open, which means the master key matched. The proxy servers do not need reinstalling.
 Their agents connect to the panel by domain and find the new server by themselves once the DNS
 record updates.
 
@@ -524,10 +531,10 @@ pg_restore --clean --if-exists --no-owner --dbname "postgres://tgwp:...@host:543
 
 ## Master key rotation
 
-`MASTER_KEY` encrypts, in the database, the secrets of access keys and profiles, the two-factor
-secrets and the stored Telegram bot token. Every encrypted value remembers the version number of
-its key. The panel decrypts each value with the key of its version (earlier keys live in the
-`MASTER_KEY_V<n>` lines) and encrypts new values with the current `MASTER_KEY`, numbered
+`MASTER_KEY` encrypts, in the database, the secrets of users and profiles, the subscription links,
+the two-factor secrets and the stored Telegram bot token. Every encrypted value remembers the
+version number of its key. The panel decrypts each value with the key of its version (earlier keys
+live in the `MASTER_KEY_V<n>` lines) and encrypts new values with the current `MASTER_KEY`, numbered
 `MASTER_KEY_VERSION`. `panel keys rotate` re-encrypts every value with a new key, after which the
 old key can eventually be retired.
 
@@ -560,12 +567,13 @@ on the panel server.
    ```
 
    The command re-encrypts `profiles.secret_enc`, `access_keys.secret_enc`,
-   `admin_users.totp_secret_enc`, `admin_users.totp_pending_enc` and the bot token in
+   `admin_users.totp_secret_enc`, `admin_users.totp_pending_enc`,
+   `subscription_tokens.token_enc` (the subscription links) and the bot token in
    `settings.telegram_alerts` in one transaction. It decrypts every new value back and compares
    it with the original before committing. Any error rolls the whole transaction back, so a
-   failed rotation changes nothing. At the end the command prints how many values it re-encrypted
-   and the lines to put into `.env`. Those lines carry placeholders instead of keys: the command
-   never prints a key.
+   failed rotation changes nothing. At the end the command prints how many values it re-encrypted,
+   including a `subscription_tokens.token_enc` line, and the lines to put into `.env`. Those lines
+   carry placeholders instead of keys: the command never prints a key.
 5. Edit `.env` following the printed lines. The new key moves into `MASTER_KEY`, the version goes
    up by one, and the previous `MASTER_KEY` value moves into a new `MASTER_KEY_V<n>` line. For the
    first rotation it looks like this:
@@ -587,8 +595,8 @@ on the panel server.
    the old ones, and it could not decrypt the re-encrypted values.
 7. Save a new copy of `.env` off the server.
 
-It worked if the panel opens and shows key links. The most thorough check is a fresh backup, since
-checking it decrypts every secret:
+It worked if the panel opens and the user window shows the subscription link and opens "Direct
+links". The most thorough check is a fresh backup, since checking it decrypts every secret:
 
 ```bash
 docker compose exec panel /app/panel db backup
@@ -748,6 +756,44 @@ The panel makes up to three attempts and does not follow redirects. Problems are
 database, but webhook delivery has no queue of its own beyond these retries. If the panel server
 itself fails, it cannot report that. So watch `https://panel.example.com/healthz` with external
 monitoring: a running panel answers `ok`.
+
+## The subscription page service
+
+When subscription pages open on a separate server (Subscription → Service, the "On another server"
+way), a small service runs on that server. It lives in `/opt/tgproxy-subpage`: there are
+`docker-compose.yml`, `Caddyfile`, a copy of `install.sh` and `.env` with the page domain, the
+panel address and the service token. It runs two containers: `subpage` (the panel's own image) and
+`caddy`, which holds the domain's certificate. The service has no database, so it needs no
+backups.
+
+To upgrade the service, for example after a panel upgrade or when Service shows a warning next to
+its version:
+
+```bash
+sudo /opt/tgproxy-subpage/install.sh --subpage --update
+```
+
+Without `--version` the script installs the latest release. If the panel runs another version,
+name it: `--version 2.12.0`. The service should run the same version as the panel.
+
+To change the token, for example if it may have leaked, press "New token" in Service and run the
+command it shows on the service server. The command updates `.env`, and the old token stops
+working at once.
+
+To remove the service, first switch "Where pages open" back to "On the panel domain" in the panel,
+or bring the domain up on another server, or links stop opening. Then, on the service server:
+
+```bash
+sudo /opt/tgproxy-subpage/install.sh --subpage --uninstall          # containers and certificate
+sudo /opt/tgproxy-subpage/install.sh --subpage --uninstall --purge  # and /opt/tgproxy-subpage
+```
+
+In the panel, press "Disconnect the service" to revoke its token.
+
+Service logs: `cd /opt/tgproxy-subpage && docker compose logs --tail 100 subpage caddy`.
+
+It worked if Service says "online", the service version matches the panel's, and
+`https://<page domain>/healthz` answers `{"ok":true,"panel_reachable":true,…}`.
 
 ## The panel does not open
 
@@ -932,8 +978,9 @@ is gone.
 
 ## Changes do not reach a server
 
-What you see: a new key stays Pending for a long time, Overview has "Could not apply settings",
-Telegram gets `❌ Apply failed on …`, and the server list marks the server as pending.
+What you see: a new user stays "Setting up" for more than a couple of minutes, Overview has
+"Could not apply settings", Telegram gets `❌ Apply failed on …`, and the server list marks the
+server as pending.
 
 The panel sends changes to the servers every 45 seconds (Settings → Notifications → "How often to
 apply changes, sec"). Each such push is called an apply. Applies are recorded in "Apply history"
@@ -946,7 +993,7 @@ opens "Operation details" with the agent's log.
    below.
 3. Fix the cause and click "Apply now" in the server page header, or "Apply again" on Overview.
 
-It worked if the history has a new Succeeded row and the keys are no longer Pending.
+It worked if the history has a new Succeeded row and no user is "Setting up" any more.
 
 ### On a telemt server
 
@@ -986,7 +1033,7 @@ Common messages:
 
 ### On a tproxy server
 
-Every apply that changes keys, MTProxy secrets or the site ends with a restart of `tproxy-server`
+Every apply that changes users, MTProxy secrets or the site ends with a restart of `tproxy-server`
 (and of `mtproxy` if the secrets changed). `tproxy-server` cannot reload its settings live and
 reads the site into memory only at startup. So every such apply drops the current connections on
 the server. On busy servers, apply changes when fewer people are connected: the panel does not
@@ -997,8 +1044,8 @@ the relay does not come back healthy after the restart, the agent restores what 
 reports "Rolled back", so the server is never left half-changed.
 
 - `relay -check rejected profiles: ...`: the new settings do not fit the relay configuration on
-  this server, for example a key limit above the server's global limit. Fix the key or the limit
-  and apply again. The same check can be run on the server:
+  this server, for example a user limit above the server's global limit. Fix the user's limit or
+  the server's and apply again. The same check can be run on the server:
 
   ```bash
   tproxy-server -config /etc/tproxy-server/config.json -profiles-file /etc/tproxy-server/profiles.json -check
@@ -1085,28 +1132,37 @@ everyone else. The server is Healthy.
 
 Work from the person towards the server.
 
-1. Find the person's key under Access keys and look at its status:
-   - Revoked: the key was revoked or it expired. The panel revokes expired keys by itself, and
-     such a key cannot be extended. Issue a new one.
-   - Pending: the key has not reached the server yet, see
+1. Find the person under Users and look at their state:
+   - Expired: the end date has passed and access was taken off the servers. Move the date forward
+     in the Access card, for example with "+1 month", and save. After the next apply the person
+     connects again with the same links.
+   - Turned off: access is paused. Turn it on with the "Access is off" switch in the user window
+     or with "More actions" → "Turn on".
+   - Revoked: access is closed for good and cannot be brought back. Create a new user. Users that
+     earlier versions of the panel revoked on expiry look the same.
+   - Setting up: the changes have not reached the server yet. It usually takes under a minute; if
+     it takes longer, see
      [Changes do not reach a server](#changes-do-not-reach-a-server).
    - Active: go to the next step.
-2. Look at the key's limits (they work on telemt servers): "Traffic quota, GB", "Max unique IPs",
-   "Max connections". If the traffic hit the quota or more devices use the key than it allows,
-   telemt refuses new connections. Raise the limit or give people separate keys.
+2. Look at the user's limits (they work on telemt servers): "Traffic quota, GB", "Max unique IPs",
+   "Max connections". If the traffic hit the quota or more devices use the access than it allows,
+   telemt refuses new connections. Raise the limit or give people separate users.
 3. Find out which link the person uses:
    - The WEB link works only in Telegram Desktop and recent Telegram for Android. On an iPhone and
      in other apps, the Fake-TLS link is needed.
    - A Fake-TLS link issued before the server's Fake-TLS domain or port changed no longer works.
-   - After Rotate on the key, its previous links stop working.
-   - After "Rotate link" or "Revoke link" on the subscription, the previous subscription link stops
-     working.
+   - After "Change secret" the previous direct links stop working. The subscription link stays
+     the same: opening it and pressing "Connect" again is enough.
+   - After "New subscription link" or "Revoke link" the previous subscription link stops opening.
 
-   In the last three cases, send a fresh link from "Connection links" on the key.
+   In these cases, send the person the subscription link from the user window: it is always
+   visible in the "Subscription and activity" card, and its page carries the current links. If the
+   window says the link cannot be shown, an earlier version of the panel issued it: press "Issue a
+   new link" and send the new one.
 4. If people on one provider or in one region cannot connect while others can, the provider is
    probably blocking the Fake-TLS domain or port. What you can do:
    - add "Backup masking domains" on the server's Settings tab, in the "Addresses and Fake-TLS"
-     card. Every key gets extra Fake-TLS links with other domains, and links already issued keep
+     card. Every user gets extra Fake-TLS links with other domains, and links already issued keep
      working. The next apply restarts telemt;
    - give the WEB link to those who use Telegram Desktop or Android;
    - add a server in another network.
@@ -1124,7 +1180,7 @@ Work from the person towards the server.
    - Checks → "Full server check" finds nothing wrong.
 
 It worked if the person is connected: mobile Telegram shows the proxy as connected under "Data and
-Storage" → "Proxy", and the key's traffic grows.
+Storage" → "Proxy", and the user window shows their connections and growing traffic.
 
 ## A check found a problem
 
@@ -1280,3 +1336,42 @@ On a tproxy server a site change restarts the relay, see [On a tproxy server](#o
 
 It worked if the server's domain shows the new site in a private browser window and "Site
 responds" passes in "Check from the panel".
+
+## Subscription pages do not open on their own domain
+
+What you see: subscription links in the panel point at your domain, such as `sub.example.com`,
+but the page does not open, the browser complains about the certificate, or it shows the line
+`the page is temporarily unavailable, try again in a minute`.
+
+1. Check DNS. The domain's A record must point at the panel server when pages run there, or at the
+   service server when they run on a separate one. `nslookup sub.example.com` shows where it
+   points.
+2. Check the ports. Ports 80 and 443 on that server must be open in the provider's firewall and in
+   `ufw`, or Caddy cannot get a certificate.
+3. Press "Check the domain" under Subscription → Service, or open `https://sub.example.com/healthz`.
+   - On the panel server the answer is `ok`. If not, run
+     `sudo /opt/tgproxy-panel/install.sh --update --sub-domain sub.example.com` again and look at
+     the Caddy log: `cd /opt/tgproxy-panel && docker compose logs --tail 50 caddy`.
+   - On a separate server the answer is `{"ok":true,"panel_reachable":true,…}`. If the address
+     does not open, look at `cd /opt/tgproxy-subpage && docker compose ps` and
+     `docker compose logs --tail 100 subpage caddy`. `"panel_reachable":false` means the service
+     has not got through to the panel for three minutes, see the next step.
+4. Look at the state under Subscription → Service. "offline" means the service has not reported
+   in for more than three minutes. A `cannot reach the panel` line in the service log means the
+   panel cannot be reached from its server: check `SUBPAGE_PANEL_URL` in
+   `/opt/tgproxy-subpage/.env` and outgoing connections. If that line says
+   `the panel refused the service token`, the token was revoked or replaced: press "New token" and
+   run the new command on the service server.
+5. Check that the domain is saved: "On my own domain" is chosen under "Where pages open", with
+   exactly this domain. Until it is saved, links in the panel stay on the panel's domain.
+6. If someone opens an old link on the panel's domain and sees "This link was not found", the "Do
+   not open pages on the panel domain" checkbox is on. Send them the link again from the user
+   window; it is already on the new domain.
+7. If the service version differs from the panel's, upgrade the service, see
+   [The subscription page service](#the-subscription-page-service).
+
+While the panel is unreachable, the service shows saved copies of recently opened pages for up to
+6 hours. A page nobody opened in that time cannot be shown, and the service answers 503.
+
+It worked if `https://sub.example.com/healthz` answers, Service says "online", and the link from
+the user window opens the subscription page.

@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src https://gateway.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="google-site-verification" content="7W_vbByQP82tpJH83rRbAkgH6utltVfZGRO__ocN-X4">
 <title>MTProxy panel with Fake-TLS and WEB proxy | TGProxy Panel</title>
-<meta name="description" content="A free, self-hosted panel for your own Telegram proxies. One command to install; it issues keys with Fake-TLS and WEB links, serves a cover site and watches your servers.">
+<meta name="description" content="A free, self-hosted panel for your own Telegram proxies. One command to install; it gives people one link to all your servers, serves a cover site and watches your servers.">
 <link rel="canonical" href="https://greenpandorik.github.io/tgproxy-panel/en/">
 <link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/">
 <link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/">
@@ -18,7 +18,7 @@
 <meta property="og:locale:alternate" content="ru_RU">
 <meta property="og:site_name" content="TGProxy Panel">
 <meta property="og:title" content="MTProxy panel with Fake-TLS and WEB proxy">
-<meta property="og:description" content="One command to install. Issues keys with Fake-TLS and WEB links, serves a cover site on every server and watches their health. Open source.">
+<meta property="og:description" content="One command to install. Gives people one link to all your servers, serves a cover site on every server and watches their health. Open source.">
 <meta property="og:url" content="https://greenpandorik.github.io/tgproxy-panel/en/">
 <meta property="og:image" content="https://greenpandorik.github.io/tgproxy-panel/en/og.png">
 <meta property="og:image:width" content="1280">
@@ -30,7 +30,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "TGProxy Panel",
-  "description": "A self-hosted panel for your own Telegram proxies: keys with Fake-TLS and WEB links, cover websites, monitoring and server upgrades.",
+  "description": "A self-hosted panel for your own Telegram proxies: users with subscription links, Fake-TLS and WEB, cover websites, monitoring and server upgrades.",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Linux",
   "inLanguage": ["en", "ru"],
@@ -65,7 +65,7 @@
   <div class="wrap hero">
     <div>
       <h1>Control panel for MTProxy with <span class="nowrap">Fake-TLS</span> and <span class="nowrap">WEB proxy</span></h1>
-      <p class="lead">TGProxy Panel runs on one VPS and manages Telegram proxies on the rest. It issues keys with Fake-TLS and WEB links, puts a cover website on every server and keeps an eye on all of them. It is open source and free to use.</p>
+      <p class="lead">TGProxy Panel runs on one VPS and manages Telegram proxies on the rest. It gives people access through one subscription link, with Fake-TLS and WEB links inside, puts a cover website on every server and keeps an eye on all of them. It is open source and free to use.</p>
       <div class="actions">
         <a class="btn" href="#install" data-umami-event="install-button">How to install</a>
         <a class="textlink" href="https://github.com/greenpandorik/tgproxy-panel" data-umami-event="github" data-umami-event-place="hero">Source code on GitHub</a>
@@ -88,7 +88,7 @@
 
   <section id="panel">
     <div class="wrap">
-      <h2>Every server and key in one panel</h2>
+      <h2>Every server and user in one panel</h2>
       <p class="mute prose intro">The overview starts with a verdict: what is broken and where. Below it are load, latency to Telegram and the server list, and each server opens into its own page with checks, logs and statistics.</p>
       <figure class="window">
         <div class="window-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="address mono">https://<span class="domain">panel.example.com</span></span></div>
@@ -100,8 +100,8 @@
   <section id="links">
     <div class="wrap split">
       <div>
-        <h2>Two links for every key</h2>
-        <p class="mute">A key gives one person or a group access to your servers. For every server the key is bound to, the panel issues two links with QR codes, and people connect with whichever one works on their network.</p>
+        <h2>One link for every person</h2>
+        <p class="mute">A user in the panel is access for one person or for a group. They get a subscription link: on its page the person picks their device and connects the proxy step by step. Inside, every server has two links:</p>
         <div class="links">
           <div class="link">
             <h3><span class="eye" aria-hidden="true"></span>Fake-TLS</h3>
@@ -114,10 +114,10 @@
             <p>A proxy over plain HTTPS on port 443. The server picks the transport that suits the user's network, so the proxy keeps working even where a corporate network blocks WebSocket. Telegram Desktop supports these links, and Android support is experimental.</p>
           </div>
         </div>
-        <p class="mute">If a server has backup domains, each one gives the key another Fake-TLS link. A subscription page gathers all of a person's links and QR codes behind a single address.</p>
+        <p class="mute">If a server has backup domains, each one adds another Fake-TLS link. Subscription pages can open on a domain of your own, even on another server, so people never see the panel's address.</p>
       </div>
-      <figure class="dialog" style="--ratio: 510 / 752; --top: -14.51%">
-        <img src="img/key-link-dialog.png" width="1440" height="900" loading="lazy" alt="The key links dialog: WEB and Fake-TLS links with a QR code for each server">
+      <figure class="dialog" style="--ratio: 510 / 796; --top: -7.843%; --left: -42.157%">
+        <img src="img/key-link-dialog.png" width="1440" height="900" loading="lazy" alt="The user window: access on, expiry, traffic, connections and the subscription link with its QR code">
       </figure>
     </div>
   </section>
@@ -155,8 +155,8 @@
         </li>
         <li>
           <div>
-            <h3>Issue a key</h3>
-            <p>Access keys → New key: a name, who it's for and which servers. The panel shows the links and QR codes. The key starts working after the next apply on the server, usually within a minute.</p>
+            <h3>Add a user</h3>
+            <p>Users → New user: a name, the expiry and the servers. The panel shows the subscription link right away; send it to the person. Access starts working after the next apply on the server, usually within a minute.</p>
           </div>
         </li>
         <li>
@@ -178,11 +178,11 @@
       <h2>What else the panel does</h2>
       <dl class="features">
         <div><dt>A cover site on every server</dt><dd>Fifteen ready-made sites. When a site is assigned to a server, its block order, class names and file names are reshuffled, so two servers with the same template serve different pages and can't be linked to each other.</dd></div>
-        <div><dt>Per-key limits</dt><dd>Traffic quota, speed, unique IPs and connections. telemt enforces them itself, and the panel never sits in the traffic path.</dd></div>
-        <div><dt>Changes without dropped sessions</dt><dd>New and revoked keys reach the server through telemt's control API without a restart, so live sessions stay up.</dd></div>
+        <div><dt>Per-user limits</dt><dd>Traffic quota, speed, unique IPs and connections. telemt enforces them itself, and the panel never sits in the traffic path.</dd></div>
+        <div><dt>Changes without dropped sessions</dt><dd>New and revoked users reach the server through telemt's control API without a restart, so live sessions stay up.</dd></div>
         <div><dt>Backup domains</dt><dd>If an ISP stops letting a server's main domain through, users take the link with a backup domain instead. No reinstall needed.</dd></div>
         <div><dt>Checks and monitoring</dt><dd>The overview starts with a verdict: what is broken and where. The panel checks DNS, ports, the certificate and Fake-TLS masking, exports Prometheus metrics for a ready-made Grafana dashboard and sends alerts to Telegram.</dd></div>
-        <div><dt>Personal and shared keys</dt><dd>A personal key belongs to one person and is revoked on its own; a shared key goes to a group. You can create a batch of keys from a name template.</dd></div>
+        <div><dt>Personal and shared access</dt><dd>Personal access goes to one person; shared access goes to a group on one link with a short address like /s/team. Access can be paused and extended in a couple of clicks, and when it expires it is taken off the servers until someone extends it.</dd></div>
         <div><dt>Panel security</dt><dd>Two-factor sign-in with recovery codes, an activity log, nightly database backups and master key rotation.</dd></div>
         <div><dt>English and Russian</dt><dd>The interface and the docs come in both languages, and switching takes one click.</dd></div>
       </dl>
@@ -211,7 +211,7 @@
         </details>
         <details>
           <summary>What if the proxy stops connecting for some users?</summary>
-          <p>Open the server in the panel: "Full server check" and "Check from the panel" show what's wrong with DNS, ports, the certificate or masking. If an ISP stops letting the server's domain through, add backup domains, and every key gets one more Fake-TLS link per domain.</p>
+          <p>Open the server in the panel: "Full server check" and "Check from the panel" show what's wrong with DNS, ports, the certificate or masking. If an ISP stops letting the server's domain through, add backup domains, and every user gets one more Fake-TLS link per domain.</p>
         </details>
         <details>
           <summary>What do the proxy servers run?</summary>

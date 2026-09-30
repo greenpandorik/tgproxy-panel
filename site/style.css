@@ -121,7 +121,7 @@ p { margin: 0 0 14px; text-wrap: pretty; }
 .link p { margin: 0; color: var(--mute); }
 
 .dialog { width: 100%; max-width: 510px; aspect-ratio: var(--ratio); justify-self: center; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
-.dialog img { width: 282.35%; max-width: none; margin: var(--top) 0 0 -91.176%; }
+.dialog img { width: 282.35%; max-width: none; margin: var(--top) 0 0 var(--left, -91.176%); }
 
 .band { margin-top: 104px; padding: 88px 0 96px; background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 @media (max-width: 640px) { .band { margin-top: 72px; padding: 64px 0 72px; } }

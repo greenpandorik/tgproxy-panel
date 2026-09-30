@@ -13,32 +13,35 @@
 **English** · [Русский](README.ru.md) · [Website](https://greenpandorik.github.io/tgproxy-panel/en/)
 
 TGProxy Panel lets you run your own Telegram proxies and manage them from a browser. You install
-the panel on one server, and it sets up the proxies on the others: it gives people keys with
-ready-made links and QR codes, hides every proxy behind an ordinary-looking website and keeps an
-eye on all of it.
+the panel on one server, and it sets up the proxies on the others: it gives people ready-made
+links and QR codes, hides every proxy behind an ordinary-looking website and keeps an eye on all
+of it.
 
 The panel is free and open source. It installs with one command, and the interface is in English
 and Russian.
 
 <p align="center">
-  <img src="docs/screenshots/issue-a-key.gif" width="90%" alt="Issuing a key: name it, bind it to two servers, and get a WEB link and a Fake-TLS link with QR codes">
+  <img src="docs/screenshots/issue-a-key.gif" width="90%" alt="Giving access: name the user, bind them to two servers, and get a WEB link and a Fake-TLS link with QR codes">
 </p>
 
-<p align="center"><sub>Issuing a key: give it a name, pick the servers and get the links with QR codes.</sub></p>
+<p align="center"><sub>Giving access: enter a name, pick the servers and get the links with QR codes.</sub></p>
 
 ## What it does
 
-- Gives out keys with links. Every key comes with two proxy links. Fake-TLS works in every
-  Telegram app. The WEB proxy runs over plain HTTPS and is harder to block, but for now only
-  Telegram Desktop and recent Android versions understand it. Each link has a QR code, and a
-  subscription page collects all of a person's links in one place.
+- Gives access with one link. Every user has a subscription link: the person opens it, picks
+  their device and connects the proxy step by step. The proxy links themselves come in two
+  kinds. Fake-TLS works in every Telegram app. The WEB proxy runs over plain HTTPS and is harder
+  to block, but for now only Telegram Desktop and recent Android versions understand it. Each
+  link has a QR code. Subscription pages can open on a domain of their own, even from a separate
+  server, so people never see the panel's domain.
 - Disguises the proxy as a website. The domain of every proxy server opens an ordinary site, such
   as a coffee shop or a blog. Fifteen ready-made sites are included, and each server gets its own
   slightly rearranged copy, so servers can't be matched by identical pages.
-- Limits keys. Every key can have an expiry date, and on telemt servers also a traffic quota, a
-  speed limit and a cap on unique IP addresses.
-- Keeps people connected. New and revoked keys are applied without restarting the proxy, so
-  connected users don't notice.
+- Limits access. Every user can have an expiry date, and on telemt servers also a traffic quota,
+  a speed limit and a cap on unique IP addresses. Access can be turned off for a while, and an
+  expired date can be extended, with the link staying the same.
+- Keeps people connected. New users and access changes are applied without restarting the proxy,
+  so connected people don't notice.
 - Watches the servers. The overview tells you straight away what is broken and where. The panel
   checks DNS, ports and certificates, sends alerts to Telegram and exports metrics for Prometheus
   and Grafana.
@@ -79,7 +82,8 @@ to a server and how to send a friend your first link.
    you a command: run it on the proxy server. A couple of minutes later the server shows up in the
    list.
 
-3. Open Access keys → New key, pick the servers and send the person the link or the QR code.
+3. Open Users → New user, pick the servers and send the person the subscription link or its QR
+   code.
 
 To upgrade the panel: `sudo /opt/tgproxy-panel/install.sh --update`. To upgrade a proxy server:
 `tgwp-agent upgrade` on that server.

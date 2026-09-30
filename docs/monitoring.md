@@ -17,8 +17,8 @@ You don't need them if this panel is all you watch. Set them up if you already r
 and Grafana for other systems and want the panel on the same screen, or if you want your own
 alert rules.
 
-The panel exports only a few numbers: servers and keys by status, and live sessions per
-server. Traffic, per-key statistics and WEB transport data stay in the panel.
+The panel exports only a few numbers: servers and users by status, and live sessions per
+server. Traffic, per-user statistics and WEB transport data stay in the panel.
 
 ## What the panel shows without them
 
@@ -125,7 +125,7 @@ scrape_configs:
 Reload Prometheus. On its "Status" → "Targets" page the `tgwp-panel` job should be `UP`. A
 `401` there means the token in the file is wrong.
 
-Keep the interval at 60 seconds. Server and key counts are read from the database at each
+Keep the interval at 60 seconds. Server and user counts are read from the database at each
 scrape, but the live session numbers change only once a minute, when the panel reads the
 servers.
 
@@ -139,10 +139,10 @@ It needs Grafana 10 or newer.
 3. For the `Prometheus` data source, pick the Prometheus that scrapes the panel.
 4. Press "Import".
 
-The dashboard shows the last 24 hours and refreshes every minute; both can be changed in
-Grafana. It has tiles for servers and keys by status, charts of live sessions and streams per
-server, and the `Sessions live by node` table. Its uid is `tgwp-panel`, so importing the file
-again updates the dashboard in place.
+The dashboard shows the last 24 hours and refreshes every minute; both can be changed in Grafana. It
+has tiles for servers and users by status (the dashboard labels them `Keys`), charts of live
+sessions and streams per server, and the `Sessions live by node` table. Its uid is `tgwp-panel`, so
+importing the file again updates the dashboard in place.
 
 ## 4. Metric reference
 
@@ -152,8 +152,8 @@ Everything below comes from the panel's `/metrics`. Prometheus adds its own `job
 | Metric | Type | Labels | Meaning |
 | --- | --- | --- | --- |
 | `tgwp_nodes` | gauge | `status`: `pending`, `online`, `offline`, `degraded` | Number of servers in each status. All four series are always present, even at 0. |
-| `tgwp_keys` | gauge | `status`: `pending`, `active`, `revoked` | Number of access keys in each status. All three series are always present, even at 0. |
-| `tgwp_node_sessions_live` | gauge | `node`: server UUID | Live sessions on the server, from its latest snapshot. On telemt, the current connections of all its keys added up. |
+| `tgwp_keys` | gauge | `status`: `pending`, `active`, `revoked` | Number of users in each status. All three series are always present, even at 0. |
+| `tgwp_node_sessions_live` | gauge | `node`: server UUID | Live sessions on the server, from its latest snapshot. On telemt, the current connections of all its users added up. |
 | `tgwp_node_streams_live` | gauge | `node`: server UUID | Live relay streams on the server, from its latest snapshot. On telemt, the same number as `tgwp_node_sessions_live`. |
 | `go_*`, `process_*` | various | | Standard Go runtime and process metrics of the panel itself: goroutines, memory, garbage collection, open files, CPU. |
 
@@ -166,9 +166,12 @@ What the statuses mean:
   threshold is 90 seconds by default and can be changed in "Settings" → "Notifications".
 - A `degraded` server ("Degraded") has an agent that answers, but one of the proxy's services is
   not working.
-- A `pending` key has not yet reached all of its servers. It turns `active` once every server
-  has it.
-- A `revoked` key was revoked by hand or because it expired.
+- A `pending` user ("Setting up" in the panel) has not yet reached all of their servers. They
+  turn `active` once every server has them.
+- A `revoked` user was revoked by hand. Users that earlier versions of the panel revoked on
+  expiry stay here too.
+- Turned-off and expired users are not revoked and count as `active` or `pending`. The tiles in
+  the Users section and `GET /api/v1/keys/summary` show how many there are.
 
 Things to know about the per-server metrics:
 
@@ -212,17 +215,18 @@ Prometheus text format:
   These have no labels.
 - On a telemt server, this is telemt's own metrics. The panel reads `telemt_connections_total`,
   `telemt_user_connections_current` and `telemt_user_unique_ips_current`. The last two have a
-  `user` label: `k` followed by the first 12 hex digits of the key's UUID.
+  `user` label: `k` followed by the first 12 hex digits of the user's UUID.
 
 You will rarely need this address. The Monitoring page and the server's "Stats" tab already
 draw these numbers.
 
-## 6. Per-key statistics
+## 6. Per-user statistics
 
 There is no `tgwp_key_*` metric. On telemt servers the panel records traffic, connections and
-unique IP addresses for each key, and shows them in "Access keys": the "Traffic (30d)" column
-in the list and the "Traffic and connections" block when you open a key. tproxy servers do not
-measure traffic per key: `tproxy-server` counts only per server.
+unique IP addresses for each user, and shows them in Users: the "Traffic, 30 days" and
+"Connections" columns in the list, and the same numbers plus the "Traffic and connections" chart
+in the user window. tproxy servers do not measure traffic per user: `tproxy-server` counts only
+per server.
 
 How the panel is built is described in the [reference](reference.md), installation in the
 [setup guide](setup.en.md). What to do when something breaks is in the [runbook](runbook.md).
