@@ -89,9 +89,9 @@ describe('BackupsForm', () => {
     expect(link).toHaveAttribute('href', '/api/v1/backups/b-1/download');
 
     // Schedule is off in SETTINGS, so its fields stay out of the way.
-    expect(screen.queryByLabelText('Keep dumps')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Copies to keep')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('switch'));
-    expect(await screen.findByLabelText('Keep dumps')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Copies to keep')).toBeInTheDocument();
   });
 
   it('creates a backup and reports a run that is already in progress', async () => {
@@ -165,7 +165,7 @@ describe('BackupsForm', () => {
 
     renderForm();
     await userEvent.click(await screen.findByRole('switch'));
-    const keep = await screen.findByLabelText('Keep dumps');
+    const keep = await screen.findByLabelText('Copies to keep');
     await userEvent.clear(keep);
     await userEvent.type(keep, '14');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));

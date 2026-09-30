@@ -232,13 +232,13 @@ export function DashboardPage() {
         }
         actions={
           <>
+            <HelpButton topic="dashboard" />
             {isWriter && (
               <Button nativeButton={false} render={<Link to="/users?create=1" />}>
                 <KeyRound />
                 {t('dashboard.manage_access')}
               </Button>
             )}
-            <HelpButton topic="dashboard" />
           </>
         }
       />
@@ -298,13 +298,13 @@ export function DashboardPage() {
               icon={Activity}
               title={t('dashboard.sessions_chart_title')}
               actions={
-                <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/monitoring" />}>
+                <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/monitoring" />}>
                   {t('nav.monitoring')}
                 </Button>
               }
               meta={chartStep ? t('dashboard.sessions_chart_meta', { step: chartStep }) : undefined}
             />
-            <div className="flex-1 px-2 pt-3">
+            <div className="flex-1 px-2 py-3">
               {seriesLoading ? (
                 <Skeleton className="h-[220px] w-full" />
               ) : chart.data.length === 0 ? (
@@ -317,7 +317,9 @@ export function DashboardPage() {
                 </Suspense>
               )}
             </div>
-            <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-3" />
+            {!seriesLoading && chart.data.length > 0 && (
+              <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-3" />
+            )}
           </Panel>
         </div>
 

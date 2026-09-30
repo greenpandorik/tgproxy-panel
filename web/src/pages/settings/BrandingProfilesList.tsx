@@ -24,7 +24,7 @@ import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { BrandingForm } from './BrandingForm';
-import { Arriving, FormFooter } from './formShell';
+import { Arriving } from './formShell';
 
 import type { CSSProperties } from 'react';
 import type { BrandingProfile } from '@/api/types';
@@ -242,7 +242,7 @@ export function BrandingProfilesList() {
   if (profilesQuery.isLoading) {
     // The rail on the left and the stack of form panels on the right, in silhouette.
     return (
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[264px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[288px_minmax(0,1fr)]">
         <Skeleton className="h-64 w-full rounded-surface" />
         <div className="space-y-4">
           <Skeleton className="h-48 w-full rounded-surface" />
@@ -264,19 +264,11 @@ export function BrandingProfilesList() {
   }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[264px_minmax(0,1fr)]">
-      {/* Head, body, footer, like every other form behind these tabs: the rail's
-          own action sits in the footer rather than in a 264px header that cannot
-          hold both a title and this label. */}
+    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[288px_minmax(0,1fr)]">
       <div className="flex flex-col gap-4">
         <Arriving>
           <Panel>
-            <PanelHeader
-              icon={Palette}
-              title={t('settings.branding_profiles_title')}
-              meta={String(items.length)}
-              actions={<HelpButton topic="settings.branding" />}
-            />
+            <PanelHeader icon={Palette} title={t('settings.branding_profiles_title')} />
             <ul className="divide-y divide-hairline" aria-label={t('settings.branding_profiles_title')}>
               {items.map((p) => (
                 <ProfileRow
@@ -292,12 +284,10 @@ export function BrandingProfilesList() {
           </Panel>
         </Arriving>
 
-        <FormFooter>
-          <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
-            <Plus />
-            {t('settings.branding_create_from_active')}
-          </Button>
-        </FormFooter>
+        <Button type="button" variant="outline" className="w-full" onClick={() => setCreateOpen(true)}>
+          <Plus />
+          {t('settings.branding_create_from_active')}
+        </Button>
       </div>
 
       <div className="min-w-0">

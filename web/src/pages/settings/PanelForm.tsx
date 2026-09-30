@@ -156,7 +156,7 @@ export function PanelForm() {
   if (settingsQuery.isLoading) {
     // Two panels and the footer strip, in silhouette, at the sizes they land at.
     return (
-      <div className="flex max-w-2xl flex-col gap-4">
+      <div className="flex max-w-3xl flex-col gap-4">
         <Skeleton className="h-40 w-full rounded-surface" />
         <Skeleton className="h-48 w-full rounded-surface" />
         <Skeleton className="h-14 w-full rounded-surface" />
@@ -166,7 +166,7 @@ export function PanelForm() {
 
   if (settingsQuery.isError) {
     return (
-      <div className="max-w-2xl">
+      <div className="max-w-3xl">
         <ErrorState
           message={settingsQuery.error instanceof ApiError ? settingsQuery.error.message : t('common.error_generic')}
           retryLabel={t('common.refresh')}
@@ -179,7 +179,7 @@ export function PanelForm() {
   const disabled = !isOwner;
 
   return (
-    <form className="flex max-w-2xl flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
+    <form className="flex max-w-3xl flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
       {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
       <Arriving>
@@ -294,20 +294,20 @@ export function PanelForm() {
                       {tokenSet ? t('settings.panel_telegram_token_set') : t('settings.panel_telegram_token_not_set')}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       id="panel-bot-token"
                       type="password"
                       autoComplete="off"
                       className="mono text-mono"
-                      placeholder={t('settings.panel_telegram_bot_token_placeholder')}
+                      placeholder={tokenSet ? t('settings.panel_telegram_bot_token_placeholder') : undefined}
                       disabled={disabled || clearToken}
                       {...register('bot_token')}
                     />
                     <Button
                       type="button"
                       variant="outline"
-                      className="shrink-0"
+                      className="self-start sm:shrink-0 sm:self-auto"
                       disabled={disabled || !canTestTelegram || telegramTest.isPending}
                       onClick={() => void onTestMessage()}
                     >

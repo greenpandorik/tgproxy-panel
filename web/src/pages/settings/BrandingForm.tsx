@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Code, Image, Palette, Type, Upload } from 'lucide-react';
+import { ChevronDown, Code, Image, Palette, Type, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -387,8 +387,8 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
               actions={<HelpButton topic="settings.branding" />}
             />
             <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 sm:col-span-2">
-                <p className="min-w-0 flex-1 text-label text-mute">{t('settings.branding_theme_palette_hint')}</p>
+              <div className="flex flex-col items-start gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="max-w-[72ch] min-w-0 text-label text-mute">{t('settings.branding_theme_palette_hint')}</p>
                 <Button
                   type="button"
                   variant="outline"
@@ -499,10 +499,23 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
           </Panel>
         </Arriving>
 
-        <details className="rounded-surface border border-hairline-strong bg-card">
-          <summary className="cursor-pointer px-5 py-4 text-body font-medium">{t('settings.branding_advanced')}</summary>
-          <Panel>
-            <PanelHeader icon={Code} title={t('settings.branding_custom_css')} />
+        <details className="group overflow-hidden rounded-surface border border-hairline-strong bg-card">
+          <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 px-5 py-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-control bg-primary/12 text-brand-primary"
+              aria-hidden="true"
+            >
+              <Code size={18} strokeWidth={1.8} />
+            </span>
+            <span className="min-w-0 flex-1 text-title text-foreground">{t('settings.branding_advanced')}</span>
+            <ChevronDown
+              size={16}
+              strokeWidth={1.8}
+              aria-hidden="true"
+              className="shrink-0 text-mute transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="border-t border-hairline">
             <PanelBody className="space-y-4">
               <Textarea
                 id="branding-custom-css"
@@ -526,7 +539,7 @@ export function BrandingForm({ profile, onDirtyChange }: BrandingFormProps) {
                 </div>
               )}
             </PanelBody>
-          </Panel>
+          </div>
         </details>
 
         <FormFooter>

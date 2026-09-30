@@ -165,11 +165,7 @@ export function AttentionSection() {
 
   return (
     <Panel>
-      <PanelHeader
-        icon={TriangleAlert}
-        title={t('dashboard.alerts_title')}
-        meta={t('dashboard.alerts_open_count', { count: alerts.length })}
-      />
+      <PanelHeader icon={TriangleAlert} title={t('dashboard.alerts_title')} meta={String(alerts.length)} />
       <ul className="divide-y divide-hairline">
         {alerts.map((alert) => (
           <AttentionRow key={alert.id} alert={alert} />

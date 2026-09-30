@@ -17,9 +17,9 @@ export function WebsiteGallery({ websites, onPreview, onUse, actions, currentId 
     return (category === 'all' || group === category || (category === 'status_docs' && ['status', 'docs'].includes(group))) && `${site.name} ${site.display_name ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase());
   });
   return <div className="space-y-4">
-    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-      <div className="flex flex-wrap gap-1" aria-label={t('sites.categories')}>{CATEGORIES.map((key) => <Button key={key} size="sm" variant={category === key ? 'secondary' : 'ghost'} aria-pressed={category === key} onClick={() => setCategory(key)}>{t(`sites.category_${key}`)}</Button>)}</div>
-      <Input className="xl:max-w-64" value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t('sites.search')} placeholder={t('sites.search')} type="search" />
+    <div className="flex flex-col gap-3">
+      <Input className="sm:max-w-xs" value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t('sites.search')} placeholder={t('sites.search')} type="search" />
+      <div className="flex flex-wrap gap-1" role="group" aria-label={t('sites.categories')}>{CATEGORIES.map((key) => <Button key={key} size="sm" variant={category === key ? 'secondary' : 'ghost'} aria-pressed={category === key} onClick={() => setCategory(key)}>{t(`sites.category_${key}`)}</Button>)}</div>
     </div>
     {visible.length === 0 ? <p className="p-8 text-center text-mute">{t('sites.no_matches')}</p> : <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {visible.map((site) => <li key={site.id} className="min-w-0 overflow-hidden rounded-surface border border-hairline bg-card">

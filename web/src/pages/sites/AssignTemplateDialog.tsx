@@ -100,8 +100,8 @@ export function AssignTemplateDialog({ open, onOpenChange, templateId, templateN
               <SelectTrigger id="assign-node" className="w-full">
                 {/* Resolve the label explicitly - SelectValue would otherwise show the raw
                     node id (a UUID) until the popup has mounted at least once. */}
-                <SelectValue placeholder={t('sites.assign_node_label')}>
-                  {(v: string) => nodes.find((n) => n.id === v)?.name ?? t('sites.assign_node_label')}
+                <SelectValue placeholder={t('sites.assign_node_placeholder')}>
+                  {(v: string) => nodes.find((n) => n.id === v)?.name ?? t('sites.assign_node_placeholder')}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>

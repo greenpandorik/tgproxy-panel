@@ -10,7 +10,7 @@ import { CopyButton } from '@/components/common/CopyButton';
 import { EmptyState, PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
-import { useSection } from '@/components/common/SectionNav';
+import { SectionTabs, useSection } from '@/components/common/SectionNav';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -32,6 +32,8 @@ import { formatBytes, formatNumber } from '@/lib/format';
 
 // recharts stays out of the shell bundle - only NodeSeriesChart.tsx imports it.
 const NodeSeriesChart = lazy(() => import('./NodeSeriesChart').then((m) => ({ default: m.NodeSeriesChart })));
+
+const VIEWS = ['overview', 'nodes', 'web', 'integrations'] as const;
 
 const DEFAULT_BRAND_PRIMARY = '#0b7285';
 const DEFAULT_BRAND_ACCENT = '#099268';
@@ -82,15 +84,21 @@ function NodeCard({
     <Panel>
       {/* Same head as every PanelHeader in the panel, with the node's state dot
           and hostname taking the place of the mono note. */}
-      <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-4 py-2">
+      <div className="flex min-h-16 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-5 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <StatusBadge status={node.status as Status} hideLabel />
           <h2 className="truncate text-title text-foreground">{node.node_name}</h2>
           <span className="mono truncate text-mono text-mute">{node.hostname}</span>
         </div>
-        <Link to={`/nodes/${node.node_id}`} className="shrink-0 text-label text-brand-ink hover:underline">
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          nativeButton={false}
+          render={<Link to={`/nodes/${node.node_id}`} />}
+        >
           {t('monitoring.open_node')}
-        </Link>
+        </Button>
       </div>
 
       <PanelBody>
@@ -109,7 +117,7 @@ function NodeCard({
 function NodeCardSkeleton() {
   return (
     <Panel>
-      <div className="flex min-h-11 items-center gap-3 border-b border-hairline px-4 py-2">
+      <div className="flex min-h-16 items-center gap-3 border-b border-hairline px-5 py-3">
         <Skeleton className="h-4 w-28" />
         <Skeleton className="h-3 w-40" />
       </div>
@@ -149,11 +157,11 @@ function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Rec
   return (
     <Panel>
       <PanelHeader icon={Activity} title={t('monitoring.fleet_title')} />
-      <div className="grid grid-cols-2 gap-px bg-hairline sm:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-px bg-hairline md:grid-cols-5">
         {items.map(([label, value]) => (
-          <div key={label} className="bg-card px-5 py-4">
-            <p className="text-micro text-mute">{label}</p>
-            <p className="mt-1 text-title text-foreground">{value}</p>
+          <div key={label} className="bg-card px-5 py-4 last:col-span-2 md:last:col-span-1">
+            <p className="text-label text-mute">{label}</p>
+            <p className="mt-1 text-title text-foreground tabular">{value}</p>
           </div>
         ))}
       </div>
@@ -165,7 +173,7 @@ export function MonitoringPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [range, setRange] = useState<MonitoringRange>('24h');
-  const [view, setView] = useSection(['overview', 'nodes', 'web', 'integrations'], 'overview');
+  const [view, setView] = useSection(VIEWS, 'overview');
   const overviewQuery = useMonitoringOverview(range);
   const { branding } = useBrandingIdentity();
   const nodesQuery = useNodes();
@@ -192,25 +200,23 @@ export function MonitoringPage() {
         actions={
           <>
             <HelpButton topic="monitoring" />
-            <SegmentedControl
-              label={t('monitoring.range_label')}
-              value={range}
-              onChange={setRange}
-              options={MONITORING_RANGES.map((r) => ({ value: r, label: t(`monitoring.range_${r}`) }))}
-            />
+            {view === 'nodes' && (
+              <SegmentedControl
+                label={t('monitoring.range_label')}
+                value={range}
+                onChange={setRange}
+                options={MONITORING_RANGES.map((r) => ({ value: r, label: t(`monitoring.range_${r}`) }))}
+              />
+            )}
           </>
         }
       />
 
-      <SegmentedControl
+      <SectionTabs
         label={t('monitoring.view_label')}
         value={view}
         onChange={setView}
-        className="mb-4 max-w-full overflow-x-auto"
-        options={(['overview', 'nodes', 'web', 'integrations'] as const).map((value) => ({
-          value,
-          label: t(`monitoring.view_${value}`),
-        }))}
+        items={VIEWS.map((value) => ({ value, label: t(`monitoring.view_${value}`) }))}
       />
 
       {loading && view !== 'integrations' ? (

@@ -16,6 +16,8 @@ import type { Node, SeriesPoint } from '@/api/types';
 
 const DASH = '—';
 
+const WIDE_ONLY = 'hidden @min-[66rem]:table-cell';
+
 interface NodesTableProps {
   nodes: Node[];
   /** Live sessions per node id, taken from the newest monitoring sample. */
@@ -128,7 +130,7 @@ function NodeTableRow({
           <span className="truncate">{node.name}</span>
         </span>
       </TableCell>
-      <TableCell className="mono text-mono text-mute">{node.hostname}</TableCell>
+      <TableCell className={cn('mono text-mono text-mute', WIDE_ONLY)}>{node.hostname}</TableCell>
       <TableCell className={cn('mono text-mono', row.relayTone)}>{row.relay}</TableCell>
       <TableCell className="mono text-mono text-mute">{row.profiles}</TableCell>
       <TableCell className={cn('mono text-right text-mono', row.cpuTone)}>{row.cpu}</TableCell>
@@ -153,7 +155,7 @@ function NodeHeads() {
     <TableHeader>
       <TableRow>
         <TableHead>{t('dashboard.col_node')}</TableHead>
-        <TableHead>{t('nodes.column_hostname')}</TableHead>
+        <TableHead className={WIDE_ONLY}>{t('nodes.column_hostname')}</TableHead>
         <TableHead>{t('dashboard.col_relay')}</TableHead>
         <TableHead>{t('nodes.column_profiles')}</TableHead>
         <TableHead className="text-right">{t('nodes.load_cpu')}</TableHead>
@@ -174,14 +176,14 @@ export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
 
   return (
     <>
-      <div className="hidden md:block">
+      <div className="@container hidden md:block">
         <Table>
           <NodeHeads />
           <TableBody>
             {placeholders.map((i) => (
               <TableRow key={i}>
                 {SKELETON_WIDTHS.map((w, col) => (
-                  <TableCell key={col} className={col >= 4 && col !== 6 ? 'text-right' : undefined}>
+                  <TableCell key={col} className={cn(col >= 4 && col !== 6 && 'text-right', col === 1 && WIDE_ONLY)}>
                     <Skeleton className={cn('h-3', w, col >= 4 && col !== 6 && 'ml-auto')} />
                   </TableCell>
                 ))}
@@ -223,7 +225,7 @@ export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
 export function NodesTable({ nodes, sessionsByNode, seriesByNode, colorByNode }: NodesTableProps) {
   return (
     <>
-      <div className="hidden md:block">
+      <div className="@container hidden md:block">
         <Table>
           <NodeHeads />
           <TableBody>
