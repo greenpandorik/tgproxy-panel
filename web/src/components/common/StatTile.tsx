@@ -45,36 +45,43 @@ export function StatTile({
   className,
   style,
 }: StatTileProps) {
+  const note = [delta, context].filter(Boolean).join(' ');
   const body = (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3 sm:gap-4">
       <span
-        className="tgwp-tone-plate flex size-11 shrink-0 items-center justify-center rounded-pill"
+        className="tgwp-tone-plate flex size-10 shrink-0 items-center justify-center rounded-pill sm:size-11"
         style={{ '--tone': tone === 'neutral' ? 'var(--brand-primary)' : TONE_VAR[tone] } as CSSProperties}
         aria-hidden="true"
       >
         <Icon size={20} strokeWidth={1.7} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-label text-mute">{label}</p>
+        <p className="truncate text-label text-mute" title={label}>
+          {label}
+        </p>
         {loading ? (
           <Skeleton className="mt-1.5 h-6 w-16" />
         ) : (
           <p className="mono mt-0.5 flex items-baseline gap-1 text-[19px] leading-7 font-semibold text-foreground">
-            <span className="truncate">{value}</span>
+            <span className="truncate" title={String(value)}>
+              {value}
+            </span>
             {unit && <span className="shrink-0 text-mono font-normal text-mute">{unit}</span>}
           </p>
         )}
         {loading ? (
           <Skeleton className="mt-1.5 h-3 w-24" />
         ) : (
-          <p className="truncate text-micro text-mute">{[delta, context].filter(Boolean).join(' ') || '\u00a0'}</p>
+          <p className="truncate text-micro text-mute" title={note || undefined}>
+            {note || '\u00a0'}
+          </p>
         )}
       </div>
     </div>
   );
 
   const shell = cn(
-    'block rounded-surface border border-hairline-strong bg-card px-5 py-4.5',
+    'block rounded-surface border border-hairline-strong bg-card px-4 py-4.5 sm:px-5',
     to && 'transition-[background-color,border-color,scale] active:scale-[0.985] hover:bg-elevated',
     className,
   );

@@ -39,7 +39,9 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
             <Icon size={18} strokeWidth={1.8} />
           </span>
         )}
-        <h2 className="truncate text-title text-foreground">{title}</h2>
+        <h2 className="truncate text-title text-foreground" title={title}>
+          {title}
+        </h2>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         {meta !== undefined && meta !== null && meta !== '' && <span className="text-label text-mute">{meta}</span>}
