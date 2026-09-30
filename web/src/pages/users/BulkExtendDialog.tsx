@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDraft } from '@/lib/drafts';
 
+import { extendExpiry } from './userForm';
+
 const EMPTY_DRAFT = { expires_at: '' };
 
 interface BulkExtendDialogProps {
@@ -77,11 +79,11 @@ export function BulkExtendDialog({ open, onOpenChange, count, onConfirm }: BulkE
         {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
         <div className="space-y-2">
-          <Label htmlFor="bulk-extend-date">{t('keys.field_expires_at')}</Label>
+          <Label htmlFor="bulk-extend-date">{t('users.field_expires')}</Label>
           <Input
             id="bulk-extend-date"
             type="datetime-local"
-            className="mono"
+            className="mono text-mono"
             autoFocus
             value={value}
             onChange={(e) => {
@@ -90,6 +92,22 @@ export function BulkExtendDialog({ open, onOpenChange, count, onConfirm }: BulkE
             }}
             aria-invalid={error}
           />
+          <div className="flex flex-wrap gap-1.5">
+            {(['1m', '3m', '1y'] as const).map((step) => (
+              <Button
+                key={step}
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => {
+                  setValue(extendExpiry(value, step));
+                  setError(false);
+                }}
+              >
+                {t(`users.extend_${step}`)}
+              </Button>
+            ))}
+          </div>
           {error && <p className="text-label text-destructive">{t('keys.validation_expires_future')}</p>}
         </div>
 

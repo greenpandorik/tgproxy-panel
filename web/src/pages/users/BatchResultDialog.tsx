@@ -1,4 +1,4 @@
-import { Download, ExternalLink } from 'lucide-react';
+import { ChevronRight, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { CopyButton } from '@/components/common/CopyButton';
@@ -66,8 +66,8 @@ export function BatchResultDialog({ open, onOpenChange, keys, onOpen }: BatchRes
                   <CopyButton value={key.subscription_url} label={t('keys.subscription_copy')} className="size-8" />
                 )}
                 <Button type="button" variant="ghost" size="sm" onClick={() => onOpen(key.id)}>
-                  <ExternalLink />
                   {t('users.open_user')}
+                  <ChevronRight />
                 </Button>
               </span>
             </li>

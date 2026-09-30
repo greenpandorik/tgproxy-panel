@@ -113,24 +113,26 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
             <DialogTitle>{t(mode === 'batch' ? 'users.create_title_batch' : 'users.create_title')}</DialogTitle>
             <HelpButton topic={mode === 'batch' ? 'keys.batch' : 'keys.create'} className="-my-1" />
           </div>
-          <DialogDescription>{t(`users.create_hint_${mode}`)}</DialogDescription>
         </DialogHeader>
 
         {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
-        <Controller
-          control={control}
-          name="mode"
-          render={({ field }) => (
-            <Tabs value={field.value} onValueChange={(v) => field.onChange(v as UserFormValues['mode'])}>
-              <TabsList>
-                <TabsTrigger value="personal">{t('users.tab_personal')}</TabsTrigger>
-                <TabsTrigger value="shared">{t('users.tab_shared')}</TabsTrigger>
-                <TabsTrigger value="batch">{t('users.tab_batch')}</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
-        />
+        <div className="space-y-3">
+          <Controller
+            control={control}
+            name="mode"
+            render={({ field }) => (
+              <Tabs value={field.value} onValueChange={(v) => field.onChange(v as UserFormValues['mode'])}>
+                <TabsList>
+                  <TabsTrigger value="personal">{t('users.tab_personal')}</TabsTrigger>
+                  <TabsTrigger value="shared">{t('users.tab_shared')}</TabsTrigger>
+                  <TabsTrigger value="batch">{t('users.tab_batch')}</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          />
+          <DialogDescription>{t(`users.create_hint_${mode}`)}</DialogDescription>
+        </div>
 
         <form
           id={FORM_ID}
@@ -148,9 +150,6 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
                 subscriptionBase={subscriptionBase(serviceQuery.data)}
               />
             </UserCard>
-            <UserCard icon={Gauge} title={t('users.card_limits')} actions={<HelpButton topic="keys.limits" />}>
-              <LimitsCardBody control={control} errors={errors} scope={scope} />
-            </UserCard>
           </div>
           <div className="flex min-w-0 flex-col gap-4">
             <UserCard icon={CalendarClock} title={t('users.card_access')}>
@@ -164,6 +163,9 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
                 scope={scope}
               />
             </UserCard>
+            <UserCard icon={Gauge} title={t('users.card_limits')} actions={<HelpButton topic="keys.limits" />}>
+              <LimitsCardBody control={control} errors={errors} scope={scope} />
+            </UserCard>
           </div>
         </form>
 
@@ -174,7 +176,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
           </p>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="sticky -bottom-4 z-10 flex-row justify-end bg-popover">
           <Button type="button" variant="outline" onClick={close} disabled={isSubmitting}>
             {t('common.cancel')}
           </Button>
