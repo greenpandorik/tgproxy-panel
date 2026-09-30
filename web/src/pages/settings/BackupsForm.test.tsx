@@ -22,6 +22,19 @@ const SETTINGS: Settings = {
   offline_after: 90,
   telegram_alerts: { enabled: false, bot_token_set: false, chat_id: '', language: 'ru' },
   backup_schedule: { enabled: false, hour: 3, keep: 7 },
+  subscription_page: {
+    language: 'ru',
+    platform: 'android',
+    title: '',
+    intro: '',
+    show_fake_tls: true,
+    show_web: true,
+    show_backup_domains: true,
+    show_guide: true,
+    show_status: true,
+    show_qr: true,
+    hidden_nodes: [],
+  },
 };
 
 const EXISTING: Backup = {

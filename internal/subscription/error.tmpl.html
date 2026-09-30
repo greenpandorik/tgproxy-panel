@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru" data-theme="{{if eq .Theme "light"}}light{{else}}dark{{end}}">
+<html lang="{{if .Lang}}{{.Lang}}{{else}}ru{{end}}" data-theme="{{if eq .Theme "light"}}light{{else}}dark{{end}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

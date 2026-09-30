@@ -13,6 +13,7 @@ import (
 	"tgwebproxy/internal/backup"
 	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/store/db"
+	"tgwebproxy/internal/subscription"
 )
 
 const (
@@ -30,6 +31,7 @@ func (s *Server) mountSettings(r chi.Router) {
 	r.Get("/settings", s.handleGetSettings)
 	r.With(RequireRole(RoleOwner)).Put("/settings", s.handlePutSettings)
 	r.With(RequireRole(RoleOwner)).Post("/settings/telegram/test", s.handleTelegramTest)
+	r.With(RequireRole(writers...)).Get("/settings/subscription-page/preview", s.handleSubscriptionPreview)
 }
 
 func (s *Server) TelegramConfig(ctx context.Context) (enabled bool, botToken, chatID string, err error) {
@@ -105,7 +107,8 @@ func (s *Server) settingsJSON(ctx context.Context) map[string]any {
 			Enabled: stored.Enabled, BotTokenSet: stored.BotTokenEnc != "", ChatID: stored.ChatID,
 			Language: string(alerttext.ParseLang(stored.Language)),
 		},
-		"backup_schedule": s.backupSchedule(ctx),
+		"backup_schedule":   s.backupSchedule(ctx),
+		"subscription_page": s.subscriptionSettings(ctx),
 	}
 }
 
@@ -121,10 +124,11 @@ type putTelegramAlertsReq struct {
 }
 
 type putSettingsReq struct {
-	ApplyInterval  *int                  `json:"apply_interval"`
-	OfflineAfter   *int                  `json:"offline_after"`
-	TelegramAlerts *putTelegramAlertsReq `json:"telegram_alerts"`
-	BackupSchedule *backup.Schedule      `json:"backup_schedule"`
+	ApplyInterval    *int                   `json:"apply_interval"`
+	OfflineAfter     *int                   `json:"offline_after"`
+	TelegramAlerts   *putTelegramAlertsReq  `json:"telegram_alerts"`
+	BackupSchedule   *backup.Schedule       `json:"backup_schedule"`
+	SubscriptionPage *subscription.Settings `json:"subscription_page"`
 }
 
 func (s *Server) handlePutSettings(w http.ResponseWriter, r *http.Request) {
@@ -142,6 +146,11 @@ func (s *Server) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.BackupSchedule != nil {
 		for k, v := range req.BackupSchedule.Validate() {
+			fields[k] = v
+		}
+	}
+	if req.SubscriptionPage != nil {
+		for k, v := range req.SubscriptionPage.Normalized().Validate() {
 			fields[k] = v
 		}
 	}
@@ -207,6 +216,11 @@ func (s *Server) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.BackupSchedule != nil {
 		if !upsert(settingBackupSchedule, *req.BackupSchedule) {
+			return
+		}
+	}
+	if req.SubscriptionPage != nil {
+		if !upsert(settingSubscriptionPage, req.SubscriptionPage.Normalized()) {
 			return
 		}
 	}

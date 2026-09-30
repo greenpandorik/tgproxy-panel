@@ -206,3 +206,8 @@ func (m Message) withName(name string) Message {
 		Plain: strings.Replace(m.Plain, "\x00", name, 1),
 	}
 }
+
+// T is a plain translation with vars filled in, for pages that escape on their own.
+func (c *Catalog) T(l Lang, key string, vars map[string]string) string {
+	return c.text(l, key, vars)
+}

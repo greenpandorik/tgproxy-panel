@@ -589,8 +589,10 @@ Which link to send:
 - The WEB proxy goes through the server's site over plain HTTPS and is harder to block. For now it
   works only in Telegram Desktop and recent versions of Telegram for Android.
 
-"Create link" in the same dialog makes a subscription page: one public link where the person sees
-the links and QR codes for every server of their key. The key's name and notes never appear there.
+"Create link" in the same dialog makes a subscription page: one public link where the person
+picks their device and follows three steps to connect, with every link and QR code further down.
+The key's name and notes never appear there. What the page shows is set under Settings →
+Subscription page ("Customize the page" next to the link leads there).
 The subscription link and its QR are shown only once, so save them right away. "Rotate link"
 issues a new one (the old one stops working), and "Revoke link" closes the page.
 

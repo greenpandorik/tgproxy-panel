@@ -9,6 +9,7 @@ import { BrandingProfilesList } from './BrandingProfilesList';
 import { PreferencesForm } from './PreferencesForm';
 import { PanelForm } from './PanelForm';
 import { SecurityForm } from './SecurityForm';
+import { SubscriptionPageForm } from './SubscriptionPageForm';
 
 const TAB_HELP: Record<string, HelpTopic> = {
   branding: 'settings.branding',
@@ -17,12 +18,13 @@ const TAB_HELP: Record<string, HelpTopic> = {
   admins: 'settings.admins',
   panel: 'settings.panel',
   backups: 'settings.backups',
+  subscription: 'settings.subscription',
 };
 
 export function SettingsPage() {
   const { t } = useTranslation();
   const { isOwner } = useAuth();
-  const shared = ['panel', 'branding', ...(isOwner ? ['admins', 'backups'] : [])];
+  const shared = ['panel', 'branding', 'subscription', ...(isOwner ? ['admins', 'backups'] : [])];
   const personal = ['preferences', 'security'];
   const allowed = [...shared, ...personal];
   const [section, setSection] = useSection(allowed, 'panel');
@@ -47,6 +49,7 @@ export function SettingsPage() {
           {section === 'panel' && <PanelForm />}
           {section === 'preferences' && <PreferencesForm />}
           {section === 'branding' && <BrandingProfilesList />}
+          {section === 'subscription' && <SubscriptionPageForm />}
           {section === 'security' && <SecurityForm />}
           {section === 'admins' && isOwner && <AdminsForm />}
           {section === 'backups' && isOwner && <BackupsForm />}

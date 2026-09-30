@@ -429,28 +429,46 @@ func (s *Service) NodeLinks(ctx context.Context, keyID uuid.UUID) ([]NodeLinks, 
 	}
 	out := make([]NodeLinks, 0, len(bindings))
 	for _, b := range bindings {
-		item := NodeLinks{
-			NodeID: b.NodeID, NodeName: b.NodeName, Hostname: b.Hostname, Engine: string(b.Engine),
-			Links: []KindLink{{Kind: LinkWeb, TMe: qrlink.TMe(b.Hostname, secret), Tg: qrlink.Tg(b.Hostname, secret)}},
-		}
-		if b.Engine == db.NodeEngineTelemt && b.TlsDomain != "" {
-			port := int(b.ClassicPort)
-			domains := []string{b.TlsDomain}
-			for _, d := range b.TlsDomains {
-				if !slices.Contains(domains, d) {
-					domains = append(domains, d)
-				}
-			}
-			for _, d := range domains {
-				fake := qrlink.FakeTLSSecret(secret, d)
-				item.Links = append(item.Links, KindLink{
-					Kind: LinkTLS, Domain: d, TMe: qrlink.TMeProxy(b.Hostname, port, fake), Tg: qrlink.TgProxy(b.Hostname, port, fake),
-				})
-			}
-		}
-		out = append(out, item)
+		out = append(out, LinksFor(LinkTarget{
+			NodeID: b.NodeID, NodeName: b.NodeName, Hostname: b.Hostname, Engine: b.Engine,
+			TLSDomain: b.TlsDomain, TLSDomains: b.TlsDomains, ClassicPort: int(b.ClassicPort),
+		}, secret))
 	}
 	return out, nil
+}
+
+// LinkTarget is what a server contributes to a key's links.
+type LinkTarget struct {
+	NodeID      uuid.UUID
+	NodeName    string
+	Hostname    string
+	Engine      db.NodeEngine
+	TLSDomain   string
+	TLSDomains  []string
+	ClassicPort int
+}
+
+// LinksFor builds every link a secret gets on one server: WEB first, then Fake-TLS per domain.
+func LinksFor(b LinkTarget, secret string) NodeLinks {
+	item := NodeLinks{
+		NodeID: b.NodeID, NodeName: b.NodeName, Hostname: b.Hostname, Engine: string(b.Engine),
+		Links: []KindLink{{Kind: LinkWeb, TMe: qrlink.TMe(b.Hostname, secret), Tg: qrlink.Tg(b.Hostname, secret)}},
+	}
+	if b.Engine == db.NodeEngineTelemt && b.TLSDomain != "" {
+		domains := []string{b.TLSDomain}
+		for _, d := range b.TLSDomains {
+			if !slices.Contains(domains, d) {
+				domains = append(domains, d)
+			}
+		}
+		for _, d := range domains {
+			fake := qrlink.FakeTLSSecret(secret, d)
+			item.Links = append(item.Links, KindLink{
+				Kind: LinkTLS, Domain: d, TMe: qrlink.TMeProxy(b.Hostname, b.ClassicPort, fake), Tg: qrlink.TgProxy(b.Hostname, b.ClassicPort, fake),
+			})
+		}
+	}
+	return item
 }
 
 // Links is NodeLinks flattened, in node order with the web link of each node first.

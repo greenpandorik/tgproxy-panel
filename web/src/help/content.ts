@@ -143,6 +143,10 @@ export const HELP_TOPICS = {
     fields: ['apply_interval', 'offline_after'],
     docs: 'monitoring',
   },
+  'settings.subscription': {
+    fields: ['language', 'platform', 'title', 'links', 'blocks', 'servers'],
+    docs: 'keys',
+  },
   'settings.telegram': {
     fields: ['enabled', 'bot_token', 'chat_id', 'language', 'test'],
     docs: 'monitoring',

@@ -7,9 +7,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/crypto"
-	"tgwebproxy/internal/keys"
 	"tgwebproxy/internal/qrlink"
 	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/subscription"
@@ -134,22 +134,16 @@ func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Request, status int) {
-	panelName, theme := branding.DefaultPanelName, "dark"
-	if b, err := s.store.Q.GetActiveBranding(r.Context()); err == nil {
-		if b.PanelName != "" {
-			panelName = b.PanelName
-		}
-		if b.ThemeDefault != "" {
-			theme = b.ThemeDefault
-		}
-	}
-	message := "Ссылка не найдена."
+	b := s.subscriptionBranding(r.Context())
+	lang := subscription.DetectLang(s.subscriptionSettings(r.Context()).Language, r.Header.Get("Accept-Language"))
+	key := "subpage.error_not_found"
 	if status == http.StatusGone {
-		message = "Эта ссылка больше не действительна."
+		key = "subpage.error_gone"
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	if err := subscription.RenderError(w, subscription.ErrorPage{PanelName: panelName, Theme: theme, Message: message}); err != nil {
+	page := subscription.ErrorPage{Lang: string(lang), PanelName: b.PanelName, Theme: b.Theme, Message: alerttext.Default().T(lang, key, nil)}
+	if err := subscription.RenderError(w, page); err != nil {
 		s.log.Error("subscription: render error page", "err", err)
 	}
 }
@@ -175,6 +169,7 @@ func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) 
 		internal(w)
 		return
 	}
+	links = s.visibleLinks(s.subscriptionSettings(r.Context()), links)
 	locations := make([]map[string]any, 0, len(links))
 	for _, l := range links {
 		// tme/tg stay the WEB link every client already reads; links[] carries every kind the node offers, WEB first.
@@ -192,59 +187,24 @@ func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, 200, map[string]any{"panel_name": panelName, "locations": locations})
 }
 
-// linkKindLabel names a link kind for the public page.
-func linkKindLabel(kind string) string {
-	switch kind {
-	case keys.LinkWeb:
-		return "WEB"
-	case keys.LinkTLS:
-		return "Fake-TLS"
-	default:
-		return kind
-	}
-}
-
 func (s *Server) subscriptionPage(r *http.Request, key db.AccessKey) (subscription.Page, error) {
-	links, err := s.keys.NodeLinks(r.Context(), key.ID)
+	ctx := r.Context()
+	links, err := s.keys.NodeLinks(ctx, key.ID)
 	if err != nil {
 		return subscription.Page{}, err
 	}
-	locations := make([]subscription.Location, 0, len(links))
-	for _, l := range links {
-		methods := make([]subscription.LocationLink, 0, len(l.Links))
-		tlsLinks := 0
-		for _, m := range l.Links {
-			if m.Kind == keys.LinkTLS {
-				tlsLinks++
-			}
-		}
-		for _, m := range l.Links {
-			qr, err := qrlink.DataURI(m.TMe, subscriptionQRSize)
-			if err != nil {
-				return subscription.Page{}, err
-			}
-			label := linkKindLabel(m.Kind)
-			if m.Kind == keys.LinkTLS && tlsLinks > 1 {
-				label += " · " + m.Domain
-			}
-			methods = append(methods, subscription.LocationLink{Kind: m.Kind, Label: label, TMe: m.TMe, Tg: m.Tg, QRDataURI: qr})
-		}
-		locations = append(locations, subscription.Location{Name: l.NodeName, Hostname: l.Hostname, Links: methods})
+	settings := s.subscriptionSettings(ctx)
+	platform := subscription.ParsePlatform(settings.Platform)
+	if platform == "" {
+		platform = subscription.DetectPlatform(r.UserAgent())
 	}
-	b, err := s.store.Q.GetActiveBranding(r.Context())
-	page := subscription.Page{
-		PanelName: branding.DefaultPanelName, PrimaryColor: branding.DefaultPrimaryColor, AccentColor: branding.DefaultAccentColor, Theme: "dark",
-		Locations: locations, ClientSupport: clientSupport,
-	}
-	if err == nil {
-		page.PanelName = b.PanelName
-		page.PrimaryColor = b.PrimaryColor
-		page.AccentColor = b.AccentColor
-		page.Theme = b.ThemeDefault
-		page.SupportLink = b.SupportLink
-		page.FooterText = b.FooterText
-	}
-	page.PrimaryColor, page.AccentColor = branding.ThemeColors(page.PrimaryColor, page.AccentColor, page.Theme)
-	page.PrimaryInk = branding.Foreground(page.PrimaryColor)
-	return page, nil
+	return subscription.Build(subscription.Input{
+		Settings:  settings,
+		Lang:      subscription.DetectLang(settings.Language, r.Header.Get("Accept-Language")),
+		Platform:  platform,
+		Locations: links,
+		ExpiresAt: key.ExpiresAt,
+		Branding:  s.subscriptionBranding(ctx),
+		QRSize:    subscriptionQRSize,
+	})
 }

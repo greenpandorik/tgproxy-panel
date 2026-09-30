@@ -293,3 +293,54 @@ func TestSubscriptionRateLimited(t *testing.T) {
 		t.Fatalf("61st request status = %d, want 429", last.StatusCode)
 	}
 }
+
+func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
+	h, c, keyID := twoNodeKey(t)
+	var nodes struct {
+		Items []struct {
+			ID       string `json:"id"`
+			Hostname string `json:"hostname"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/nodes"), &nodes)
+	hidden := ""
+	for _, n := range nodes.Items {
+		if n.Hostname == "ams1.example.com" {
+			hidden = n.ID
+		}
+	}
+	settings := map[string]any{
+		"language": "en", "platform": "desktop", "title": "Our proxy", "intro": "", "show_fake_tls": true, "show_web": true,
+		"show_backup_domains": true, "show_guide": true, "show_status": true, "show_qr": false, "hidden_nodes": []string{hidden},
+	}
+	if resp := c.Put("/api/v1/settings", map[string]any{"subscription_page": settings}); resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("save %d %s", resp.StatusCode, b)
+	}
+	token := tokenFromURL(t, createSubscription(t, c, keyID).URL)
+	body, _ := io.ReadAll(h.Anonymous().Get("/s/" + token).Body)
+	page := string(body)
+	for _, want := range []string{`lang="en"`, "Our proxy", "fra1.example.com", "Install Telegram"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("page missing %q", want)
+		}
+	}
+	if strings.Contains(page, "ams1.example.com") || strings.Contains(page, "data:image/png") {
+		t.Error("a hidden server or a QR code leaked onto the page")
+	}
+	jsonBody, _ := io.ReadAll(h.Anonymous().Get("/s/" + token + ".json").Body)
+	if strings.Contains(string(jsonBody), "ams1.example.com") {
+		t.Error("the JSON view ignores hidden servers")
+	}
+
+	preview := c.Get("/api/v1/settings/subscription-page/preview?platform=ios&language=ru")
+	html, _ := io.ReadAll(preview.Body)
+	if preview.StatusCode != 200 || !strings.Contains(string(html), "Открыть App Store") || !strings.Contains(string(html), "fra1.example.com") {
+		t.Fatalf("preview %d: %.300s", preview.StatusCode, html)
+	}
+
+	settings["show_web"], settings["show_fake_tls"] = false, false
+	if resp := c.Put("/api/v1/settings", map[string]any{"subscription_page": settings}); resp.StatusCode != 422 {
+		t.Fatalf("hiding every link kind was accepted: %d", resp.StatusCode)
+	}
+}

@@ -635,7 +635,8 @@
     "header_total": "{{count}} total",
     "danger_zone": "Danger zone",
     "show_links": "Connection links",
-    "link_which_hint": "Which link to send: Fake-TLS connects in any Telegram app. WEB goes through the server site over HTTPS and is harder to block, but for now it works only in Telegram Desktop and recent Android versions."
+    "link_which_hint": "Which link to send: Fake-TLS connects in any Telegram app. WEB goes through the server site over HTTPS and is harder to block, but for now it works only in Telegram Desktop and recent Android versions.",
+    "subscription_customize": "Customize the page"
   },
   "sites": {
     "title": "Cover sites",
@@ -1226,7 +1227,35 @@
     "panel_telegram_language": "Notification language",
     "panel_telegram_language_hint": "The language the panel writes to Telegram in. Everyone picks their own interface language.",
     "panel_telegram_language_ru": "Русский",
-    "panel_telegram_language_en": "English"
+    "panel_telegram_language_en": "English",
+    "subpage_content": "Content",
+    "subpage_language": "Page language",
+    "subpage_language_auto": "Browser language",
+    "subpage_title": "Title",
+    "subpage_title_hint": "Leave empty to use the panel name from Branding.",
+    "subpage_intro": "Greeting",
+    "subpage_intro_hint": "A short text under the title. Leave empty for the standard text in the page language.",
+    "subpage_links": "Which links to show",
+    "subpage_show_fake_tls": "Fake-TLS",
+    "subpage_show_fake_tls_hint": "Works in every Telegram app.",
+    "subpage_show_web": "WEB proxy",
+    "subpage_show_web_hint": "Harder to block, but for now it only works in Telegram Desktop and recent Android versions. It isn't shown on iPhone.",
+    "subpage_show_backup": "Backup domains",
+    "subpage_show_backup_hint": "Extra Fake-TLS links on the servers' backup domains, in the All links block.",
+    "subpage_links_required": "Keep at least one kind of link: Fake-TLS or the WEB proxy.",
+    "subpage_blocks": "What else to show",
+    "subpage_show_guide": "Step-by-step guide for each device",
+    "subpage_show_status": "How long the access lasts",
+    "subpage_show_qr": "QR codes",
+    "subpage_servers": "Servers on the page",
+    "subpage_servers_hint": "Untick a server to keep it off subscription pages. Keys on it keep working.",
+    "subpage_no_servers": "No servers yet.",
+    "subpage_preview": "Preview",
+    "subpage_preview_hint": "An example with your servers and fake secrets. Changes show up right away, before you save.",
+    "subpage_preview_open": "Open separately",
+    "subpage_platform": "Device shown first",
+    "subpage_platform_hint": "Visitors can always switch the tab themselves.",
+    "subpage_platform_auto": "Detect from the visitor's device"
   },
   "drafts": {
     "banner": "Draft from <time>{{time}}</time>",
@@ -2276,6 +2305,36 @@
           "1": "Make a manual backup before upgrading the panel - the schedule never deletes it.",
           "2": "Servers need no backup: the panel rebuilds their state with an apply after the database is restored."
         }
+      },
+      "settings.subscription": {
+        "title": "Subscription page",
+        "intro": "The public page a person opens from their key's subscription link. Choose here what it shows; the preview on the right shows each device.",
+        "fields": {
+          "language": {
+            "name": "Page language",
+            "what": "The page is in Russian by default. \"Browser language\" shows Russian to people whose browser is in Russian and English to everyone else."
+          },
+          "title": {
+            "name": "Title and greeting",
+            "what": "The text at the top of the page. Empty fields fall back to the panel name and the standard greeting."
+          },
+          "links": {
+            "name": "Which links to show",
+            "what": "Fake-TLS works everywhere; the WEB proxy only in Telegram Desktop and recent Android versions, so it is not shown on iPhone. On Android the main button uses Fake-TLS and on a computer the WEB proxy, with the other kind offered as a fallback."
+          },
+          "blocks": {
+            "name": "What else to show",
+            "what": "The three-step guide for the chosen device, the key's expiry date and the QR codes in the All links block."
+          },
+          "servers": {
+            "name": "Servers on the page",
+            "what": "An unticked server appears on no subscription page, but keys on it keep working. Handy for hiding a test or a spare server."
+          },
+          "platform": {
+            "name": "Device shown first",
+            "what": "Which tab is open when a person arrives: Android, iPhone and iPad, or Computer. Android by default. \"Detect from the visitor's device\" picks the tab from the phone or computer the link is opened on."
+          }
+        }
       }
     }
   },
@@ -2358,7 +2417,10 @@
     "settings_tab_preferences": "My interface",
     "settings_tab_security": "Password and 2FA",
     "settings_group_panel": "Whole panel",
-    "settings_group_personal": "Just for you"
+    "settings_group_personal": "Just for you",
+    "settings_tab_subscription": "Subscription page",
+    "settings_subscription": "Subscription page",
+    "settings_subscription_hint": "What a person sees after opening their key's subscription link."
   },
   "reliability": {
     "routing_toggle": "Route to Telegram through SOCKS5 or WARP",
@@ -2487,5 +2549,41 @@
       "probe_failed": "The server failed a check from another network. It may be blocked there."
     },
     "value_dc": "Connections now: {{alive}} of {{required}}"
+  },
+  "subpage": {
+    "status_active": "Access is active",
+    "status_until": "until {{date}}",
+    "status_forever": "with no end date",
+    "intro_default": "This is your access to Telegram through a proxy. Pick your device and follow the three steps.",
+    "device": "Your device",
+    "platform_android": "Android",
+    "platform_ios": "iPhone, iPad",
+    "platform_desktop": "Computer",
+    "step1_title": "Install Telegram",
+    "step1_android": "If Telegram isn't installed yet, get it from Google Play.",
+    "step1_ios": "If Telegram isn't installed yet, get it from the App Store.",
+    "step1_desktop": "Use Telegram Desktop for Windows, macOS or Linux.",
+    "store_android": "Open Google Play",
+    "store_ios": "Open the App Store",
+    "store_desktop": "Download Telegram Desktop",
+    "step2_title": "Add the proxy",
+    "step2_text": "Tap \"Connect\" next to a server. If there are several, start with the one closest to you; the others help if it stops working.",
+    "connect": "Connect",
+    "alt": "Won't connect? Try {{label}}",
+    "step3_title": "Confirm in Telegram",
+    "step3_mobile": "Telegram asks whether to connect the proxy. Tap \"Connect\". You can check it in Telegram's settings under \"Data and Storage\" → \"Proxy\".",
+    "step3_desktop": "Telegram asks whether to connect the proxy. Click \"Connect\". You can check it in Telegram Desktop under \"Settings\" → \"Advanced\" → \"Connection type\".",
+    "all_links": "All links and QR codes",
+    "all_links_hint": "Scan a QR code with a phone camera, or copy a link and open it where Telegram is installed.",
+    "label_web": "WEB proxy",
+    "label_tls": "Fake-TLS",
+    "label_tls_domain": "Fake-TLS, {{domain}}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "open": "Open in Telegram",
+    "empty": "There are no servers for this access yet.",
+    "support": "Contact support",
+    "error_not_found": "This link was not found.",
+    "error_gone": "This link is no longer valid."
   }
 }

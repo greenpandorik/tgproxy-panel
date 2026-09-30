@@ -1,14 +1,15 @@
 <!doctype html>
-<html lang="ru" data-theme="{{if eq .Theme "light"}}light{{else}}dark{{end}}">
+<html lang="{{.Lang}}" data-theme="{{if eq .Theme "light"}}light{{else}}dark{{end}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>{{.PanelName}}</title>
+<title>{{.Title}}</title>
 <style>
   :root {
     --primary: {{.PrimaryColor}};
     --accent: {{.AccentColor}};
+    --on-primary: {{.PrimaryInk}};
     --bg: #171b21;
     --surface: #1b2026;
     --surface-2: #242a31;
@@ -16,6 +17,7 @@
     --border-2: #3c434c;
     --text: #e9edf1;
     --text-dim: #9ba4ae;
+    --ok: #4fd18b;
   }
   html[data-theme="light"] {
     --bg: #f3f5f8;
@@ -25,263 +27,240 @@
     --border-2: #cfd6de;
     --text: #1b2330;
     --text-dim: #5b6673;
+    --ok: #237233;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    line-height: 1.45;
-    -webkit-font-smoothing: antialiased;
+    font: 400 16px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
-  .wrap {
-    max-width: 560px;
-    margin: 0 auto;
-    padding: 40px 20px 56px;
-  }
-  header.page {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 6px;
-  }
-  .mark {
-    width: 20px;
-    height: 20px;
-    color: var(--text);
-    flex: none;
-  }
-  h1 {
-    font-size: 1.25rem;
-    font-weight: 650;
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-  .lede {
-    color: var(--text-dim);
+  a { color: var(--primary); }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 28px 16px 40px; }
+  .top { display: flex; align-items: center; gap: 10px; color: var(--text-dim); font-size: 0.92rem; }
+  .mark { width: 26px; height: 26px; color: var(--text); flex: none; }
+  h1 { font-size: 1.6rem; line-height: 1.2; letter-spacing: -0.015em; margin: 22px 0 8px; }
+  .intro { color: var(--text-dim); margin: 0 0 16px; }
+  .status {
+    display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
     font-size: 0.9rem;
-    margin: 10px 0 28px;
-    max-width: 46ch;
   }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border-2);
-    border-radius: 8px;
-    padding: 18px;
-    margin-bottom: 14px;
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .status span.until { color: var(--text-dim); }
+
+  .tabs {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    margin: 26px 0 18px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
   }
-  .card-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 14px;
+  .tabs button {
+    font: inherit; font-size: 0.92rem; font-weight: 600; color: var(--text-dim);
+    padding: 9px 6px; border: 0; border-radius: 9px; background: transparent; cursor: pointer;
   }
-  .card-head h2 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0;
+  .tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--text); }
+  .tabs button:focus-visible, .btn:focus-visible, summary:focus-visible, .copy:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .js .panel[data-inactive] { display: none; }
+  .panel-title { display: none; }
+  html:not(.js) .panel-title { display: block; font-size: 1.1rem; margin: 26px 0 10px; }
+
+  ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .step { position: relative; padding: 0 0 22px 44px; counter-increment: step; }
+  .step::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: color-mix(in srgb, var(--primary) 16%, var(--surface)); color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border)); font-weight: 650; font-size: 0.92rem;
   }
-  .hostname {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.78rem;
-    color: var(--text-dim);
+  .step:not(:last-child)::after {
+    content: ""; position: absolute; left: 14.5px; top: 36px; bottom: 6px; width: 1px; background: var(--border-2);
   }
-  .card-body {
-    display: grid;
-    grid-template-columns: 108px 1fr;
-    gap: 16px;
+  ol.steps.plain .step { padding-left: 0; }
+  ol.steps.plain .step::before, ol.steps.plain .step::after { display: none; }
+  .step h2 { font-size: 1.05rem; margin: 3px 0 4px; }
+  .step p { color: var(--text-dim); margin: 0 0 12px; font-size: 0.95rem; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 600; text-decoration: none; font-size: 0.95rem;
   }
-  .qr {
-    width: 108px;
-    height: 108px;
-    border-radius: 6px;
-    background: #fff;
-    padding: 6px;
-    display: block;
+  .btn.primary { background: var(--primary); color: var(--on-primary); }
+  .btn.ghost { border: 1px solid var(--border-2); color: var(--text); background: var(--surface); }
+
+  ul.servers { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .server {
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
+    padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
   }
-  .card-body + .card-body { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .links { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-  .kind {
-    font-size: 0.72rem;
-    font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-dim);
+  .server b { display: block; font-size: 1rem; }
+  .server .host { color: var(--text-dim); font-size: 0.82rem; word-break: break-all; }
+  .server .alt { grid-column: 1 / -1; font-size: 0.86rem; margin-top: 4px; }
+  .empty { padding: 16px; border: 1px dashed var(--border-2); border-radius: 12px; color: var(--text-dim); }
+
+  details.all { margin-top: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  details.all summary { cursor: pointer; padding: 14px 16px; font-weight: 600; list-style: none; position: relative; }
+  details.all summary::-webkit-details-marker { display: none; }
+  details.all summary::after { content: "+"; position: absolute; right: 16px; top: 11px; font-size: 1.3rem; color: var(--text-dim); }
+  details.all[open] summary::after { content: "–"; }
+  .all-body { padding: 0 16px 16px; }
+  .all-body .hint { color: var(--text-dim); font-size: 0.9rem; margin: 0 0 12px; }
+  .srv { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+  .srv h3 { font-size: 0.98rem; margin: 0 0 8px; }
+  .srv h3 span { color: var(--text-dim); font-weight: 400; font-size: 0.82rem; margin-left: 6px; }
+  .lnk { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; margin-bottom: 14px; }
+  .lnk.noqr { grid-template-columns: 1fr; }
+  .qr { width: 112px; height: 112px; border-radius: 8px; background: #fff; padding: 6px; image-rendering: pixelated; }
+  .kind { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+  .val {
+    display: block; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-dim);
+    overflow-wrap: anywhere; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px;
   }
-  .link-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 6px 6px 10px;
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .copy {
+    font: inherit; font-size: 0.85rem; font-weight: 600; min-height: 36px; padding: 0 12px; cursor: pointer;
+    border: 1px solid var(--border-2); border-radius: 8px; background: var(--surface); color: var(--text);
   }
-  .link-row .proto {
-    font-size: 0.68rem;
-    color: var(--text-dim);
-    flex: none;
-    width: 34px;
-  }
-  .link-row .val {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.72rem;
-    color: var(--text-dim);
-  }
-  button.copy-btn {
-    flex: none;
-    border: 1px solid var(--border-2);
-    background: transparent;
-    color: var(--text);
-    border-radius: 6px;
-    padding: 4px 9px;
-    font-size: 0.72rem;
-    cursor: pointer;
-  }
-  button.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
-  button.copy-btn[data-copied="1"] { border-color: var(--accent); color: var(--accent); }
-  a.open-btn {
-    display: block;
-    text-align: center;
-    margin-top: 4px;
-    background: var(--primary);
-    color: {{.PrimaryInk}};
-    text-decoration: none;
-    font-size: 0.82rem;
-    font-weight: 600;
-    border-radius: 6px;
-    padding: 8px 10px;
-  }
-  .notice {
-    margin-top: 22px;
-    padding: 14px 16px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    font-size: 0.82rem;
-    color: var(--text-dim);
-  }
-  .notice p { margin: 0 0 6px; }
-  .notice p:last-child { margin-bottom: 0; }
-  .notice .en { font-size: 0.76rem; }
-  .support-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .support-item {
-    border: 1px solid var(--border-2);
-    border-radius: 9999px;
-    padding: 3px 10px;
-    font-size: 0.72rem;
-  }
-  footer.page {
-    margin-top: 28px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-    font-size: 0.76rem;
-    color: var(--text-dim);
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  footer.page a { color: var(--text-dim); }
-  .empty {
-    border: 1px dashed var(--border-2);
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 0.88rem;
-  }
+  .row .btn { min-height: 36px; font-size: 0.85rem; padding: 0 12px; }
+
+  footer { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-dim); font-size: 0.88rem; }
   @media (max-width: 420px) {
-    .card-body { grid-template-columns: 1fr; }
+    h1 { font-size: 1.4rem; }
+    .server { grid-template-columns: 1fr; }
+    .server .btn { width: 100%; }
     .qr { width: 96px; height: 96px; }
   }
 </style>
 </head>
 <body>
+<script>document.documentElement.classList.add('js');</script>
 <div class="wrap">
-  <header class="page">
+  <header class="top">
     <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="var(--primary)"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="var(--primary)"/></svg>
-    <h1>{{.PanelName}}</h1>
+    {{if ne .Title .PanelName}}<span>{{.PanelName}}</span>{{end}}
   </header>
-  <p class="lede">Добавьте сервер в Telegram: отсканируйте QR-код или скопируйте ссылку и откройте её на устройстве с Telegram.</p>
 
-  {{if .Locations}}
-    {{range .Locations}}
-    <section class="card">
-      <div class="card-head">
-        <h2>{{.Name}}</h2>
-        <span class="hostname">{{.Hostname}}</span>
-      </div>
-      {{range .Links}}
-      <div class="card-body">
-        <img class="qr" src="{{safeURL .QRDataURI}}" alt="QR">
-        <div class="links">
-          <div class="kind">{{.Label}}</div>
-          <div class="link-row">
-            <span class="proto">t.me</span>
-            <span class="val">{{.TMe}}</span>
-            <button type="button" class="copy-btn" data-copy="{{.TMe}}">Копировать</button>
-          </div>
-          <div class="link-row">
-            <span class="proto">tg://</span>
-            <span class="val">{{.Tg}}</span>
-            <button type="button" class="copy-btn" data-copy="{{.Tg}}">Копировать</button>
-          </div>
-          <a class="open-btn" href="{{safeURL .Tg}}">Открыть в Telegram</a>
-        </div>
-      </div>
-      {{end}}
-    </section>
-    {{end}}
-  {{else}}
-    <div class="empty">Для этого ключа пока нет ни одного сервера.</div>
+  <h1>{{.Title}}</h1>
+  <p class="intro">{{.Intro}}</p>
+  {{if .ShowStatus}}
+  <div class="status"><span class="dot" aria-hidden="true"></span><b>{{t "subpage.status_active"}}</b> <span class="until">{{.StatusText}}</span></div>
   {{end}}
 
-  <div class="notice">
-    <p>Поддержка приложений: Desktop — {{index .ClientSupport "desktop"}}, Android — {{index .ClientSupport "android"}}, iOS — {{index .ClientSupport "ios"}}.</p>
-    <p class="en">Client support: Desktop {{index .ClientSupport "desktop"}}, Android {{index .ClientSupport "android"}}, iOS {{index .ClientSupport "ios"}}.</p>
+  {{if .Servers}}
+  <div class="tabs" role="tablist" aria-label="{{t "subpage.device"}}">
+    {{range .Platforms}}<button type="button" role="tab" id="tab-{{.ID}}" aria-controls="panel-{{.ID}}" aria-selected="{{if .Selected}}true{{else}}false{{end}}" tabindex="{{if .Selected}}0{{else}}-1{{end}}" data-platform="{{.ID}}">{{t (print "subpage.platform_" .ID)}}</button>{{end}}
   </div>
 
-  <footer class="page">
-    <span>{{if .FooterText}}{{.FooterText}}{{else}}{{.PanelName}}{{end}}</span>
-    {{if .SupportLink}}<a href="{{.SupportLink}}">Поддержка</a>{{end}}
+  {{range .Platforms}}
+  <section class="panel" id="panel-{{.ID}}" role="tabpanel" aria-labelledby="tab-{{.ID}}" data-platform="{{.ID}}"{{if not .Selected}} data-inactive{{end}}>
+    <h2 class="panel-title">{{t (print "subpage.platform_" .ID)}}</h2>
+    <ol class="steps{{if not $.ShowGuide}} plain{{end}}">
+      {{if $.ShowGuide}}
+      <li class="step">
+        <h2>{{t "subpage.step1_title"}}</h2>
+        <p>{{t (print "subpage.step1_" .ID)}}</p>
+        <a class="btn ghost" href="{{storeURL .ID}}" target="_blank" rel="noopener">{{t (print "subpage.store_" .ID)}}</a>
+      </li>
+      {{end}}
+      <li class="step">
+        {{if $.ShowGuide}}<h2>{{t "subpage.step2_title"}}</h2>
+        <p>{{t "subpage.step2_text"}}</p>{{end}}
+        <ul class="servers">
+          {{range .Actions}}
+          <li class="server">
+            <div><b>{{.Name}}</b><span class="host">{{.Hostname}}</span></div>
+            <a class="btn primary" href="{{safeURL .Primary.TMe}}">{{t "subpage.connect"}}</a>
+            {{if .Alt}}<a class="alt" href="{{safeURL .Alt.TMe}}">{{t "subpage.alt" "label" .Alt.Label}}</a>{{end}}
+          </li>
+          {{else}}
+          <li class="empty">{{t "subpage.empty"}}</li>
+          {{end}}
+        </ul>
+      </li>
+      {{if $.ShowGuide}}
+      <li class="step">
+        <h2>{{t "subpage.step3_title"}}</h2>
+        <p>{{if eq .ID "desktop"}}{{t "subpage.step3_desktop"}}{{else}}{{t "subpage.step3_mobile"}}{{end}}</p>
+      </li>
+      {{end}}
+    </ol>
+  </section>
+  {{end}}
+
+  <details class="all">
+    <summary>{{t "subpage.all_links"}}</summary>
+    <div class="all-body">
+      <p class="hint">{{t "subpage.all_links_hint"}}</p>
+      {{range .Servers}}
+      <div class="srv">
+        <h3>{{.Name}}<span>{{.Hostname}}</span></h3>
+        {{range .Links}}
+        <div class="lnk{{if not .QRDataURI}} noqr{{end}}">
+          {{if .QRDataURI}}<img class="qr" src="{{safeURL .QRDataURI}}" alt="QR {{.Label}}">{{end}}
+          <div>
+            <div class="kind">{{.Label}}</div>
+            <span class="val">{{.TMe}}</span>
+            <div class="row">
+              <button type="button" class="copy" data-copy="{{.TMe}}">{{t "subpage.copy"}}</button>
+              <a class="btn ghost" href="{{safeURL .Tg}}">{{t "subpage.open"}}</a>
+            </div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+  </details>
+  {{else}}
+  <p class="empty">{{t "subpage.empty"}}</p>
+  {{end}}
+
+  {{if or .FooterText .SupportLink}}
+  <footer>
+    <span>{{.FooterText}}</span>
+    {{if .SupportLink}}<a class="btn ghost" href="{{.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
   </footer>
+  {{end}}
 </div>
 <script>
-document.querySelectorAll('.copy-btn').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    var value = btn.getAttribute('data-copy');
-    var done = function () {
-      var prev = btn.textContent;
-      btn.textContent = 'Скопировано';
-      btn.setAttribute('data-copied', '1');
-      setTimeout(function () {
-        btn.textContent = prev;
-        btn.removeAttribute('data-copied');
-      }, 1500);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(value).then(done, function () {});
-    } else {
-      var el = document.createElement('textarea');
-      el.value = value;
-      el.style.position = 'fixed';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      el.focus();
-      el.select();
-      try { document.execCommand('copy'); done(); } catch (e) {}
-      document.body.removeChild(el);
-    }
+(function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function select(tab) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      var panel = document.getElementById(t.getAttribute('aria-controls'));
+      if (on) { panel.removeAttribute('data-inactive'); } else { panel.setAttribute('data-inactive', ''); }
+    });
+  }
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener('click', function () { select(tab); });
+    tab.addEventListener('keydown', function (e) {
+      var next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null;
+      if (next === null) return;
+      var target = tabs[(next + tabs.length) % tabs.length];
+      select(target); target.focus();
+    });
   });
-});
+  var copied = {{t "subpage.copied"}};
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var value = btn.getAttribute('data-copy');
+      var label = btn.textContent;
+      var done = function () { btn.textContent = copied; setTimeout(function () { btn.textContent = label; }, 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(done, function () {});
+      } else {
+        var el = document.createElement('textarea');
+        el.value = value; el.style.position = 'fixed'; el.style.opacity = '0';
+        document.body.appendChild(el); el.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(el);
+      }
+    });
+  });
+})();
 </script>
 </body>
 </html>

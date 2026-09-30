@@ -718,11 +718,28 @@ export interface BackupSchedule {
   keep: number;
 }
 
+export interface SubscriptionPageSettings {
+  language: 'auto' | 'ru' | 'en';
+  platform: 'auto' | SubscriptionPlatform;
+  title: string;
+  intro: string;
+  show_fake_tls: boolean;
+  show_web: boolean;
+  show_backup_domains: boolean;
+  show_guide: boolean;
+  show_status: boolean;
+  show_qr: boolean;
+  hidden_nodes: string[];
+}
+
+export type SubscriptionPlatform = 'android' | 'ios' | 'desktop';
+
 export interface Settings {
   apply_interval: number;
   offline_after: number;
   telegram_alerts: TelegramAlertsSettings;
   backup_schedule: BackupSchedule;
+  subscription_page: SubscriptionPageSettings;
 }
 
 export interface PutSettingsInput {
@@ -730,6 +747,7 @@ export interface PutSettingsInput {
   offline_after?: number;
   telegram_alerts?: { enabled: boolean; bot_token?: string | null; chat_id: string; language?: NotifyLanguage };
   backup_schedule?: BackupSchedule;
+  subscription_page?: SubscriptionPageSettings;
 }
 
 export interface TelegramTestInput {

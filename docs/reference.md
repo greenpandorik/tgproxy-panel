@@ -434,8 +434,25 @@ and traffic over 24 hours or 7 days.
 
 ### Subscription page
 
-A key can have a public subscription link. It opens a page with every server of the key, its
-links and QR codes. The page never shows the key's name, owner or note.
+A key can have a public subscription link. It opens a page that walks the person through
+connecting: tabs for Android, iPhone and iPad, and a computer, and on each one three steps (install
+Telegram, press "Connect" next to a server, confirm in Telegram). The "Connect" button uses the link
+the device can open: Fake-TLS on iPhone, Fake-TLS with the WEB proxy as a fallback on Android, the
+WEB proxy with Fake-TLS as a fallback on a computer. Below, "All links and QR codes" lists every link.
+The page shows how long the access lasts and never shows the key's name, owner or note.
+
+Settings → Subscription page decides what the page shows, with a live preview:
+
+| Setting | What it does |
+|---|---|
+| Page language | Russian (default), English, or the visitor's browser language |
+| Device shown first | Android (default), iPhone and iPad, Computer, or detected from the visitor's device |
+| Title and greeting | Text at the top; empty fields use the panel name and a standard greeting |
+| Which links to show | Fake-TLS, WEB proxy, backup domains; at least one of the first two stays on |
+| What else to show | The step-by-step guide, the access end date, QR codes |
+| Servers on the page | An unticked server is left off every subscription page; its keys keep working |
+
+The same filters apply to the JSON view.
 
 - "Create link" makes the link. It is shown once, and the database keeps only its hash.
 - "Rotate link" makes a new one, and the old one stops working at once.

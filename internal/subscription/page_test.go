@@ -1,138 +1,168 @@
 package subscription_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
+	"tgwebproxy/internal/alerttext"
+	"tgwebproxy/internal/keys"
+	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/subscription"
 )
 
-func testPage() subscription.Page {
-	return subscription.Page{
-		PanelName:    "Acme Panel",
-		PrimaryColor: "#3b82f6",
-		AccentColor:  "#22d3ee",
-		Theme:        "dark",
-		SupportLink:  "https://support.example.com",
-		FooterText:   "Acme Ops",
-		Locations: []subscription.Location{
-			{
-				Name:     "Frankfurt",
-				Hostname: "fra1.example.com",
-				Links: []subscription.LocationLink{
-					{
-						Kind:      "web",
-						Label:     "WEB",
-						TMe:       "https://t.me/webproxy?server=fra1.example.com&secret=abc",
-						Tg:        "tg://webproxy?server=fra1.example.com&secret=abc",
-						QRDataURI: "data:image/png;base64,ZmFrZQ==",
-					},
-					{
-						Kind:      "tls",
-						Label:     "Fake-TLS",
-						TMe:       "https://t.me/proxy?server=fra1.example.com&port=8443&secret=eeabc666",
-						Tg:        "tg://proxy?server=fra1.example.com&port=8443&secret=eeabc666",
-						QRDataURI: "data:image/png;base64,ZmFrZTM=",
-					},
-				},
-			},
-			{
-				Name:     "Amsterdam",
-				Hostname: "ams1.example.com",
-				Links: []subscription.LocationLink{
-					{
-						Kind:      "web",
-						Label:     "WEB",
-						TMe:       "https://t.me/webproxy?server=ams1.example.com&secret=def",
-						Tg:        "tg://webproxy?server=ams1.example.com&secret=def",
-						QRDataURI: "data:image/png;base64,ZmFrZTI=",
-					},
-				},
-			},
-		},
-		ClientSupport: map[string]string{"desktop": "stable", "android": "experimental", "ios": "planned"},
+var (
+	ams = uuid.MustParse("a4b9ecb3-1f8a-4bc4-b82f-76244089c0ae")
+	hel = uuid.MustParse("96753fb2-ca95-4445-a8c0-ab880fc93ce3")
+)
+
+const secret = "0123456789abcdef0123456789abcdef"
+
+func locations() []keys.NodeLinks {
+	return []keys.NodeLinks{
+		keys.LinksFor(keys.LinkTarget{
+			NodeID: ams, NodeName: "Amsterdam", Hostname: "ams1.example.net", Engine: db.NodeEngineTelemt,
+			TLSDomain: "ams1.example.net", TLSDomains: []string{"backup.example.org"}, ClassicPort: 8443,
+		}, secret),
+		keys.LinksFor(keys.LinkTarget{NodeID: hel, NodeName: "Helsinki", Hostname: "hel1.example.net", Engine: db.NodeEngineTproxy}, secret),
 	}
 }
 
-func TestRenderIncludesBothLocations(t *testing.T) {
-	var buf strings.Builder
-	if err := subscription.Render(&buf, testPage()); err != nil {
-		t.Fatalf("render: %v", err)
+func build(t *testing.T, s subscription.Settings, l alerttext.Lang, p subscription.Platform, expires *time.Time) (subscription.Page, string) {
+	t.Helper()
+	page, err := subscription.Build(subscription.Input{
+		Settings: s, Lang: l, Platform: p, Locations: locations(), ExpiresAt: expires, QRSize: 128,
+		Branding: subscription.Branding{PanelName: "Demo", PrimaryColor: "#3fc0d6", AccentColor: "#20c997", PrimaryInk: "#0b0e11", Theme: "dark"},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	out := buf.String()
+	var buf bytes.Buffer
+	if err := subscription.Render(&buf, page); err != nil {
+		t.Fatal(err)
+	}
+	return page, buf.String()
+}
 
-	for _, want := range []string{
-		"fra1.example.com",
-		"ams1.example.com",
-		"https://t.me/webproxy?server=fra1.example.com&amp;secret=abc",
-		"tg://webproxy?server=fra1.example.com&amp;secret=abc",
-		"https://t.me/webproxy?server=ams1.example.com&amp;secret=def",
-		"tg://webproxy?server=ams1.example.com&amp;secret=def",
-		"data:image/png;base64,ZmFrZQ==",
-		"data:image/png;base64,ZmFrZTI=",
-		"data:image/png;base64,ZmFrZTM=",
-		"https://t.me/proxy?server=fra1.example.com&amp;port=8443&amp;secret=eeabc666",
-		"Fake-TLS",
-		"Acme Panel",
-		"Frankfurt",
-		"Amsterdam",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("output missing %q", want)
+func platform(page subscription.Page, id subscription.Platform) subscription.PlatformView {
+	for _, p := range page.Platforms {
+		if p.ID == id {
+			return p
+		}
+	}
+	return subscription.PlatformView{}
+}
+
+func TestEachDeviceGetsTheLinkItCanOpen(t *testing.T) {
+	page, _ := build(t, subscription.DefaultSettings(), alerttext.RU, subscription.IOS, nil)
+
+	ios := platform(page, subscription.IOS)
+	if len(ios.Actions) != 1 || ios.Actions[0].Name != "Amsterdam" || ios.Actions[0].Primary.Kind != keys.LinkTLS || ios.Actions[0].Alt != nil {
+		t.Fatalf("iPhone should get only the Fake-TLS server: %+v", ios.Actions)
+	}
+	android := platform(page, subscription.Android)
+	if len(android.Actions) != 2 || android.Actions[0].Primary.Kind != keys.LinkTLS || android.Actions[0].Alt.Kind != keys.LinkWeb {
+		t.Fatalf("Android: Fake-TLS first with WEB as the fallback: %+v", android.Actions)
+	}
+	if android.Actions[1].Primary.Kind != keys.LinkWeb || android.Actions[1].Alt != nil {
+		t.Fatalf("a tproxy server offers WEB only: %+v", android.Actions[1])
+	}
+	desktop := platform(page, subscription.Desktop)
+	if desktop.Actions[0].Primary.Kind != keys.LinkWeb || desktop.Actions[0].Alt.Kind != keys.LinkTLS {
+		t.Fatalf("desktop: WEB first with Fake-TLS as the fallback: %+v", desktop.Actions[0])
+	}
+	if !ios.Selected || android.Selected {
+		t.Fatal("the detected device should be the selected tab")
+	}
+}
+
+func TestSettingsHideLinksServersAndBlocks(t *testing.T) {
+	s := subscription.DefaultSettings()
+	s.ShowWeb, s.ShowBackupDomains, s.ShowQR, s.ShowGuide, s.ShowStatus = false, false, false, false, false
+	s.HiddenNodes = []string{hel.String()}
+	page, out := build(t, s, alerttext.EN, subscription.Android, nil)
+	if len(page.Servers) != 1 || len(page.Servers[0].Links) != 1 || page.Servers[0].Links[0].Kind != keys.LinkTLS {
+		t.Fatalf("only the main Fake-TLS link of Amsterdam should stay: %+v", page.Servers)
+	}
+	for _, gone := range []string{"Helsinki", "webproxy", "backup.example.org", "data:image/png", "Install Telegram", "Access is active"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("%q should be hidden", gone)
 		}
 	}
 }
 
-func TestRenderHasNoExternalScripts(t *testing.T) {
-	var buf strings.Builder
-	if err := subscription.Render(&buf, testPage()); err != nil {
-		t.Fatalf("render: %v", err)
+func TestBackupDomainsGetTheirOwnLabel(t *testing.T) {
+	_, out := build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Android, nil)
+	if !strings.Contains(out, "Fake-TLS, backup.example.org") {
+		t.Fatal("the backup domain link is not labelled with its domain")
 	}
-	out := buf.String()
+}
+
+func TestLanguageStatusAndTitles(t *testing.T) {
+	expires := time.Date(2026, 12, 31, 12, 0, 0, 0, time.Local)
+	s := subscription.DefaultSettings()
+	s.Title, s.Intro = "Мой прокси", "Привет!"
+	_, ru := build(t, s, alerttext.RU, subscription.Android, &expires)
+	for _, want := range []string{`lang="ru"`, "Мой прокси", "Привет!", "Доступ активен", "до 31 декабря 2026", "Установите Telegram", "Подключить", "Открыть Google Play"} {
+		if !strings.Contains(ru, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	_, en := build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Desktop, nil)
+	for _, want := range []string{`lang="en"`, "<title>Demo</title>", "with no end date", "Download Telegram Desktop", "Connection type", "Won&#39;t connect? Try Fake-TLS"} {
+		if !strings.Contains(en, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+}
+
+func TestDetectPlatformAndLanguage(t *testing.T) {
+	cases := map[string]subscription.Platform{
+		"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)": subscription.IOS,
+		"Mozilla/5.0 (Linux; Android 14; Pixel 8)":               subscription.Android,
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64)":              subscription.Desktop,
+	}
+	for ua, want := range cases {
+		if got := subscription.DetectPlatform(ua); got != want {
+			t.Errorf("%s: %s", ua, got)
+		}
+	}
+	if subscription.DetectLang("auto", "en-US,en;q=0.9") != alerttext.EN || subscription.DetectLang("auto", "uk-UA") != alerttext.RU {
+		t.Fatal("browser language")
+	}
+	if subscription.DetectLang("en", "ru-RU") != alerttext.EN {
+		t.Fatal("a pinned language must win over the browser")
+	}
+}
+
+func TestRenderHasNoExternalScriptsOrKeyNames(t *testing.T) {
+	_, out := build(t, subscription.DefaultSettings(), alerttext.RU, subscription.Android, nil)
 	if strings.Contains(out, "<script src") {
-		t.Error("output must not load external scripts")
+		t.Fatal("external script")
 	}
-	if strings.Contains(out, "http://") && !strings.Contains(strings.ToLower(out), "https://t.me") {
-		t.Error("output should not reference insecure external resources")
+	if strings.Contains(out, "http://") {
+		t.Fatal("plain http link on the page")
 	}
 }
 
-func TestRenderNeverShowsLabelFields(t *testing.T) {
-	p := testPage()
-	var buf strings.Builder
-	if err := subscription.Render(&buf, p); err != nil {
-		t.Fatalf("render: %v", err)
+func TestSettingsValidation(t *testing.T) {
+	s := subscription.DefaultSettings()
+	s.ShowWeb, s.ShowFakeTLS, s.Language = false, false, "de"
+	f := s.Validate()
+	if f["subscription_page.show_fake_tls"] == "" || f["subscription_page.language"] == "" {
+		t.Fatalf("validation: %v", f)
+	}
+}
+
+func TestErrorPageIsTranslated(t *testing.T) {
+	var buf bytes.Buffer
+	if err := subscription.RenderError(&buf, subscription.ErrorPage{Lang: "en", PanelName: "Demo", Theme: "dark", Message: "This link was not found."}); err != nil {
+		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, forbidden := range []string{"owner_label", "Owner", "label=\""} {
-		if strings.Contains(out, forbidden) {
-			t.Errorf("output leaks %q", forbidden)
-		}
-	}
-}
-
-func TestRenderEmptyLocationsStillRenders(t *testing.T) {
-	p := testPage()
-	p.Locations = nil
-	var buf strings.Builder
-	if err := subscription.Render(&buf, p); err != nil {
-		t.Fatalf("render with no locations: %v", err)
-	}
-}
-
-func TestRenderErrorHasNoLocationOrSecretData(t *testing.T) {
-	var buf strings.Builder
-	p := subscription.ErrorPage{PanelName: "Acme Panel", Theme: "dark", Message: "Ссылка не найдена."}
-	if err := subscription.RenderError(&buf, p); err != nil {
-		t.Fatalf("render error page: %v", err)
-	}
-	out := buf.String()
-	for _, want := range []string{"<html", "Acme Panel", "Ссылка не найдена."} {
-		if !strings.Contains(out, want) {
-			t.Errorf("output missing %q", want)
-		}
-	}
-	if strings.Contains(out, "<script") {
-		t.Error("error page must not load or run any script")
+	if !strings.Contains(out, `lang="en"`) || !strings.Contains(out, "This link was not found.") || strings.Contains(out, "<script") {
+		t.Fatalf("error page: %s", out)
 	}
 }

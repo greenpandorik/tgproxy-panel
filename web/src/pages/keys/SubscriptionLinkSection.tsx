@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 import { useCreateSubscription, useRevokeSubscription } from '@/api/keys';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -64,7 +65,12 @@ export function SubscriptionLinkSection({
           </span>
         )}
       </div>
-      <p className="text-label text-mute">{t('keys.subscription_description')}</p>
+      <p className="text-label text-mute">
+        {t('keys.subscription_description')}{' '}
+        <Link to="/settings?section=subscription" className="text-brand-ink underline-offset-2 hover:underline">
+          {t('keys.subscription_customize')}
+        </Link>
+      </p>
 
       {created && (
         <div className={cn(ENTER_CLASS, 'rounded-surface border border-hairline-strong p-4')}>
