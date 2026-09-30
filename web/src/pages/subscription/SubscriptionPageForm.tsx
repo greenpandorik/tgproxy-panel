@@ -18,7 +18,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
-import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -140,10 +139,16 @@ function TextFields({
           rows={3}
           disabled={disabled}
           aria-invalid={introTooLong || undefined}
+          aria-describedby={`subpage-intro-${lang}-hint`}
           onFocus={() => onFocus(lang)}
           {...register(`intro_${lang}`)}
         />
-        {introTooLong && <p className="text-label text-err">{t('settings.subpage_intro_too_long')}</p>}
+        <p id={`subpage-intro-${lang}-hint`} className="flex justify-between gap-3 text-label text-mute">
+          <span className="text-err">{introTooLong && t('settings.subpage_intro_too_long')}</span>
+          <span className={cn('shrink-0 tabular-nums', introTooLong && 'text-err')}>
+            {t('settings.subpage_intro_count', { count: intro.length })}
+          </span>
+        </p>
       </div>
     </fieldset>
   );
@@ -235,11 +240,7 @@ export function SubscriptionPageForm() {
       <div className="flex min-w-0 flex-col gap-4">
         <Arriving index={0}>
           <Panel>
-            <PanelHeader
-              icon={FileText}
-              title={t('settings.subpage_content')}
-              actions={<HelpButton topic="settings.subscription" />}
-            />
+            <PanelHeader icon={FileText} title={t('settings.subpage_content')} />
             <PanelBody className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="subpage-language">{t('settings.subpage_language')}</Label>
@@ -267,8 +268,8 @@ export function SubscriptionPageForm() {
                   {t('settings.subpage_platform_hint')}
                 </p>
               </div>
-              <p className="text-label text-mute">{t('settings.subpage_texts_hint')}</p>
               <div className="grid gap-5 border-t border-hairline pt-4">
+                <p className="text-label text-mute">{t('settings.subpage_texts_hint')}</p>
                 <TextFields lang="ru" register={register} values={values} disabled={disabled} onFocus={setTextLang} />
                 <TextFields lang="en" register={register} values={values} disabled={disabled} onFocus={setTextLang} />
               </div>
@@ -355,7 +356,7 @@ export function SubscriptionPageForm() {
                               }
                             />
                             <span className="text-body">{n.name}</span>
-                            <span className="mono truncate text-label text-mute">{n.hostname}</span>
+                            <span className="mono truncate text-mono text-mute">{n.hostname}</span>
                           </label>
                         </li>
                       );
