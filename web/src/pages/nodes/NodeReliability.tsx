@@ -1,3 +1,4 @@
+import { Activity, LifeBuoy } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReliability, useSaveReliability } from '@/api/reliability';
@@ -13,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
   const { t } = useTranslation();
@@ -181,7 +183,7 @@ export function NodeReliability({ node }: { node: Node }) {
   const query = useReliability(node.id, node.online);
   return (
     <Panel>
-      <PanelHeader title={t('reliability.title')} />
+      <PanelHeader icon={LifeBuoy} title={t('reliability.title')} />
       <PanelBody>
         {!node.online ? (
           <p className="text-body text-mute">{t('nodes.offline_message')}</p>
@@ -201,6 +203,8 @@ export function NodeReliability({ node }: { node: Node }) {
     </Panel>
   );
 }
+const ROUTE_DOT = { healthy: 'bg-ok', failed: 'bg-err', stale: 'border border-hairline-strong' } as const;
+
 export function ReliabilityReadings({ report }: { report?: ReliabilityReport | null }) {
   const { t, i18n } = useTranslation();
   if (!report) return null;
@@ -224,11 +228,9 @@ export function ReliabilityReadings({ report }: { report?: ReliabilityReport | n
   ];
   return (
     <Panel>
-      <PanelHeader title={t('reliability.readings')} />
+      <PanelHeader icon={Activity} title={t('reliability.readings')} meta={formatDateTime(report.at, i18n.language)} />
       <PanelBody className="space-y-4">
-        <p className="text-label text-mute">
-          {formatDateTime(report.at, i18n.language)} · {t('reliability.counters_hint')}
-        </p>
+        <p className="text-label text-mute">{t('reliability.counters_hint')}</p>
         <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
           {readings.map(([key, v]) => (
             <div key={key} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-3">
@@ -237,14 +239,27 @@ export function ReliabilityReadings({ report }: { report?: ReliabilityReport | n
             </div>
           ))}
         </dl>
-        {report.routes.map((r, index) => (
-          <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 text-body">
-            <span>{r.kind}</span>
-            <span>
-              {r.age_seconds > 120 ? t('reliability.stale') : t(r.healthy ? 'reliability.healthy' : 'reliability.failed')}
-            </span>
+        {report.routes.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-label text-mute">{t('reliability.routes')}</p>
+            <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+              {report.routes.map((r, index) => {
+                const state = r.age_seconds > 120 ? 'stale' : r.healthy ? 'healthy' : 'failed';
+                return (
+                  <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-3">
+                    <dt className="text-label text-mute">{t(`reliability.${r.kind}`, r.kind)}</dt>
+                    <dd className="inline-flex items-center gap-2 text-label">
+                      <span className={cn('size-[7px] shrink-0 rounded-pill', ROUTE_DOT[state])} aria-hidden="true" />
+                      <span className={state === 'failed' ? 'text-err' : state === 'stale' ? 'text-mute' : 'text-foreground'}>
+                        {t(`reliability.${state}`)}
+                      </span>
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
           </div>
-        ))}
+        )}
         {report.events.length > 0 && (
           <AdvancedSettings label={t('reliability.events')}>
             <ul className="divide-y divide-hairline">

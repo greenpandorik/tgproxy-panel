@@ -429,7 +429,6 @@
     "install_open": "Open server",
     "logs_service_telemt": "telemt",
     "logs_service_agent": "Agent",
-    "overview_load": "Load average",
     "job_details": "Operation details",
     "verdict_open_install": "Install command",
     "verdict_offline_commands": "What to check on the server itself:",
@@ -442,7 +441,8 @@
     "job_status_running": "Running",
     "job_status_ok": "Succeeded",
     "job_status_failed": "Failed",
-    "job_status_rolled_back": "Rolled back"
+    "job_status_rolled_back": "Rolled back",
+    "overview_load_context": "load avg {{value}}"
   },
   "keys": {
     "title": "Keys",
@@ -2512,7 +2512,7 @@
     "apply_hint": "Saving checks the new route and applies it on the server. The engine may require a restart, interrupting active connections.",
     "saved": "Settings applied",
     "readings": "Resource headroom and routes",
-    "counters_hint": "Network counters are cumulative since their last OS reset.",
+    "counters_hint": "Network counters grow from the last system restart.",
     "fd": "Telemt file descriptors",
     "conntrack": "Connection tracking",
     "inodes": "Inodes used",
@@ -2523,7 +2523,8 @@
     "healthy": "Healthy",
     "failed": "Unhealthy",
     "events": "Recovery history",
-    "restore_primary": "Check and restore primary route"
+    "restore_primary": "Check and restore primary route",
+    "routes": "Routes to Telegram"
   },
   "fleet": {
     "title": "Update telemt on servers",

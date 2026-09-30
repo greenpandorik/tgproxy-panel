@@ -429,7 +429,6 @@
     "install_open": "Открыть сервер",
     "logs_service_telemt": "telemt",
     "logs_service_agent": "Агент",
-    "overview_load": "Средняя нагрузка",
     "job_details": "Подробности операции",
     "verdict_open_install": "Команда установки",
     "verdict_offline_commands": "Что проверить на самом сервере:",
@@ -442,7 +441,8 @@
     "job_status_running": "Выполняется",
     "job_status_ok": "Успешно",
     "job_status_failed": "Ошибка",
-    "job_status_rolled_back": "Откатано"
+    "job_status_rolled_back": "Откатано",
+    "overview_load_context": "ср. нагрузка {{value}}"
   },
   "keys": {
     "title": "Ключи",
@@ -2516,7 +2516,7 @@
     "apply_hint": "Сохранение проверит новый маршрут и применит его на сервере. Движок может потребовать перезапуск; действующие соединения могут прерваться.",
     "saved": "Настройки применены",
     "readings": "Запас ресурсов и маршруты",
-    "counters_hint": "Сетевые счётчики накопительные, с момента сброса ОС.",
+    "counters_hint": "Сетевые счётчики растут с последнего перезапуска системы.",
     "fd": "Дескрипторы telemt",
     "conntrack": "Таблица соединений",
     "inodes": "Использовано inode",
@@ -2527,7 +2527,8 @@
     "healthy": "Доступен",
     "failed": "Недоступен",
     "events": "История восстановления",
-    "restore_primary": "Проверить и вернуть основной маршрут"
+    "restore_primary": "Проверить и вернуть основной маршрут",
+    "routes": "Маршруты до Telegram"
   },
   "fleet": {
     "title": "Обновить telemt на серверах",

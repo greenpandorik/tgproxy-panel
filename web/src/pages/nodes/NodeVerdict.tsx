@@ -73,7 +73,7 @@ export function NodeVerdict({ node }: { node: Node }) {
   return (
     <div data-testid="node-verdict" data-tone={verdict.tone}>
       <Panel>
-        <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <span
               className="mt-[9px] size-2 shrink-0 rounded-pill"
@@ -116,7 +116,7 @@ export function NodeVerdict({ node }: { node: Node }) {
           )}
         </div>
         {!node.online && (
-          <div className="space-y-2 border-t border-hairline px-4 py-3">
+          <div className="space-y-2 border-t border-hairline px-5 py-4">
             <p className="text-label text-mute">{t('nodes.verdict_offline_commands')}</p>
             {AGENT_COMMANDS.map((cmd) => (
               <div key={cmd} className="flex items-center gap-2">
