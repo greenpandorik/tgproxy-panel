@@ -133,7 +133,7 @@ export function BackupsForm() {
           />
 
           <PanelBody className="border-b border-hairline py-3">
-            <p className="max-w-prose text-label text-mute">{t('settings.backups_master_key_note')}</p>
+            <p className="max-w-[72ch] text-label text-mute">{t('settings.backups_master_key_note')}</p>
           </PanelBody>
 
           <PanelBody className="space-y-3 border-b border-hairline">
@@ -265,8 +265,8 @@ export function BackupsForm() {
               title={t('settings.backups_schedule_title')}
               actions={<HelpButton topic="settings.backups" />}
             />
-            <PanelBody className="max-w-sm space-y-4">
-              <p className="text-label text-mute">{t('settings.backups_schedule_hint')}</p>
+            <PanelBody className="space-y-4">
+              <p className="max-w-[72ch] text-label text-mute">{t('settings.backups_schedule_hint')}</p>
 
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="backup-schedule-enabled">{t('settings.backups_schedule_enabled')}</Label>
@@ -280,7 +280,7 @@ export function BackupsForm() {
               </div>
 
               {scheduleEnabled && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid max-w-md grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="backup-schedule-hour">{t('settings.backups_schedule_hour')}</Label>
                     <Controller
