@@ -2696,7 +2696,7 @@
     "column_type": "Type",
     "column_servers": "Servers",
     "column_traffic": "Traffic, 30 days",
-    "column_online": "Connections",
+    "column_online": "Activity",
     "column_expires": "Expires",
     "column_created": "Created",
     "online_now_one": "{{count}} connection",
@@ -2788,7 +2788,8 @@
     "reset_filters": "Reset filters",
     "extend_month": "Extend by a month",
     "extended": "Extended until {{date}}",
-    "column_link": "Link"
+    "column_link": "Link",
+    "found": "Found: {{count}}"
   },
   "service": {
     "title": "Subscription page service",

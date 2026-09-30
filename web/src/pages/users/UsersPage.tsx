@@ -130,13 +130,16 @@ function OnlineCell({ user }: { user: AccessKey }) {
 
 function ServerChips({ nodes }: { nodes: AccessKey['nodes'] }) {
   if (nodes.length === 0) return <span className="mono text-mono text-dim">—</span>;
+  const shown = nodes.length > 3 ? nodes.slice(0, 2) : nodes;
+  const rest = nodes.slice(shown.length);
   return (
     <span className="flex flex-wrap gap-1">
-      {nodes.map((n) => (
+      {shown.map((n) => (
         <Badge key={n.node_id} title={n.hostname}>
           {n.node_name || shortHost(n.hostname)}
         </Badge>
       ))}
+      {rest.length > 0 && <Badge title={rest.map((n) => n.node_name || n.hostname).join(', ')}>+{rest.length}</Badge>}
     </span>
   );
 }
@@ -146,7 +149,7 @@ function UserName({ user }: { user: AccessKey }) {
   return (
     <span className="block min-w-0">
       <span className="flex min-w-0 items-center gap-2">
-        <span className="truncate text-body font-medium text-foreground">{user.label}</span>
+        <span className="text-body font-medium wrap-break-word text-foreground">{user.label}</span>
         {user.type === 'SHARED' && <Badge className="shrink-0">{t('keys.type_shared')}</Badge>}
       </span>
       {(user.owner_label || user.sub_slug) && (
@@ -335,6 +338,7 @@ export function UsersPage() {
 
   const columnCount = 3 + COLUMNS.filter(show).length + (isWriter ? 2 : 0);
   const filtered = !!q || state !== 'all' || type !== 'all' || node !== 'all';
+  const noUsers = summary?.total === 0 && !filtered;
   const resetFilters = () => {
     setSearchInput('');
     setQ('');
@@ -369,7 +373,7 @@ export function UsersPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className={cn('grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5', noUsers && 'hidden')}>
         {tiles.map((tile, i) => (
           <button
             key={tile.id}
@@ -380,6 +384,7 @@ export function UsersPage() {
             className={cn(
               enter(i).className,
               'rounded-surface text-left outline-offset-2 transition-shadow',
+              i === 0 && 'col-span-2 md:col-span-1',
               state === tile.id && tile.id !== 'all' && 'ring-2 ring-brand-primary/60',
             )}
           >
@@ -390,22 +395,22 @@ export function UsersPage() {
               context={tile.id === 'expiring' ? t('users.tile_expiring_context') : undefined}
               value={tile.value ?? 0}
               loading={summaryQuery.isLoading}
-              className="pointer-events-none"
+              className="pointer-events-none max-sm:px-3.5"
             />
           </button>
         ))}
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className={cn('grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center', noUsers && 'hidden')}>
         <Input
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder={t('users.search_placeholder')}
-          className="sm:w-64"
+          className="col-span-2 sm:max-w-sm sm:min-w-56 sm:flex-1"
           aria-label={t('common.search')}
         />
         <Select value={state} onValueChange={(v) => setState((v ?? 'all') as StateFilter)}>
-          <SelectTrigger className="w-full sm:w-44" aria-label={t('keys.column_status')}>
+          <SelectTrigger className="col-span-2 w-full sm:w-44" aria-label={t('keys.column_status')}>
             <SelectValue>{(v: StateFilter) => t(`users.filter_${v ?? 'all'}`)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -456,7 +461,7 @@ export function UsersPage() {
           </SelectContent>
         </Select>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button type="button" variant="outline" className="sm:ml-auto" />}>
+          <DropdownMenuTrigger render={<Button type="button" variant="outline" className="hidden md:ml-auto md:inline-flex" />}>
             <Columns3 />
             {t('users.columns')}
           </DropdownMenuTrigger>
@@ -554,14 +559,18 @@ export function UsersPage() {
                     )}
                     <TableHead>{t('users.column_name')}</TableHead>
                     <TableHead>{t('keys.column_status')}</TableHead>
-                    {show('link') && <TableHead className="w-0">{t('users.column_link')}</TableHead>}
+                    {show('link') && (
+                      <TableHead className="w-0">
+                        <span className="sr-only">{t('users.column_link')}</span>
+                      </TableHead>
+                    )}
                     {show('type') && <TableHead>{t('users.column_type')}</TableHead>}
                     {show('servers') && <TableHead>{t('users.column_servers')}</TableHead>}
                     {show('traffic') && <TableHead className="text-right">{t('users.column_traffic')}</TableHead>}
                     {show('online') && <TableHead>{t('users.column_online')}</TableHead>}
                     {show('expires') && <TableHead className="text-right">{t('users.column_expires')}</TableHead>}
                     {show('created') && <TableHead className="text-right">{t('users.column_created')}</TableHead>}
-                    {isWriter && <TableHead className="w-0" />}
+                    {isWriter && <TableHead className="w-0 pl-0" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -634,7 +643,7 @@ export function UsersPage() {
                         <TableCell className="mono text-right text-mono text-mute">{formatDate(u.created_at, i18n.language)}</TableCell>
                       )}
                       {isWriter && (
-                        <TableCell className="w-0 text-right" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="w-0 pl-0 text-right" onClick={(e) => e.stopPropagation()}>
                           {rowMenu(u)}
                         </TableCell>
                       )}
@@ -660,7 +669,7 @@ export function UsersPage() {
                     <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                       <StateBadge state={u.state} />
                       <ExpiresCell iso={u.expires_at} />
-                      <OnlineCell user={u} />
+                      {u.live.connections > 0 && <OnlineCell user={u} />}
                     </span>
                     <ServerChips nodes={u.nodes} />
                   </button>
@@ -670,25 +679,39 @@ export function UsersPage() {
             </ul>
           </Panel>
 
-          <div className={cn(ENTER_CLASS, 'flex items-center justify-between gap-2')} style={enterDelay(1)}>
-            <p className="mono text-mono text-mute">{t('users.pagination_summary', { page, totalPages, count: total })}</p>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                <ChevronLeft />
-                {t('keys.pagination_prev')}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                {t('keys.pagination_next')}
-                <ChevronRight />
-              </Button>
+          {(totalPages > 1 || filtered) && (
+            <div className={cn(ENTER_CLASS, 'flex flex-wrap items-center justify-between gap-2')} style={enterDelay(1)}>
+              <p className="mono text-mono text-mute">
+                {totalPages > 1
+                  ? t('users.pagination_summary', { page, totalPages, count: total })
+                  : t('users.found', { count: total })}
+              </p>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft />
+                    {t('keys.pagination_prev')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    {t('keys.pagination_next')}
+                    <ChevronRight />
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </>
       )}
 

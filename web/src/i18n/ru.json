@@ -2699,8 +2699,8 @@
     "column_name": "Пользователь",
     "column_type": "Тип",
     "column_servers": "Серверы",
-    "column_traffic": "Трафик за 30 дней",
-    "column_online": "Подключения",
+    "column_traffic": "Трафик, 30 дн.",
+    "column_online": "Активность",
     "column_expires": "Срок",
     "column_created": "Создан",
     "online_now_one": "{{count}} соединение",
@@ -2794,7 +2794,8 @@
     "reset_filters": "Сбросить фильтры",
     "extend_month": "Продлить на месяц",
     "extended": "Продлено до {{date}}",
-    "column_link": "Ссылка"
+    "column_link": "Ссылка",
+    "found": "Найдено: {{count}}"
   },
   "service": {
     "title": "Сервис страницы подписки",
