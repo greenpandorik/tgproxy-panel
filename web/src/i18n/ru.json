@@ -443,7 +443,10 @@
     "job_status_failed": "Ошибка",
     "job_status_rolled_back": "Откатано",
     "overview_load_context": "ср. нагрузка {{value}}",
-    "restart_confirm_title_service": "Перезапустить {{service}} на «{{name}}»?"
+    "restart_confirm_title_service": "Перезапустить {{service}} на «{{name}}»?",
+    "detail_not_found_title": "Сервер не найден",
+    "detail_not_found_description": "Возможно, его удалили или ссылка неверна.",
+    "detail_back_to_list": "К списку серверов"
   },
   "keys": {
     "title": "Ключи",

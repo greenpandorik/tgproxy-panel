@@ -443,7 +443,10 @@
     "job_status_failed": "Failed",
     "job_status_rolled_back": "Rolled back",
     "overview_load_context": "load avg {{value}}",
-    "restart_confirm_title_service": "Restart {{service}} on \"{{name}}\"?"
+    "restart_confirm_title_service": "Restart {{service}} on \"{{name}}\"?",
+    "detail_not_found_title": "Server not found",
+    "detail_not_found_description": "It may have been deleted, or the link is wrong.",
+    "detail_back_to_list": "Back to servers"
   },
   "keys": {
     "title": "Keys",
