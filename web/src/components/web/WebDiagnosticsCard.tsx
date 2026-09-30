@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Stethoscope } from 'lucide-react';
+import { Download, Stethoscope } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useNodeDiagnostics, useRunWebDiagnostics } from '@/api/web';
@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { TONE_VAR } from '@/components/common/statTone';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { formatCompactAge, formatDateTime } from '@/lib/format';
@@ -104,6 +105,8 @@ function GroupedChecks({ groups, keep }: { groups: DiagnosticGroup[]; keep: (che
   );
 }
 
+const LATEST = 'latest';
+
 const PROBLEM_ORDER: Record<string, number> = { fail: 0, warn: 1 };
 
 /** A pass read problems first: what needs doing is listed, everything that passed waits behind a toggle. */
@@ -184,6 +187,9 @@ export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
   const ranAt = run?.finished_at ?? run?.started_at ?? null;
   const age = ranAt ? formatCompactAge(ranAt, i18n.language) : null;
 
+  const historyLabel = (item: DiagnosticsRun) =>
+    `${formatDateTime(item.started_at, i18n.language)} · ${t(`web.diagnostics_status_${item.overall_status}`, item.overall_status)}`;
+
   const runButton = isWriter && (
     <Button
       type="button"
@@ -209,32 +215,40 @@ export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
         actions={runButton}
       />
 
-      {stored.data && stored.data.items.length > 1 && (
-        <div className="flex flex-wrap items-center gap-3 border-b border-hairline px-4 py-3">
-          <label htmlFor={`diag-history-${nodeId}`} className="text-label text-mute">
-            {t('web.diagnostics_history')}
-          </label>
-          <select
-            id={`diag-history-${nodeId}`}
-            className="max-w-full rounded-control border border-hairline bg-background p-2 text-label"
-            value={selected ?? ''}
-            onChange={(e) => setSelected(e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">{t('web.diagnostics_latest')}</option>
-            {stored.data.items.map((item) => (
-              <option key={item.id} value={item.id}>
-                {formatDateTime(item.started_at, i18n.language)} ·{' '}
-                {t(`web.diagnostics_status_${item.overall_status}`, item.overall_status)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
       {run && (
-        <div className="px-4 pt-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-hairline px-4 py-3">
+          {stored.data && stored.data.items.length > 1 && (
+            <>
+              <label htmlFor={`diag-history-${nodeId}`} className="text-label text-mute">
+                {t('web.diagnostics_history')}
+              </label>
+              <Select
+                value={selected === null ? LATEST : String(selected)}
+                onValueChange={(v) => setSelected(v && v !== LATEST ? Number(v) : null)}
+              >
+                <SelectTrigger id={`diag-history-${nodeId}`} className="max-w-full min-w-0 text-label">
+                  <SelectValue>
+                    {(v: string) => {
+                      const item = stored.data?.items.find((i) => String(i.id) === v);
+                      return item ? historyLabel(item) : t('web.diagnostics_latest');
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={LATEST}>{t('web.diagnostics_latest')}</SelectItem>
+                  {stored.data.items.map((item) => (
+                    <SelectItem key={item.id} value={String(item.id)}>
+                      {historyLabel(item)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
           <Button
             variant="ghost"
             size="sm"
+            className="ml-auto"
             onClick={() => {
               const blob = new Blob([JSON.stringify(run, null, 2)], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
@@ -245,6 +259,7 @@ export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
               window.setTimeout(() => URL.revokeObjectURL(url), 1000);
             }}
           >
+            <Download />
             {t('web.diagnostics_export')}
           </Button>
         </div>

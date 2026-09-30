@@ -70,7 +70,7 @@ describe('NodeVerdict', () => {
     expect(screen.getByText('Требует внимания: 1')).toBeInTheDocument();
     expect(screen.getByText('Диагностика: Сбои TLS-рукопожатий')).toBeInTheDocument();
     expect(screen.queryByText(/Scheduled check/)).toBeNull();
-    expect(screen.getByText('Открыть диагностику').closest('a')).toHaveAttribute('href', '/?section=diagnostics');
+    expect(screen.getByText('Открыть проверки').closest('a')).toHaveAttribute('href', '/?section=diagnostics');
   });
 
   it('says all is well when nothing is open and the last diagnostics were clean', () => {

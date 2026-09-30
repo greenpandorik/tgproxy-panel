@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useRunNodeCheck } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
+import { PanelEmpty } from '@/components/common/EmptyState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -125,15 +126,7 @@ export function NodeCheckCard({ node }: { node: Node }) {
           )}
         </div>
       ) : !results ? (
-        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-          <p className="text-body text-mute">{t('nodes.check_empty')}</p>
-          {isWriter && (
-            <Button type="button" variant="outline" size="sm" onClick={() => void handleRun()}>
-              <RefreshCw />
-              {t('nodes.check_run')}
-            </Button>
-          )}
-        </div>
+        <PanelEmpty>{t('nodes.check_empty')}</PanelEmpty>
       ) : (
         (() => {
           const ordered = CHECK_NAMES.map((name) => results.find((r) => r.name === name)).filter((r): r is NodeCheckResult =>
