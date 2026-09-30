@@ -184,11 +184,12 @@ func Build(in Input) (Page, error) {
 	t := func(key string, vars map[string]string) string { return c.T(in.Lang, key, vars) }
 	s := in.Settings
 	page := Page{
-		Lang: string(in.Lang), Title: s.Title, Intro: s.Intro, PanelName: in.Branding.PanelName,
+		Lang: string(in.Lang), PanelName: in.Branding.PanelName,
 		PrimaryColor: in.Branding.PrimaryColor, AccentColor: in.Branding.AccentColor, PrimaryInk: in.Branding.PrimaryInk,
 		Theme: in.Branding.Theme, SupportLink: in.Branding.SupportLink, FooterText: in.Branding.FooterText,
 		ShowStatus: s.ShowStatus, ShowGuide: s.ShowGuide, ShowQR: s.ShowQR, Platform: in.Platform,
 	}
+	page.Title, page.Intro = s.texts(in.Lang)
 	if page.Title == "" {
 		page.Title = t("subpage.title_default", nil)
 	}

@@ -721,8 +721,10 @@ export interface BackupSchedule {
 export interface SubscriptionPageSettings {
   language: 'auto' | 'ru' | 'en';
   platform: 'auto' | SubscriptionPlatform;
-  title: string;
-  intro: string;
+  title_ru: string;
+  title_en: string;
+  intro_ru: string;
+  intro_en: string;
   show_fake_tls: boolean;
   show_web: boolean;
   show_backup_domains: boolean;

@@ -1233,16 +1233,14 @@
     "subpage_language": "Page language",
     "subpage_language_auto": "Browser language",
     "subpage_title": "Title",
-    "subpage_title_hint": "Leave empty for \"Connect Telegram\" in the page language.",
     "subpage_intro": "Greeting",
-    "subpage_intro_hint": "A short text under the title. Leave empty for the standard text in the page language.",
     "subpage_links": "Which links to show",
     "subpage_show_fake_tls": "Fake-TLS",
-    "subpage_show_fake_tls_hint": "The standard link: works in every Telegram app.",
+    "subpage_show_fake_tls_hint": "The standard link; it works everywhere. On the page it is labelled \"Works in every Telegram app\".",
     "subpage_show_web": "WEB proxy",
-    "subpage_show_web_hint": "The link over HTTPS: harder to block, but it only works in Telegram Desktop and recent Android versions. Never shown on the iPhone tab.",
+    "subpage_show_web_hint": "The link over HTTPS, labelled \"For Telegram Desktop and Android\" on the page. It is harder to block but does not work in other apps, so the iPhone tab never shows it.",
     "subpage_show_backup": "Backup domains",
-    "subpage_show_backup_hint": "Extra Fake-TLS links on backup domains, in the All links block. They appear only for servers that have backup domains set.",
+    "subpage_show_backup_hint": "Extra Fake-TLS links on backup domains, in the All links block.",
     "subpage_links_required": "Keep at least one kind of link: Fake-TLS or the WEB proxy.",
     "subpage_blocks": "What else to show",
     "subpage_show_guide": "Step-by-step guide for each device",
@@ -1252,7 +1250,7 @@
     "subpage_servers_hint": "Untick a server to keep it off subscription pages. Keys on it keep working.",
     "subpage_no_servers": "No servers yet.",
     "subpage_preview": "Preview",
-    "subpage_preview_hint": "An example with your servers and fake secrets. Changes show up right away, before you save.",
+    "subpage_preview_hint": "An example with all your servers and fake secrets; changes show up right away, before you save. On a real page the servers and the expiry date come from the key.",
     "subpage_preview_open": "Open separately",
     "subpage_platform": "Tab shown first",
     "subpage_platform_hint": "The chosen tab opens for everyone, and visitors can switch it themselves. If your people use a mix of Android, iPhone and computers, pick \"Detect from the visitor's device\".",
@@ -1262,7 +1260,12 @@
     "subpage_title_count": "{{count}} of 80",
     "subpage_title_too_long": "Shorten the title to 80 characters.",
     "subpage_intro_too_long": "Shorten the intro to 500 characters.",
-    "subpage_preview_stale": "The preview does not update while the settings have an error."
+    "subpage_preview_stale": "The preview does not update while the settings have an error.",
+    "subpage_texts_ru": "In Russian",
+    "subpage_texts_en": "In English",
+    "subpage_texts_hint": "Visitors can switch the language right on the page, so the texts are set for both languages. An empty field falls back to the standard text: the title becomes \"Подключение к Telegram\" or \"Connect Telegram\".",
+    "subpage_backup_count": "{{count}} of {{total}} servers have backup domains.",
+    "subpage_backup_none": "No server has backup domains right now, so the page will not show any."
   },
   "drafts": {
     "banner": "Draft from <time>{{time}}</time>",
@@ -2323,7 +2326,7 @@
           },
           "title": {
             "name": "Title and greeting",
-            "what": "The text at the top of the page. Your own greeting replaces the standard one entirely. An empty title becomes \"Connect Telegram\", an empty greeting the standard text."
+            "what": "The text at the top of the page, set separately for the Russian and English versions, since visitors can switch the language themselves. Your own greeting replaces the standard one entirely. An empty title becomes \"Подключение к Telegram\" or \"Connect Telegram\", an empty greeting the standard text."
           },
           "links": {
             "name": "Which links to show",

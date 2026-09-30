@@ -310,7 +310,7 @@ func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
 		}
 	}
 	settings := map[string]any{
-		"language": "en", "platform": "desktop", "title": "Our proxy", "intro": "", "show_fake_tls": true, "show_web": true,
+		"language": "en", "platform": "desktop", "title_ru": "Наш прокси", "title_en": "Our proxy", "intro_ru": "", "intro_en": "", "show_fake_tls": true, "show_web": true,
 		"show_backup_domains": true, "show_guide": true, "show_status": true, "show_qr": false, "hidden_nodes": []string{hidden},
 	}
 	if resp := c.Put("/api/v1/settings", map[string]any{"subscription_page": settings}); resp.StatusCode != 200 {

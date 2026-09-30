@@ -3,14 +3,18 @@ package subscription
 import (
 	"strings"
 	"unicode/utf8"
+
+	"tgwebproxy/internal/alerttext"
 )
 
 // Settings is what the owner chooses for every subscription page.
 type Settings struct {
 	Language          string   `json:"language"`
 	Platform          string   `json:"platform"`
-	Title             string   `json:"title"`
-	Intro             string   `json:"intro"`
+	TitleRU           string   `json:"title_ru"`
+	TitleEN           string   `json:"title_en"`
+	IntroRU           string   `json:"intro_ru"`
+	IntroEN           string   `json:"intro_en"`
 	ShowFakeTLS       bool     `json:"show_fake_tls"`
 	ShowWeb           bool     `json:"show_web"`
 	ShowBackupDomains bool     `json:"show_backup_domains"`
@@ -46,11 +50,15 @@ func (s Settings) Validate() map[string]string {
 	default:
 		f["subscription_page.platform"] = "must be auto, android, ios or desktop"
 	}
-	if utf8.RuneCountInString(s.Title) > maxTitle {
-		f["subscription_page.title"] = "at most 80 characters"
+	for key, v := range map[string]string{"title_ru": s.TitleRU, "title_en": s.TitleEN} {
+		if utf8.RuneCountInString(v) > maxTitle {
+			f["subscription_page."+key] = "at most 80 characters"
+		}
 	}
-	if utf8.RuneCountInString(s.Intro) > maxIntro {
-		f["subscription_page.intro"] = "at most 500 characters"
+	for key, v := range map[string]string{"intro_ru": s.IntroRU, "intro_en": s.IntroEN} {
+		if utf8.RuneCountInString(v) > maxIntro {
+			f["subscription_page."+key] = "at most 500 characters"
+		}
 	}
 	if !s.ShowFakeTLS && !s.ShowWeb {
 		f["subscription_page.show_fake_tls"] = "show at least one kind of link"
@@ -60,12 +68,21 @@ func (s Settings) Validate() map[string]string {
 
 // Normalized trims the texts and never returns a nil list.
 func (s Settings) Normalized() Settings {
-	s.Title = strings.TrimSpace(s.Title)
-	s.Intro = strings.TrimSpace(s.Intro)
+	s.TitleRU = strings.TrimSpace(s.TitleRU)
+	s.TitleEN = strings.TrimSpace(s.TitleEN)
+	s.IntroRU = strings.TrimSpace(s.IntroRU)
+	s.IntroEN = strings.TrimSpace(s.IntroEN)
 	if s.HiddenNodes == nil {
 		s.HiddenNodes = []string{}
 	}
 	return s
+}
+
+func (s Settings) texts(l alerttext.Lang) (title, intro string) {
+	if l == alerttext.EN {
+		return s.TitleEN, s.IntroEN
+	}
+	return s.TitleRU, s.IntroRU
 }
 
 func (s Settings) hidden(nodeID string) bool {

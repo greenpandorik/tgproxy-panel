@@ -25,8 +25,10 @@ const SETTINGS: Settings = {
   subscription_page: {
     language: 'ru',
     platform: 'android',
-    title: '',
-    intro: '',
+    title_ru: '',
+    title_en: '',
+    intro_ru: '',
+    intro_en: '',
     show_fake_tls: true,
     show_web: true,
     show_backup_domains: true,

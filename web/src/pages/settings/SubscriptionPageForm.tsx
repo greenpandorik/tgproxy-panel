@@ -30,8 +30,10 @@ const schema = z
   .object({
     language: z.enum(['auto', 'ru', 'en']),
     platform: z.enum(['auto', 'android', 'ios', 'desktop']),
-    title: z.string().max(80),
-    intro: z.string().max(500),
+    title_ru: z.string().max(80),
+    title_en: z.string().max(80),
+    intro_ru: z.string().max(500),
+    intro_en: z.string().max(500),
     show_fake_tls: z.boolean(),
     show_web: z.boolean(),
     show_backup_domains: z.boolean(),
@@ -47,8 +49,10 @@ type FormValues = z.infer<typeof schema>;
 const DEFAULTS: FormValues = {
   language: 'ru',
   platform: 'android',
-  title: '',
-  intro: '',
+  title_ru: '',
+  title_en: '',
+  intro_ru: '',
+  intro_en: '',
   show_fake_tls: true,
   show_web: true,
   show_backup_domains: true,
@@ -89,6 +93,62 @@ function SwitchRow({
   );
 }
 
+type TextLang = 'ru' | 'en';
+
+function TextFields({
+  lang,
+  register,
+  values,
+  disabled,
+  onFocus,
+}: {
+  lang: TextLang;
+  register: ReturnType<typeof useForm<FormValues>>['register'];
+  values: FormValues;
+  disabled: boolean;
+  onFocus: (lang: TextLang) => void;
+}) {
+  const { t } = useTranslation();
+  const title = values[`title_${lang}`] ?? '';
+  const intro = values[`intro_${lang}`] ?? '';
+  const titleTooLong = title.length > 80;
+  const introTooLong = intro.length > 500;
+  return (
+    <fieldset className="space-y-3" lang={lang}>
+      <legend className="mb-3 text-body font-semibold">{t(`settings.subpage_texts_${lang}`)}</legend>
+      <div className="space-y-2">
+        <Label htmlFor={`subpage-title-${lang}`}>{t('settings.subpage_title')}</Label>
+        <Input
+          id={`subpage-title-${lang}`}
+          disabled={disabled}
+          aria-invalid={titleTooLong || undefined}
+          aria-describedby={`subpage-title-${lang}-hint`}
+          onFocus={() => onFocus(lang)}
+          {...register(`title_${lang}`)}
+        />
+        <p id={`subpage-title-${lang}-hint`} className="flex justify-between gap-3 text-label text-mute">
+          <span className="text-err">{titleTooLong && t('settings.subpage_title_too_long')}</span>
+          <span className={cn('shrink-0 tabular-nums', titleTooLong && 'text-err')}>
+            {t('settings.subpage_title_count', { count: title.length })}
+          </span>
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor={`subpage-intro-${lang}`}>{t('settings.subpage_intro')}</Label>
+        <Textarea
+          id={`subpage-intro-${lang}`}
+          rows={3}
+          disabled={disabled}
+          aria-invalid={introTooLong || undefined}
+          onFocus={() => onFocus(lang)}
+          {...register(`intro_${lang}`)}
+        />
+        {introTooLong && <p className="text-label text-err">{t('settings.subpage_intro_too_long')}</p>}
+      </div>
+    </fieldset>
+  );
+}
+
 export function SubscriptionPageForm() {
   const { t, i18n } = useTranslation();
   const { isOwner, isWriter } = useAuth();
@@ -96,6 +156,7 @@ export function SubscriptionPageForm() {
   const nodesQuery = useNodes();
   const putSettings = usePutSettings();
   const [src, setSrc] = useState('');
+  const [textLang, setTextLang] = useState<TextLang | null>(null);
   const disabled = !isOwner;
 
   const {
@@ -112,10 +173,12 @@ export function SubscriptionPageForm() {
 
   const values = useWatch({ control }) as FormValues;
   const noLinks = !values.show_fake_tls && !values.show_web;
-  const titleTooLong = (values.title ?? '').length > 80;
-  const introTooLong = (values.intro ?? '').length > 500;
+  const textTooLong =
+    [values.title_ru, values.title_en].some((v) => (v ?? '').length > 80) ||
+    [values.intro_ru, values.intro_en].some((v) => (v ?? '').length > 500);
   const platform: SubscriptionPlatform = values.platform && values.platform !== 'auto' ? values.platform : 'android';
-  const previewLanguage = values.language === 'auto' ? (i18n.language?.startsWith('en') ? 'en' : 'ru') : values.language;
+  const previewLanguage =
+    textLang ?? (values.language === 'auto' ? (i18n.language?.startsWith('en') ? 'en' : 'ru') : values.language);
   const payload = JSON.stringify({ values, platform, previewLanguage });
 
   useEffect(() => {
@@ -132,7 +195,13 @@ export function SubscriptionPageForm() {
 
   const onSubmit = async (v: FormValues) => {
     try {
-      await putSettings.mutateAsync({ subscription_page: { ...v, title: v.title.trim(), intro: v.intro.trim() } });
+      await putSettings.mutateAsync({ subscription_page: {
+          ...v,
+          title_ru: v.title_ru.trim(),
+          title_en: v.title_en.trim(),
+          intro_ru: v.intro_ru.trim(),
+          intro_en: v.intro_en.trim(),
+        }, });
       toast.add({ description: t('settings.panel_save_success'), type: 'success' });
     } catch (err) {
       toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
@@ -153,7 +222,9 @@ export function SubscriptionPageForm() {
   }
 
   const nodes = nodesQuery.data?.items ?? [];
-  const noServers = nodes.length > 0 && nodes.every((n) => (values.hidden_nodes ?? []).includes(n.id));
+  const shownNodes = nodes.filter((n) => !(values.hidden_nodes ?? []).includes(n.id));
+  const noServers = nodes.length > 0 && shownNodes.length === 0;
+  const withBackup = shownNodes.filter((n) => (n.tls_domains ?? []).length > 0).length;
 
   return (
     <form
@@ -172,7 +243,7 @@ export function SubscriptionPageForm() {
             <PanelBody className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="subpage-language">{t('settings.subpage_language')}</Label>
-                <select id="subpage-language" className="ops-select w-full max-w-sm" disabled={disabled} {...register('language')}>
+                <select id="subpage-language" className="ops-select w-full max-w-sm" disabled={disabled} {...register('language', { onChange: () => setTextLang(null) })}>
                   <option value="ru">{t('settings.panel_telegram_language_ru')}</option>
                   <option value="en">{t('settings.panel_telegram_language_en')}</option>
                   <option value="auto">{t('settings.subpage_language_auto')}</option>
@@ -196,37 +267,10 @@ export function SubscriptionPageForm() {
                   {t('settings.subpage_platform_hint')}
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="subpage-title">{t('settings.subpage_title')}</Label>
-                <Input
-                  id="subpage-title"
-                  disabled={disabled}
-                  aria-invalid={titleTooLong || undefined}
-                  aria-describedby="subpage-title-hint"
-                  {...register('title')}
-                />
-                <p id="subpage-title-hint" className="flex justify-between gap-3 text-label text-mute">
-                  <span className={titleTooLong ? 'text-err' : undefined}>
-                    {titleTooLong ? t('settings.subpage_title_too_long') : t('settings.subpage_title_hint')}
-                  </span>
-                  <span className={titleTooLong ? 'shrink-0 tabular-nums text-err' : 'shrink-0 tabular-nums'}>
-                    {t('settings.subpage_title_count', { count: (values.title ?? '').length })}
-                  </span>
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="subpage-intro">{t('settings.subpage_intro')}</Label>
-                <Textarea
-                  id="subpage-intro"
-                  rows={3}
-                  disabled={disabled}
-                  aria-invalid={introTooLong || undefined}
-                  aria-describedby="subpage-intro-hint"
-                  {...register('intro')}
-                />
-                <p id="subpage-intro-hint" className={introTooLong ? 'text-label text-err' : 'text-label text-mute'}>
-                  {introTooLong ? t('settings.subpage_intro_too_long') : t('settings.subpage_intro_hint')}
-                </p>
+              <p className="text-label text-mute">{t('settings.subpage_texts_hint')}</p>
+              <div className="grid gap-5 border-t border-hairline pt-4">
+                <TextFields lang="ru" register={register} values={values} disabled={disabled} onFocus={setTextLang} />
+                <TextFields lang="en" register={register} values={values} disabled={disabled} onFocus={setTextLang} />
               </div>
             </PanelBody>
           </Panel>
@@ -253,7 +297,11 @@ export function SubscriptionPageForm() {
               <SwitchRow
                 name="show_backup_domains"
                 label={t('settings.subpage_show_backup')}
-                hint={t('settings.subpage_show_backup_hint')}
+                hint={`${t('settings.subpage_show_backup_hint')} ${
+                  withBackup === 0
+                    ? t('settings.subpage_backup_none')
+                    : t('settings.subpage_backup_count', { count: withBackup, total: shownNodes.length })
+                }`}
                 control={control}
                 disabled={disabled || !values.show_fake_tls}
               />
@@ -326,7 +374,7 @@ export function SubscriptionPageForm() {
 
         <FormFooter note={!isOwner ? t('settings.panel_owner_only_note') : undefined}>
           {isOwner && (
-            <Button type="submit" disabled={isSubmitting || !isDirty || noLinks || noServers || titleTooLong || introTooLong}>
+            <Button type="submit" disabled={isSubmitting || !isDirty || noLinks || noServers || textTooLong}>
               {t('common.save')}
             </Button>
           )}
@@ -353,6 +401,7 @@ export function SubscriptionPageForm() {
               }
             />
             <PanelBody className="space-y-3">
+              <p className="text-label text-mute">{t('settings.subpage_preview_hint')}</p>
               {noLinks && (
                 <p role="status" className="text-label text-warn">
                   {t('settings.subpage_preview_stale')}
@@ -375,7 +424,6 @@ export function SubscriptionPageForm() {
                   <Skeleton className="h-[680px] w-full rounded-none" />
                 )}
               </div>
-              <p className="text-label text-mute">{t('settings.subpage_preview_hint')}</p>
             </PanelBody>
           </Panel>
         </div>

@@ -106,7 +106,8 @@ func TestBackupDomainsGetTheirOwnLabel(t *testing.T) {
 func TestLanguageStatusAndTitles(t *testing.T) {
 	expires := time.Date(2026, 12, 31, 12, 0, 0, 0, time.Local)
 	s := subscription.DefaultSettings()
-	s.Title, s.Intro = "Мой прокси", "Привет!"
+	s.TitleRU, s.IntroRU = "Мой прокси", "Привет!"
+	s.TitleEN = "Our proxy"
 	_, ru := build(t, s, alerttext.RU, subscription.Android, &expires)
 	for _, want := range []string{
 		`lang="ru"`, "Мой прокси", "Привет!", "Доступ активен", "до 31 декабря 2026", "Установите Telegram", "Подключить", "Открыть Google Play",
@@ -116,7 +117,14 @@ func TestLanguageStatusAndTitles(t *testing.T) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	_, en := build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Desktop, nil)
+	if strings.Contains(ru, "Our proxy") {
+		t.Error("the English title leaked onto the Russian page")
+	}
+	_, en := build(t, s, alerttext.EN, subscription.Desktop, nil)
+	if !strings.Contains(en, "<title>Our proxy</title>") || strings.Contains(en, "Мой прокси") || strings.Contains(en, "Привет!") {
+		t.Error("the English page should use the English title and the standard English intro")
+	}
+	_, en = build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Desktop, nil)
 	for _, want := range []string{`lang="en"`, "<title>Connect Telegram</title>", "with no end date", "Download Telegram Desktop", "Connection type", "Didn&#39;t connect within a minute? Use the backup link", "opens Telegram Desktop"} {
 		if !strings.Contains(en, want) {
 			t.Errorf("missing %q", want)
@@ -156,8 +164,9 @@ func TestRenderHasNoExternalScriptsOrKeyNames(t *testing.T) {
 func TestSettingsValidation(t *testing.T) {
 	s := subscription.DefaultSettings()
 	s.ShowWeb, s.ShowFakeTLS, s.Language = false, false, "de"
+	s.TitleEN = strings.Repeat("я", 81)
 	f := s.Validate()
-	if f["subscription_page.show_fake_tls"] == "" || f["subscription_page.language"] == "" {
+	if f["subscription_page.show_fake_tls"] == "" || f["subscription_page.language"] == "" || f["subscription_page.title_en"] == "" {
 		t.Fatalf("validation: %v", f)
 	}
 }
