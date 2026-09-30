@@ -52,7 +52,7 @@ export function SecurityForm() {
       toast.add({ description: t('settings.security_success'), type: 'success' });
     } catch (err) {
       if (err instanceof ApiError && err.fields.current) {
-        setError('current', { message: t('settings.security_error_current') });
+        setError('current', { type: 'server', message: t('settings.security_error_current') });
         return;
       }
       if (err instanceof ApiError && err.fields.new) {
@@ -64,7 +64,7 @@ export function SecurityForm() {
   };
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
+    <div className="flex max-w-3xl flex-col gap-4">
       <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
         <Arriving>
           <Panel>
@@ -73,10 +73,10 @@ export function SecurityForm() {
               title={t('settings.security_password_title')}
               actions={<HelpButton topic="settings.security" />}
             />
-            <PanelBody className="max-w-sm space-y-4">
+            <PanelBody className="space-y-4">
               <p className="text-label text-mute">{t('settings.security_note')}</p>
 
-              <div className="space-y-2">
+              <div className="max-w-sm space-y-2">
                 <Label htmlFor="security-current">{t('settings.security_current_password')}</Label>
                 <Input
                   id="security-current"
@@ -88,12 +88,12 @@ export function SecurityForm() {
                 />
                 {errors.current && (
                   <p id="security-current-error" className="text-label text-destructive">
-                    {t('common.required')}
+                    {errors.current.type === 'server' ? errors.current.message : t('common.required')}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="max-w-sm space-y-2">
                 <Label htmlFor="security-new">{t('settings.security_new_password')}</Label>
                 <Input
                   id="security-new"
@@ -108,7 +108,7 @@ export function SecurityForm() {
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="max-w-sm space-y-2">
                 <Label htmlFor="security-confirm">{t('settings.security_confirm_password')}</Label>
                 <Input
                   id="security-confirm"
