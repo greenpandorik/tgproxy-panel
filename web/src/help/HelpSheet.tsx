@@ -37,7 +37,7 @@ export function HelpSheet({ topic, open, onOpenChange }: HelpSheetProps) {
           the whole body to it. */}
       <SheetContent
         side="right"
-        className="w-full gap-0 data-[side=right]:sm:max-w-[420px]"
+        className="w-full gap-0 sm:max-w-[420px]"
         aria-label={t('help.open')}
         initialFocus={bodyRef}
       >
