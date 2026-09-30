@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 import { Arriving, FormFooter } from './formShell';
 
@@ -111,6 +112,8 @@ export function SubscriptionPageForm() {
 
   const values = useWatch({ control }) as FormValues;
   const noLinks = !values.show_fake_tls && !values.show_web;
+  const titleTooLong = (values.title ?? '').length > 80;
+  const introTooLong = (values.intro ?? '').length > 500;
   const platform: SubscriptionPlatform = values.platform && values.platform !== 'auto' ? values.platform : 'android';
   const previewLanguage = values.language === 'auto' ? (i18n.language?.startsWith('en') ? 'en' : 'ru') : values.language;
   const payload = JSON.stringify({ values, platform, previewLanguage });
@@ -169,7 +172,7 @@ export function SubscriptionPageForm() {
             <PanelBody className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="subpage-language">{t('settings.subpage_language')}</Label>
-                <select id="subpage-language" className="ops-select max-w-64" disabled={disabled} {...register('language')}>
+                <select id="subpage-language" className="ops-select w-full max-w-sm" disabled={disabled} {...register('language')}>
                   <option value="ru">{t('settings.panel_telegram_language_ru')}</option>
                   <option value="en">{t('settings.panel_telegram_language_en')}</option>
                   <option value="auto">{t('settings.subpage_language_auto')}</option>
@@ -179,7 +182,7 @@ export function SubscriptionPageForm() {
                 <Label htmlFor="subpage-platform">{t('settings.subpage_platform')}</Label>
                 <select
                   id="subpage-platform"
-                  className="ops-select max-w-64"
+                  className="ops-select w-full max-w-sm"
                   disabled={disabled}
                   aria-describedby="subpage-platform-hint"
                   {...register('platform')}
@@ -197,14 +200,16 @@ export function SubscriptionPageForm() {
                 <Label htmlFor="subpage-title">{t('settings.subpage_title')}</Label>
                 <Input
                   id="subpage-title"
-                  maxLength={80}
                   disabled={disabled}
+                  aria-invalid={titleTooLong || undefined}
                   aria-describedby="subpage-title-hint"
                   {...register('title')}
                 />
                 <p id="subpage-title-hint" className="flex justify-between gap-3 text-label text-mute">
-                  <span>{t('settings.subpage_title_hint')}</span>
-                  <span className="shrink-0 tabular-nums">
+                  <span className={titleTooLong ? 'text-err' : undefined}>
+                    {titleTooLong ? t('settings.subpage_title_too_long') : t('settings.subpage_title_hint')}
+                  </span>
+                  <span className={titleTooLong ? 'shrink-0 tabular-nums text-err' : 'shrink-0 tabular-nums'}>
                     {t('settings.subpage_title_count', { count: (values.title ?? '').length })}
                   </span>
                 </p>
@@ -214,13 +219,13 @@ export function SubscriptionPageForm() {
                 <Textarea
                   id="subpage-intro"
                   rows={3}
-                  maxLength={500}
                   disabled={disabled}
+                  aria-invalid={introTooLong || undefined}
                   aria-describedby="subpage-intro-hint"
                   {...register('intro')}
                 />
-                <p id="subpage-intro-hint" className="text-label text-mute">
-                  {t('settings.subpage_intro_hint')}
+                <p id="subpage-intro-hint" className={introTooLong ? 'text-label text-err' : 'text-label text-mute'}>
+                  {introTooLong ? t('settings.subpage_intro_too_long') : t('settings.subpage_intro_hint')}
                 </p>
               </div>
             </PanelBody>
@@ -321,7 +326,7 @@ export function SubscriptionPageForm() {
 
         <FormFooter note={!isOwner ? t('settings.panel_owner_only_note') : undefined}>
           {isOwner && (
-            <Button type="submit" disabled={isSubmitting || !isDirty || noLinks || noServers}>
+            <Button type="submit" disabled={isSubmitting || !isDirty || noLinks || noServers || titleTooLong || introTooLong}>
               {t('common.save')}
             </Button>
           )}
@@ -348,7 +353,17 @@ export function SubscriptionPageForm() {
               }
             />
             <PanelBody className="space-y-3">
-              <div className="overflow-hidden rounded-surface border border-hairline-strong">
+              {noLinks && (
+                <p role="status" className="text-label text-warn">
+                  {t('settings.subpage_preview_stale')}
+                </p>
+              )}
+              <div
+                className={cn(
+                  'overflow-hidden rounded-surface border border-hairline-strong',
+                  noLinks && 'opacity-50',
+                )}
+              >
                 {src ? (
                   <iframe
                     title={t('settings.subpage_preview')}

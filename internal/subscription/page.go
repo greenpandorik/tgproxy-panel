@@ -132,6 +132,7 @@ type PlatformView struct {
 	ID       Platform
 	Selected bool
 	Actions  []Action
+	HasAlt   bool
 }
 
 // Page is everything the template needs to render one subscription page.
@@ -153,6 +154,7 @@ type Page struct {
 	Platform     Platform
 	Platforms    []PlatformView
 	Servers      []Server
+	Preview      bool
 }
 
 // Branding is the part of the active branding profile the page uses.
@@ -188,7 +190,7 @@ func Build(in Input) (Page, error) {
 		ShowStatus: s.ShowStatus, ShowGuide: s.ShowGuide, ShowQR: s.ShowQR, Platform: in.Platform,
 	}
 	if page.Title == "" {
-		page.Title = in.Branding.PanelName
+		page.Title = t("subpage.title_default", nil)
 	}
 	if page.Intro == "" {
 		page.Intro = t("subpage.intro_default", nil)
@@ -277,6 +279,7 @@ func Build(in Input) (Page, error) {
 			if alt >= 0 {
 				fallback := srv.Links[alt]
 				a.Alt = &fallback
+				view.HasAlt = true
 			}
 			view.Actions = append(view.Actions, a)
 		}

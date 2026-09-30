@@ -72,6 +72,10 @@ export function SubscriptionLinkSection({
         </Link>
       </p>
 
+      {subscriptionActive && !created && isWriter && !locked && (
+        <p className="text-label text-mute">{t('keys.subscription_hidden')}</p>
+      )}
+
       {created && (
         <div className={cn(ENTER_CLASS, 'rounded-surface border border-hairline-strong p-4')}>
           <p className="flex items-start gap-2 text-label text-warn">

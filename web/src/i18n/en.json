@@ -636,7 +636,8 @@
     "danger_zone": "Danger zone",
     "show_links": "Connection links",
     "link_which_hint": "Which link to send: Fake-TLS connects in any Telegram app. WEB goes through the server site over HTTPS and is harder to block, but for now it works only in Telegram Desktop and recent Android versions.",
-    "subscription_customize": "Customize the page"
+    "subscription_customize": "Customize the page",
+    "subscription_hidden": "The link is shown only when it is created. To send it again, press Rotate link; the old one will stop opening."
   },
   "sites": {
     "title": "Cover sites",
@@ -1232,7 +1233,7 @@
     "subpage_language": "Page language",
     "subpage_language_auto": "Browser language",
     "subpage_title": "Title",
-    "subpage_title_hint": "Leave empty to use the panel name from Branding.",
+    "subpage_title_hint": "Leave empty for \"Connect Telegram\" in the page language.",
     "subpage_intro": "Greeting",
     "subpage_intro_hint": "A short text under the title. Leave empty for the standard text in the page language.",
     "subpage_links": "Which links to show",
@@ -1241,7 +1242,7 @@
     "subpage_show_web": "WEB proxy",
     "subpage_show_web_hint": "The link over HTTPS: harder to block, but it only works in Telegram Desktop and recent Android versions. Never shown on the iPhone tab.",
     "subpage_show_backup": "Backup domains",
-    "subpage_show_backup_hint": "Extra Fake-TLS links on the servers' backup domains, in the All links block.",
+    "subpage_show_backup_hint": "Extra Fake-TLS links on backup domains, in the All links block. They appear only for servers that have backup domains set.",
     "subpage_links_required": "Keep at least one kind of link: Fake-TLS or the WEB proxy.",
     "subpage_blocks": "What else to show",
     "subpage_show_guide": "Step-by-step guide for each device",
@@ -1258,7 +1259,10 @@
     "subpage_platform_auto": "Detect from the visitor's device",
     "subpage_no_tls_warning": "Without Fake-TLS, iPhone users get no link on the page.",
     "subpage_servers_required": "Keep at least one server on the page.",
-    "subpage_title_count": "{{count}} of 80"
+    "subpage_title_count": "{{count}} of 80",
+    "subpage_title_too_long": "Shorten the title to 80 characters.",
+    "subpage_intro_too_long": "Shorten the intro to 500 characters.",
+    "subpage_preview_stale": "The preview does not update while the settings have an error."
   },
   "drafts": {
     "banner": "Draft from <time>{{time}}</time>",
@@ -2319,7 +2323,7 @@
           },
           "title": {
             "name": "Title and greeting",
-            "what": "The text at the top of the page. Your own greeting replaces the standard one entirely. Empty fields fall back to the panel name and the standard greeting."
+            "what": "The text at the top of the page. Your own greeting replaces the standard one entirely. An empty title becomes \"Connect Telegram\", an empty greeting the standard text."
           },
           "links": {
             "name": "Which links to show",
@@ -2572,17 +2576,18 @@
     "step2_title": "Press \"Connect\"",
     "step2_text": "The button opens Telegram with the proxy settings already filled in.",
     "connect": "Connect",
-    "alt": "Didn't connect within a minute? Try another way",
+    "alt": "Didn't connect within a minute? Use the backup link",
     "step3_title": "Confirm and check",
     "all_links": "All links and QR codes",
     "all_links_hint": "To connect another device, point its camera at a QR code. You can also copy a link and send it to yourself.",
-    "label_web": "Link over HTTPS",
-    "label_tls": "Standard link",
-    "label_tls_domain": "Standard link, backup domain {{domain}}",
+    "label_web": "For Telegram Desktop and Android",
+    "label_tls": "Works in every Telegram app",
+    "label_tls_domain": "Works in every app, backup address {{domain}}",
     "copy": "Copy",
     "copied": "Copied",
     "open": "Open in Telegram",
     "empty": "There are no servers for this access yet.",
+    "empty_device": "There are no links for this device. Message whoever sent you this page.",
     "support": "Contact support",
     "error_not_found": "This link was not found.",
     "error_gone": "This link is no longer valid.",
@@ -2594,9 +2599,13 @@
     "step3_check_ios": "To check in Telegram: \"Settings\" → \"Data and Storage\" → \"Proxy\". The server there says \"Connected\".",
     "step3_check_desktop": "To check in Telegram Desktop: \"Settings\" → \"Advanced\" → \"Connection type\". The server there says \"Connected\".",
     "trouble_title": "If it doesn't connect",
-    "trouble_text": "Check that the internet works, then try another server or another way. If that does not help, write to whoever sent you this link.",
     "all_links_plain": "All links",
     "all_links_hint_plain": "Copy a link and open it on a device where Telegram is installed.",
-    "language": "Language"
+    "language": "Language",
+    "title_default": "Connect Telegram",
+    "trouble_wait": "Wait a minute: sometimes Telegram takes a moment to connect.",
+    "trouble_alt": "Press \"Use the backup link\" under the \"Connect\" button.",
+    "trouble_next": "Press \"Connect\" next to the next server.",
+    "trouble_contact": "If nothing helps, call or text whoever sent you this link."
   }
 }

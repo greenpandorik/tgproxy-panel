@@ -97,6 +97,7 @@ func (s *Server) handleSubscriptionPreview(w http.ResponseWriter, r *http.Reques
 		internal(w)
 		return
 	}
+	page.Preview = true
 	var buf bytes.Buffer
 	if err := subscription.Render(&buf, page); err != nil {
 		internal(w)

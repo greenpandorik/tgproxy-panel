@@ -79,16 +79,18 @@
   ol.steps.plain .step { padding-left: 0; }
   ol.steps.plain .step::before, ol.steps.plain .step::after { display: none; }
   .step h2 { font-size: 1.05rem; margin: 3px 0 4px; }
-  .step p { color: var(--text-dim); margin: 0 0 12px; font-size: 0.95rem; }
+  .step p { color: var(--text); opacity: 0.86; margin: 0 0 12px; font-size: 1rem; }
   .step p.success { color: var(--text); }
   .top { justify-content: space-between; }
-  .lang { display: flex; gap: 4px; }
+  .lang { display: flex; gap: 4px; align-items: center; }
+  .lang .lang-label { font-size: 0.82rem; color: var(--text-dim); margin-right: 4px; }
   .lang a { font-size: 0.82rem; font-weight: 600; color: var(--text-dim); text-decoration: none; padding: 5px 9px; border: 1px solid var(--border); border-radius: 8px; }
   .lang a[aria-current] { color: var(--text); border-color: var(--border-2); background: var(--surface); }
   .trouble { margin: 4px 0 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
   .trouble h2 { font-size: 1rem; margin: 0 0 4px; }
-  .trouble p { color: var(--text-dim); font-size: 0.93rem; margin: 0 0 10px; }
-  .trouble p:last-child { margin-bottom: 0; }
+  .trouble ol { margin: 6px 0 0; padding-left: 1.2em; font-size: 0.97rem; }
+  .trouble li { margin: 4px 0; }
+  .trouble .btn { margin-top: 12px; }
   body[data-platform="ios"] .lnk[data-kind="web"], body[data-platform="ios"] .srv[data-web-only] { display: none; }
 
   .btn {
@@ -107,6 +109,8 @@
   .server .host { color: var(--text-dim); font-size: 0.82rem; word-break: break-all; }
   .server .alt { grid-column: 1 / -1; font-size: 0.92rem; margin-top: 6px; }
   .empty { padding: 16px; border: 1px dashed var(--border-2); border-radius: 12px; color: var(--text-dim); }
+  .empty p { margin: 0; }
+  .empty .btn { margin-top: 12px; }
 
   details.all { margin-top: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
   details.all summary { cursor: pointer; padding: 14px 16px; font-weight: 600; list-style: none; position: relative; }
@@ -145,7 +149,9 @@
 <body data-platform="{{.Platform}}">
 <script>
 document.documentElement.classList.add('js');
+var remember = {{if .Preview}}false{{else}}true{{end}};
 (function () {
+  if (!remember) return;
   try {
     var saved = localStorage.getItem('tgwp-sub-lang');
     if (saved && saved !== document.documentElement.lang && !/[?&]lang=/.test(location.search)) {
@@ -160,6 +166,7 @@ document.documentElement.classList.add('js');
   <header class="top">
     <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="var(--primary)"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="var(--primary)"/></svg>
     <nav class="lang" aria-label="{{t "subpage.language"}}">
+      <span class="lang-label" aria-hidden="true">{{t "subpage.language"}}</span>
       <a href="?lang=ru" hreflang="ru" lang="ru" data-lang="ru"{{if eq .Lang "ru"}} aria-current="true"{{end}}>RU</a>
       <a href="?lang=en" hreflang="en" lang="en" data-lang="en"{{if eq .Lang "en"}} aria-current="true"{{end}}>EN</a>
     </nav>
@@ -179,6 +186,12 @@ document.documentElement.classList.add('js');
   {{range .Platforms}}
   <section class="panel" id="panel-{{.ID}}" role="tabpanel" aria-labelledby="tab-{{.ID}}" data-platform="{{.ID}}"{{if not .Selected}} data-inactive{{end}}>
     <h2 class="panel-title">{{t (print "subpage.platform_" .ID)}}</h2>
+    {{if not .Actions}}
+    <div class="empty">
+      <p>{{t "subpage.empty_device"}}</p>
+      {{if $.SupportLink}}<a class="btn ghost" href="{{$.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
+    </div>
+    {{else}}
     <ol class="steps{{if not $.ShowGuide}} plain{{end}}">
       {{if $.ShowGuide}}
       <li class="step">
@@ -197,8 +210,6 @@ document.documentElement.classList.add('js');
             <a class="btn primary" href="{{safeURL .Primary.TMe}}">{{t "subpage.connect"}}</a>
             {{if .Alt}}<a class="alt" href="{{safeURL .Alt.TMe}}">{{t "subpage.alt"}}</a>{{end}}
           </li>
-          {{else}}
-          <li class="empty">{{t "subpage.empty"}}</li>
           {{end}}
         </ul>
       </li>
@@ -211,16 +222,22 @@ document.documentElement.classList.add('js');
       </li>
       {{end}}
     </ol>
+    {{if $.ShowGuide}}
+    <section class="trouble">
+      <h2>{{t "subpage.trouble_title"}}</h2>
+      <ol>
+        <li>{{t "subpage.trouble_wait"}}</li>
+        {{if .HasAlt}}<li>{{t "subpage.trouble_alt"}}</li>{{end}}
+        {{if gt (len .Actions) 1}}<li>{{t "subpage.trouble_next"}}</li>{{end}}
+        <li>{{t "subpage.trouble_contact"}}</li>
+      </ol>
+      {{if $.SupportLink}}<a class="btn ghost" href="{{$.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
+    </section>
+    {{end}}
+    {{end}}
   </section>
   {{end}}
 
-  {{if .ShowGuide}}
-  <section class="trouble">
-    <h2>{{t "subpage.trouble_title"}}</h2>
-    <p>{{t "subpage.trouble_text"}}</p>
-    {{if .SupportLink}}<a class="btn ghost" href="{{.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
-  </section>
-  {{end}}
 
   <details class="all">
     <summary>{{if .ShowQR}}{{t "subpage.all_links"}}{{else}}{{t "subpage.all_links_plain"}}{{end}}</summary>
@@ -260,9 +277,9 @@ document.documentElement.classList.add('js');
 <script>
 (function () {
   var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
-  function select(tab, remember) {
+  function select(tab, save) {
     document.body.setAttribute('data-platform', tab.getAttribute('data-platform'));
-    if (remember) { try { localStorage.setItem('tgwp-sub-tab', tab.getAttribute('data-platform')); } catch (e) {} }
+    if (remember && save) { try { localStorage.setItem('tgwp-sub-tab', tab.getAttribute('data-platform')); } catch (e) {} }
     tabs.forEach(function (t) {
       var on = t === tab;
       t.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -271,14 +288,14 @@ document.documentElement.classList.add('js');
       if (on) { panel.removeAttribute('data-inactive'); } else { panel.setAttribute('data-inactive', ''); }
     });
   }
-  try {
+  if (remember) try {
     var savedTab = localStorage.getItem('tgwp-sub-tab');
     tabs.forEach(function (t) { if (t.getAttribute('data-platform') === savedTab) select(t, false); });
   } catch (e) {}
   document.querySelectorAll('.lang a').forEach(function (a) {
     a.addEventListener('click', function (e) {
       var lang = a.getAttribute('data-lang');
-      try { localStorage.setItem('tgwp-sub-lang', lang); } catch (err) {}
+      if (remember) try { localStorage.setItem('tgwp-sub-lang', lang); } catch (err) {}
       var params = new URLSearchParams(location.search);
       params.set('lang', lang);
       e.preventDefault();

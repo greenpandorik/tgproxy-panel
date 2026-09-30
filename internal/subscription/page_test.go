@@ -73,6 +73,9 @@ func TestEachDeviceGetsTheLinkItCanOpen(t *testing.T) {
 	if desktop.Actions[0].Primary.Kind != keys.LinkWeb || desktop.Actions[0].Alt.Kind != keys.LinkTLS {
 		t.Fatalf("desktop: WEB first with Fake-TLS as the fallback: %+v", desktop.Actions[0])
 	}
+	if ios.HasAlt || !android.HasAlt || !desktop.HasAlt {
+		t.Fatal("only tabs that offer a backup link should advise pressing it")
+	}
 	if !ios.Selected || android.Selected {
 		t.Fatal("the detected device should be the selected tab")
 	}
@@ -95,7 +98,7 @@ func TestSettingsHideLinksServersAndBlocks(t *testing.T) {
 
 func TestBackupDomainsGetTheirOwnLabel(t *testing.T) {
 	_, out := build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Android, nil)
-	if !strings.Contains(out, "Standard link, backup domain backup.example.org") {
+	if !strings.Contains(out, "Works in every app, backup address backup.example.org") {
 		t.Fatal("the backup domain link is not labelled with its domain")
 	}
 }
@@ -107,14 +110,14 @@ func TestLanguageStatusAndTitles(t *testing.T) {
 	_, ru := build(t, s, alerttext.RU, subscription.Android, &expires)
 	for _, want := range []string{
 		`lang="ru"`, "Мой прокси", "Привет!", "Доступ активен", "до 31 декабря 2026", "Установите Telegram", "Подключить", "Открыть Google Play",
-		"«Соединение…»", "«Настройки прокси»", "Если не подключается", `href="?lang=en"`, "Серверов несколько",
+		"«Соединение…»", "«Настройки прокси»", "Если не подключается", `href="?lang=en"`, "Серверов несколько", "позвоните или напишите в SMS", "запасную ссылку",
 	} {
 		if !strings.Contains(ru, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
 	_, en := build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Desktop, nil)
-	for _, want := range []string{`lang="en"`, "<title>Demo</title>", "with no end date", "Download Telegram Desktop", "Connection type", "Didn&#39;t connect within a minute? Try another way", "opens Telegram Desktop"} {
+	for _, want := range []string{`lang="en"`, "<title>Connect Telegram</title>", "with no end date", "Download Telegram Desktop", "Connection type", "Didn&#39;t connect within a minute? Use the backup link", "opens Telegram Desktop"} {
 		if !strings.Contains(en, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -188,5 +191,30 @@ func TestNoQRMeansNoTalkOfScanning(t *testing.T) {
 	_, out := build(t, s, alerttext.RU, subscription.Android, nil)
 	if strings.Contains(out, "QR-код") || !strings.Contains(out, "Все ссылки") {
 		t.Fatal("without QR codes the block should not mention them")
+	}
+}
+
+func TestDeviceWithoutLinksSaysSoInsteadOfSteps(t *testing.T) {
+	s := subscription.DefaultSettings()
+	s.ShowFakeTLS = false
+	page, out := build(t, s, alerttext.RU, subscription.IOS, nil)
+	if len(platform(page, subscription.IOS).Actions) != 0 {
+		t.Fatal("without Fake-TLS the iPhone tab has nothing to open")
+	}
+	panel := out[strings.Index(out, `id="panel-ios"`):strings.Index(out, `id="panel-desktop"`)]
+	if !strings.Contains(panel, "Для этого устройства ссылок нет") || strings.Contains(panel, "Установите Telegram") {
+		t.Fatal("an empty device tab should say there are no links and skip the steps")
+	}
+}
+
+func TestPreviewDoesNotTouchTheVisitorsMemory(t *testing.T) {
+	page, _ := build(t, subscription.DefaultSettings(), alerttext.RU, subscription.Android, nil)
+	page.Preview = true
+	var buf bytes.Buffer
+	if err := subscription.Render(&buf, page); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "var remember = false") {
+		t.Fatal("the preview must not read or save the language and tab")
 	}
 }
