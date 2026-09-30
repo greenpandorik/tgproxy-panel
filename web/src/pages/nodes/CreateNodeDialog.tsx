@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { useMutation } from '@tanstack/react-query';
 import { useCreateNode } from '@/api/nodes';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { DraftBanner } from '@/components/common/DraftBanner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -89,7 +90,7 @@ function EngineCards({ value, onChange }: { value: NodeEngine; onChange: (engine
             aria-checked={active}
             onClick={() => onChange(engine)}
             className={cn(
-              'rounded-control border px-3 py-3 text-left transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
+              'flex flex-col items-start justify-start rounded-control border px-3 py-3 text-left transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
               active ? 'border-hairline-strong bg-elevated' : 'border-hairline hover:bg-elevated/60',
             )}
           >
@@ -302,7 +303,7 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
               {t('nodes.wizard_check_dns')}
             </Button>
             {dns.isError && (
-              <p role="alert" className="text-destructive">
+              <p role="alert" className="text-label text-destructive">
                 {dns.error.message}
               </p>
             )}
@@ -334,9 +335,8 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
             </div>
 
             {engine === 'telemt' && (
-              <details>
-                <summary className="cursor-pointer text-label text-mute">{t('nodes.wizard_advanced')}</summary>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+              <AdvancedSettings label={t('nodes.wizard_advanced')}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
                   <div className="space-y-2">
                     <Label htmlFor="node-tls-domain">{t('nodes.field_tls_domain')}</Label>
                     <Input
@@ -363,7 +363,7 @@ export function CreateNodeDialog({ open, onOpenChange, onCreated }: CreateNodeDi
                     {errors.classic_port && <p className="text-label text-destructive">{t('nodes.validation_classic_port')}</p>}
                   </div>
                 </div>
-              </details>
+              </AdvancedSettings>
             )}
 
             {engine === 'telemt' && (

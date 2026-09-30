@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Link } from 'react-router-dom';
@@ -5,6 +6,7 @@ import { useNode, useNodeHealth } from '@/api/nodes';
 import { Button } from '@/components/ui/button';
 import { WebDiagnosticsCard } from '@/components/web/WebDiagnosticsCard';
 import { CopyButton } from '@/components/common/CopyButton';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { HelpButton } from '@/help';
 import { formatDateTime } from '@/lib/format';
@@ -38,17 +40,19 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
           <DialogDescription>{t('nodes.install_description')}</DialogDescription>
         </DialogHeader>
 
-        <ol className="flex gap-4 border-b border-hairline pb-3 text-label">
-          {[1, 2].map((step) => (
-            <li key={step} className="flex items-center gap-1.5 text-ok">
-              <span aria-hidden="true">✓</span>
-              {step}. {t(`nodes.wizard_step_${step}`)}
+        {!regenerated && (
+          <ol className="flex gap-4 border-b border-hairline pb-3 text-label">
+            {[1, 2].map((step) => (
+              <li key={step} className="flex items-center gap-1.5 text-ok">
+                <Check className="size-3.5" aria-hidden="true" />
+                {step}. {t(`nodes.wizard_step_${step}`)}
+              </li>
+            ))}
+            <li aria-current="step" className="font-semibold text-foreground">
+              3. {t('nodes.wizard_step_3')}
             </li>
-          ))}
-          <li aria-current="step" className="font-semibold text-foreground">
-            3. {t('nodes.wizard_step_3')}
-          </li>
-        </ol>
+          </ol>
+        )}
 
         <div>
           <div className="flex items-start gap-2 rounded-surface border border-hairline-strong bg-background p-3">
@@ -60,6 +64,12 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
           <p className="mono mt-2 text-mono text-mute">
             {t('nodes.install_expires', { time: formatDateTime(expiresAt, i18n.language) })}
           </p>
+          {regenerated && (
+            <p role="alert" className="mt-2 flex items-start gap-2 text-label text-warn">
+              <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
+              {t('nodes.install_regenerate_note')}
+            </p>
+          )}
         </div>
 
         <ol className="space-y-2 border-t border-hairline pt-4">
@@ -75,11 +85,12 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
 
         {nodeId && (
           <div className="space-y-3 border-t border-hairline pt-4">
-            <p role="status" className="font-medium">
+            <p role="status" className="flex items-center gap-2 font-medium">
+              <StatusBadge status={node.data?.online ? 'online' : 'pending'} hideLabel />
               {t(node.data?.online ? 'nodes.install_connected' : 'nodes.install_waiting')}
             </p>
             {(node.isError || health.isError) && (
-              <p role="alert" className="text-destructive">
+              <p role="alert" className="text-body text-destructive">
                 {node.error?.message ?? health.error?.message}
               </p>
             )}
@@ -105,12 +116,6 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
               </>
             )}
           </div>
-        )}
-        {regenerated && (
-          <p role="alert" className="flex items-start gap-2 text-label text-warn">
-            <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
-            {t('nodes.install_regenerate_note')}
-          </p>
         )}
       </DialogContent>
     </Dialog>
