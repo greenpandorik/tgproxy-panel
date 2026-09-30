@@ -70,7 +70,7 @@ func Load(getenv func(string) string) (Config, error) {
 		TProxyCommit:  get("TPROXY_COMMIT", DefaultTProxyCommit),
 		TelemtVersion: get("TELEMT_VERSION", DefaultTelemtVersion),
 		TelemtSHA256:  strings.ToLower(get("TELEMT_SHA256_X86_64", "")),
-		FeatureTOTP:   get("FEATURE_TOTP", "false") == "true",
+		FeatureTOTP:   get("FEATURE_TOTP", "true") == "true",
 		LogLevel:      get("LOG_LEVEL", "info"),
 		OldMasterKeys: map[int][]byte{},
 		GitHubRepo:    get("GITHUB_REPO", DefaultGitHubRepo),

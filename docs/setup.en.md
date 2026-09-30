@@ -62,7 +62,7 @@ The installer asks a few questions:
 | `Panel domain` | The panel domain, for example `panel.example.com`. An empty answer installs the panel in local mode without a domain (section 3) |
 | `E-mail for Let's Encrypt` | Where certificate problem notices go. You can skip it, but then you get no warnings |
 | `Admin username` | The first administrator's login, `admin` by default |
-| `Admin password` | At least 8 characters. It is hidden as you type, and the installer asks for it twice. Press Enter to have a 20-character password generated |
+| `Admin password` | At least 10 characters. It is hidden as you type, and the installer asks for it twice. Press Enter to have a 20-character password generated |
 
 Then the installer works through these steps:
 
@@ -261,17 +261,13 @@ Changing it signs out all your other sessions.
 
 ![Password and 2FA](screenshots/settings-security.png)
 
-Two-factor login is off by default, and the "Two-factor authentication" block is missing from the
-tab. To make it appear, set `FEATURE_TOTP=true` in `.env` and recreate the panel container in the
-install directory:
+Two-factor login is available by default: the tab has a "Two-factor authentication" block. If
+the panel's `.env` has `FEATURE_TOTP=false`, the block is hidden; remove that line or set it to
+`true` and recreate the panel container in the install directory with
+`cd /opt/tgproxy-panel && docker compose up -d panel` (`docker compose restart` keeps the old
+variables).
 
-```bash
-cd /opt/tgproxy-panel && docker compose up -d panel   # by-hand install: cd deploy
-```
-
-`docker compose restart` is not enough here: it restarts the container with the old variables.
-
-Then, on the Password and 2FA tab, press "Turn on", scan the QR code with Google Authenticator,
+To turn it on, press "Turn on" on the Password and 2FA tab, scan the QR code with Google Authenticator,
 Aegis, 1Password or another app, enter the code and press "Confirm and turn on".
 
 ![Enrolling an authenticator](screenshots/settings-2fa-enrol.png)
@@ -818,7 +814,7 @@ a plain `restart` does not see the new values.
 | `METRICS_TOKEN` | Token for `/metrics`, required with `gateway` |
 | `TELEMT_VERSION`, `TELEMT_SHA256_X86_64` | telemt version for servers and the sha256 of its archive. Change them as a pair; the sha256 is required with `gateway` |
 | `TPROXY_COMMIT` | `tproxy-server` commit used when installing servers |
-| `FEATURE_TOTP` | `true` turns on two-factor login |
+| `FEATURE_TOTP` | `true` by default; `false` hides two-factor login |
 | `APPLY_INTERVAL`, `OFFLINE_AFTER` | Apply interval and offline threshold in seconds, 45 and 90 by default. Values saved under Settings → Notifications take precedence |
 | `UPDATE_CHECK`, `GITHUB_REPO`, `GITHUB_TOKEN` | The GitHub update check: on/off switch, repository and an optional token |
 | `LOG_LEVEL` | `debug`, `info`, `warn` or `error` |

@@ -566,8 +566,8 @@ Settings → Accounts, with a password of at least 10 characters.
 
 ### Two-factor login
 
-Two-factor login is off until `FEATURE_TOTP=true` is set in `.env` and the panel restarts. Then
-Settings → Password and 2FA shows "Turn on":
+Two-factor login is available by default; `FEATURE_TOTP=false` in `.env` hides it. Settings →
+Password and 2FA shows "Turn on":
 
 1. The panel shows a QR code and the key for manual entry. Any standard authenticator app works:
    Google Authenticator, Aegis, 1Password and others.
@@ -775,7 +775,7 @@ The panel reads its settings from `.env`. The file `.env.example` lists them all
 | `TPROXY_COMMIT` | `52a5feb7fac38f68da5afef9cedd9b3bfc8473ca` | The `tproxy-server` commit for new tproxy servers, 7 to 40 lowercase hex characters |
 | `TELEMT_VERSION` | `3.5.9` | The telemt release for telemt servers, like `3.5.7` |
 | `TELEMT_SHA256_X86_64` | none, filled in `.env.example` | sha256 of `telemt-x86_64-linux-gnu.tar.gz` for that release. Required with `gateway`. Change it together with `TELEMT_VERSION` |
-| `FEATURE_TOTP` | `false` | `true` turns on two-factor login |
+| `FEATURE_TOTP` | `true` | `false` hides two-factor login |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `APPLY_INTERVAL` | `45` | Seconds between applies to servers with changes. Settings → Notifications can override it |
 | `OFFLINE_AFTER` | `90` | Seconds without a heartbeat before a server is offline. Settings → Notifications can override it |
@@ -843,7 +843,7 @@ pending database migrations.
 |---|---|
 | `panel serve` | Runs the panel. This is the default. A second panel on the same database refuses to start |
 | `panel migrate` | Applies database migrations and exits |
-| `panel admin create <username> <password> [owner\|admin\|viewer]` | Creates an account, `owner` by default |
+| `panel admin create <username> <password> [owner\|admin\|viewer]` | Creates an account, `owner` by default. The password needs at least 10 characters |
 | `panel admin totp-reset <username>` | Turns off two-factor login for one account and deletes its recovery codes |
 | `panel db backup` | Makes a backup, same as the button in Settings |
 | `panel db restore <file> --yes` | Replaces the database with a backup. Refuses while the panel is running |

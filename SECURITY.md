@@ -5,9 +5,8 @@
 ## Reporting a vulnerability
 
 Please don't open a public issue. Report privately through
-[GitHub security advisories](https://github.com/greenpandorik/tgproxy-panel/security/advisories/new).
-If that form is not available, open an issue that only asks for a private contact, with no
-details.
+[GitHub security advisories](https://github.com/greenpandorik/tgproxy-panel/security/advisories/new):
+only the maintainer sees the report.
 
 In the report, say what you did, what happened and what you expected, and which version you run
 (the panel shows it in the top right corner). A proof of concept helps but is not required.
@@ -35,7 +34,8 @@ If a term is unfamiliar, see the [glossary](docs/start.en.md#glossary).
 - After 20 failed attempts with no successful sign-in in between, the account is locked for
   15 minutes. Wrong 2FA codes count too.
 - Every failed sign-in goes to the log and to the "Activity log" with the reason.
-- Two-factor sign-in (TOTP) is off until you set `FEATURE_TOTP=true`. When it is on, the second
+- Two-factor sign-in (TOTP) is available by default, and each admin turns it on for their own
+  account; `FEATURE_TOTP=false` hides it. When it is on, the second
   step must be finished within 5 minutes, wrong codes count toward the same limits, and the
   8 recovery codes are single-use and stored only as hashes. How to reset 2FA for a locked-out
   user is in the [runbook](docs/runbook.md).
@@ -125,7 +125,7 @@ If a term is unfamiliar, see the [glossary](docs/start.en.md#glossary).
   internet, anyone can forge the header.
 - Don't publish the Postgres or panel ports. The shipped Compose file publishes only Caddy's 80
   and 443.
-- Turn on 2FA with `FEATURE_TOTP=true` and give the viewer role to people who only need to
+- Have every admin turn on 2FA and give the viewer role to people who only need to
   look.
 
 Installation is described in the [setup guide](docs/setup.en.md), how the panel is built in

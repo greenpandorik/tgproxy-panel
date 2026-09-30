@@ -2115,7 +2115,7 @@
           },
           "totp": {
             "name": "Two-factor authentication",
-            "what": "One-time codes from an authenticator app (Google Authenticator, Aegis, 1Password and any other TOTP app). To enable: scan the QR code or type the key by hand, enter the code the app shows and your password. The section appears when the panel's .env has FEATURE_TOTP=true."
+            "what": "One-time codes from an authenticator app (Google Authenticator, Aegis, 1Password and any other TOTP app). To enable: scan the QR code or type the key by hand, enter the code the app shows and your password. The section is hidden when the panel's .env has FEATURE_TOTP=false."
           },
           "recovery": {
             "name": "Recovery codes",

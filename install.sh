@@ -69,7 +69,7 @@ Options:
   --local                No domain: no Caddy, no TLS, panel on http://<ip>:8080.
   --email <address>      ACME account e-mail (certificate expiry notices). Optional.
   --admin-user <name>    First admin account (role owner). Default: admin.
-  --admin-password <pw>  Its password. Generated (20 characters) and printed once if omitted.
+  --admin-password <pw>  Its password, at least 10 characters. Generated (20 characters) and printed once if omitted.
   --version <tag>        Panel release to install, e.g. 1.0.0. Default: the latest release.
   --dir <path>           Install directory. Default: $DEFAULT_DIR.
   --image <ref>          Use this image reference instead of $DEFAULT_IMAGE:<version>
@@ -1095,7 +1095,7 @@ collect_install_options() {
 	valid_username "$ADMIN_USER" || usage_error "admin username may contain letters, digits, . _ @ - (1-64 chars)"
 	if [[ -z "$ADMIN_PASSWORD" && "$INTERACTIVE" -eq 1 ]]; then
 		local again=""
-		ask_secret ADMIN_PASSWORD "Admin password (hidden; leave empty to generate one)"
+		ask_secret ADMIN_PASSWORD "Admin password (hidden, at least 10 characters; leave empty to generate one)"
 		if [[ -n "$ADMIN_PASSWORD" ]]; then
 			ask_secret again "Repeat the password"
 			[[ "$ADMIN_PASSWORD" == "$again" ]] || die "the passwords do not match; run the installer again"
@@ -1105,7 +1105,7 @@ collect_install_options() {
 		ADMIN_PASSWORD="$(gen_password)"
 		PASSWORD_GENERATED=1
 	fi
-	[[ ${#ADMIN_PASSWORD} -ge 8 ]] || usage_error "the admin password must be at least 8 characters"
+	[[ ${#ADMIN_PASSWORD} -ge 10 ]] || usage_error "the admin password must be at least 10 characters"
 }
 
 # check_dir: the shape of --dir; whether its contents are acceptable is a pre-flight check.

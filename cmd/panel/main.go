@@ -130,6 +130,9 @@ func adminCreate(ctx context.Context, st *store.Store, args []string) error {
 	if !slices.Contains(adminRoles, role) {
 		return fmt.Errorf("unknown role %q, want one of %s", role, strings.Join(adminRoles, "|"))
 	}
+	if len(args[1]) < 10 {
+		return errors.New("the password must be at least 10 characters")
+	}
 	hash, err := crypto.HashPassword(args[1])
 	if err != nil {
 		return err

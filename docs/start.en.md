@@ -134,7 +134,7 @@ The installer asks a few questions:
 | `Panel domain` | The panel name from step 2, such as `panel.example.com` |
 | `E-mail for Let's Encrypt` | Your e-mail. You get a message there if something goes wrong with the site's certificate |
 | `Admin username` | The login for the panel. Press Enter to keep `admin` |
-| `Admin password` | At least 8 characters; they don't show while you type. The installer asks you to repeat it. You can also just press Enter and it makes up a password for you |
+| `Admin password` | At least 10 characters; they don't show while you type. The installer asks you to repeat it. You can also just press Enter and it makes up a password for you |
 
 The installer does the rest: it checks that the domain points at this server and the ports are
 free, installs what it needs and gets a certificate for the site. That takes a few minutes. If a
@@ -147,16 +147,8 @@ generated. It is shown only once, so save it right away.
 Open the panel address in your browser, such as `https://panel.example.com`, and sign in.
 
 We recommend turning on two-factor sign-in right away: signing in to the panel will then need a
-code from an app on your phone as well as the password. It is off after installation, so first
-enable it on the panel server:
-
-```bash
-echo 'FEATURE_TOTP=true' | sudo tee -a /opt/tgproxy-panel/.env
-cd /opt/tgproxy-panel && sudo docker compose up -d panel
-```
-
-Half a minute later, reload the panel page, open the user menu in the top right corner →
-"Password and 2FA" and click "Turn on". The panel shows a QR code for your authenticator app and
+code from an app on your phone as well as the password. Open the user menu in the top right
+corner → "Password and 2FA" and click "Turn on". The panel shows a QR code for your authenticator app and
 recovery codes: save them, because without them you can't sign in if you lose your phone.
 
 ## 6. Connect the proxy server

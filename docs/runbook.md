@@ -799,8 +799,8 @@ It worked if `https://panel.example.com/healthz` answers `ok`, the panel log has
 
 ## Two-factor authentication lockout
 
-Two-factor login works only when `.env` has `FEATURE_TOTP=true` (the [setup guide](setup.en.md)
-explains how to turn it on). An admin who lost both the authenticator app and all eight recovery
+This applies while two-factor login is available, which is the default (`FEATURE_TOTP=false`
+in `.env` hides it). An admin who lost both the authenticator app and all eight recovery
 codes cannot log in. After the password the panel waits five minutes for a code, and the second
 factor can be turned off only from inside the panel. If this is the last owner, nobody is left to
 manage the panel.
