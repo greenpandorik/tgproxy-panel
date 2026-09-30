@@ -46,6 +46,7 @@ type CreateInput struct {
 	ExpiresAt               *time.Time
 	NodeIDs                 []uuid.UUID
 	CreatedBy               uuid.UUID
+	SubSlug                 string
 }
 
 func (in CreateInput) validate(requireLabel bool) error {
@@ -70,6 +71,9 @@ func (in CreateInput) validate(requireLabel bool) error {
 	}
 	if in.ExpiresAt != nil && in.ExpiresAt.Before(time.Now()) {
 		ve["expires_at"] = "must be in the future"
+	}
+	if in.SubSlug != "" && (!ValidSlug(in.SubSlug) || in.Type != domain.KeyShared) {
+		ve["sub_slug"] = "3-32 characters: a-z, 0-9 and dashes, shared keys only"
 	}
 	if len(ve) > 0 {
 		return ve
@@ -105,6 +109,16 @@ func (s *Service) createTx(ctx context.Context, q *db.Queries, in CreateInput) (
 	if _, err := s.issueSubscriptionTx(ctx, q, key.ID); err != nil {
 		return db.AccessKey{}, err
 	}
+	if in.SubSlug != "" {
+		slug := in.SubSlug
+		if err := q.SetKeySlug(ctx, db.SetKeySlugParams{ID: key.ID, SubSlug: &slug}); err != nil {
+			if isUnique(err) {
+				return db.AccessKey{}, ValidationError{"sub_slug": "taken"}
+			}
+			return db.AccessKey{}, err
+		}
+		key.SubSlug = &slug
+	}
 	return key, nil
 }
 
@@ -131,6 +145,7 @@ func (s *Service) CreateBatch(ctx context.Context, in CreateInput, prefix string
 	if strings.TrimSpace(prefix) == "" {
 		return nil, ValidationError{"prefix": "required"}
 	}
+	in.SubSlug = ""
 	var out []db.AccessKey
 	err := s.st.Tx(ctx, func(q *db.Queries) error {
 		out = make([]db.AccessKey, 0, count)

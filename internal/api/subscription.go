@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -37,6 +38,40 @@ func (s *Server) handleCreateSubscription(w http.ResponseWriter, r *http.Request
 	}
 	s.Audit(r.Context(), "key.subscription_create", "key", k.ID.String(), map[string]any{"label": k.Label})
 	writeJSON(w, 200, map[string]any{"url": url, "qr_data_uri": qr})
+}
+
+// handleSubscriptionQR draws the key's current subscription link, or its short address with ?short=1.
+func (s *Server) handleSubscriptionQR(w http.ResponseWriter, r *http.Request) {
+	k, ok := s.loadKey(w, r)
+	if !ok {
+		return
+	}
+	sub, err := s.store.Q.GetKeySubscription(r.Context(), k.ID)
+	if err != nil || k.Status == db.KeyStatusRevoked {
+		notFound(w)
+		return
+	}
+	var url string
+	if r.URL.Query().Get("short") == "1" && k.SubSlug != nil {
+		url = s.subscriptionURL(*k.SubSlug)
+	} else if token, ok := s.keys.SubscriptionToken(sub); ok {
+		url = s.subscriptionURL(token)
+	} else {
+		notFound(w)
+		return
+	}
+	size, _ := strconv.Atoi(r.URL.Query().Get("size"))
+	if size < 128 || size > 1024 {
+		size = 256
+	}
+	png, err := qrlink.PNG(url, size)
+	if err != nil {
+		internal(w)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(png)
 }
 
 // handleRevokeSubscription revokes every live token for the key.

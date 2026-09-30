@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 
 import { keyQrUrl, linkKindLabel, useKey, useKeyLinks } from '@/api/keys';
 import { useAuth } from '@/auth/AuthProvider';
-import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { ClientSupportNotice } from '@/components/common/ClientSupportNotice';
 import { CopyButton } from '@/components/common/CopyButton';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -19,16 +18,12 @@ import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { cn } from '@/lib/utils';
 
-import { SubscriptionLinkSection } from './SubscriptionLinkSection';
-
 import type { KindLink, NodeLinkGroup } from '@/api/types';
 
 interface KeyLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   keyId: string | null;
-  /** Opened right after creation: handing the access over comes first, per-node links second. */
-  handover?: boolean;
 }
 
 function LinkRow({ scheme, value, copyLabel }: { scheme: string; value: string; copyLabel: string }) {
@@ -192,7 +187,7 @@ function NodeLinksCard({
 }
 
 // Per-node links + QR for a key.
-export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDialogProps) {
+export function KeyLinkDialog({ open, onOpenChange, keyId }: KeyLinkDialogProps) {
   const { t } = useTranslation();
   const { isWriter } = useAuth();
   const keyQuery = useKey(keyId ?? '');
@@ -228,11 +223,7 @@ export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDi
         <DialogHeader>
           <div className="flex items-center gap-2 pr-6">
             <DialogTitle>
-              {!key
-                ? t('keys.link_title_loading')
-                : handover
-                  ? t('keys.link_created_title', { label: key.label })
-                  : t('keys.link_title', { label: key.label })}
+              {!key ? t('keys.link_title_loading') : t('keys.link_title', { label: key.label })}
             </DialogTitle>
             <HelpButton topic="keys.link" className="-my-1" />
           </div>
@@ -293,59 +284,20 @@ export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDi
               </p>
             )}
 
-            {handover ? (
-              <>
-                {/* This branch only renders once the "revoked" and "no links" cases above
-                    have returned, so the key here is always active/pending - nothing to lock. */}
-                <SubscriptionLinkSection
-                  key={key.id}
+            {whichHint}
+            <div className="max-h-[56vh] space-y-4 overflow-y-auto pr-1">
+              {groups.map((group, i) => (
+                <NodeLinksCard
+                  key={group.node_id}
                   keyId={key.id}
-                  subscriptionActive={key.subscription_active}
-                  isWriter={isWriter}
-                  className="border-t-0 pt-0"
+                  group={group}
+                  index={i}
+                  onDownload={(g, link) => void handleDownload(g, link)}
                 />
+              ))}
+            </div>
 
-                <AdvancedSettings label={t('keys.link_per_node_toggle')} className="border-t border-hairline pt-4">
-                  {whichHint}
-                  <div className="max-h-[38vh] space-y-4 overflow-y-auto pr-1">
-                    {groups.map((group, i) => (
-                      <NodeLinksCard
-                        key={group.node_id}
-                        keyId={key.id}
-                        group={group}
-                        index={i}
-                        onDownload={(g, link) => void handleDownload(g, link)}
-                      />
-                    ))}
-                  </div>
-                  <ClientSupportNotice clientSupport={linksQuery.data?.client_support ?? key.client_support} />
-                </AdvancedSettings>
-              </>
-            ) : (
-              <>
-                {whichHint}
-                <div className="max-h-[42vh] space-y-4 overflow-y-auto pr-1">
-                  {groups.map((group, i) => (
-                    <NodeLinksCard
-                      key={group.node_id}
-                      keyId={key.id}
-                      group={group}
-                      index={i}
-                      onDownload={(g, link) => void handleDownload(g, link)}
-                    />
-                  ))}
-                </div>
-
-                <ClientSupportNotice clientSupport={linksQuery.data?.client_support ?? key.client_support} />
-
-                <SubscriptionLinkSection
-                  key={key.id}
-                  keyId={key.id}
-                  subscriptionActive={key.subscription_active}
-                  isWriter={isWriter}
-                />
-              </>
-            )}
+            <ClientSupportNotice clientSupport={linksQuery.data?.client_support ?? key.client_support} />
           </div>
         )}
       </DialogContent>

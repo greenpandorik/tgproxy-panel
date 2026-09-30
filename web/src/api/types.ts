@@ -458,6 +458,28 @@ export interface AccessKey {
   subscription_active: boolean;
   /** Octets the key moved across its telemt nodes in the last 30 days; 0 on tproxy-only keys. */
   traffic_30d: number;
+  state: KeyState;
+  disabled_at: string | null;
+  last_seen_at: string | null;
+  /** Short subscription address of a shared key, e.g. "team" for /s/team. */
+  sub_slug: string | null;
+  subscription_url: string | null;
+  subscription_short_url: string | null;
+  /** The link was made before links were kept, so it works but cannot be shown. */
+  subscription_legacy: boolean;
+  live: { connections: number; ips: number };
+}
+
+/** What the users list shows: status, the off switch and the expiry folded together. */
+export type KeyState = 'active' | 'pending' | 'disabled' | 'expired' | 'revoked';
+
+export interface KeySummary {
+  total: number;
+  active: number;
+  expiring: number;
+  expired: number;
+  disabled: number;
+  revoked: number;
 }
 
 export interface SubscriptionCreated {
@@ -477,6 +499,7 @@ export interface KeyInput {
   node_ids: string[];
   prefix?: string;
   count?: number;
+  sub_slug?: string;
 }
 
 export interface PatchKeyInput {
@@ -488,6 +511,7 @@ export interface PatchKeyInput {
   telemt_limits?: TelemtLimits;
   expires_at?: string | null;
   clear_expiry?: boolean;
+  sub_slug?: string;
 }
 
 export interface KeyFilters {
@@ -495,11 +519,12 @@ export interface KeyFilters {
   per_page?: number;
   type?: KeyType;
   status?: KeyStatus;
+  state?: KeyState | 'expiring';
   node?: string;
   q?: string;
 }
 
-export type BulkKeyAction = 'revoke' | 'delete' | 'extend';
+export type BulkKeyAction = 'revoke' | 'delete' | 'extend' | 'disable' | 'enable';
 
 export interface BulkKeysInput {
   action: BulkKeyAction;

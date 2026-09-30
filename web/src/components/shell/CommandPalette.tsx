@@ -157,7 +157,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             {matchedKeys.length > 0 && (
               <CommandGroup heading={t('command.group_keys')}>
                 {matchedKeys.map((k) => (
-                  <CommandItem key={k.id} value={`key:${k.id}`} onSelect={() => run(() => navigate(`/keys?key=${k.id}`))}>
+                  <CommandItem key={k.id} value={`key:${k.id}`} onSelect={() => run(() => navigate(`/users?user=${k.id}`))}>
                     <KeyRound strokeWidth={1.8} aria-hidden="true" />
                     <span className="truncate">{k.label}</span>
                     {k.owner_label && <CommandShortcut>{k.owner_label}</CommandShortcut>}
@@ -167,7 +167,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             )}
 
             <CommandGroup heading={t('command.group_actions')}>
-              <CommandItem value="action:create-key" onSelect={() => run(() => navigate('/keys?create=1'))}>
+              <CommandItem value="action:create-key" onSelect={() => run(() => navigate('/users?create=1'))}>
                 <Plus strokeWidth={1.8} aria-hidden="true" />
                 {t('command.action_create_key')}
               </CommandItem>

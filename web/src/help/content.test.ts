@@ -39,7 +39,8 @@ describe('help content', () => {
     expect(topicForPath('/')).toBe('dashboard');
     expect(topicForPath('/nodes')).toBe('nodes.list');
     expect(topicForPath('/nodes/1b6a')).toBe('nodes.detail');
-    expect(topicForPath('/keys')).toBe('keys.list');
+    expect(topicForPath('/users')).toBe('keys.list');
+    expect(topicForPath('/subscription')).toBe('settings.subscription');
     expect(topicForPath('/sites')).toBe('sites.templates');
     expect(topicForPath('/sites/new')).toBe('sites.editor');
     expect(topicForPath('/sites/1b6a')).toBe('sites.editor');

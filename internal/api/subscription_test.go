@@ -179,6 +179,15 @@ func TestSharedKeyShortAddressAndStates(t *testing.T) {
 	if resp := anon.Get("/s/team"); resp.StatusCode != 200 {
 		t.Fatalf("short address does not open: %d", resp.StatusCode)
 	}
+	for _, q := range []string{"", "?short=1&size=300"} {
+		resp := c.Get("/api/v1/keys/" + keyID + "/subscription/qr" + q)
+		if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "image/png" {
+			t.Fatalf("qr%s %d %s", q, resp.StatusCode, resp.Header.Get("Content-Type"))
+		}
+	}
+	if resp := h.Anonymous().Get("/api/v1/keys/" + keyID + "/subscription/qr"); resp.StatusCode != 401 {
+		t.Fatalf("anonymous qr %d", resp.StatusCode)
+	}
 
 	var personal keyResp
 	c.JSON(c.Post("/api/v1/keys", map[string]any{"label": "p", "type": "PERSONAL", "carrier_mode": "https", "node_ids": nodeIDsOf(t, c)}), &personal)

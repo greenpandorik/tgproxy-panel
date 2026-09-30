@@ -70,11 +70,11 @@ export const HELP_TOPICS = {
   },
 
   'keys.list': {
-    fields: ['type', 'status', 'nodes', 'traffic', 'expires', 'filters', 'row_actions', 'bulk'],
+    fields: ['tiles', 'state', 'type', 'columns', 'search', 'open', 'bulk'],
     docs: 'keys',
   },
   'keys.create': {
-    fields: ['label', 'owner_label', 'nodes', 'carrier_mode', 'expires_at', 'limits', 'note'],
+    fields: ['tabs', 'label', 'owner_label', 'sub_slug', 'expires_at', 'nodes', 'carrier_mode', 'limits', 'note'],
     docs: 'keys',
   },
   'keys.transport': {
@@ -105,7 +105,7 @@ export const HELP_TOPICS = {
     docs: 'engine',
   },
   'keys.detail': {
-    fields: ['status', 'edit', 'nodes', 'link', 'subscription', 'rotate', 'revoke', 'delete'],
+    fields: ['header', 'overview', 'subscription', 'direct_links', 'about', 'access', 'save', 'manage', 'danger'],
     docs: 'keys',
   },
   'keys.link': {

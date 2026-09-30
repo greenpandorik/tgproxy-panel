@@ -59,7 +59,7 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
       id: 'keys',
       icon: KeyRound,
       label: t('dashboard.keys_active'),
-      to: '/keys',
+      to: '/users',
       tone: 'var(--brand-primary)',
       value: <MetricValue value={keysActive} format={num} />,
     },

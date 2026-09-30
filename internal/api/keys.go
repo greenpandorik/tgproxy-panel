@@ -42,6 +42,7 @@ func (s *Server) mountKeys(r chi.Router) {
 		r.With(RequireRole(writers...)).Delete("/bindings/{node}", s.handleUnbindKey)
 		r.With(RequireRole(writers...)).Post("/subscription", s.handleCreateSubscription)
 		r.With(RequireRole(writers...)).Delete("/subscription", s.handleRevokeSubscription)
+		r.With(RequireRole(writers...)).Get("/subscription/qr", s.handleSubscriptionQR)
 	})
 }
 
@@ -284,6 +285,7 @@ type keyInput struct {
 	NodeIDs      []uuid.UUID          `json:"node_ids"`
 	Prefix       string               `json:"prefix"`
 	Count        int                  `json:"count"`
+	SubSlug      string               `json:"sub_slug"`
 }
 
 func (in keyInput) toCreate(by uuid.UUID) keys.CreateInput {
@@ -294,7 +296,7 @@ func (in keyInput) toCreate(by uuid.UUID) keys.CreateInput {
 	return keys.CreateInput{
 		Label: in.Label, OwnerLabel: in.OwnerLabel, Note: in.Note, Type: domain.KeyType(in.Type),
 		CarrierMode: domain.CarrierMode(cm), Limits: in.Limits, TelemtLimits: in.TelemtLimits,
-		ExpiresAt: in.ExpiresAt, NodeIDs: in.NodeIDs, CreatedBy: by,
+		ExpiresAt: in.ExpiresAt, NodeIDs: in.NodeIDs, CreatedBy: by, SubSlug: in.SubSlug,
 	}
 }
 

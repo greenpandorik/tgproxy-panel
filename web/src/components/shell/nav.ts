@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Activity, KeyRound, LayoutDashboard, LayoutTemplate, ScrollText, Server, Settings2 } from 'lucide-react';
+import { Activity, FileText, LayoutDashboard, LayoutTemplate, ScrollText, Server, Settings2, Users } from 'lucide-react';
 
 /** Which live counter, if any, the sidebar shows on the right of an item. */
 export type NavCount = 'nodes' | 'keys';
@@ -35,7 +35,11 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     labelKey: 'nav.group_access',
-    items: [{ to: '/keys', icon: KeyRound, labelKey: 'nav.keys', count: 'keys' }],
+    items: [{ to: '/users', icon: Users, labelKey: 'nav.users', count: 'keys' }],
+  },
+  {
+    labelKey: 'nav.group_subscription',
+    items: [{ to: '/subscription', icon: FileText, labelKey: 'nav.subscription_page' }],
   },
   {
     labelKey: 'nav.group_system',

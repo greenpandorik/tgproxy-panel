@@ -119,9 +119,13 @@ func (s *Service) SetSlug(ctx context.Context, keyID uuid.UUID, slug string) err
 		v = &slug
 	}
 	err = s.st.Q.SetKeySlug(ctx, db.SetKeySlugParams{ID: keyID, SubSlug: v})
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+	if isUnique(err) {
 		return ValidationError{"sub_slug": "taken"}
 	}
 	return err
+}
+
+func isUnique(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

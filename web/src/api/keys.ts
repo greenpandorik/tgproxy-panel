@@ -10,6 +10,7 @@ import type {
   KeyInput,
   KeyLinksResult,
   KeyStats,
+  KeySummary,
   LinkKind,
   Paginated,
   PatchKeyInput,
@@ -19,6 +20,7 @@ import type {
 export const keyKeys = {
   all: ['keys'] as const,
   list: (filters: KeyFilters) => ['keys', 'list', filters] as const,
+  summary: ['keys', 'summary'] as const,
   one: (id: string) => ['keys', id] as const,
   links: (id: string) => ['keys', id, 'links'] as const,
   stats: (id: string, range: KeyStatsRange) => ['keys', id, 'stats', range] as const,
@@ -38,6 +40,7 @@ function filtersToQuery(filters: KeyFilters): string {
   if (filters.per_page) q.set('per_page', String(filters.per_page));
   if (filters.type) q.set('type', filters.type);
   if (filters.status) q.set('status', filters.status);
+  if (filters.state) q.set('state', filters.state);
   if (filters.node) q.set('node', filters.node);
   if (filters.q) q.set('q', filters.q);
   const s = q.toString();
@@ -49,6 +52,13 @@ export const useKeys = (filters: KeyFilters = {}) =>
     queryKey: keyKeys.list(filters),
     queryFn: () => api.get<Paginated<AccessKey>>(`/api/v1/keys${filtersToQuery(filters)}`),
     refetchInterval: 15_000,
+  });
+
+export const useKeySummary = () =>
+  useQuery({
+    queryKey: keyKeys.summary,
+    queryFn: () => api.get<KeySummary>('/api/v1/keys/summary'),
+    refetchInterval: 30_000,
   });
 
 export const useKey = (id: string) =>
@@ -142,6 +152,18 @@ export const useRotateKey = () => {
   });
 };
 
+export const useSetKeyDisabled = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, disabled }: { id: string; disabled: boolean }) =>
+      api.post<AccessKey>(`/api/v1/keys/${id}/${disabled ? 'disable' : 'enable'}`),
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: keyKeys.all });
+      void qc.invalidateQueries({ queryKey: keyKeys.one(id) });
+    },
+  });
+};
+
 export const useBindKey = (id: string) => {
   const qc = useQueryClient();
   return useMutation({
@@ -157,6 +179,10 @@ export const useUnbindKey = (id: string) => {
     onSuccess: () => qc.invalidateQueries({ queryKey: keyKeys.one(id) }),
   });
 };
+
+export function subscriptionQrUrl(id: string, short: boolean, size = 320): string {
+  return `/api/v1/keys/${id}/subscription/qr?size=${size}${short ? '&short=1' : ''}`;
+}
 
 export function keyQrUrl(id: string, nodeId: string, size = 256, kind: LinkKind = 'web', domain?: string): string {
   const base = `/api/v1/keys/${id}/qr?node=${nodeId}&kind=${kind}&size=${size}`;

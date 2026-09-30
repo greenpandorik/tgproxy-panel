@@ -22,7 +22,7 @@ import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-import { Arriving, FormFooter } from './formShell';
+import { Arriving, FormFooter } from '@/pages/settings/formShell';
 
 import type { SubscriptionPlatform } from '@/api/types';
 

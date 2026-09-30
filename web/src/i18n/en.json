@@ -11,7 +11,10 @@
     "group_overview": "Observe",
     "group_infrastructure": "Infrastructure",
     "group_access": "Access",
-    "group_system": "System"
+    "group_system": "System",
+    "users": "Users",
+    "group_subscription": "Subscription",
+    "subscription_page": "Page"
   },
   "common": {
     "copy": "Copy",
@@ -102,7 +105,7 @@
   "dashboard": {
     "title": "Overview",
     "nodes_online": "Servers online",
-    "keys_active": "Active keys",
+    "keys_active": "Active users",
     "sessions_live": "Sessions",
     "empty_no_nodes": "Add your first server",
     "nodes_offline_suffix": "{{count}} offline",
@@ -136,7 +139,7 @@
     "tile_degraded_none": "all services answering",
     "tile_degraded_some": "services answering in part",
     "tile_keys_total": "of {{count}} total",
-    "tile_keys_pending": "Pending keys",
+    "tile_keys_pending": "Waiting to apply",
     "tile_keys_pending_queued": "apply on the next push",
     "tile_keys_pending_none": "everything applied",
     "tile_sessions_context": "live right now",
@@ -155,7 +158,7 @@
     "fleet_hint": "Reachable servers / total",
     "total_traffic": "Traffic over 24 hours",
     "traffic_both": "Combined incoming and outgoing",
-    "manage_access": "Issue a key",
+    "manage_access": "New user",
     "all_servers": "All servers",
     "alert_node_offline": "Server is not responding",
     "alert_node_degraded": "Some services are unavailable",
@@ -207,17 +210,17 @@
     "title": "Servers",
     "add": "Add server",
     "empty_title": "No servers yet",
-    "empty_description": "Add your first server to issue keys and serve traffic.",
+    "empty_description": "Add your first server to give users access.",
     "column_name": "Name",
     "column_hostname": "Hostname",
-    "column_profiles": "Keys",
+    "column_profiles": "Users",
     "last_seen_never": "never connected",
     "action_apply_now": "Apply now",
     "action_install_command": "Install command",
     "action_delete": "Delete",
     "action_open": "Open",
     "delete_confirm_title": "Delete server \"{{name}}\"?",
-    "delete_confirm_description": "The server, its profiles and bound keys will be permanently deleted.",
+    "delete_confirm_description": "The server, its profiles and its user bindings will be permanently deleted.",
     "delete_success": "Server deleted",
     "apply_queued": "Apply queued",
     "create_title": "New server",
@@ -226,10 +229,10 @@
     "field_hostname": "Hostname",
     "field_hostname_hint": "Lowercase, a dotted domain, no scheme or path (e.g. node1.example.com)",
     "field_engine": "Engine",
-    "engine_telemt_desc": "One process: WEB and Fake-TLS. Per-key limits and traffic.",
+    "engine_telemt_desc": "One process: WEB and Fake-TLS. Per-user limits and traffic.",
     "engine_tproxy_desc": "The original relay + MTProxy pair.",
-    "engine_telemt_links": "Keys on this server get two links: WEB (through the server’s site) and Fake-TLS (classic MTProto on its own port).",
-    "engine_tproxy_links": "Keys on this server get the WEB link only.",
+    "engine_telemt_links": "Users on this server get two links: WEB (through the server’s site) and Fake-TLS (classic MTProto on its own port).",
+    "engine_tproxy_links": "Users on this server get the WEB link only.",
     "field_tls_domain": "Fake-TLS domain",
     "field_tls_domain_hint": "The domain Fake-TLS masks behind. Defaults to the server’s hostname.",
     "field_classic_port": "Fake-TLS port",
@@ -261,7 +264,7 @@
     "restart_confirm_description": "Active sessions will drop. Telegram clients reconnect automatically.",
     "restart_success": "Restart command sent",
     "tab_overview": "Overview",
-    "tab_profiles": "Keys",
+    "tab_profiles": "Users",
     "tab_logs": "Logs",
     "tab_site": "Website",
     "tab_stats": "Stats",
@@ -287,9 +290,9 @@
     "listeners_confirm_title": "Change the Fake-TLS settings?",
     "listeners_confirm_description": "The next apply pushes this to the server: the agent rewrites telemt's config and restarts telemt, dropping live connections. Every Fake-TLS link already handed out stops working — the domain and port are baked into its secret — so reissue them. WEB links are unaffected.",
     "field_extra_domains": "Backup masking domains",
-    "field_extra_domains_hint": "One per line. Every key gets its own Fake-TLS link for each domain, so if a provider blocks the main one, the user switches to a link with another. Use only real sites that answer HTTPS on 443 and are reachable from the server: telemt takes the TLS fingerprint of each domain at startup.",
+    "field_extra_domains_hint": "One per line. Every user gets their own Fake-TLS link for each domain, so if a provider blocks the main one, they switch to a link with another. Use only real sites that answer HTTPS on 443 and are reachable from the server: telemt takes the TLS fingerprint of each domain at startup.",
     "validation_extra_domains": "Each domain lowercase and with a dot, at most {{max}}",
-    "extra_domains_note": "The next apply restarts telemt, dropping live connections. Links already handed out keep working, and keys get links for the new domains.",
+    "extra_domains_note": "The next apply restarts telemt, dropping live connections. Links already handed out keep working, and users get links for the new domains.",
     "extra_domains_confirm_title": "Change the backup domains?",
     "extra_domains_confirm_description": "The next apply pushes this to the server and restarts telemt, dropping live connections. Links already handed out keep working. If a domain does not answer HTTPS, telemt refuses the config and the apply rolls back.",
     "overview_agent_version": "Agent",
@@ -300,9 +303,9 @@
     "job_log_empty": "Log is empty",
     "job_started": "Started",
     "job_finished": "Finished",
-    "profiles_title": "Keys on this server",
+    "profiles_title": "Users on this server",
     "profiles_column_name": "Name",
-    "profiles_column_key": "Key",
+    "profiles_column_key": "User",
     "profiles_column_carrier": "Mode",
     "profiles_column_limits": "Limits",
     "profiles_column_expires": "Expires",
@@ -321,7 +324,7 @@
     "profiles_compare_title": "Comparison with the live server",
     "profiles_compare_db_only": "Only in the panel database",
     "profiles_compare_node_only": "Only on the server",
-    "profiles_compare_in_sync": "Keys match",
+    "profiles_compare_in_sync": "Users match",
     "sync_pending": "Pending apply",
     "logs_title": "Logs",
     "logs_service_tproxy": "tproxy-server",
@@ -431,9 +434,9 @@
     "verdict_offline_commands": "What to check on the server itself:",
     "verdict_copy_command": "Copy the command",
     "verdict_offline_reinstall": "If the agent will not start, reinstall it: the install command is on the Maintenance tab.",
-    "job_kind_profiles": "Keys",
+    "job_kind_profiles": "Users",
     "job_kind_site": "Site",
-    "job_kind_both": "Keys and site",
+    "job_kind_both": "Users and site",
     "job_status_queued": "Queued",
     "job_status_running": "Running",
     "job_status_ok": "Succeeded",
@@ -473,7 +476,7 @@
     "pagination_prev": "Previous",
     "pagination_next": "Next",
     "action_show_link": "Show link",
-    "action_rotate": "Rotate",
+    "action_rotate": "Change secret",
     "action_revoke": "Revoke",
     "action_extend": "Extend",
     "bulk_selected": "{{count}} selected",
@@ -485,15 +488,15 @@
     "bulk_result_success": "{{done}} keys updated",
     "bulk_result_partial": "{{done}} updated, {{failed}} failed",
     "bulk_extend_title": "Extend expiry",
-    "bulk_extend_description": "Set a new expiry date for {{count}} selected keys.",
+    "bulk_extend_description": "Set a new end date for the selected ({{count}}).",
     "bulk_extend_submit": "Extend",
     "revoke_confirm_title": "Revoke key \"{{label}}\"?",
-    "revoke_confirm_shared": "This is a shared key. Everyone using it will lose access after the next apply.",
+    "revoke_confirm_shared": "This is shared access. Everyone who uses it loses it after the next apply.",
     "revoke_confirm_personal": "Access through this key stops after the next apply.",
     "revoke_success": "Key revoked",
     "rotate_confirm_title": "Rotate key \"{{label}}\"?",
     "rotate_confirm_description": "The old link stops working. Distribute the new link to everyone who needs it.",
-    "rotate_success": "Key rotated",
+    "rotate_success": "Secret changed",
     "delete_confirm_title": "Delete key \"{{label}}\"?",
     "delete_confirm_description": "This cannot be undone.",
     "delete_success": "Key deleted",
@@ -531,7 +534,7 @@
     "field_carrier_mode_legacy_hint": "You picked both telemt and tproxy servers. Only the tproxy ones get this mode; telemt servers choose their transport themselves.",
     "field_transport": "Transport",
     "transport_auto": "Chosen automatically",
-    "transport_auto_hint": "telemt on the server finds a working transport for every connection, from the client's network rather than from the key.",
+    "transport_auto_hint": "telemt on the server finds a working transport for every connection, from the client's network rather than from the user's settings.",
     "field_expires_at": "Expires at",
     "field_no_expiry": "No expiry",
     "field_optional": "optional",
@@ -583,22 +586,22 @@
     "limit_new_streams_burst": "New streams burst",
     "limit_max_streams_per_session": "Max streams per session",
     "limit_max_pending_per_session": "Max pending per session",
-    "link_title": "Link for \"{{label}}\"",
+    "link_title": "Direct links: {{label}}",
     "link_title_loading": "Loading link…",
     "link_created_title": "Key “{{label}}” created",
     "link_per_node_toggle": "Per-node links",
-    "link_revoked": "This key is revoked and no longer has active links.",
-    "link_no_permission": "You don't have permission to view this key's links.",
-    "link_pending_hint": "The key will be active once applied on the server (usually within a minute).",
+    "link_revoked": "Access is revoked; there are no working links.",
+    "link_no_permission": "You are not allowed to see this user's links.",
+    "link_pending_hint": "Access starts working after the server applies it, usually within a minute.",
     "link_qr_alt_kind": "{{kind}} QR code for {{hostname}}",
     "link_web_only": "WEB only on this engine",
     "link_tls_domain": "Masking domain",
-    "link_no_nodes": "This key is not bound to any server.",
+    "link_no_nodes": "This user is not on any server.",
     "link_copy_tme": "Copy t.me link",
     "link_copy_tg": "Copy tg:// link",
     "link_download_qr": "Download QR",
-    "batch_result_title": "{{count}} keys created",
-    "batch_result_description": "Open each key's link, or download every link as a text file.",
+    "batch_result_title": "Users created: {{count}}",
+    "batch_result_description": "Copy each subscription link or download every link as a file.",
     "batch_download_all": "Download all links (.txt)",
     "edit_title": "Key",
     "edit_success": "Key saved",
@@ -616,8 +619,8 @@
     "stats_traffic_range_7d": "Traffic this week",
     "stats_node_connections": "connections: {{count}}",
     "stats_traffic": "Traffic",
-    "stats_unavailable": "Servers on the tproxy engine do not measure per-key traffic.",
-    "stats_empty": "No data for this key yet.",
+    "stats_unavailable": "Servers on the tproxy engine do not count traffic per user.",
+    "stats_empty": "No data for this user yet.",
     "subscription_title": "Subscription link",
     "subscription_description": "A public page where the person picks their device and connects the proxy step by step, for every server of the key. The key name and notes never appear there.",
     "subscription_status_active": "Active",
@@ -854,7 +857,7 @@
     "status_learning_entries_hint": "Rows in the learned table, against its capacity.",
     "status_learning_hint": "telemt remembers which carrier worked for a client network.",
     "status_negotiation": "Carrier negotiation",
-    "status_negotiation_hint": "telemt picks a carrier per connection instead of taking the one in the key.",
+    "status_negotiation_hint": "telemt picks a carrier per connection instead of taking the one set for the user.",
     "status_title": "WEB transport",
     "status_tls": "Certificate",
     "status_tls_hint": "From the last prerequisite check the panel ran.",
@@ -975,7 +978,7 @@
     "action_auth": "Login",
     "action_admin": "Accounts",
     "action_node": "Servers",
-    "action_key": "Keys",
+    "action_key": "Users",
     "action_site_template": "Site templates",
     "action_branding": "Branding",
     "action_settings": "Settings",
@@ -1017,17 +1020,17 @@
       "branding_upload": "Branding file uploaded",
       "fleet_stop": "Server updates stopped",
       "fleet_update": "Server updates started",
-      "key_batch_create": "Keys created in a batch",
-      "key_bind": "Key added to a server",
-      "key_bulk": "Action on several keys",
-      "key_create": "Key created",
-      "key_delete": "Key deleted",
-      "key_revoke": "Key revoked",
-      "key_rotate": "Key secret rotated",
+      "key_batch_create": "Users created in a batch",
+      "key_bind": "User added to a server",
+      "key_bulk": "Action on several users",
+      "key_create": "User created",
+      "key_delete": "User deleted",
+      "key_revoke": "Access revoked",
+      "key_rotate": "Secret changed",
       "key_subscription_create": "Subscription link created",
       "key_subscription_revoke": "Subscription link revoked",
-      "key_unbind": "Key removed from a server",
-      "key_update": "Key changed",
+      "key_unbind": "User removed from a server",
+      "key_update": "User changed",
       "node_apply": "Apply on a server",
       "node_check": "Check from the panel",
       "node_create": "Server added",
@@ -1049,11 +1052,13 @@
       "site_template_customize": "Site template copied",
       "site_template_delete": "Site template deleted",
       "site_template_import": "Site template imported",
-      "site_template_update": "Site template changed"
+      "site_template_update": "Site template changed",
+      "key_disable": "Access turned off",
+      "key_enable": "Access turned on"
     },
     "target": {
       "node": "Server",
-      "key": "Key",
+      "key": "User",
       "admin": "Account",
       "branding_profile": "Branding",
       "site_template": "Site template",
@@ -1247,7 +1252,7 @@
     "subpage_show_status": "How long the access lasts",
     "subpage_show_qr": "QR codes",
     "subpage_servers": "Servers on the page",
-    "subpage_servers_hint": "Untick a server to keep it off subscription pages. Keys on it keep working.",
+    "subpage_servers_hint": "Untick a server to keep it off subscription pages. Users on it keep working.",
     "subpage_no_servers": "No servers yet.",
     "subpage_preview": "Preview",
     "subpage_preview_hint": "An example with all your servers and fake secrets; changes show up right away, before you save. On a real page the servers and the expiry date come from the key.",
@@ -1295,17 +1300,17 @@
   },
   "command": {
     "title": "Command palette",
-    "description": "Jump to a section, find a server or key, run a quick action.",
+    "description": "Jump to a section, find a server or user, run a quick action.",
     "placeholder": "Search, commands…",
     "empty": "Nothing found",
     "group_sections": "Sections",
     "group_nodes": "Servers",
-    "group_keys": "Keys",
+    "group_keys": "Users",
     "group_actions": "Actions",
-    "action_create_key": "Create key",
+    "action_create_key": "New user",
     "action_apply_all": "Apply everywhere",
     "apply_all_confirm_title": "Apply changes on {{count}} servers?",
-    "apply_all_confirm_description": "Each server applies the pending changes. On telemt servers new and revoked keys go in without a restart. On tproxy servers the relay restarts and live sessions there drop.",
+    "apply_all_confirm_description": "Each server applies the pending changes. On telemt servers new and revoked users go in without a restart. On tproxy servers the relay restarts and live sessions there drop.",
     "action_toggle_theme": "Switch theme",
     "action_toggle_lang": "Switch language",
     "apply_all_nothing": "Every server is already up to date",
@@ -1656,103 +1661,106 @@
         }
       },
       "keys.list": {
-        "title": "Keys",
-        "intro": "A key is proxy access for a person or a group. On every bound server it becomes a profile with a secret, and the client gets one link per server. Here keys are searched, filtered, shown as links, extended and revoked - one at a time or in bulk.",
+        "title": "Users",
+        "intro": "A user is access to the proxy for one person or for a group. Every user has a subscription link: the person opens it and connects the proxy step by step. Here you find, filter, open, turn off, extend and delete users, one at a time or in bulk.",
         "fields": {
+          "tiles": {
+            "name": "Tiles on top",
+            "what": "How many users there are in total, active, expiring within 7 days, already expired and turned off. Click a tile to show only those in the list; click it again to clear the filter."
+          },
+          "state": {
+            "name": "State",
+            "what": "\"Active\": access works. \"Waiting to apply\": the change has not reached the servers yet, usually under a minute. \"Turned off\": you paused the access. \"Expired\": the date has passed and access is off the servers, but it comes back when you extend the date. \"Revoked\": access is closed for good."
+          },
           "type": {
             "name": "Type",
-            "what": "Shared - one link for a group of people, say a channel or a team. Personal - issued to one person (the \"Issued to\" field), revoked on its own without touching anyone else."
+            "what": "Personal: one person's access, which you can turn off or revoke without touching anyone else. Shared: one link for a group; it is turned off or revoked for everyone at once."
           },
-          "status": {
-            "name": "Status",
-            "what": "\"Pending\" - the key exists but its profile has not been sent to the server yet (next apply, usually within a minute). \"Active\" - on the servers, the link works. \"Revoked\" - removed from the servers; keys whose expiry passed are marked the same way."
+          "columns": {
+            "name": "Columns",
+            "what": "The Columns button hides and shows columns: type, servers, traffic for 30 days, connections, expiry, creation date. The choice is remembered in this browser.",
+            "tip": "The Connections column shows how many connections the person has right now, or when they last connected. Only telemt servers count this."
           },
-          "nodes": {
-            "name": "Servers",
-            "what": "Which servers the key is bound to. The user gets one link per server and can switch between locations."
-          },
-          "traffic": {
-            "name": "Traffic (30 d)",
-            "what": "How much the key transferred in 30 days. Counted by telemt servers only; a key bound solely to tproxy servers shows a dash."
-          },
-          "expires": {
-            "name": "Expires",
-            "what": "End date. When it arrives the panel revokes the key itself and removes the profile from the servers on the next apply. \"No expiry\" - permanent."
-          },
-          "filters": {
+          "search": {
             "name": "Search and filters",
-            "what": "Search by key name and \"Issued to\"; filters by type, status and server. A link of the form /keys?key=<id> opens one key - that is how the command palette gets there."
+            "what": "Search by name, contact, note and short address; filter by state, type and server. A link like /users?user=<id> opens one user, which is how the command palette gets there."
           },
-          "row_actions": {
-            "name": "Row actions",
-            "what": "\"Show link\" - links and QR codes per server. \"Rotate secret\" - issue a new secret: the old link stops working, the new one must be sent out. \"Revoke\" - remove access. Click the label to open the whole key."
+          "open": {
+            "name": "User window",
+            "what": "Click a row to open the user: the subscription link, expiry, servers, limits and every action. The \"…\" menu at the end of a row copies the subscription link, turns access off or on, or deletes the user."
           },
           "bulk": {
             "name": "Bulk actions",
-            "what": "Tick several keys: \"Extend\" gives them all one new date, \"Revoke\" and \"Delete\" apply to all at once (up to 500 keys per action). Delete is irreversible; revoke keeps the row in the list."
+            "what": "Tick several rows: Extend sets one new date for all, Turn off and Turn on pause and resume access, Revoke access and Delete apply to all at once, up to 500 at a time. Deleting cannot be undone; revoking keeps the entry in the list."
           }
         },
         "notes": {
-          "1": "Every change reaches clients only after an apply on the server - on schedule (every 45 seconds by default) or via \"Apply now\" on the server page. On telemt without a restart, on tproxy with a relay restart.",
-          "2": "A server has a limited number of profiles (128 by default). When it is full, the panel refuses the binding and names the server.",
+          "1": "Changes reach people after the server applies them: on a schedule, every 45 seconds by default, or with Apply now on the server page. telemt applies without a restart, tproxy restarts its relay.",
+          "2": "A server has a limited number of places, 128 by default. When they run out, the panel refuses and names the server.",
           "3": "Viewers see the list but not the links or secrets."
         }
       },
       "keys.create": {
-        "title": "New key",
-        "intro": "The tabs are three ways to hand out access: a shared key for a group, a personal key for one person, a batch of several keys at once. The key will work on every ticked server and becomes active after the next apply - usually within a minute. The panel shows the link right after creation.",
+        "title": "New user",
+        "intro": "Three tabs, three ways to give access: One person, Shared access for a group on one link, and Several users at once. The subscription link is created automatically, and the user window opens afterwards so you can copy and send it right away.",
         "fields": {
+          "tabs": {
+            "name": "Tabs",
+            "what": "One person: personal access. Shared access: one link for a group; only shared access has a short address. Several: a series of personal users named prefix-1, prefix-2 and so on."
+          },
           "label": {
-            "name": "Key name",
-            "what": "The key's name in the panel: who or what it is for. Required, any text. Never reaches the client or the link.",
-            "example": "Support team",
-            "tip": "The name is what you search by: write it so it still makes sense a year from now."
+            "name": "Name",
+            "what": "What the user is called in the panel: the person's name or the group's. Required. Never shown to people or put in the link.",
+            "example": "Maria S.",
+            "tip": "You will search by it later: write it so that in a year you still know who it was for."
           },
           "owner_label": {
-            "name": "Issued to",
-            "what": "Personal keys only, required. Who exactly holds it: a name, Telegram handle or e-mail. It is how you find and revoke one person's access.",
-            "example": "Ivan Petrov · @ivan"
+            "name": "Contact",
+            "what": "Optional. How to reach the person: Telegram username, phone or e-mail. The list search finds it.",
+            "example": "@maria"
+          },
+          "sub_slug": {
+            "name": "Short address",
+            "what": "Shared access only, optional. Instead of a long link you get a short one like …/s/team that is easy to dictate and remember. 3-32 characters: lowercase Latin letters, digits and dashes, not starting or ending with a dash.",
+            "example": "sales"
+          },
+          "expires_at": {
+            "name": "Access until",
+            "what": "No end date by default. Untick it and pick a date, or press +1 month, +3 months or +1 year. When the date passes, access is taken off the servers, and extending the date brings it back.",
+            "example": "2026-12-31 23:59"
           },
           "nodes": {
             "name": "Servers",
-            "what": "Tick at least one. Each ticked server gets a profile and the client gets one link per server. Next to each server: how many free slots remain; a full server cannot be selected.",
-            "tip": "Servers can be added or removed later in the key's drawer."
+            "what": "Tick at least one. The subscription page shows the person every ticked server. Next to each server you see how many places are taken; a full server cannot be picked.",
+            "tip": "You can add or remove servers later in the user window."
           },
           "carrier_mode": {
-            "name": "Carrier mode",
-            "what": "Legacy tproxy servers only: how the WEB client talks to the server over HTTPS. HTTPS - one POST request plus long poll, the most compatible. WebSocket - one persistent connection, lower latency. The \"lanes\" variants open a separate connection per stream. telemt servers negotiate transport themselves, so the field is not shown for them.",
-            "example": "HTTPS",
-            "tip": "On tproxy start with HTTPS and change it only if users complain about speed or drops."
-          },
-          "expires_at": {
-            "name": "Expires",
-            "what": "Optional. Date and time in your time zone; must be in the future. When it arrives, the panel revokes the key itself and removes the profile from the servers. Empty - a permanent key.",
-            "example": "2026-12-31 23:59",
-            "tip": "Extend in the key's drawer or in bulk from the list - before the date passes."
+            "name": "Transport",
+            "what": "Chosen automatically on telemt servers. A mode is only picked for legacy tproxy servers: HTTPS is the most compatible, WebSocket is faster, and the \"lanes\" variants open a separate connection per stream.",
+            "tip": "On tproxy start with HTTPS and change it only if people report slowness or drops."
           },
           "limits": {
             "name": "Limits",
-            "what": "Traffic quota, speed and address count are enforced by telemt itself, so they are available only when a telemt server is among the selected ones. \"Advanced limits\" are WEB-transport ceilings on sessions and streams. An empty field or 0 means no limit. The fields have their own help."
+            "what": "Traffic quota, speed, number of IP addresses and connections. telemt enforces them, so they are available when a telemt server is among the chosen ones. tproxy servers have Additional limits. An empty field means no limit."
           },
           "note": {
             "name": "Note",
-            "what": "Free text for you and your colleagues: who asked, paid until when. Never shown to clients, never on the subscription page."
+            "what": "Free text for you and your colleagues: who asked, what is paid until when. Never shown to people and never on the subscription page."
           }
         },
         "notes": {
-          "1": "A key created in \"Pending\" starts working after an apply on the server - automatically after the interval (45 seconds by default) or right away with \"Apply now\" on the server page.",
-          "2": "On a telemt server the key gets two links: WEB and Fake-TLS. On a tproxy server only WEB (Telegram Desktop stable, Android experimental, iOS planned).",
-          "3": "Closed the dialog half-way? The panel keeps a draft and offers to continue next time."
+          "1": "A new user starts working once the server applies the change, usually within a minute.",
+          "2": "On a telemt server a user has two direct links, WEB and Fake-TLS; on a tproxy server only WEB. The subscription page picks the one that fits the device."
         }
       },
       "keys.transport": {
-        "title": "Key transport",
-        "intro": "How the client talks to the server. On telemt this belongs to the server and the network, not to the key: nothing is pinned to a particular person.",
+        "title": "Transport",
+        "intro": "How the person's Telegram talks to the server. On telemt this belongs to the server and the network, not to the user: nothing is pinned to a particular person.",
         "fields": {
           "automatic": {
             "name": "Automatic choice",
-            "what": "On telemt servers the transport is negotiated per connection. The server tries the options in order and remembers what worked on that network - so there is nothing to choose on the key.",
-            "tip": "If someone sees slow or dropping connections, it is the server and the network, not the key: start from the server check."
+            "what": "On telemt servers the transport is negotiated per connection. The server tries the options in order and remembers what worked on that network, so there is nothing to choose in the user window.",
+            "tip": "If someone sees slow or dropping connections, look at the server and the network: start from the server check."
           },
           "order": {
             "name": "Negotiation order",
@@ -1770,36 +1778,36 @@
         }
       },
       "keys.batch": {
-        "title": "Several keys at once",
-        "intro": "Creates several shared keys at once with identical settings (servers, mode, expiry, limits) and names of the form \"prefix-number\". Handy for handing out one key per person when the personal labels are not known yet. The panel checks that every server has room for the whole batch and creates either all keys or none.",
+        "title": "Several users",
+        "intro": "Creates several personal users with the same settings: servers, expiry, limits. Names follow the pattern prefix-number. Handy when you hand out access one per person and do not know the names yet. The panel checks that every server has room and creates either all of them or none.",
         "fields": {
           "prefix": {
             "name": "Prefix",
-            "what": "Required. The start of every key's name; a hyphen and a running number are appended.",
+            "what": "Required. The start of every user's name; a dash and a number are added.",
             "example": "vip → vip-1, vip-2, …"
           },
           "count": {
             "name": "Count",
-            "what": "1 to 100 keys per batch. Each takes one profile on every selected server.",
+            "what": "From 1 to 100 at a time. Each takes one place on every chosen server.",
             "example": "25"
           },
           "result": {
             "name": "Result",
-            "what": "After creation the panel lists the keys: each opens its link and QR, and \"Download all links\" gives a text file - one line per key and server - for sending out."
+            "what": "Afterwards the panel lists the users, each with a button to copy the subscription link and Open. Download all links gives a text file: subscription links first, one line per person, then the direct links per server."
           }
         },
         "notes": {
-          "1": "If some server has fewer free slots than keys in the batch, the panel refuses the whole batch and names the server and its free slots. Lower the count or drop the server.",
-          "2": "Keys in a series are ordinary shared keys: they can be renamed, revoked or extended individually later."
+          "1": "If a server has fewer places than users in the series, the panel refuses the whole series and names the server. Lower the count or drop the server.",
+          "2": "Users from a series are ordinary users: you can rename, turn off or extend them one by one later."
         }
       },
       "keys.limits": {
-        "title": "Key limits",
+        "title": "User limits",
         "intro": "Two sets of ceilings. The first five are enforced by telemt on the server - they work only on telemt servers and change without a restart. The rest are WEB-transport ceilings on sessions and streams, enforced by the relay. An empty field or 0 always means no limit (for the WEB-transport ones: the server's default).",
         "fields": {
           "quota_gb": {
             "name": "Traffic quota, GB",
-            "what": "Total traffic the key may transfer (up plus down). A gigabyte here is 1024³ bytes, as in the \"Traffic\" column. Once the quota is used up, telemt stops serving the key. Maximum 100 TB - a typo guard.",
+            "what": "Total traffic the user may transfer, up plus down. A gigabyte here is 1024³ bytes, as in the Traffic column. Once the quota is used up, telemt stops serving the user. Maximum 100 TB, as a typo guard.",
             "example": "50",
             "tip": "Fractions are fine: 0.5 is 512 MB."
           },
@@ -1815,22 +1823,22 @@
           },
           "max_unique_ips": {
             "name": "Max unique IPs",
-            "what": "From how many different IP addresses the key may be used at the same time. A simple way to keep a shared key from spreading across the internet. Up to 1,000,000.",
+            "what": "From how many different IP addresses the access may be used at the same time. A simple way to keep shared access from spreading across the internet. Up to 1,000,000.",
             "example": "3",
-            "tip": "One person on a phone with mobile data changes IP often; give a personal key at least 3-5."
+            "tip": "One person on a phone with mobile data changes IP often; give personal access at least 3-5. For shared access the limit has to be at least the number of people in the group."
           },
           "max_tcp_conns": {
             "name": "Max connections",
-            "what": "How many TCP connections the key may hold open at once. A Telegram client opens several per device. Up to 1,000,000.",
+            "what": "How many TCP connections the user may hold open at once. A Telegram client opens several per device. Up to 1,000,000.",
             "example": "64"
           },
           "max_sessions": {
             "name": "Max sessions",
-            "what": "How many WEB sessions (≈ devices) may be open on this key at the same time."
+            "what": "How many WEB sessions (roughly devices) the user may have open at the same time."
           },
           "max_streams": {
             "name": "Max streams",
-            "what": "How many data streams (connections to Telegram's servers) the key may hold in total across all sessions."
+            "what": "How many data streams (connections to Telegram's servers) the user may hold in total across all sessions."
           },
           "max_streams_per_session": {
             "name": "Max streams per session",
@@ -1842,11 +1850,11 @@
           },
           "max_backend_dials_in_flight": {
             "name": "Max concurrent backend dials",
-            "what": "How many connections to Telegram's servers the relay may be opening for the key at the same time. Cannot exceed \"Max streams\"."
+            "what": "How many connections to Telegram's servers the relay may be opening for the user at the same time. Cannot exceed \"Max streams\"."
           },
           "new_sessions_per_minute": {
             "name": "New sessions / min",
-            "what": "Rate limit: how many new sessions per minute the key may open. Protection against a leaked key that hundreds of clients try to use."
+            "what": "Rate limit: how many new sessions per minute may be opened. Protection against a leaked link that hundreds of clients try to use."
           },
           "new_sessions_burst": {
             "name": "New sessions burst",
@@ -1862,56 +1870,62 @@
           }
         },
         "notes": {
-          "1": "If the key is bound only to tproxy servers, the telemt limits are shown greyed out: nothing enforces them. They start working as soon as you add a telemt server.",
+          "1": "If the user is only on tproxy servers, the telemt limits are shown greyed out: nothing enforces them. They start working as soon as you add a telemt server.",
           "2": "The WEB-transport limits are fine tuning. Leave zeros until you have a specific problem: a server's own defaults handle ordinary load.",
           "3": "Every limit change reaches the server on the next apply."
         }
       },
       "keys.detail": {
-        "title": "Key drawer",
-        "intro": "Everything about one key, top to bottom: what it is, what can be changed, which servers it is on, how it is handed out - and, at the very bottom behind a confirmation, what cannot be undone. Every save reaches the servers on the next apply.",
+        "title": "User window",
+        "intro": "Everything about one user in one window. On the left, what you send to the person and what is happening with them; on the right, access and limits. Save at the bottom saves every field at once, servers included; changes reach the servers at the next apply.",
         "fields": {
-          "status": {
+          "header": {
             "name": "Header",
-            "what": "Name, status (pending / active / revoked), type and creation date. A revoked key opens read-only."
+            "what": "Name, state, type, contact and creation date. Above the cards the panel says when access is waiting to apply, turned off, expired or revoked. A revoked user opens read-only."
           },
-          "edit": {
-            "name": "Settings",
-            "what": "Name, \"Issued to\", note, expiry, carrier mode and limits - the same fields as at creation. Changing the expiry of an active key is the usual way to extend access."
-          },
-          "nodes": {
-            "name": "Servers",
-            "what": "Where the key is. \"Add server\" creates a profile on one more server (if it has room), \"Remove\" takes it off. The user gains or loses the link for that location; the subscription page updates itself."
-          },
-          "link": {
-            "name": "Link",
-            "what": "Opens the dialog with links and QR codes per server: WEB and, on telemt servers, Fake-TLS."
+          "overview": {
+            "name": "Subscription and activity",
+            "what": "Access expiry (red once it has passed, amber with less than a week left), traffic for 30 days, connections right now or when the person last connected, and the servers."
           },
           "subscription": {
             "name": "Subscription link",
-            "what": "A public page where the user sees all their locations and QR codes, and which updates itself when servers or the secret change. The link and QR are shown once at creation - save them. \"Rotate link\" invalidates the old address; \"Revoke\" removes the page. The key's label and notes never appear there."
+            "what": "The main thing you send: one link to all of the person's servers; on its page they pick their device and connect step by step. The link is always visible: copy it, show the QR code or open the page to see what the person sees. Shared access with a short address shows the short link, with the full one below.",
+            "tip": "If the window says the link cannot be shown, it was made before the panel update. Press Issue a new link; the old one then stops opening."
           },
-          "rotate": {
-            "name": "Rotate secret",
-            "what": "Issues a new secret. Every old link of this key stops working after the apply; new ones must be sent out again. Use it when a link reached the wrong people."
+          "direct_links": {
+            "name": "Direct links",
+            "what": "t.me and tg:// links and QR codes for each server, WEB and Fake-TLS. Useful when the person prefers not to use the subscription page. Traffic and connections opens a chart per server."
           },
-          "revoke": {
-            "name": "Revoke",
-            "what": "Removes the profile from every server on the next apply. The key stays in the list for the record. For a shared key this cuts off everyone using it."
+          "about": {
+            "name": "About the user",
+            "what": "Name, contact and note. Shared access also has its short address here."
           },
-          "delete": {
-            "name": "Delete",
-            "what": "Removes the key and its whole history. Irreversible. If you only need to stop access, revoke instead."
+          "access": {
+            "name": "Access",
+            "what": "The expiry with +1 month, +3 months, +1 year or No end date, the servers as checkboxes, and the transport. The buttons extend from the current end date, or from today if that date has already passed."
+          },
+          "save": {
+            "name": "Save",
+            "what": "Becomes active once you change something. If you close the window without saving, the panel offers the draft back next time."
+          },
+          "manage": {
+            "name": "More actions → Manage",
+            "what": "Turn off pauses access, Turn on brings it back. Change secret replaces the direct links while the subscription link stays the same: the person opens it and presses Connect again. New subscription link replaces the link, and the old one stops opening.",
+            "tip": "If a link reached the wrong people, issue a new subscription link and change the secret."
+          },
+          "danger": {
+            "name": "More actions → Danger zone",
+            "what": "Revoke access closes access for good; the user stays in the list for the record. Delete removes the user, their links and statistics. For a pause use Turn off."
           }
         },
         "notes": {
-          "1": "Per-key traffic and connections are counted by telemt servers only; on tproxy servers the stats block is empty.",
-          "2": "While the status is \"Pending\" the link is already shown but starts working only after the apply on the server (usually within a minute)."
+          "1": "Traffic and connections are counted only by telemt servers; on tproxy these tiles stay empty.",
+          "2": "While the state is Waiting to apply, the link is already shown but starts working after the server applies it, usually within a minute."
         }
       },
       "keys.link": {
-        "title": "Client link",
-        "intro": "With the link the user enables the proxy in Telegram with one tap. The panel shows one block per server of the key; send the user the links of the locations they need, or one subscription link that gathers them all.",
+        "title": "Direct links",
+        "intro": "With a direct link the person enables the proxy in Telegram with one tap. The window shows one block per server of the user. It is usually simpler to send the single subscription link from the user window: its page gathers every server and the steps for each device.",
         "fields": {
           "web": {
             "name": "WEB",
@@ -1936,24 +1950,24 @@
           }
         },
         "notes": {
-          "1": "While the key is \"Pending\" the link does not work yet - wait for the apply (usually within a minute).",
-          "2": "The link contains the secret: whoever sees it can use the key. Leaked? \"Rotate secret\" in the key's drawer.",
+          "1": "While the state is Waiting to apply, the link does not work yet: wait for the apply, usually under a minute.",
+          "2": "The link contains the secret: whoever sees it can connect. If it leaked, use More actions → Change secret in the user window.",
           "3": "Viewers are not shown links."
         }
       },
       "keys.extend": {
-        "title": "Extend expiry",
-        "intro": "Sets one new end date on every selected key. For when a group paid for another month.",
+        "title": "Extend access",
+        "intro": "Sets one new end date for every selected user. Handy when a group has paid for another month.",
         "fields": {
           "expires_at": {
             "name": "New end date",
-            "what": "Date and time in your time zone, must be in the future. Replaces the previous expiry of every selected key - including permanent ones.",
+            "what": "A date and time in your time zone, in the future. Replaces the previous date for every selected user, including those without one.",
             "example": "2027-01-31 23:59"
           }
         },
         "notes": {
-          "1": "Extend before the date passes: once it does, the panel revokes the key and it has to be issued again.",
-          "2": "The new expiry reaches the servers on the next apply."
+          "1": "You can extend users whose access has already expired: it comes back after the next apply.",
+          "2": "Revoked users cannot be extended."
         }
       },
       "sites.templates": {
@@ -2372,7 +2386,7 @@
     "tab_diagnostics": "Checks",
     "tab_logs": "Logs",
     "tab_proxy": "Settings",
-    "tab_profiles": "Keys",
+    "tab_profiles": "Users",
     "tab_site": "Cover site",
     "tab_settings": "Maintenance",
     "node_navigation": "Server sections",
@@ -2386,11 +2400,11 @@
     "section_diagnostics": "Server checks",
     "description_diagnostics": "The full server check and the check from the panel: DNS, certificate, ports and proxy reachability. Results are kept; a passing check does not guarantee every Telegram client connects.",
     "section_logs": "Service logs",
-    "description_logs": "Select a service to investigate a failure. Remove credentials before sharing logs.",
+    "description_logs": "Select a service to investigate a failure. Remove secrets and access links before sharing logs.",
     "section_proxy": "Server settings",
     "description_proxy": "The Fake-TLS address, port and domains, the WEB transport and the route to Telegram. Changing the Fake-TLS address or port breaks links already handed out.",
-    "section_profiles": "Keys on this server",
-    "description_profiles": "The access keys installed on this server. Create a key and pick its servers under Access keys.",
+    "section_profiles": "Users on this server",
+    "description_profiles": "The users who have access to this server. Create a user and pick their servers under Users.",
     "section_site": "Cover site",
     "description_site": "The site an ordinary visitor of the server domain sees. All templates are under Cover sites.",
     "section_settings": "Server maintenance",
@@ -2430,7 +2444,7 @@
     "settings_group_personal": "Just for you",
     "settings_tab_subscription": "Subscription page",
     "settings_subscription": "Subscription page",
-    "settings_subscription_hint": "What a person sees after opening their key's subscription link."
+    "settings_subscription_hint": "What a person sees after opening their subscription link."
   },
   "reliability": {
     "routing_toggle": "Route to Telegram through SOCKS5 or WARP",
@@ -2612,5 +2626,113 @@
     "trouble_contact": "If nothing helps, call or text whoever sent you this link.",
     "error_disabled": "Access through this link is turned off for now. Message whoever sent you the link.",
     "error_expired": "Access through this link has expired. Ask whoever sent you the link to extend it."
+  },
+  "users": {
+    "title": "Users",
+    "create": "New user",
+    "header_total": "{{count}} in total",
+    "search_placeholder": "Name, contact, note or short address",
+    "tile_all": "Total",
+    "tile_active": "Active",
+    "tile_expiring": "Expiring in 7 days",
+    "tile_expired": "Expired",
+    "tile_disabled": "Turned off",
+    "filter_all": "All states",
+    "filter_active": "Active",
+    "filter_pending": "Waiting to apply",
+    "filter_expiring": "Expiring in 7 days",
+    "filter_expired": "Expired",
+    "filter_disabled": "Turned off",
+    "filter_revoked": "Revoked",
+    "state_active": "Active",
+    "state_pending": "Waiting to apply",
+    "state_disabled": "Turned off",
+    "state_expired": "Expired",
+    "state_revoked": "Revoked",
+    "columns": "Columns",
+    "columns_hint": "What the table shows",
+    "column_name": "User",
+    "column_type": "Type",
+    "column_servers": "Servers",
+    "column_traffic": "Traffic, 30 days",
+    "column_online": "Connections",
+    "column_expires": "Expires",
+    "column_created": "Created",
+    "online_now_one": "{{count}} connection",
+    "online_now_other": "{{count}} connections",
+    "online_ips": "IP addresses: {{count}}",
+    "seen_ago": "Last connected {{ago}}",
+    "never_seen": "Not connected yet",
+    "traffic_unmeasured": "tproxy servers do not count traffic",
+    "empty_title": "No users yet",
+    "empty_description": "Create a user: the panel gives them a subscription link right away, and they connect the proxy themselves from it.",
+    "empty_filtered": "Nobody matches these filters",
+    "pagination_summary": "Page {{page}} of {{totalPages}} · found: {{count}}",
+    "bulk_done": "Done: {{count}}",
+    "bulk_revoke_title": "Revoke access for the selected ({{count}})?",
+    "bulk_revoke_description": "Revoked access cannot be brought back. For a pause, choose Turn off.",
+    "bulk_delete_title": "Delete the selected ({{count}})?",
+    "link_copied": "Subscription link copied",
+    "enable": "Turn on",
+    "disable": "Turn off",
+    "enabled": "Access turned on",
+    "disabled": "Access turned off",
+    "revoke": "Revoke access",
+    "revoked": "Access revoked",
+    "revoke_title": "Revoke access for \"{{label}}\"?",
+    "revoke_description": "The links stop working after the next apply. Revoked access cannot be brought back; for a pause, choose Turn off.",
+    "delete_title": "Delete \"{{label}}\"?",
+    "delete_description": "The user, their links and their statistics are deleted for good.",
+    "deleted": "User deleted",
+    "rotate_title": "Change the secret of \"{{label}}\"?",
+    "rotate_description": "The direct links change and the old ones stop working. The subscription link stays the same: the person opens it and presses Connect again.",
+    "subscription_new": "New subscription link",
+    "unlink_title": "Revoke the subscription link?",
+    "unlink_description": "The subscription page stops opening. Proxies already added in Telegram keep working.",
+    "more_actions": "More actions",
+    "menu_manage": "Manage",
+    "loading": "Loading…",
+    "created_at": "created {{date}}",
+    "welcome": "User created. Send them the subscription link below: on that page they pick their device and connect the proxy step by step.",
+    "disabled_notice": "Access is turned off: the proxy and the subscription page do not work until you turn it on (More actions → Turn on).",
+    "expired_notice": "Access has expired. Move the date forward in the Access card and save, and everything works again.",
+    "revoked_notice": "Access is revoked. The settings are read-only.",
+    "card_overview": "Subscription and activity",
+    "card_about": "About the user",
+    "card_access": "Access",
+    "card_limits": "Limits",
+    "field_name": "Name",
+    "field_contact": "Contact",
+    "field_contact_placeholder": "@username, phone or e-mail",
+    "field_slug": "Short address",
+    "field_slug_hint": "A link like …/s/team is easy to dictate and remember. Latin letters, digits and dashes.",
+    "validation_slug": "3–32 characters: Latin letters, digits and dashes, not starting or ending with a dash",
+    "validation_slug_taken": "This address is taken",
+    "field_expires": "Access until",
+    "extend_1m": "+1 month",
+    "extend_3m": "+3 months",
+    "extend_1y": "+1 year",
+    "limits_pick_servers": "Limits appear once you pick servers.",
+    "full_link": "Full link",
+    "show_qr": "QR code",
+    "open_page": "Open the page",
+    "qr_hint": "The person points their phone camera at the code and the subscription page opens.",
+    "subscription_legacy": "This link was made before the panel update: it works but cannot be shown. Issue a new one to see and copy it here; the old one then stops opening.",
+    "subscription_reissue": "Issue a new link",
+    "subscription_none": "There is no subscription link. Create one to send the person a single link to every server.",
+    "direct_links": "Direct links",
+    "stats_title": "Statistics: {{label}}",
+    "saved": "Saved",
+    "open_user": "Open",
+    "create_title": "New user",
+    "create_hint_personal": "For one person. You can turn them off or revoke them without touching anyone else.",
+    "create_hint_shared": "One link for a group of people. Turning off or revoking affects everyone at once.",
+    "create_hint_batch": "Several users at once, named prefix-1, prefix-2 and so on. Each gets their own subscription link.",
+    "tab_personal": "One person",
+    "tab_shared": "Shared access",
+    "tab_batch": "Several",
+    "create_submit": "Create",
+    "create_batch_submit": "Create ({{count}})",
+    "create_error": "Could not create the user"
   }
 }

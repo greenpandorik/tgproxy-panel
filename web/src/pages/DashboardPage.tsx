@@ -233,7 +233,7 @@ export function DashboardPage() {
         actions={
           <>
             {isWriter && (
-              <Button nativeButton={false} render={<Link to="/keys?create=1" />}>
+              <Button nativeButton={false} render={<Link to="/users?create=1" />}>
                 <KeyRound />
                 {t('dashboard.manage_access')}
               </Button>

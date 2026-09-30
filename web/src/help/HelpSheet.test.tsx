@@ -35,7 +35,7 @@ describe('HelpSheet', () => {
     setLang('en');
     render(<HelpSheet topic="keys.limits" open onOpenChange={vi.fn()} />);
 
-    expect(await screen.findByText('Key limits')).toBeInTheDocument();
+    expect(await screen.findByText('User limits')).toBeInTheDocument();
     expect(screen.getByText('Traffic quota, GB')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /setup guide/ })).toHaveAttribute(
       'href',
@@ -72,20 +72,20 @@ describe('HelpProvider', () => {
   }
 
   it('opens the help for the current route on `?` when no text field is focused', async () => {
-    renderAt('/keys');
+    renderAt('/users');
     screen.getByRole('button', { name: 'noop' }).focus();
 
     fireEvent.keyDown(window, { key: '?' });
 
-    expect(await screen.findByText(/Ключ — это доступ к прокси/)).toBeInTheDocument();
+    expect(await screen.findByText(/Пользователь — это доступ к прокси/)).toBeInTheDocument();
   });
 
   it('leaves `?` alone while typing in a field', async () => {
-    renderAt('/keys');
+    renderAt('/users');
     screen.getByRole('textbox', { name: 'field' }).focus();
 
     fireEvent.keyDown(window, { key: '?' });
 
-    await waitFor(() => expect(screen.queryByText(/Ключ — это доступ к прокси/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/Пользователь — это доступ к прокси/)).not.toBeInTheDocument());
   });
 });

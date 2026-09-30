@@ -95,7 +95,7 @@ describe('CommandPalette', () => {
     expect(await screen.findByText('Разделы')).toBeInTheDocument();
     expect(screen.getByText('Действия')).toBeInTheDocument();
     expect(screen.getByText('Обзор')).toBeInTheDocument();
-    expect(screen.getByText('Создать ключ')).toBeInTheDocument();
+    expect(screen.getByText('Новый пользователь')).toBeInTheDocument();
     expect(screen.getByText('Применить всё')).toBeInTheDocument();
 
     // Nodes arrive from the cached list query, searchable by name and host.
@@ -117,13 +117,13 @@ describe('CommandPalette', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it('deep-links the create-key action into the keys page', async () => {
+  it('deep-links the create-user action into the users page', async () => {
     const user = userEvent.setup();
     renderPalette();
 
-    await user.click(await screen.findByText('Создать ключ'));
+    await user.click(await screen.findByText('Новый пользователь'));
 
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/keys?create=1'));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/users?create=1'));
   });
 
   it('confirms before applying to every dirty node', async () => {

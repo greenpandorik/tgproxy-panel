@@ -9,11 +9,11 @@ import { setLang } from '@/i18n';
 
 import { draftStorageKey, readDraft } from '@/lib/drafts';
 
-import { CreateKeyDialog } from './CreateKeyDialog';
+import { CreateUserDialog } from './CreateUserDialog';
 
 import type { Node } from '@/api/types';
 
-const DRAFT_KEY = 'key-create';
+const DRAFT_KEY = 'user-create';
 
 function node(id: string, name: string, engine: Node['engine']): Node {
   return {
@@ -58,7 +58,7 @@ function json(body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
 }
 
-/** The dialog the way KeysPage owns it: mounted for good, opened and closed by a flag. */
+/** The dialog the way UsersPage owns it: mounted for good, opened and closed by a flag. */
 function Harness() {
   const [open, setOpen] = useState(true);
   return (
@@ -66,7 +66,7 @@ function Harness() {
       <button type="button" onClick={() => setOpen(true)}>
         reopen
       </button>
-      <CreateKeyDialog open={open} onOpenChange={setOpen} onCreated={() => {}} onBatchCreated={() => {}} />
+      <CreateUserDialog open={open} onOpenChange={setOpen} onCreated={() => {}} onBatchCreated={() => {}} />
     </>
   );
 }
@@ -80,7 +80,7 @@ function renderDialog() {
   );
 }
 
-describe('CreateKeyDialog drafts', () => {
+describe('CreateUserDialog drafts', () => {
   beforeEach(() => {
     setLang('ru');
     window.localStorage.clear();
@@ -94,7 +94,7 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    const label = await screen.findByLabelText('Название ключа');
+    const label = await screen.findByLabelText('Имя');
     await user.type(label, 'Команда поддержки');
     expect(screen.queryByRole('status')).toBeNull();
 
@@ -104,12 +104,12 @@ describe('CreateKeyDialog drafts', () => {
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
     // The form itself comes back clean; the draft is an offer, not a surprise.
-    expect(await screen.findByLabelText('Название ключа')).toHaveValue('');
+    expect(await screen.findByLabelText('Имя')).toHaveValue('');
     const banner = await screen.findByRole('status');
     expect(banner).toHaveTextContent(/Черновик от \d{2}:\d{2}/);
 
     await user.click(screen.getByRole('button', { name: 'Восстановить' }));
-    expect(screen.getByLabelText('Название ключа')).toHaveValue('Команда поддержки');
+    expect(screen.getByLabelText('Имя')).toHaveValue('Команда поддержки');
     expect(screen.queryByRole('status')).toBeNull();
   });
 
@@ -117,15 +117,15 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.click(await screen.findByRole('tab', { name: 'Несколько ключей' }));
+    await user.click(await screen.findByRole('tab', { name: 'Несколько' }));
     await user.type(screen.getByLabelText('Префикс'), 'vip');
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
     // Reopens on the default tab; continuing switches back to the batch.
-    expect(await screen.findByLabelText('Название ключа')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Имя')).toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'Восстановить' }));
-    expect(screen.getByRole('tab', { name: 'Несколько ключей' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Несколько' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('Префикс')).toHaveValue('vip');
   });
 
@@ -133,13 +133,13 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText('Название ключа'), 'черновик');
+    await user.type(await screen.findByLabelText('Имя'), 'черновик');
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
     await user.click(await screen.findByRole('button', { name: 'Удалить черновик' }));
     expect(screen.queryByRole('status')).toBeNull();
-    expect(screen.getByLabelText('Название ключа')).toHaveValue('');
+    expect(screen.getByLabelText('Имя')).toHaveValue('');
     expect(window.localStorage.getItem(draftStorageKey(DRAFT_KEY))).toBeNull();
   });
 
@@ -147,17 +147,17 @@ describe('CreateKeyDialog drafts', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await screen.findByLabelText('Название ключа');
+    await screen.findByLabelText('Имя');
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     await user.click(screen.getByRole('button', { name: 'reopen' }));
 
-    await screen.findByLabelText('Название ключа');
+    await screen.findByLabelText('Имя');
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
     expect(window.localStorage.getItem(draftStorageKey(DRAFT_KEY))).toBeNull();
   });
 });
 
-describe('CreateKeyDialog transport', () => {
+describe('CreateUserDialog transport', () => {
   beforeEach(() => {
     setLang('ru');
     window.localStorage.clear();
@@ -210,40 +210,61 @@ describe('CreateKeyDialog transport', () => {
   });
 });
 
-describe('CreateKeyDialog limits and summary', () => {
+describe('CreateUserDialog sending', () => {
   beforeEach(() => {
     setLang('ru');
     window.localStorage.clear();
-    stubNodes([AMS, HEL]);
   });
 
-  it('keeps the limits behind one entry point and opens them in a sheet', async () => {
+  it('fills the expiry from a quick button and sends a shared user with a short address', async () => {
     const user = userEvent.setup();
-    renderDialog();
-
-    await user.click(await screen.findByText('Amsterdam'));
-    expect(screen.getByText('Обычный доступ · без ограничений')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Квота трафика, ГБ')).toBeNull();
-
-    await user.click(screen.getByText('Лимиты'));
-
-    const quota = await screen.findByLabelText('Квота трафика, ГБ');
-    await user.type(quota, '50');
-    await user.click(screen.getByRole('button', { name: 'Готово' }));
-
-    expect(await screen.findByText('Задано ограничений: 1')).toBeInTheDocument();
-  });
-
-  it('summarises what is about to be created', async () => {
-    const user = userEvent.setup();
-    renderDialog();
-
-    await user.click(await screen.findByRole('tab', { name: 'Общий' }));
-    await user.type(screen.getByLabelText('Название ключа'), 'Поддержка');
-    await user.click(screen.getByText('Amsterdam'));
-
-    expect(screen.getByText(/Общий ключ «Поддержка»/)).toHaveTextContent(
-      'серверов: 1 · без срока · транспорт автоматически · без ограничений',
+    const sent: unknown[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.includes('/api/v1/nodes')) return json({ items: [AMS], total: 1 });
+        if (path.endsWith('/api/v1/keys') && init?.method === 'POST') {
+          sent.push(JSON.parse(String(init.body)));
+          return json({ id: 'k-1', label: 'Команда' });
+        }
+        return json({ items: [], total: 0 });
+      }),
     );
+    const created = vi.fn();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <CreateUserDialog open onOpenChange={() => {}} onCreated={created} onBatchCreated={() => {}} />
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole('tab', { name: 'Общий доступ' }));
+    await user.type(screen.getByLabelText('Имя'), 'Команда');
+    await user.type(screen.getByLabelText(/Короткий адрес/), 'Team-1');
+    await user.click(await screen.findByText('Amsterdam'));
+    await user.click(screen.getByRole('button', { name: '+1 месяц' }));
+    expect((screen.getByLabelText('Срок доступа') as HTMLInputElement).value).not.toBe('');
+
+    await user.click(screen.getByRole('button', { name: 'Создать' }));
+    await waitFor(() => expect(created).toHaveBeenCalled());
+    const body = sent[0] as { type: string; sub_slug?: string; expires_at?: string; node_ids: string[] };
+    expect(body.type).toBe('SHARED');
+    expect(body.sub_slug).toBe('team-1');
+    expect(body.expires_at).toBeTruthy();
+    expect(body.node_ids).toEqual(['n-telemt']);
+  });
+
+  it('refuses a short address with spaces before sending anything', async () => {
+    const user = userEvent.setup();
+    stubNodes([AMS]);
+    renderDialog();
+
+    await user.click(await screen.findByRole('tab', { name: 'Общий доступ' }));
+    await user.type(screen.getByLabelText('Имя'), 'Команда');
+    await user.type(screen.getByLabelText(/Короткий адрес/), 'my team');
+    await user.click(await screen.findByText('Amsterdam'));
+    await user.click(screen.getByRole('button', { name: 'Создать' }));
+    expect(await screen.findByText(/3–32 символа/)).toBeInTheDocument();
   });
 });

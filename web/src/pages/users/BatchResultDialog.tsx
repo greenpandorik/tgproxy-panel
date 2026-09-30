@@ -1,6 +1,7 @@
 import { Download, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { CopyButton } from '@/components/common/CopyButton';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { HelpButton } from '@/help';
@@ -11,12 +12,16 @@ interface BatchResultDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   keys: AccessKey[];
-  onShowLink: (keyId: string) => void;
+  onOpen: (keyId: string) => void;
 }
 
-/** Builds the "download all links" .txt blob: one line per node link, tab-separated. */
+/** Builds the "download all links" .txt blob: each user's subscription link, then every direct link, tab-separated. */
 function buildLinksText(keys: AccessKey[]): string {
   const lines: string[] = [];
+  for (const key of keys) {
+    if (key.subscription_url) lines.push(`${key.label}\t${key.subscription_url}`);
+  }
+  lines.push('');
   for (const key of keys) {
     for (const link of key.links ?? []) {
       lines.push(`${key.label}\t${link.hostname}\t${link.tme}\t${link.tg}`);
@@ -25,8 +30,8 @@ function buildLinksText(keys: AccessKey[]): string {
   return lines.join('\n') + '\n';
 }
 
-/** Result list after a batch create: per-key "Show link" plus a bulk .txt export of every generated link. */
-export function BatchResultDialog({ open, onOpenChange, keys, onShowLink }: BatchResultDialogProps) {
+/** Result list after a batch create: each user's subscription link to copy, plus a .txt export of every link. */
+export function BatchResultDialog({ open, onOpenChange, keys, onOpen }: BatchResultDialogProps) {
   const { t } = useTranslation();
 
   const handleDownloadAll = () => {
@@ -34,7 +39,7 @@ export function BatchResultDialog({ open, onOpenChange, keys, onShowLink }: Batc
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'key-links.txt';
+    a.download = 'user-links.txt';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -43,7 +48,7 @@ export function BatchResultDialog({ open, onOpenChange, keys, onShowLink }: Batc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>{t('keys.batch_result_title', { count: keys.length })}</DialogTitle>
@@ -54,12 +59,17 @@ export function BatchResultDialog({ open, onOpenChange, keys, onShowLink }: Batc
 
         <ul className="max-h-64 divide-y divide-hairline overflow-y-auto rounded-control border border-hairline">
           {keys.map((key) => (
-            <li key={key.id} className="flex h-10 items-center justify-between gap-2 pr-1 pl-3">
+            <li key={key.id} className="flex h-11 items-center justify-between gap-2 pr-1 pl-3">
               <span className="truncate text-body text-foreground">{key.label}</span>
-              <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => onShowLink(key.id)}>
-                <ExternalLink />
-                {t('keys.action_show_link')}
-              </Button>
+              <span className="flex shrink-0 items-center gap-1">
+                {key.subscription_url && (
+                  <CopyButton value={key.subscription_url} label={t('keys.subscription_copy')} className="size-8" />
+                )}
+                <Button type="button" variant="ghost" size="sm" onClick={() => onOpen(key.id)}>
+                  <ExternalLink />
+                  {t('users.open_user')}
+                </Button>
+              </span>
             </li>
           ))}
         </ul>
