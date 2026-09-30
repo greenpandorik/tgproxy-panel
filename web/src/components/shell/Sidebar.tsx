@@ -9,7 +9,7 @@ import { Logo } from '@/components/brand/Logo';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-import { NAV_GROUPS } from './nav';
+import { NAV_GROUPS, navLabel } from './nav';
 
 import type { NavItem } from './nav';
 
@@ -31,37 +31,27 @@ function useClock(): string {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
-function NavRow({
-  item,
-  count,
-  collapsed,
-  onNavigate,
-}: {
-  item: NavItem;
-  count?: string;
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+function NavRow({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boolean; onNavigate?: () => void }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const label = t(item.labelKey);
+  const fullLabel = navLabel(item, t);
   const isActive = item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
 
   const link = (
     <Link
       to={item.to}
       onClick={onNavigate}
-      aria-label={collapsed ? label : undefined}
+      aria-label={collapsed ? fullLabel : undefined}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'panel-nav-link relative flex h-10 items-center gap-3 rounded-control px-3 text-body transition-[background-color,border-color,color,scale] duration-fast ease-out active:scale-[0.985]',
+        'panel-nav-link relative flex h-10 items-center gap-3 rounded-control px-3 text-body transition-[background-color,border-color,color,scale] duration-fast ease-out focus-visible:-outline-offset-2 active:scale-[0.985]',
         collapsed && 'justify-center px-0',
         !isActive && 'text-sidebar-foreground/85 hover:bg-elevated/60 hover:text-foreground',
       )}
     >
       <item.icon className="size-[18px] shrink-0" strokeWidth={1.8} aria-hidden="true" />
       {!collapsed && <span className="truncate">{label}</span>}
-      {!collapsed && count && <span className="mono ml-auto text-micro text-mute">{count}</span>}
     </Link>
   );
 
@@ -71,10 +61,7 @@ function NavRow({
     <li>
       <Tooltip>
         <TooltipTrigger render={link} />
-        <TooltipContent side="right">
-          {label}
-          {count ? <span className="mono text-mute"> {count}</span> : null}
-        </TooltipContent>
+        <TooltipContent side="right">{fullLabel}</TooltipContent>
       </Tooltip>
     </li>
   );
@@ -110,7 +97,9 @@ export function Sidebar({ collapsed = false, inDrawer = false, onNavigate }: Sid
         )}
         {!collapsed && (
           <>
-            <span className="truncate text-title font-semibold tracking-tight">{branding?.panel_name || DEFAULT_PANEL_NAME}</span>
+            <span className="truncate text-title font-semibold tracking-tight" title={branding?.panel_name || DEFAULT_PANEL_NAME}>
+              {branding?.panel_name || DEFAULT_PANEL_NAME}
+            </span>
           </>
         )}
       </div>
@@ -120,7 +109,7 @@ export function Sidebar({ collapsed = false, inDrawer = false, onNavigate }: Sid
           <div key={group.labelKey}>
             {index > 0 && <div className={cn('wave-rule mt-3', collapsed ? 'mx-2 mb-3' : 'mx-1')} aria-hidden="true" />}
             {!collapsed && (
-              <p className="wave-group-label flex items-center gap-2 px-3 pt-4 pb-2 text-[11px] leading-4 font-semibold tracking-[0.12em] text-mute uppercase">
+              <p className="wave-group-label flex items-center gap-2 px-3 pt-3 pb-1.5 text-[11px] leading-4 font-semibold tracking-[0.12em] text-mute uppercase">
                 {t(group.labelKey)}
               </p>
             )}
@@ -151,7 +140,11 @@ export function Sidebar({ collapsed = false, inDrawer = false, onNavigate }: Sid
         </div>
       </div>
 
-      {!collapsed && branding?.footer_text && <p className="truncate px-2 pt-2 text-label text-mute">{branding.footer_text}</p>}
+      {!collapsed && branding?.footer_text && (
+        <p className="truncate px-2 pt-2 text-label text-mute" title={branding.footer_text}>
+          {branding.footer_text}
+        </p>
+      )}
     </nav>
   );
 }

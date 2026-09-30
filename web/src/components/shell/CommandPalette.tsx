@@ -23,7 +23,17 @@ import { setLang } from '@/i18n';
 import { useTheme } from '@/theme/ThemeProvider';
 import { nodeStatus } from '@/pages/nodes/nodeDisplay';
 
-import { NAV_ITEMS } from './nav';
+import { NAV_ITEMS, navGroupOf, navLabel } from './nav';
+
+import type { LucideIcon } from 'lucide-react';
+
+interface PaletteAction {
+  value: string;
+  icon: LucideIcon;
+  label: string;
+  shortcut?: string;
+  onSelect: () => void;
+}
 
 const RESULT_LIMIT = 6;
 
@@ -115,6 +125,44 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
   const nextLang = i18n.language?.startsWith('en') ? 'ru' : 'en';
 
+  const matches = (text: string) => !term || text.toLowerCase().includes(term);
+  const sections = NAV_ITEMS.filter((item) => {
+    const group = navGroupOf(item);
+    return matches(group ? `${t(group.labelKey)} ${t(item.labelKey)}` : t(item.labelKey));
+  });
+
+  const actions: PaletteAction[] = [
+    {
+      value: 'action:create-key',
+      icon: Plus,
+      label: t('command.action_create_key'),
+      onSelect: () => run(() => navigate('/users?create=1')),
+    },
+    {
+      value: 'action:apply-all',
+      icon: Send,
+      label: t('command.action_apply_all'),
+      shortcut: dirtyNodeIds.length > 0 ? String(dirtyNodeIds.length) : undefined,
+      onSelect: () => run(requestApplyEverywhere),
+    },
+    ...(help && pageTopic
+      ? [{ value: 'action:help', icon: CircleHelp, label: t('help.page_help'), shortcut: '?', onSelect: () => run(() => help.open(pageTopic)) }]
+      : []),
+    {
+      value: 'action:theme',
+      icon: theme === 'dark' ? Sun : Moon,
+      label: t('command.action_toggle_theme'),
+      onSelect: () => run(toggleTheme),
+    },
+    {
+      value: 'action:lang',
+      icon: Languages,
+      label: t('command.action_toggle_lang'),
+      shortcut: nextLang,
+      onSelect: () => run(() => setLang(nextLang)),
+    },
+  ].filter((action) => matches(action.label));
+
   return (
     <>
       <ConfirmDialog
@@ -131,14 +179,16 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           <CommandList>
             <CommandEmpty>{t('command.empty')}</CommandEmpty>
 
-            <CommandGroup heading={t('command.group_sections')}>
-              {NAV_ITEMS.filter((item) => !term || t(item.labelKey).toLowerCase().includes(term)).map((item) => (
-                <CommandItem key={item.to} value={`section:${item.to}`} onSelect={() => run(() => navigate(item.to))}>
-                  <item.icon strokeWidth={1.8} aria-hidden="true" />
-                  <span className="truncate">{t(item.labelKey)}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {sections.length > 0 && (
+              <CommandGroup heading={t('command.group_sections')}>
+                {sections.map((item) => (
+                  <CommandItem key={item.to} value={`section:${item.to}`} onSelect={() => run(() => navigate(item.to))}>
+                    <item.icon strokeWidth={1.8} aria-hidden="true" />
+                    <span className="truncate">{navLabel(item, t)}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
 
             {matchedNodes.length > 0 && (
               <CommandGroup heading={t('command.group_nodes')}>
@@ -166,33 +216,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               </CommandGroup>
             )}
 
-            <CommandGroup heading={t('command.group_actions')}>
-              <CommandItem value="action:create-key" onSelect={() => run(() => navigate('/users?create=1'))}>
-                <Plus strokeWidth={1.8} aria-hidden="true" />
-                {t('command.action_create_key')}
-              </CommandItem>
-              <CommandItem value="action:apply-all" onSelect={() => run(requestApplyEverywhere)}>
-                <Send strokeWidth={1.8} aria-hidden="true" />
-                {t('command.action_apply_all')}
-                {dirtyNodeIds.length > 0 && <CommandShortcut>{dirtyNodeIds.length}</CommandShortcut>}
-              </CommandItem>
-              {help && pageTopic && (
-                <CommandItem value="action:help" onSelect={() => run(() => help.open(pageTopic))}>
-                  <CircleHelp strokeWidth={1.8} aria-hidden="true" />
-                  {t('help.page_help')}
-                  <CommandShortcut>?</CommandShortcut>
-                </CommandItem>
-              )}
-              <CommandItem value="action:theme" onSelect={() => run(toggleTheme)}>
-                {theme === 'dark' ? <Sun strokeWidth={1.8} aria-hidden="true" /> : <Moon strokeWidth={1.8} aria-hidden="true" />}
-                {t('command.action_toggle_theme')}
-              </CommandItem>
-              <CommandItem value="action:lang" onSelect={() => run(() => setLang(nextLang))}>
-                <Languages strokeWidth={1.8} aria-hidden="true" />
-                {t('command.action_toggle_lang')}
-                <CommandShortcut>{nextLang}</CommandShortcut>
-              </CommandItem>
-            </CommandGroup>
+            {actions.length > 0 && (
+              <CommandGroup heading={t('command.group_actions')}>
+                {actions.map(({ value, icon: Icon, label, shortcut, onSelect }) => (
+                  <CommandItem key={value} value={value} onSelect={onSelect}>
+                    <Icon strokeWidth={1.8} aria-hidden="true" />
+                    <span className="truncate">{label}</span>
+                    {shortcut && <CommandShortcut>{shortcut}</CommandShortcut>}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </CommandDialog>
