@@ -66,7 +66,7 @@ function ServiceState({ active }: { active: boolean }) {
   );
 }
 
-const HEALTH_GRID = 'border-t border-hairline p-4 sm:grid-cols-2 lg:grid-cols-4';
+const HEALTH_GRID = 'grid-cols-1 border-t border-hairline p-4 sm:grid-cols-2 lg:grid-cols-4';
 
 const serviceGrid = (telemt: boolean) =>
   cn('grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2', telemt ? '@min-[68rem]:grid-cols-4' : '@min-[52rem]:grid-cols-3');
