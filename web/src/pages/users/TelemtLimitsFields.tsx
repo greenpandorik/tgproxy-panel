@@ -63,7 +63,7 @@ export function TelemtLimitsFields({ value, onChange, errors, disabled, classNam
                   max={'max' in field ? field.max : undefined}
                   step={field.step}
                   inputMode="decimal"
-                  placeholder={field.placeholder}
+                  placeholder={t('users.no_limit')}
                   aria-label={label}
                   className={cn(NUMBER_FIELD_CLASS, unit && 'pr-16')}
                   disabled={disabled}

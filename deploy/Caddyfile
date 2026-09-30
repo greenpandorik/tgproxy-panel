@@ -30,3 +30,7 @@
 		header_up X-Forwarded-For {remote_host}
 	}
 }
+
+# A second domain for subscription pages on this same server: install.sh --sub-domain
+# writes sites/subpage.caddy. Without it the pattern matches nothing and Caddy only warns.
+import /etc/caddy/sites/*.caddy

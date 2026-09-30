@@ -94,27 +94,27 @@ function renderDialog() {
 describe('KeyLinkDialog link kinds', () => {
   beforeEach(() => setLang('ru'));
 
-  it('gives a telemt node one tab per link kind and shows the WEB link first', async () => {
+  it('gives a telemt node one tab per link kind and shows the Fake-TLS link first', async () => {
     mockApi([TELEMT_GROUP]);
     renderDialog();
 
     expect(await screen.findByRole('tab', { name: 'WEB' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Fake-TLS' })).toBeInTheDocument();
-    expect(screen.getByDisplayValue(TELEMT_GROUP.links[0].tme)).toBeInTheDocument();
-    // The Fake-TLS link lives behind its own tab, not stacked under the WEB one.
-    expect(screen.queryByDisplayValue(TELEMT_GROUP.links[1].tme)).toBeNull();
+    expect(screen.getByDisplayValue(TELEMT_GROUP.links[1].tme)).toBeInTheDocument();
+    // The WEB link lives behind its own tab, not stacked under the Fake-TLS one.
+    expect(screen.queryByDisplayValue(TELEMT_GROUP.links[0].tme)).toBeNull();
     expect(screen.queryByText('только WEB на этом движке')).toBeNull();
   });
 
-  it('switches to the Fake-TLS link and its QR when that tab is chosen', async () => {
+  it('switches to the WEB link and its QR when that tab is chosen', async () => {
     mockApi([TELEMT_GROUP]);
     renderDialog();
 
-    await userEvent.click(await screen.findByRole('tab', { name: 'Fake-TLS' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'WEB' }));
 
-    expect(await screen.findByDisplayValue(TELEMT_GROUP.links[1].tme)).toBeInTheDocument();
-    const qr = screen.getByAltText(/Fake-TLS/);
-    expect(qr).toHaveAttribute('src', expect.stringContaining('kind=tls'));
+    expect(await screen.findByDisplayValue(TELEMT_GROUP.links[0].tme)).toBeInTheDocument();
+    const qr = screen.getByAltText(/WEB/);
+    expect(qr).toHaveAttribute('src', expect.stringContaining('kind=web'));
   });
 
   it('offers a domain switcher when the node masks as several Fake-TLS domains', async () => {

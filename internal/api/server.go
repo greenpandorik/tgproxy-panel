@@ -59,6 +59,7 @@ type Server struct {
 	secureCookies  bool
 	loginLimiter   *ipLimiter
 	subLimiter     *ipLimiter
+	svcCache       serviceCache
 	driver         nodedriver.Driver
 	presence       *nodesvc.Presence
 	keys           *keys.Service
@@ -115,7 +116,7 @@ func New(d Deps) *Server {
 // Handler builds the panel router.
 func (s *Server) Handler() chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.Recoverer, denyFraming, securityHeaders, withIP, s.loadSession, s.accessLog)
+	r.Use(middleware.RequestID, middleware.Recoverer, denyFraming, securityHeaders, withIP, s.subscriptionHostGuard, s.loadSession, s.accessLog)
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
 	r.Get("/metrics", s.handleMetrics)
 	r.Get("/s/{token}", s.handleSubscriptionPage)
@@ -123,6 +124,8 @@ func (s *Server) Handler() chi.Router {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Post("/probes/report", s.handleProbeReport)
+		r.Get("/subpage/pages/{token}", s.handleSubpageData)
+		r.Post("/subpage/heartbeat", s.handleSubpageHeartbeat)
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/totp/verify", s.handleTOTPVerify)
 		r.Get("/install/{token}.sh", s.handleInstallScript)
@@ -193,6 +196,10 @@ func (s *Server) mountProtected(r chi.Router) {
 		r.Get("/site/preview", s.handleSitePreview)
 	})
 	s.mountKeys(r)
+	r.With(RequireRole(writers...)).Get("/subscription-service", s.handleGetSubscriptionService)
+	r.With(RequireRole(RoleOwner)).Put("/subscription-service", s.handlePutSubscriptionService)
+	r.With(RequireRole(RoleOwner)).Post("/subscription-service/token", s.handleIssueServiceToken)
+	r.With(RequireRole(RoleOwner)).Delete("/subscription-service/token", s.handleRevokeServiceToken)
 	s.mountSites(r)
 	s.mountBranding(r)
 	s.mountDashboard(r)

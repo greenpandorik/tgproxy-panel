@@ -14,7 +14,8 @@
     "group_system": "System",
     "users": "Users",
     "group_subscription": "Subscription",
-    "subscription_page": "Page"
+    "subscription_page": "Page",
+    "subscription_service": "Service"
   },
   "common": {
     "copy": "Copy",
@@ -460,7 +461,7 @@
     "filter_node_all": "All servers",
     "type_shared": "Shared",
     "type_personal": "Personal",
-    "status_pending_hint": "Becomes active after the next apply on the server",
+    "status_pending_hint": "The panel is setting up the servers, usually within a minute",
     "no_expiry": "No expiry",
     "select_all": "Select all",
     "column_label": "Name",
@@ -549,7 +550,7 @@
     "limits_edit_reset": "Clear all",
     "limits_edit_done": "Done",
     "telemt_limits_title": "Limits",
-    "telemt_limits_hint": "An empty field means no limit. telemt enforces these on the server.",
+    "telemt_limits_hint": "An empty field means no limit.",
     "web_limits_hint": "Advanced Telemt WEB limits. An empty field inherits the node-wide ceiling; a value above it is rejected before apply.",
     "legacy_limits_hint": "Advanced limits. Legacy fields apply only to tproxy servers; Telemt receives session and stream limits only.",
     "telemt_limits_unavailable": "appear once a telemt server is selected",
@@ -592,7 +593,7 @@
     "link_per_node_toggle": "Per-node links",
     "link_revoked": "Access is revoked; there are no working links.",
     "link_no_permission": "You are not allowed to see this user's links.",
-    "link_pending_hint": "Access starts working after the server applies it, usually within a minute.",
+    "link_pending_hint": "The panel is setting up the servers, usually within a minute. Nothing to press.",
     "link_qr_alt_kind": "{{kind}} QR code for {{hostname}}",
     "link_web_only": "WEB only on this engine",
     "link_tls_domain": "Masking domain",
@@ -1255,7 +1256,7 @@
     "subpage_servers_hint": "Untick a server to keep it off subscription pages. Users on it keep working.",
     "subpage_no_servers": "No servers yet.",
     "subpage_preview": "Preview",
-    "subpage_preview_hint": "An example with all your servers and fake secrets; changes show up right away, before you save. On a real page the servers and the expiry date come from the key.",
+    "subpage_preview_hint": "An example with all your servers and fake secrets; changes show up right away, before you save. On a real page the servers and the expiry come from the user.",
     "subpage_preview_open": "Open separately",
     "subpage_platform": "Tab shown first",
     "subpage_platform_hint": "The chosen tab opens for everyone, and visitors can switch it themselves. If your people use a mix of Android, iPhone and computers, pick \"Detect from the visitor's device\".",
@@ -2359,6 +2360,42 @@
             "what": "Which tab is open when a person arrives: Android, iPhone and iPad, or Computer. Android by default. \"Detect from the visitor's device\" picks the tab from the phone or computer the link is opened on."
           }
         }
+      },
+      "subscription.service": {
+        "title": "Subscription page service",
+        "intro": "Subscription pages can open on a domain of your own instead of the panel's: people never see the panel's domain, and if you like, the pages run on a separate server. Until you set this up, pages open on the panel's domain.",
+        "fields": {
+          "where": {
+            "name": "Where pages open",
+            "what": "\"On the panel domain\" keeps things as they were. \"On my own domain\" builds every link in the panel on the domain you enter. Old links on the panel domain redirect to the new one."
+          },
+          "domain": {
+            "name": "Domain",
+            "what": "Just the domain, without a path. It must point at the panel server or the service server and serve HTTPS. Save it once the domain is up, or new links will not open for a while.",
+            "example": "sub.example.com"
+          },
+          "hide": {
+            "name": "Do not open pages on the panel domain",
+            "what": "By default old links on the panel domain redirect to the new domain. This box turns that off too: the panel domain is never shown, but old links stop working."
+          },
+          "same_server": {
+            "name": "On the panel server",
+            "what": "The second domain points at the panel server. install.sh --update --sub-domain adds it to the panel's Caddy and gets a certificate. On that domain the panel serves only subscription pages."
+          },
+          "other_server": {
+            "name": "On another server",
+            "what": "A small separate service without a database. \"Get the install command\" gives one command with a token: it installs Docker, the service and Caddy with a certificate for your domain. The service gets data from the panel with the token and keeps the last copy of each page.",
+            "tip": "Ports 80 and 443 must be free on the new server, and it must reach the panel at the PANEL_PUBLIC_URL address."
+          },
+          "status": {
+            "name": "Service status",
+            "what": "Once a minute the service tells the panel it is online, with its version. If the version differs from the panel's, update the service with install.sh --subpage --update on its server."
+          }
+        },
+        "notes": {
+          "1": "\"New token\" turns the old one off: run the new command on the service server afterwards.",
+          "2": "The preview in Subscription → Page always opens on the panel."
+        }
       }
     }
   },
@@ -2625,7 +2662,11 @@
     "trouble_next": "Press \"Connect\" next to the next server.",
     "trouble_contact": "If nothing helps, call or text whoever sent you this link.",
     "error_disabled": "Access through this link is turned off for now. Message whoever sent you the link.",
-    "error_expired": "Access through this link has expired. Ask whoever sent you the link to extend it."
+    "error_expired": "Access through this link has expired. Ask whoever sent you the link to extend it.",
+    "handoff_desktop": "These steps are done on a computer. Send yourself a link to this page, for example to Saved Messages in Telegram, and open it on the computer.",
+    "copy_page_link": "Copy the link to this page",
+    "handoff_mobile": "On a computer right now? Point your phone camera at this code and the page opens on the phone.",
+    "handoff_qr_alt": "QR code of this page"
   },
   "users": {
     "title": "Users",
@@ -2634,18 +2675,18 @@
     "search_placeholder": "Name, contact, note or short address",
     "tile_all": "Total",
     "tile_active": "Active",
-    "tile_expiring": "Expiring in 7 days",
+    "tile_expiring": "Expiring",
     "tile_expired": "Expired",
     "tile_disabled": "Turned off",
     "filter_all": "All states",
     "filter_active": "Active",
-    "filter_pending": "Waiting to apply",
+    "filter_pending": "Setting up",
     "filter_expiring": "Expiring in 7 days",
     "filter_expired": "Expired",
     "filter_disabled": "Turned off",
     "filter_revoked": "Revoked",
     "state_active": "Active",
-    "state_pending": "Waiting to apply",
+    "state_pending": "Setting up",
     "state_disabled": "Turned off",
     "state_expired": "Expired",
     "state_revoked": "Revoked",
@@ -2733,6 +2774,64 @@
     "tab_batch": "Several",
     "create_submit": "Create",
     "create_batch_submit": "Create ({{count}})",
-    "create_error": "Could not create the user"
+    "create_error": "Could not create the user",
+    "no_limit": "no limit",
+    "prefix_hint": "Names will be {{prefix}}-1, {{prefix}}-2 and so on.",
+    "access_on": "Access is on",
+    "access_off": "Access is off",
+    "access_toggle_hint": "Turn it off for a while and back on later; nothing is lost.",
+    "welcome_shared": "Shared access created. Send this link to the chat or to the people who need access: on the page each of them picks their device and connects step by step.",
+    "unsaved": "Unsaved changes",
+    "create_title_batch": "Several users",
+    "card_names": "Names",
+    "tile_expiring_context": "within 7 days",
+    "reset_filters": "Reset filters",
+    "extend_month": "Extend by a month",
+    "extended": "Extended until {{date}}",
+    "column_link": "Link"
+  },
+  "service": {
+    "title": "Subscription page service",
+    "hint": "Where subscription pages open: on the panel's domain or on a separate domain, including on another server.",
+    "saved": "Saved",
+    "where_title": "Where pages open",
+    "where_panel": "On the panel domain",
+    "where_own": "On my own domain",
+    "where_panel_hint": "Subscription links look like https://{{host}}/s/…. Nothing else to set up.",
+    "domain": "Subscription page domain",
+    "domain_hint": "For example sub.example.com. Once saved, every link in the panel is built on this domain. Set the domain up first, with one of the ways on the right or below.",
+    "domain_invalid": "Enter just a domain, for example sub.example.com, without a path.",
+    "domain_same_as_panel": "The domain must differ from the panel's domain.",
+    "hide_on_panel": "Do not open pages on the panel domain",
+    "hide_on_panel_off": "Right now old links on {{host}} redirect to the new domain, so nothing breaks.",
+    "hide_on_panel_on": "Pages on {{host}} stop opening altogether, and the panel domain is never shown. Old links on {{host}} stop working.",
+    "check": "Check the domain",
+    "same_title": "On the panel server",
+    "same_hint": "The simplest way: the second domain points at the same server as the panel ({{host}}). The panel serves only subscription pages on it.",
+    "same_step_dns": "Create an A record for {{domain}} pointing at the panel server's IP address.",
+    "same_step_command": "Run on the panel server:",
+    "same_step_save": "Choose \"On my own domain\" on the left, enter the domain and save.",
+    "copy_command": "Copy the command",
+    "other_title": "On another server",
+    "other_hint": "Subscription pages run on a separate server, and the panel can stay hidden. The service keeps the last copy of each page, so pages open even while the panel is briefly unreachable.",
+    "online": "online",
+    "offline": "offline",
+    "last_seen": "Last contact",
+    "never": "no contact yet",
+    "service_version": "Service version",
+    "version_differs": "panel {{version}}: update the service",
+    "address": "Service address",
+    "command_once": "The command contains the token and is shown only once. Copy it now.",
+    "other_step_dns": "Create an A record for {{domain}} pointing at the new server's IP address.",
+    "other_step_command": "Run on the new server:",
+    "other_step_save": "Once the service is online, choose \"On my own domain\" on the left, enter the domain and save.",
+    "get_command": "Get the install command",
+    "reissue": "New token",
+    "revoke": "Disconnect the service",
+    "reissue_title": "Issue a new token?",
+    "reissue_description": "The current token stops working. Run the new install command on the service server, or it loses contact with the panel.",
+    "revoke_title": "Disconnect the service?",
+    "revoke_description": "The service stops getting data from the panel. Pages on its domain work from the saved copy for a while and then stop opening.",
+    "revoked": "Service disconnected"
   }
 }

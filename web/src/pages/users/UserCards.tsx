@@ -14,7 +14,7 @@ import { LimitsFields } from './LimitsFields';
 import { NodeCapacityList } from './NodeCapacityList';
 import { TelemtLimitsFields } from './TelemtLimitsFields';
 import { TransportField } from './TransportField';
-import { extendExpiry } from './userForm';
+import { extendExpiry, toSlug } from './userForm';
 
 import type { LimitFieldName } from './LimitsFields';
 import type { TransportScope } from './transport';
@@ -72,7 +72,9 @@ export function AboutFields({ control, register, errors, values, locked, subscri
           <div className="space-y-2">
             <Label htmlFor="user-prefix">{t('keys.field_prefix')}</Label>
             <Input id="user-prefix" autoFocus placeholder="vip" {...register('prefix')} aria-invalid={!!errors.prefix} />
-            <p className="text-label text-mute">{t('keys.field_prefix_hint')}</p>
+            <p className="text-label text-mute">
+              {t('users.prefix_hint', { prefix: values.prefix.trim() || 'vip' })}
+            </p>
             <FieldError>{errors.prefix && t('common.required')}</FieldError>
           </div>
           <div className="space-y-2">
@@ -123,7 +125,7 @@ export function AboutFields({ control, register, errors, values, locked, subscri
                   placeholder="team"
                   disabled={locked}
                   value={field.value}
-                  onChange={(e) => field.onChange(e.target.value.toLowerCase())}
+                  onChange={(e) => field.onChange(toSlug(e.target.value))}
                   onBlur={field.onBlur}
                   aria-invalid={!!errors.sub_slug}
                 />
@@ -225,7 +227,7 @@ export function AccessFields({
         <FieldError>{errors.node_ids && t('keys.validation_node_ids')}</FieldError>
       </div>
 
-      {!locked && (
+      {!locked && scope !== 'telemt' && (
         <Controller
           control={control}
           name="carrier_mode"

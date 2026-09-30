@@ -9,6 +9,7 @@ export const HELP_ROUTES: readonly { pattern: string; topic: HelpTopic }[] = [
   { pattern: '/nodes/:id', topic: 'nodes.detail' },
   { pattern: '/users', topic: 'keys.list' },
   { pattern: '/subscription', topic: 'settings.subscription' },
+  { pattern: '/subscription/service', topic: 'subscription.service' },
   { pattern: '/sites', topic: 'sites.templates' },
   { pattern: '/sites/new', topic: 'sites.editor' },
   { pattern: '/sites/:id', topic: 'sites.editor' },

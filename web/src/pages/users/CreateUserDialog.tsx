@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useBatchKeys, useCreateKey } from '@/api/keys';
 import { useNodes } from '@/api/nodes';
+import { subscriptionBase, useSubscriptionService } from '@/api/subscriptionService';
 import { DraftBanner } from '@/components/common/DraftBanner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -34,6 +35,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
   const nodesQuery = useNodes();
   const createKey = useCreateKey();
   const batchKeys = useBatchKeys();
+  const serviceQuery = useSubscriptionService();
 
   const {
     control,
@@ -108,7 +110,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
       <DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <div className="flex items-center gap-2 pr-8">
-            <DialogTitle>{t('users.create_title')}</DialogTitle>
+            <DialogTitle>{t(mode === 'batch' ? 'users.create_title_batch' : 'users.create_title')}</DialogTitle>
             <HelpButton topic={mode === 'batch' ? 'keys.batch' : 'keys.create'} className="-my-1" />
           </div>
           <DialogDescription>{t(`users.create_hint_${mode}`)}</DialogDescription>
@@ -137,13 +139,13 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
           noValidate
         >
           <div className="flex min-w-0 flex-col gap-4">
-            <UserCard icon={UserRound} title={t('users.card_about')}>
+            <UserCard icon={UserRound} title={t(mode === 'batch' ? 'users.card_names' : 'users.card_about')}>
               <AboutFields
                 control={control}
                 register={register}
                 errors={errors}
                 values={values}
-                subscriptionBase={window.location.origin}
+                subscriptionBase={subscriptionBase(serviceQuery.data)}
               />
             </UserCard>
             <UserCard icon={Gauge} title={t('users.card_limits')} actions={<HelpButton topic="keys.limits" />}>

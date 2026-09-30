@@ -147,6 +147,10 @@ export const HELP_TOPICS = {
     fields: ['language', 'platform', 'title', 'links', 'blocks', 'servers'],
     docs: 'keys',
   },
+  'subscription.service': {
+    fields: ['where', 'domain', 'hide', 'same_server', 'other_server', 'status'],
+    docs: 'keys',
+  },
   'settings.telegram': {
     fields: ['enabled', 'bot_token', 'chat_id', 'language', 'test'],
     docs: 'monitoring',

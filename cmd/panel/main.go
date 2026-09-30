@@ -33,7 +33,9 @@ import (
 	"tgwebproxy/internal/sitekit"
 	"tgwebproxy/internal/store"
 	"tgwebproxy/internal/store/db"
+	"tgwebproxy/internal/subpage"
 	"tgwebproxy/internal/updates"
+	"tgwebproxy/internal/version"
 	"tgwebproxy/internal/worker"
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
@@ -49,6 +51,9 @@ func main() {
 }
 
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "subpage" {
+		return runSubpage()
+	}
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
@@ -443,4 +448,16 @@ func backupProtection(cfg config.Config, box *crypto.Box) *backup.Protection {
 		return nil
 	}
 	return &backup.Protection{Recipient: cfg.BackupRecipient, UploadURL: cfg.BackupUploadURL, UploadToken: cfg.BackupUploadToken, Verify: cfg.BackupVerify, Decrypt: box.Decrypt}
+}
+
+// runSubpage serves subscription pages on their own domain; it needs no database.
+func runSubpage() error {
+	log := logging.New(os.Getenv("LOG_LEVEL"))
+	cfg, err := subpage.ConfigFromEnv(os.Getenv, version.Version)
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	return subpage.Run(ctx, cfg, log)
 }

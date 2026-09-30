@@ -138,7 +138,7 @@ function NodeLinksCard({
   onDownload: (group: NodeLinkGroup, link: KindLink) => void;
 }) {
   const { t } = useTranslation();
-  const kinds = [...new Set(group.links.map((link) => link.kind))];
+  const kinds = [...new Set(group.links.map((link) => link.kind))].sort((a, b) => (a === b ? 0 : a === 'tls' ? -1 : 1));
   const multi = kinds.length > 1;
   const webOnly = !multi && group.engine === 'tproxy';
   const arrival = enter(index);

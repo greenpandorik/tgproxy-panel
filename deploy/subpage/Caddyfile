@@ -1,0 +1,13 @@
+{
+	email "{$ACME_EMAIL}"
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$SUBPAGE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy subpage:8080 {
+		header_up X-Forwarded-For {remote_host}
+	}
+}

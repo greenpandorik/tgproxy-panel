@@ -155,17 +155,20 @@ type Page struct {
 	Platforms    []PlatformView
 	Servers      []Server
 	Preview      bool
+	// PageURL is this page's own address; PageQR draws it for opening the page on a phone.
+	PageURL string
+	PageQR  string
 }
 
 // Branding is the part of the active branding profile the page uses.
 type Branding struct {
-	PanelName    string
-	PrimaryColor string
-	AccentColor  string
-	PrimaryInk   string
-	Theme        string
-	SupportLink  string
-	FooterText   string
+	PanelName    string `json:"panel_name"`
+	PrimaryColor string `json:"primary_color"`
+	AccentColor  string `json:"accent_color"`
+	PrimaryInk   string `json:"primary_ink"`
+	Theme        string `json:"theme"`
+	SupportLink  string `json:"support_link"`
+	FooterText   string `json:"footer_text"`
 }
 
 type Input struct {
@@ -176,6 +179,7 @@ type Input struct {
 	ExpiresAt *time.Time
 	Branding  Branding
 	QRSize    int
+	PageURL   string
 }
 
 // Build turns a key's links into the page, applying the owner's settings.
@@ -190,6 +194,16 @@ func Build(in Input) (Page, error) {
 		ShowStatus: s.ShowStatus, ShowGuide: s.ShowGuide, ShowQR: s.ShowQR, Platform: in.Platform,
 	}
 	page.Title, page.Intro = s.texts(in.Lang)
+	if in.PageURL != "" {
+		page.PageURL = in.PageURL
+		if s.ShowQR {
+			qr, err := qrlink.DataURI(in.PageURL, 200)
+			if err != nil {
+				return Page{}, err
+			}
+			page.PageQR = qr
+		}
+	}
 	if page.Title == "" {
 		page.Title = t("subpage.title_default", nil)
 	}
@@ -203,7 +217,7 @@ func Build(in Input) (Page, error) {
 	}
 
 	type choice struct {
-		web, tls int
+		web, tls, backup int
 	}
 	var choices []choice
 	for _, loc := range in.Locations {
@@ -211,7 +225,7 @@ func Build(in Input) (Page, error) {
 			continue
 		}
 		server := Server{Name: loc.NodeName, Hostname: loc.Hostname}
-		ch := choice{web: -1, tls: -1}
+		ch := choice{web: -1, tls: -1, backup: -1}
 		tlsSeen := 0
 		for _, l := range loc.Links {
 			var label string
@@ -244,6 +258,9 @@ func Build(in Input) (Page, error) {
 			if l.Kind == keys.LinkWeb && ch.web < 0 {
 				ch.web = len(server.Links)
 			}
+			if l.Kind == keys.LinkTLS && tlsSeen == 2 {
+				ch.backup = len(server.Links)
+			}
 			if l.Kind == keys.LinkTLS && tlsSeen == 1 {
 				ch.tls = len(server.Links)
 			}
@@ -264,9 +281,12 @@ func Build(in Input) (Page, error) {
 			primary, alt := -1, -1
 			switch p {
 			case IOS:
-				primary = ch.tls
+				primary, alt = ch.tls, ch.backup
 			case Android:
 				primary, alt = ch.tls, ch.web
+				if alt < 0 {
+					alt = ch.backup
+				}
 			case Desktop:
 				primary, alt = ch.web, ch.tls
 			}

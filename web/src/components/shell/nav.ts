@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Activity, FileText, LayoutDashboard, LayoutTemplate, ScrollText, Server, Settings2, Users } from 'lucide-react';
+import { Activity, FileText, Globe, LayoutDashboard, LayoutTemplate, ScrollText, Server, Settings2, Users } from 'lucide-react';
 
 /** Which live counter, if any, the sidebar shows on the right of an item. */
 export type NavCount = 'nodes' | 'keys';
@@ -39,7 +39,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     labelKey: 'nav.group_subscription',
-    items: [{ to: '/subscription', icon: FileText, labelKey: 'nav.subscription_page' }],
+    items: [
+      { to: '/subscription', icon: FileText, labelKey: 'nav.subscription_page', end: true },
+      { to: '/subscription/service', icon: Globe, labelKey: 'nav.subscription_service' },
+    ],
   },
   {
     labelKey: 'nav.group_system',

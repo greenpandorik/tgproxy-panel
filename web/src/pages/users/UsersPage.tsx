@@ -1,4 +1,5 @@
 import {
+  CalendarPlus,
   CalendarX2,
   ChevronLeft,
   ChevronRight,
@@ -23,6 +24,7 @@ import { useBulkKeys, useDeleteKey, useKeySummary, useKeys, useSetKeyDisabled } 
 import { useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { CopyButton } from '@/components/common/CopyButton';
 import { DataTableSkeleton } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -56,6 +58,7 @@ import { CreateUserDialog } from './CreateUserDialog';
 import { StateBadge } from './StateBadge';
 import { TONE_TEXT, expiryTone, shortHost } from './userState';
 import { UserDialog } from './UserDialog';
+import { extendExpiry, toLocalInputValue } from './userForm';
 
 import type { StatTone } from '@/components/common/statTone';
 import type { AccessKey, BulkKeyAction, KeyState, KeyType } from '@/api/types';
@@ -67,9 +70,9 @@ type StateFilter = KeyState | 'expiring' | 'all';
 
 const STATE_FILTERS: StateFilter[] = ['all', 'active', 'pending', 'expiring', 'expired', 'disabled', 'revoked'];
 
-const COLUMNS = ['type', 'servers', 'traffic', 'online', 'expires', 'created'] as const;
+const COLUMNS = ['link', 'type', 'servers', 'traffic', 'online', 'expires', 'created'] as const;
 type Column = (typeof COLUMNS)[number];
-const DEFAULT_COLUMNS: Column[] = ['type', 'servers', 'traffic', 'online', 'expires'];
+const DEFAULT_COLUMNS: Column[] = ['link', 'type', 'servers', 'traffic', 'online', 'expires'];
 const COLUMNS_STORAGE = 'tgwp-users-columns';
 
 function loadColumns(): Set<Column> {
@@ -307,6 +310,12 @@ export function UsersPage() {
           </DropdownMenuItem>
         )}
         {u.state !== 'revoked' && (
+          <DropdownMenuItem onClick={() => void extendMonth(u)}>
+            <CalendarPlus />
+            {t('users.extend_month')}
+          </DropdownMenuItem>
+        )}
+        {u.state !== 'revoked' && (
           <DropdownMenuItem onClick={() => void toggleDisabled(u)}>
             <Power />
             {u.state === 'disabled' ? t('users.enable') : t('users.disable')}
@@ -321,12 +330,28 @@ export function UsersPage() {
   );
 
   const columnCount = 3 + COLUMNS.filter(show).length + (isWriter ? 2 : 0);
+  const filtered = !!q || state !== 'all' || type !== 'all' || node !== 'all';
+  const resetFilters = () => {
+    setSearchInput('');
+    setQ('');
+    setType('all');
+    setNode('all');
+    setState('all');
+  };
+  const extendMonth = async (u: AccessKey) => {
+    try {
+      const next = extendExpiry(toLocalInputValue(u.expires_at), '1m');
+      await bulkKeys.mutateAsync({ action: 'extend', ids: [u.id], expires_at: new Date(next).toISOString() });
+      toast.add({ description: t('users.extended', { date: formatDateTime(next, i18n.language) }), type: 'success' });
+    } catch (err) {
+      toast.add({ description: errText(err, t('common.error_generic')), type: 'error' });
+    }
+  };
 
   return (
     <>
       <PageHeader
         title={t('users.title')}
-        description={total > 0 ? t('users.header_total', { count: summary?.total ?? total }) : undefined}
         actions={
           <>
             <HelpButton topic="keys.list" />
@@ -358,6 +383,7 @@ export function UsersPage() {
               icon={tile.icon}
               tone={tile.tone}
               label={t(`users.tile_${tile.id}`)}
+              context={tile.id === 'expiring' ? t('users.tile_expiring_context') : undefined}
               value={tile.value ?? 0}
               loading={summaryQuery.isLoading}
               className="pointer-events-none"
@@ -482,11 +508,21 @@ export function UsersPage() {
             </Button>
           }
         />
+      ) : items.length === 0 && filtered ? (
+        <EmptyState
+          icon={Users}
+          title={t('users.empty_filtered')}
+          action={
+            <Button type="button" variant="outline" onClick={resetFilters}>
+              {t('users.reset_filters')}
+            </Button>
+          }
+        />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={q || state !== 'all' || type !== 'all' || node !== 'all' ? t('users.empty_filtered') : t('users.empty_title')}
-          description={q || state !== 'all' || type !== 'all' || node !== 'all' ? undefined : t('users.empty_description')}
+          title={t('users.empty_title')}
+          description={t('users.empty_description')}
           action={
             isWriter && (
               <Button type="button" onClick={() => setParam('create', '1')}>
@@ -514,6 +550,7 @@ export function UsersPage() {
                     )}
                     <TableHead>{t('users.column_name')}</TableHead>
                     <TableHead>{t('keys.column_status')}</TableHead>
+                    {show('link') && <TableHead className="w-0">{t('users.column_link')}</TableHead>}
                     {show('type') && <TableHead>{t('users.column_type')}</TableHead>}
                     {show('servers') && <TableHead>{t('users.column_servers')}</TableHead>}
                     {show('traffic') && <TableHead className="text-right">{t('users.column_traffic')}</TableHead>}
@@ -551,6 +588,19 @@ export function UsersPage() {
                       <TableCell>
                         <StateBadge state={u.state} />
                       </TableCell>
+                      {show('link') && (
+                        <TableCell className="w-0" onClick={(e) => e.stopPropagation()}>
+                          {(u.subscription_short_url ?? u.subscription_url) ? (
+                            <CopyButton
+                              value={(u.subscription_short_url ?? u.subscription_url) as string}
+                              label={t('keys.subscription_copy')}
+                              className="size-8"
+                            />
+                          ) : (
+                            <span className="mono text-mono text-dim">—</span>
+                          )}
+                        </TableCell>
+                      )}
                       {show('type') && (
                         <TableCell>
                           <Badge>{t(u.type === 'SHARED' ? 'keys.type_shared' : 'keys.type_personal')}</Badge>

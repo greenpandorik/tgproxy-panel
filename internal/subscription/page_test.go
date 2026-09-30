@@ -59,8 +59,11 @@ func TestEachDeviceGetsTheLinkItCanOpen(t *testing.T) {
 	page, _ := build(t, subscription.DefaultSettings(), alerttext.RU, subscription.IOS, nil)
 
 	ios := platform(page, subscription.IOS)
-	if len(ios.Actions) != 1 || ios.Actions[0].Name != "Amsterdam" || ios.Actions[0].Primary.Kind != keys.LinkTLS || ios.Actions[0].Alt != nil {
+	if len(ios.Actions) != 1 || ios.Actions[0].Name != "Amsterdam" || ios.Actions[0].Primary.Kind != keys.LinkTLS {
 		t.Fatalf("iPhone should get only the Fake-TLS server: %+v", ios.Actions)
+	}
+	if alt := ios.Actions[0].Alt; alt == nil || alt.Kind != keys.LinkTLS || !strings.Contains(alt.TMe, "6261636b7570") {
+		t.Fatalf("iPhone should fall back to the Fake-TLS link on the backup domain: %+v", alt)
 	}
 	android := platform(page, subscription.Android)
 	if len(android.Actions) != 2 || android.Actions[0].Primary.Kind != keys.LinkTLS || android.Actions[0].Alt.Kind != keys.LinkWeb {
@@ -73,8 +76,14 @@ func TestEachDeviceGetsTheLinkItCanOpen(t *testing.T) {
 	if desktop.Actions[0].Primary.Kind != keys.LinkWeb || desktop.Actions[0].Alt.Kind != keys.LinkTLS {
 		t.Fatalf("desktop: WEB first with Fake-TLS as the fallback: %+v", desktop.Actions[0])
 	}
-	if ios.HasAlt || !android.HasAlt || !desktop.HasAlt {
-		t.Fatal("only tabs that offer a backup link should advise pressing it")
+	if !ios.HasAlt || !android.HasAlt || !desktop.HasAlt {
+		t.Fatal("every tab with a backup link should advise pressing it")
+	}
+	noBackup := subscription.DefaultSettings()
+	noBackup.ShowBackupDomains = false
+	page2, _ := build(t, noBackup, alerttext.RU, subscription.IOS, nil)
+	if p := platform(page2, subscription.IOS); p.HasAlt || p.Actions[0].Alt != nil {
+		t.Fatal("without backup domains iPhone has nothing to fall back to")
 	}
 	if !ios.Selected || android.Selected {
 		t.Fatal("the detected device should be the selected tab")
@@ -225,5 +234,26 @@ func TestPreviewDoesNotTouchTheVisitorsMemory(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "var remember = false") {
 		t.Fatal("the preview must not read or save the language and tab")
+	}
+}
+
+func TestPageOffersToOpenItOnTheRightDevice(t *testing.T) {
+	page, err := subscription.Build(subscription.Input{
+		Settings: subscription.DefaultSettings(), Lang: alerttext.RU, Platform: subscription.Android, Locations: locations(),
+		QRSize: 128, PageURL: "https://sub.example.org/s/abc", Branding: subscription.Branding{PanelName: "Demo", Theme: "dark"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := subscription.Render(&buf, page); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, `data-copy="https://sub.example.org/s/abc"`) || !strings.Contains(out, "Наведите камеру телефона") {
+		t.Fatal("the page should offer a copy of its own link and a QR code of it")
+	}
+	if strings.Contains(out, `<span class="host">`) {
+		t.Fatal("server cards should not show host names")
 	}
 }

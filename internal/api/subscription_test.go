@@ -139,6 +139,13 @@ func TestNewKeyShowsItsSubscriptionLinkEveryTime(t *testing.T) {
 	if resp := h.Anonymous().Get("/s/" + tokenFromURL(t, *first.SubscriptionURL)); resp.StatusCode != 200 {
 		t.Fatalf("the shown link does not open: %d", resp.StatusCode)
 	}
+	h.CreateAdmin("watcher", "pass-123456", "viewer")
+	var seen keyResp2
+	viewer := h.Login("watcher", "pass-123456")
+	viewer.JSON(viewer.Get("/api/v1/keys/"+keyID), &seen)
+	if seen.SubscriptionURL != nil || seen.SubscriptionShortURL != nil {
+		t.Fatal("a viewer must not see subscription links")
+	}
 	fresh := createSubscription(t, c, keyID)
 	c.JSON(c.Get("/api/v1/keys/"+keyID), &again)
 	if again.SubscriptionURL == nil || *again.SubscriptionURL != fresh.URL {

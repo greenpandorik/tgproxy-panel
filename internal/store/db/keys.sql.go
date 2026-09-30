@@ -305,7 +305,7 @@ func (q *Queries) GetSubscriptionByHash(ctx context.Context, tokenHash string) (
 
 const keySummary = `-- name: KeySummary :one
 SELECT count(*) AS total,
-  count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NULL AND (expires_at IS NULL OR expires_at > now())) AS active,
+  count(*) FILTER (WHERE status = 'active' AND disabled_at IS NULL AND (expires_at IS NULL OR expires_at > now())) AS active,
   count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NULL AND expires_at > now() AND expires_at <= now() + interval '7 days') AS expiring,
   count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NULL AND expires_at <= now()) AS expired,
   count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NOT NULL) AS disabled,
@@ -530,7 +530,7 @@ WHERE ($3::key_type IS NULL OR k.type = $3)
     WHEN 'pending' THEN k.status = 'pending' AND k.disabled_at IS NULL AND (k.expires_at IS NULL OR k.expires_at > now())
     WHEN 'active' THEN k.status = 'active' AND k.disabled_at IS NULL AND (k.expires_at IS NULL OR k.expires_at > now())
     ELSE false END)
-ORDER BY k.created_at DESC LIMIT $1 OFFSET $2
+ORDER BY k.created_at DESC, k.label LIMIT $1 OFFSET $2
 `
 
 type ListKeysParams struct {

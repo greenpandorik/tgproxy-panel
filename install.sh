@@ -22,6 +22,7 @@ RAW_BASE="https://raw.githubusercontent.com/$REPO"
 API_LATEST="https://api.github.com/repos/$REPO/releases/latest"
 DEFAULT_IMAGE="ghcr.io/$REPO"
 DEFAULT_DIR="/opt/tgproxy-panel"
+SUBPAGE_DEFAULT_DIR="/opt/tgproxy-subpage"
 HEALTH_BUDGET=120
 
 # Noisy tools stay quiet: no debconf dialogs, no "pending kernel upgrade" screens from
@@ -38,12 +39,16 @@ EMAIL="${TGWP_EMAIL:-}"
 ADMIN_USER="${TGWP_ADMIN_USER:-}"
 ADMIN_PASSWORD="${TGWP_ADMIN_PASSWORD:-}"
 VERSION="${TGWP_VERSION:-}"
-DIR="${TGWP_DIR:-$DEFAULT_DIR}"
+DIR="${TGWP_DIR:-}"
 IMAGE="${TGWP_IMAGE:-}"
 YES="${TGWP_YES:-}"
 PURGE="${TGWP_PURGE:-}"
 FROM_CHECKOUT="${TGWP_FROM_CHECKOUT:-}"
 SKIP_PREFLIGHT="${TGWP_SKIP_PREFLIGHT:-}"
+SUBPAGE="${TGWP_SUBPAGE:-}"
+PANEL_URL="${TGWP_PANEL_URL:-}"
+TOKEN="${TGWP_TOKEN:-}"
+SUB_DOMAIN="${TGWP_SUB_DOMAIN:-}"
 MODE="install" # install | update | uninstall
 
 usage() {
@@ -79,6 +84,17 @@ Options:
   --skip-preflight       Do not run the pre-flight checks (DNS, ports 80/443 or 8080,
                          install directory) before installing.
   --purge                With --uninstall: remove data volumes and the install directory.
+  --sub-domain <fqdn>    Also answer subscription pages on this second domain, from this
+                         same server (its DNS A record must point here too). Pages are then
+                         the only thing served there. "off" removes it again.
+
+Subscription page service on another server (the panel shows this command in
+Subscription → Service):
+  --subpage              Install, update (--update) or remove (--uninstall) the page
+                         service instead of the panel. Default directory: $SUBPAGE_DEFAULT_DIR.
+  --domain <fqdn>        The page domain (not the panel's).
+  --panel-url <url>      The panel address, e.g. https://panel.example.com.
+  --token <token>        The service token issued by the panel.
   --yes                  Never prompt. Missing required values are an error (exit 2); a
                          failed pre-flight is an error (exit 1) unless --skip-preflight.
   --help                 This text.
@@ -92,6 +108,8 @@ Examples:
       --domain panel.example.com --email me@example.com --yes
   sudo $DEFAULT_DIR/install.sh --update
   sudo $DEFAULT_DIR/install.sh --uninstall --purge
+  curl -fsSL $RAW_BASE/main/install.sh | sudo bash -s -- --subpage \\
+      --domain sub.example.com --panel-url https://panel.example.com --token <token>
 EOF
 }
 
@@ -309,6 +327,37 @@ while [[ $# -gt 0 ]]; do
 		PURGE=1
 		shift
 		;;
+	--subpage)
+		SUBPAGE=1
+		shift
+		;;
+	--panel-url)
+		need_value "$@"
+		PANEL_URL="$2"
+		shift 2
+		;;
+	--panel-url=*)
+		PANEL_URL="${1#*=}"
+		shift
+		;;
+	--token)
+		need_value "$@"
+		TOKEN="$2"
+		shift 2
+		;;
+	--token=*)
+		TOKEN="${1#*=}"
+		shift
+		;;
+	--sub-domain)
+		need_value "$@"
+		SUB_DOMAIN="$2"
+		shift 2
+		;;
+	--sub-domain=*)
+		SUB_DOMAIN="${1#*=}"
+		shift
+		;;
 	--help | -h)
 		usage
 		exit 0
@@ -318,6 +367,13 @@ while [[ $# -gt 0 ]]; do
 		;;
 	esac
 done
+if [[ -z "$DIR" ]]; then
+	if truthy "$SUBPAGE"; then
+		DIR="$SUBPAGE_DEFAULT_DIR"
+	else
+		DIR="$DEFAULT_DIR"
+	fi
+fi
 
 # ---------------------------------------------------------------------------------------
 # Prompting. `curl | bash` leaves stdin busy with the script itself, so prompts go through
@@ -984,6 +1040,9 @@ run_preflight() {
 			preflight_port 8080
 		else
 			preflight_dns
+			if [[ -n "$SUB_DOMAIN" && "$SUB_DOMAIN" != "off" ]]; then
+				DOMAIN="$SUB_DOMAIN" preflight_dns
+			fi
 			preflight_port 80
 			preflight_port 443
 		fi
@@ -1186,6 +1245,7 @@ do_install_or_update() {
 		ok "PANEL_VERSION: $VERSION"
 		sync_engine_pins
 	fi
+	configure_sub_domain
 	compose_setup
 	step "Stack"
 	info "image: $(image_ref)"
@@ -1195,6 +1255,9 @@ do_install_or_update() {
 	quietly "docker compose up" compose up -d --remove-orphans --quiet-pull ||
 		die "could not start the stack (output above); check: cd $DIR && docker compose ps && docker compose logs --tail 50"
 	ok "containers started"
+	if [[ "$SUB_DOMAIN_CHANGED" -eq 1 ]]; then
+		quietly "docker compose restart caddy" compose restart caddy || warn "could not restart caddy; run: cd $DIR && docker compose restart caddy"
+	fi
 	wait_for "panel healthy" "$HEALTH_BUDGET" healthz_ok || health_failed
 	if [[ "$MODE" == "install" ]]; then
 		create_admin
@@ -1203,6 +1266,237 @@ do_install_or_update() {
 	print_summary
 }
 
+
+# ---------------------------------------------------------------------------------------
+# A second domain for subscription pages on the panel's own server
+# ---------------------------------------------------------------------------------------
+SUB_DOMAIN_CHANGED=0
+configure_sub_domain() {
+	local file="$DIR/sites/subpage.caddy" current
+	mkdir -p "$DIR/sites"
+	current="$(env_get "$DIR/.env" SUBPAGE_DOMAIN)"
+	[[ -n "$SUB_DOMAIN" ]] || return 0
+	if truthy "$LOCAL"; then
+		warn "--sub-domain needs a domain install with Caddy; ignored in local mode"
+		return 0
+	fi
+	if [[ "$SUB_DOMAIN" == "off" ]]; then
+		rm -f "$file"
+		env_set "$DIR/.env" SUBPAGE_DOMAIN ""
+		[[ -z "$current" ]] || SUB_DOMAIN_CHANGED=1
+		ok "subscription page domain removed"
+		return 0
+	fi
+	SUB_DOMAIN="$(printf '%s' "$SUB_DOMAIN" | tr '[:upper:]' '[:lower:]')"
+	valid_domain "$SUB_DOMAIN" || usage_error "not a valid domain: $SUB_DOMAIN"
+	[[ "$SUB_DOMAIN" != "$DOMAIN" ]] || usage_error "--sub-domain must differ from the panel domain"
+	cat >"$file" <<CADDY
+$SUB_DOMAIN {
+	encode zstd gzip
+	reverse_proxy panel:8080 {
+		transport http {
+			versions h2c 1.1
+		}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+CADDY
+	chmod 0644 "$file"
+	env_set "$DIR/.env" SUBPAGE_DOMAIN "$SUB_DOMAIN"
+	[[ "$current" == "$SUB_DOMAIN" ]] || SUB_DOMAIN_CHANGED=1
+	ok "subscription pages also on https://$SUB_DOMAIN"
+	info "in the panel set Subscription → Service → page domain to $SUB_DOMAIN"
+}
+
+# ---------------------------------------------------------------------------------------
+# Subscription page service on its own server
+# ---------------------------------------------------------------------------------------
+subpage_compose_setup() {
+	COMPOSE_ARGS=(docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml")
+}
+
+subpage_healthz_ok() {
+	compose exec -T subpage wget -q -O- http://127.0.0.1:8080/healthz
+}
+
+subpage_check_panel() {
+	local code
+	code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 -X POST \
+		-H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+		--data '{"version":"installer"}' "$PANEL_URL/api/v1/subpage/heartbeat" 2>/dev/null || true)"
+	case "$code" in
+	204 | 200) ok "panel: $PANEL_URL accepts the service token" ;;
+	401) pf_fail "panel: $PANEL_URL refused the token; issue a new one in Subscription → Service and use the new command" ;;
+	000 | "") pf_fail "panel: cannot reach $PANEL_URL from this host (check the address and the firewall)" ;;
+	*) pf_fail "panel: $PANEL_URL answered $code; is it the panel address, and is the panel 2.12.0 or newer?" ;;
+	esac
+}
+
+subpage_preflight() {
+	local reply
+	if truthy "$SKIP_PREFLIGHT"; then
+		step "Pre-flight"
+		warn "skipped (--skip-preflight)"
+		return 0
+	fi
+	while :; do
+		step "Pre-flight"
+		PREFLIGHT_FAILED=0
+		if [[ "$MODE" == "install" ]]; then
+			preflight_dns
+			preflight_port 80
+			preflight_port 443
+		fi
+		subpage_check_panel
+		if [[ "$PREFLIGHT_FAILED" -eq 0 ]]; then
+			return 0
+		fi
+		if [[ "$INTERACTIVE" -ne 1 ]]; then
+			fail "pre-flight failed: fix the points above and re-run, or pass --skip-preflight to continue anyway"
+			exit 1
+		fi
+		printf '\n  [r] re-run  [c] continue anyway  [q] quit: ' >/dev/tty
+		IFS= read -r reply </dev/tty || reply="q"
+		case "$reply" in
+		r | R) continue ;;
+		c | C)
+			warn "continuing despite the failed pre-flight checks"
+			return 0
+			;;
+		*) die "aborted" ;;
+		esac
+	done
+}
+
+subpage_fetch_files() {
+	step "Deploy files"
+	mkdir -p "$DIR"
+	local pair src dest
+	for pair in "deploy/subpage/docker-compose.yml:docker-compose.yml" "deploy/subpage/Caddyfile:Caddyfile" "install.sh:install.sh"; do
+		src="${pair%%:*}"
+		dest="${pair#*:}"
+		if truthy "$FROM_CHECKOUT"; then
+			cp -f "$SCRIPT_DIR/$src" "$DIR/$dest"
+		elif ! fetch "$RAW_BASE/$REF/$src" "$DIR/$dest"; then
+			fetch "$RAW_BASE/main/$src" "$DIR/$dest" || die "could not download $src; check the network and re-run"
+		fi
+		ok "$dest"
+	done
+	chmod 0644 "$DIR/docker-compose.yml" "$DIR/Caddyfile"
+	chmod 0755 "$DIR/install.sh"
+}
+
+subpage_uninstall() {
+	[[ -f "$DIR/docker-compose.yml" ]] || die "no page service found in $DIR (pass --dir if it lives elsewhere)"
+	docker_ready || die "Docker is not running; check: systemctl status docker"
+	subpage_compose_setup
+	step "Stack"
+	quietly "docker compose down" compose down --remove-orphans -v ||
+		die "docker compose down failed (output above); check: cd $DIR && docker compose ps"
+	ok "containers and the certificate volume removed"
+	if truthy "$PURGE"; then
+		rm -rf "$DIR"
+		ok "$DIR removed"
+	fi
+	banner_ok "Subscription page service removed" \
+		"Pages stop opening on this server. In the panel, clear the page domain in" \
+		"Subscription → Service, or point it at another server, so links keep working."
+}
+
+do_subpage() {
+	printf '%sTGProxy subscription page service installer%s\n' "$BOLD" "$RESET"
+	check_host
+	check_dir
+	if [[ "$MODE" == "uninstall" ]]; then
+		subpage_uninstall
+		return 0
+	fi
+	if [[ "$MODE" == "install" && -f "$DIR/.env" ]]; then
+		ok "existing page service in $DIR: update mode"
+		MODE="update"
+	fi
+	if [[ "$MODE" == "update" ]]; then
+		[[ -f "$DIR/.env" ]] || die "nothing to update: $DIR/.env does not exist"
+		DOMAIN="${DOMAIN:-$(env_get "$DIR/.env" SUBPAGE_DOMAIN)}"
+		PANEL_URL="${PANEL_URL:-$(env_get "$DIR/.env" SUBPAGE_PANEL_URL)}"
+		TOKEN="${TOKEN:-$(env_get "$DIR/.env" SUBPAGE_TOKEN)}"
+		EMAIL="${EMAIL:-$(env_get "$DIR/.env" ACME_EMAIL)}"
+	else
+		[[ -n "$DOMAIN" || "$INTERACTIVE" -ne 1 ]] || ask DOMAIN "Page domain (its DNS A record points at this server)" ""
+		[[ -n "$PANEL_URL" || "$INTERACTIVE" -ne 1 ]] || ask PANEL_URL "Panel address, e.g. https://panel.example.com" ""
+		[[ -n "$TOKEN" || "$INTERACTIVE" -ne 1 ]] || ask_secret TOKEN "Service token from the panel (hidden)"
+	fi
+	[[ -n "$DOMAIN" ]] || usage_error "--domain <page domain> is required"
+	[[ -n "$PANEL_URL" ]] || usage_error "--panel-url <panel address> is required"
+	[[ -n "$TOKEN" ]] || usage_error "--token <service token> is required"
+	DOMAIN="$(printf '%s' "$DOMAIN" | tr '[:upper:]' '[:lower:]')"
+	valid_domain "$DOMAIN" || usage_error "not a valid domain: $DOMAIN"
+	PANEL_URL="${PANEL_URL%/}"
+	[[ "$PANEL_URL" =~ ^https?://[^/]+$ ]] || usage_error "--panel-url must look like https://panel.example.com"
+	[[ -z "$EMAIL" ]] || valid_email "$EMAIL" || usage_error "not a valid e-mail address: $EMAIL"
+
+	subpage_preflight
+	ensure_docker
+	resolve_version
+	step "Plan"
+	info "$(tr '[:lower:]' '[:upper:]' <<<"${MODE:0:1}")${MODE:1} the subscription page service"
+	info "Page domain: $DOMAIN"
+	info "Panel:       $PANEL_URL"
+	info "Version:     $VERSION"
+	info "Image:       $(image_ref)"
+	info "Directory:   $DIR"
+	if [[ "$INTERACTIVE" -eq 1 ]]; then
+		printf '\n'
+		confirm "Proceed?" y || die "aborted"
+	fi
+
+	subpage_fetch_files
+	step "Configuration"
+	[[ -f "$DIR/.env" ]] || install -m 0600 /dev/null "$DIR/.env"
+	chmod 0600 "$DIR/.env"
+	env_set "$DIR/.env" SUBPAGE_DOMAIN "$DOMAIN"
+	env_set "$DIR/.env" SUBPAGE_PANEL_URL "$PANEL_URL"
+	env_set "$DIR/.env" SUBPAGE_TOKEN "$TOKEN"
+	env_set "$DIR/.env" SUBPAGE_VERSION "$VERSION"
+	env_set "$DIR/.env" ACME_EMAIL "$EMAIL"
+	[[ -z "$IMAGE" ]] || env_set "$DIR/.env" SUBPAGE_IMAGE "$IMAGE"
+	ok ".env written: $DIR/.env"
+
+	subpage_compose_setup
+	step "Stack"
+	info "image: $(image_ref)"
+	if [[ "$MODE" == "update" ]]; then
+		quietly "docker compose pull" compose pull --quiet subpage || warn "could not pull the image; using the copy on this host"
+	fi
+	quietly "docker compose up" compose up -d --remove-orphans --quiet-pull ||
+		die "could not start the service (output above); check: cd $DIR && docker compose ps && docker compose logs --tail 50"
+	ok "containers started"
+	if ! wait_for "page service healthy" "$HEALTH_BUDGET" subpage_healthz_ok; then
+		compose ps >&2 || true
+		compose logs --tail 50 subpage >&2 || true
+		banner_fail "The page service did not become healthy within ${HEALTH_BUDGET}s" \
+			"Logs:    cd $DIR && docker compose logs --tail 100 subpage caddy" \
+			"Re-run:  sudo $DIR/install.sh --subpage"
+		exit 1
+	fi
+	firewall_hint
+	banner_ok "Subscription page service is running" \
+		"Pages:       https://$DOMAIN/s/<link>" \
+		"Check:       https://$DOMAIN/healthz" \
+		"Panel:       $PANEL_URL" \
+		"Version:     $VERSION" \
+		"" \
+		"In the panel, Subscription → Service shows this server as online within a minute." \
+		"" \
+		"Update:      sudo $DIR/install.sh --subpage --update" \
+		"Logs:        cd $DIR && docker compose logs -f subpage" \
+		"Uninstall:   sudo $DIR/install.sh --subpage --uninstall"
+}
+
+if truthy "$SUBPAGE"; then
+	do_subpage
+	exit 0
+fi
 case "$MODE" in
 uninstall) do_uninstall ;;
 *) do_install_or_update ;;

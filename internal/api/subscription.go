@@ -1,14 +1,13 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
-	"tgwebproxy/internal/alerttext"
-	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/crypto"
 	"tgwebproxy/internal/keys"
 	"tgwebproxy/internal/qrlink"
@@ -29,7 +28,7 @@ func (s *Server) handleCreateSubscription(w http.ResponseWriter, r *http.Request
 		s.keysErr(w, err)
 		return
 	}
-	url := s.subscriptionURL(token)
+	url := s.subscriptionURL(r.Context(), token)
 	qr, err := qrlink.DataURI(url, subscriptionQRSize)
 	if err != nil {
 		s.log.Error("subscription: render qr", "err", err)
@@ -53,9 +52,9 @@ func (s *Server) handleSubscriptionQR(w http.ResponseWriter, r *http.Request) {
 	}
 	var url string
 	if r.URL.Query().Get("short") == "1" && k.SubSlug != nil {
-		url = s.subscriptionURL(*k.SubSlug)
+		url = s.subscriptionURL(r.Context(), *k.SubSlug)
 	} else if token, ok := s.keys.SubscriptionToken(sub); ok {
-		url = s.subscriptionURL(token)
+		url = s.subscriptionURL(r.Context(), token)
 	} else {
 		notFound(w)
 		return
@@ -89,153 +88,90 @@ func (s *Server) handleRevokeSubscription(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(204)
 }
 
-// subscriptionLookup finds the key behind a token or short address. A failure comes back as
-// the key's state: not_found, revoked, disabled or expired.
-func (s *Server) subscriptionLookup(r *http.Request, token string) (db.AccessKey, string) {
-	ctx := r.Context()
+// subscriptionData finds the key behind a token or short address and gathers what its
+// page shows. A key that cannot be served comes back with its state and nothing else.
+func (s *Server) subscriptionData(ctx context.Context, token string) (subscription.PageData, error) {
+	d := subscription.PageData{Settings: s.subscriptionSettings(ctx), Branding: s.subscriptionBranding(ctx)}
 	var key db.AccessKey
 	sub, err := s.store.Q.GetSubscriptionByHash(ctx, crypto.HashToken(token))
 	switch {
 	case err == nil:
 		if sub.RevokedAt != nil {
-			return db.AccessKey{}, "not_found"
+			d.State = "not_found"
+			return d, nil
 		}
 		if key, err = s.store.Q.GetKey(ctx, sub.AccessKeyID); err != nil {
-			return db.AccessKey{}, "not_found"
+			d.State = "not_found"
+			return d, nil
 		}
 	case keys.ValidSlug(token):
 		if key, err = s.store.Q.GetKeyBySlug(ctx, &token); err != nil {
-			return db.AccessKey{}, "not_found"
+			d.State = "not_found"
+			return d, nil
 		}
 		if _, err := s.store.Q.GetKeySubscription(ctx, key.ID); err != nil {
-			return db.AccessKey{}, "not_found"
+			d.State = "not_found"
+			return d, nil
 		}
 	default:
-		return db.AccessKey{}, "not_found"
+		d.State = "not_found"
+		return d, nil
 	}
 	switch state := keyState(key, time.Now()); state {
 	case "revoked", "disabled", "expired":
-		return db.AccessKey{}, state
+		d.State = state
+		return d, nil
 	}
-	return key, ""
+	links, err := s.keys.NodeLinks(ctx, key.ID)
+	if err != nil {
+		return d, err
+	}
+	d.ExpiresAt, d.Locations = key.ExpiresAt, links
+	return d, nil
 }
 
-var subscriptionFailures = map[string]struct {
-	status  int
-	message string
-}{
-	"not_found": {http.StatusNotFound, "subpage.error_not_found"},
-	"revoked":   {http.StatusGone, "subpage.error_gone"},
-	"disabled":  {http.StatusForbidden, "subpage.error_disabled"},
-	"expired":   {http.StatusGone, "subpage.error_expired"},
-}
-
-func subscriptionSecurityHeaders(w http.ResponseWriter) {
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Robots-Tag", "noindex")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'none'")
+func (s *Server) subscriptionAllowed(w http.ResponseWriter, r *http.Request, asJSON bool) bool {
+	subscription.SecurityHeaders(w)
+	if s.subLimiter.Allow(ipFrom(r.Context())) {
+		return true
+	}
+	if asJSON {
+		writeError(w, 429, "rate_limited", "too many requests", nil)
+		return false
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusTooManyRequests)
+	_, _ = w.Write([]byte("too many requests\n"))
+	return false
 }
 
 // handleSubscriptionPage serves the public, human-facing subscription page.
 func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) {
-	subscriptionSecurityHeaders(w)
-	if !s.subLimiter.Allow(ipFrom(r.Context())) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusTooManyRequests)
-		_, _ = w.Write([]byte("too many requests\n"))
+	if s.movedSubscription(w, r, false) || !s.subscriptionAllowed(w, r, false) {
 		return
 	}
-	key, failure := s.subscriptionLookup(r, chi.URLParam(r, "token"))
-	if failure != "" {
-		s.writeSubscriptionErrorPage(w, r, failure)
-		return
-	}
-	page, err := s.subscriptionPage(r, key)
+	d, err := s.subscriptionData(r.Context(), chi.URLParam(r, "token"))
 	if err != nil {
 		s.log.Error("subscription: build page", "err", err)
 		internal(w)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := subscription.Render(w, page); err != nil {
+	if err := subscription.ServePage(w, r, d); err != nil {
 		s.log.Error("subscription: render page", "err", err)
 	}
 }
 
-func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Request, failure string) {
-	b := s.subscriptionBranding(r.Context())
-	lang := subscription.PageLang(r.URL.Query().Get("lang"), s.subscriptionSettings(r.Context()).Language, r.Header.Get("Accept-Language"))
-	f := subscriptionFailures[failure]
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(f.status)
-	page := subscription.ErrorPage{Lang: string(lang), PanelName: b.PanelName, Theme: b.Theme, Message: alerttext.Default().T(lang, f.message, nil)}
-	if err := subscription.RenderError(w, page); err != nil {
-		s.log.Error("subscription: render error page", "err", err)
-	}
-}
-
 func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) {
-	subscriptionSecurityHeaders(w)
-	if !s.subLimiter.Allow(ipFrom(r.Context())) {
-		writeError(w, 429, "rate_limited", "too many requests", nil)
+	if s.movedSubscription(w, r, true) || !s.subscriptionAllowed(w, r, true) {
 		return
 	}
-	key, failure := s.subscriptionLookup(r, chi.URLParam(r, "token"))
-	switch failure {
-	case "":
-	case "not_found":
-		notFound(w)
-		return
-	case "revoked":
-		gone(w, "key revoked")
-		return
-	default:
-		f := subscriptionFailures[failure]
-		writeError(w, f.status, failure, "access is "+failure, nil)
-		return
-	}
-	links, err := s.keys.NodeLinks(r.Context(), key.ID)
+	d, err := s.subscriptionData(r.Context(), chi.URLParam(r, "token"))
 	if err != nil {
 		s.log.Error("subscription: load links", "err", err)
 		internal(w)
 		return
 	}
-	links = s.visibleLinks(s.subscriptionSettings(r.Context()), links)
-	locations := make([]map[string]any, 0, len(links))
-	for _, l := range links {
-		// tme/tg stay the WEB link every client already reads; links[] carries every kind the node offers, WEB first.
-		loc := map[string]any{"name": l.NodeName, "hostname": l.Hostname, "links": l.Links}
-		if len(l.Links) > 0 {
-			loc["tme"], loc["tg"] = l.Links[0].TMe, l.Links[0].Tg
-		}
-		locations = append(locations, loc)
+	if err := subscription.ServeJSON(w, d); err != nil {
+		s.log.Error("subscription: write json", "err", err)
 	}
-	b, err := s.store.Q.GetActiveBranding(r.Context())
-	panelName := branding.DefaultPanelName
-	if err == nil && b.PanelName != "" {
-		panelName = b.PanelName
-	}
-	writeJSON(w, 200, map[string]any{"panel_name": panelName, "locations": locations})
-}
-
-func (s *Server) subscriptionPage(r *http.Request, key db.AccessKey) (subscription.Page, error) {
-	ctx := r.Context()
-	links, err := s.keys.NodeLinks(ctx, key.ID)
-	if err != nil {
-		return subscription.Page{}, err
-	}
-	settings := s.subscriptionSettings(ctx)
-	platform := subscription.ParsePlatform(settings.Platform)
-	if platform == "" {
-		platform = subscription.DetectPlatform(r.UserAgent())
-	}
-	return subscription.Build(subscription.Input{
-		Settings:  settings,
-		Lang:      subscription.PageLang(r.URL.Query().Get("lang"), settings.Language, r.Header.Get("Accept-Language")),
-		Platform:  platform,
-		Locations: links,
-		ExpiresAt: key.ExpiresAt,
-		Branding:  s.subscriptionBranding(ctx),
-		QRSize:    subscriptionQRSize,
-	})
 }

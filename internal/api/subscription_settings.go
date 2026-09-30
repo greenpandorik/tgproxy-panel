@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/uuid"
 	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/keys"
@@ -110,45 +109,6 @@ func (s *Server) handleSubscriptionPreview(w http.ResponseWriter, r *http.Reques
 	_, _ = w.Write(buf.Bytes())
 }
 
-func (s *Server) visibleLinks(settings subscription.Settings, links []keys.NodeLinks) []keys.NodeLinks {
-	out := make([]keys.NodeLinks, 0, len(links))
-	for _, l := range links {
-		if settingsHidesNode(settings, l.NodeID) {
-			continue
-		}
-		kept := l
-		kept.Links = nil
-		tlsSeen := 0
-		for _, k := range l.Links {
-			switch k.Kind {
-			case keys.LinkWeb:
-				if !settings.ShowWeb {
-					continue
-				}
-			case keys.LinkTLS:
-				tlsSeen++
-				if !settings.ShowFakeTLS || (tlsSeen > 1 && !settings.ShowBackupDomains) {
-					continue
-				}
-			}
-			kept.Links = append(kept.Links, k)
-		}
-		if len(kept.Links) > 0 {
-			out = append(out, kept)
-		}
-	}
-	return out
-}
-
-func settingsHidesNode(settings subscription.Settings, id uuid.UUID) bool {
-	for _, h := range settings.HiddenNodes {
-		if h == id.String() {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *Server) hidesEveryServer(ctx context.Context, hidden []string) bool {
 	if len(hidden) == 0 {
 		return false
@@ -158,7 +118,7 @@ func (s *Server) hidesEveryServer(ctx context.Context, hidden []string) bool {
 		return false
 	}
 	for _, n := range nodes {
-		if !settingsHidesNode(subscription.Settings{HiddenNodes: hidden}, n.ID) {
+		if !(subscription.Settings{HiddenNodes: hidden}).Hides(n.ID.String()) {
 			return false
 		}
 	}

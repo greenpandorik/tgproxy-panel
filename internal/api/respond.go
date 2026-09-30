@@ -41,8 +41,6 @@ func notFound(w http.ResponseWriter) { writeError(w, 404, "not_found", "not foun
 
 func conflict(w http.ResponseWriter, msg string) { writeError(w, 409, "conflict", msg, nil) }
 
-func gone(w http.ResponseWriter, msg string) { writeError(w, 410, "gone", msg, nil) }
-
 func validation(w http.ResponseWriter, f map[string]string) {
 	writeError(w, 422, "validation", "invalid input", f)
 }

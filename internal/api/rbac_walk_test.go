@@ -27,6 +27,7 @@ var publicMutations = map[string]bool{
 	"POST /api/v1/auth/login":               true,
 	"POST /api/v1/auth/totp/verify":         true,
 	"POST /api/v1/install/{token}/register": true,
+	"POST /api/v1/subpage/heartbeat":        true, // Authenticated by the subscription page service token.
 }
 
 var publicReads = map[string]bool{
@@ -39,7 +40,8 @@ var publicReads = map[string]bool{
 }
 
 var nodeTokenReads = map[string]bool{
-	"GET /api/v1/node/upgrade": true,
+	"GET /api/v1/node/upgrade":          true,
+	"GET /api/v1/subpage/pages/{token}": true,
 }
 
 func TestEveryMutatingRouteIsProtected(t *testing.T) {

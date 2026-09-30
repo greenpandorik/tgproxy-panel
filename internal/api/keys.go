@@ -123,7 +123,9 @@ func (s *Server) keyJSON(r *http.Request, k db.AccessKey, withSecret bool) keyJS
 	return s.keyJSONWith(r, k, withSecret, s.extrasFor(r.Context(), []db.AccessKey{k})[k.ID])
 }
 
-func (s *Server) subscriptionURL(token string) string { return s.cfg.PublicURL + "/s/" + token }
+func (s *Server) subscriptionURL(ctx context.Context, token string) string {
+	return s.subscriptionBase(ctx) + "/s/" + token
+}
 
 func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, x keyExtras) keyJSON {
 	nodes := x.nodes
@@ -136,15 +138,15 @@ func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, x
 		SubscriptionActive: x.sub != nil, Traffic30d: x.traffic,
 		State: keyState(k, time.Now()), DisabledAt: k.DisabledAt, LastSeenAt: k.LastSeenAt, SubSlug: k.SubSlug, Live: x.live,
 	}
-	if x.sub != nil && k.Status != db.KeyStatusRevoked {
+	if x.sub != nil && k.Status != db.KeyStatusRevoked && isWriter(r) {
 		if token, ok := s.keys.SubscriptionToken(*x.sub); ok {
-			u := s.subscriptionURL(token)
+			u := s.subscriptionURL(r.Context(), token)
 			out.SubscriptionURL = &u
 		} else {
 			out.SubscriptionLegacy = true
 		}
 		if k.SubSlug != nil {
-			u := s.subscriptionURL(*k.SubSlug)
+			u := s.subscriptionURL(r.Context(), *k.SubSlug)
 			out.SubscriptionShortURL = &u
 		}
 	}

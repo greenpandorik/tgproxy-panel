@@ -109,6 +109,11 @@
   .server .host { color: var(--text-dim); font-size: 0.82rem; word-break: break-all; }
   .server .alt { grid-column: 1 / -1; font-size: 0.92rem; margin-top: 6px; }
   .empty { padding: 16px; border: 1px dashed var(--border-2); border-radius: 12px; color: var(--text-dim); }
+  .handoff { display: none; gap: 14px; align-items: center; margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .handoff p { margin: 0; flex: 1; }
+  .handoff .copy { margin-top: 10px; }
+  .is-mobile .handoff-desktop { display: block; }
+  .is-desktop .handoff-mobile { display: flex; }
   .empty p { margin: 0; }
   .empty .btn { margin-top: 12px; }
 
@@ -148,7 +153,7 @@
 </head>
 <body data-platform="{{.Platform}}">
 <script>
-document.documentElement.classList.add('js');
+document.documentElement.classList.add('js', /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ? 'is-mobile' : 'is-desktop');
 var remember = {{if .Preview}}false{{else}}true{{end}};
 (function () {
   if (!remember) return;
@@ -192,6 +197,19 @@ var remember = {{if .Preview}}false{{else}}true{{end}};
       {{if $.SupportLink}}<a class="btn ghost" href="{{$.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
     </div>
     {{else}}
+    {{if $.PageURL}}
+    {{if eq .ID "desktop"}}
+    <div class="handoff handoff-desktop">
+      <p>{{t "subpage.handoff_desktop"}}</p>
+      <button type="button" class="copy" data-copy="{{$.PageURL}}">{{t "subpage.copy_page_link"}}</button>
+    </div>
+    {{else if $.PageQR}}
+    <div class="handoff handoff-mobile">
+      <img class="qr" src="{{safeURL $.PageQR}}" alt="{{t "subpage.handoff_qr_alt"}}">
+      <p>{{t "subpage.handoff_mobile"}}</p>
+    </div>
+    {{end}}
+    {{end}}
     <ol class="steps{{if not $.ShowGuide}} plain{{end}}">
       {{if $.ShowGuide}}
       <li class="step">
@@ -206,7 +224,7 @@ var remember = {{if .Preview}}false{{else}}true{{end}};
         <ul class="servers">
           {{range .Actions}}
           <li class="server">
-            <div><b>{{.Name}}</b><span class="host">{{.Hostname}}</span></div>
+            <div><b>{{.Name}}</b></div>
             <a class="btn primary" href="{{safeURL .Primary.TMe}}">{{t "subpage.connect"}}</a>
             {{if .Alt}}<a class="alt" href="{{safeURL .Alt.TMe}}">{{t "subpage.alt"}}</a>{{end}}
           </li>

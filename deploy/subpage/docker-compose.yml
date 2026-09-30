@@ -1,0 +1,39 @@
+# Subscription page service: serves /s/<link> on its own domain and asks the panel for
+# what each link shows. install.sh --subpage downloads this file into /opt/tgproxy-subpage.
+# SUBPAGE_VERSION picks the image tag; it should match the panel's version.
+services:
+  subpage:
+    image: ${SUBPAGE_IMAGE:-ghcr.io/greenpandorik/tgproxy-panel:${SUBPAGE_VERSION:-latest}}
+    command: ["subpage"]
+    env_file: .env
+    restart: unless-stopped
+    expose: ["8080"]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "5"}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      SUBPAGE_DOMAIN: ${SUBPAGE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "5"}
+    depends_on:
+      subpage:
+        condition: service_healthy
+
+volumes:
+  caddydata: {}

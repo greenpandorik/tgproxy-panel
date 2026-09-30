@@ -170,9 +170,8 @@ describe('CreateUserDialog transport', () => {
 
     await user.click(await screen.findByText('Amsterdam'));
 
-    expect(document.querySelector('[data-transport]')).toHaveAttribute('data-transport', 'auto');
+    expect(document.querySelector('[data-transport]')).toBeNull();
     expect(screen.queryByLabelText('Режим передачи')).toBeNull();
-    expect(screen.getByText('Подбирается автоматически')).toBeInTheDocument();
   });
 
   it('keeps the carrier mode when every chosen node runs tproxy', async () => {
@@ -255,14 +254,18 @@ describe('CreateUserDialog sending', () => {
     expect(body.node_ids).toEqual(['n-telemt']);
   });
 
-  it('refuses a short address with spaces before sending anything', async () => {
+  it('spells a Cyrillic short address in Latin and refuses one that ends with a dash', async () => {
     const user = userEvent.setup();
     stubNodes([AMS]);
     renderDialog();
 
     await user.click(await screen.findByRole('tab', { name: 'Общий доступ' }));
     await user.type(screen.getByLabelText('Имя'), 'Команда');
-    await user.type(screen.getByLabelText(/Короткий адрес/), 'my team');
+    const slug = screen.getByLabelText(/Короткий адрес/);
+    await user.type(slug, 'Восток 1');
+    expect(slug).toHaveValue('vostok-1');
+    await user.clear(slug);
+    await user.type(slug, 'team-');
     await user.click(await screen.findByText('Amsterdam'));
     await user.click(screen.getByRole('button', { name: 'Создать' }));
     expect(await screen.findByText(/3–32 символа/)).toBeInTheDocument();

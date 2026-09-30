@@ -33,6 +33,7 @@ import {
   useUnbindKey,
 } from '@/api/keys';
 import { useNodes } from '@/api/nodes';
+import { subscriptionBase, useSubscriptionService } from '@/api/subscriptionService';
 import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
@@ -51,6 +52,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
@@ -93,6 +95,8 @@ function OverviewCard({
   onShowStats,
   onShowQr,
   onIssueLink,
+  onToggle,
+  canToggle,
 }: {
   user: AccessKey;
   measured: boolean;
@@ -100,6 +104,8 @@ function OverviewCard({
   onShowStats: () => void;
   onShowQr: () => void;
   onIssueLink: () => void;
+  onToggle: (on: boolean) => void;
+  canToggle: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
@@ -116,6 +122,17 @@ function OverviewCard({
 
   return (
     <UserCard icon={UserRound} title={t('users.card_overview')}>
+      {!revoked && (
+        <label className="flex items-center justify-between gap-4 rounded-control border border-hairline bg-surface px-3 py-2">
+          <span className="min-w-0">
+            <span className="block text-body font-medium">
+              {user.state === 'disabled' ? t('users.access_off') : t('users.access_on')}
+            </span>
+            <span className="block text-label text-mute">{t('users.access_toggle_hint')}</span>
+          </span>
+          <Switch checked={user.state !== 'disabled'} disabled={!canToggle} onCheckedChange={(on) => onToggle(on)} />
+        </label>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Tile
           label={t('users.field_expires')}
@@ -221,6 +238,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
   const revokeKey = useRevokeKey();
   const deleteKey = useDeleteKey();
   const issueLink = useCreateSubscription(id);
+  const serviceQuery = useSubscriptionService();
   const revokeLink = useRevokeSubscription(id);
 
   const [linksOpen, setLinksOpen] = useState(false);
@@ -382,7 +400,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
               {welcome && !revoked && (
                 <p className="flex items-start gap-2 rounded-control bg-elevated px-3 py-2 text-label text-foreground">
                   <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-ok" aria-hidden="true" />
-                  {t('users.welcome')}
+                  {t(user.type === 'SHARED' ? 'users.welcome_shared' : 'users.welcome')}
                 </p>
               )}
               {user.state === 'pending' && (
@@ -424,7 +442,18 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                     onShowLinks={() => setLinksOpen(true)}
                     onShowStats={() => setStatsOpen(true)}
                     onShowQr={() => setQrOpen(true)}
-                    onIssueLink={() => void run(() => issueLink.mutateAsync(), t('keys.subscription_create_success'))}
+                    onIssueLink={() =>
+                      user.subscription_legacy
+                        ? setConfirm('reissue')
+                        : void run(() => issueLink.mutateAsync(), t('keys.subscription_create_success'))
+                    }
+                    canToggle={isWriter && !setDisabled.isPending}
+                    onToggle={(on) =>
+                      void run(
+                        () => setDisabled.mutateAsync({ id: user.id, disabled: !on }),
+                        on ? t('users.enabled') : t('users.disabled'),
+                      )
+                    }
                   />
                   <UserCard icon={UserRound} title={t('users.card_about')}>
                     <AboutFields
@@ -433,7 +462,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                       errors={errors}
                       values={values}
                       locked={locked}
-                      subscriptionBase={user.subscription_url?.split('/s/')[0] ?? window.location.origin}
+                      subscriptionBase={subscriptionBase(serviceQuery.data)}
                     />
                   </UserCard>
                 </div>
@@ -529,7 +558,8 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                 ) : (
                   <span />
                 )}
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {isDirty && !revoked && <span className="text-label text-warn">{t('users.unsaved')}</span>}
                   <Button type="button" variant="outline" onClick={close}>
                     {t('common.close')}
                   </Button>
