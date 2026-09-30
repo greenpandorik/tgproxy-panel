@@ -224,7 +224,7 @@ export function KeyLinkDialog({ open, onOpenChange, keyId, handover }: KeyLinkDi
 
   return (
     <Dialog open={open && !!keyId} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <div className="flex items-center gap-2 pr-6">
             <DialogTitle>

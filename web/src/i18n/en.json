@@ -619,7 +619,7 @@
     "stats_unavailable": "Servers on the tproxy engine do not measure per-key traffic.",
     "stats_empty": "No data for this key yet.",
     "subscription_title": "Subscription link",
-    "subscription_description": "A public page with every server’s links (WEB and Fake-TLS) and QR codes for this key, without the key name or notes.",
+    "subscription_description": "A public page where the person picks their device and connects the proxy step by step, for every server of the key. The key name and notes never appear there.",
     "subscription_status_active": "Active",
     "subscription_shown_once": "The link and QR are shown only once - save them now.",
     "subscription_qr_alt": "Subscription link QR code",
