@@ -26,11 +26,11 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
   return (
     <div
       className={cn(
-        'flex min-h-16 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-5 py-3',
+        'flex min-h-16 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-(--panel-x) py-3',
         className,
       )}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 grow basis-32 items-center gap-3">
         {Icon && (
           <span
             className="flex size-9 shrink-0 items-center justify-center rounded-control bg-primary/12 text-brand-primary"
@@ -39,9 +39,11 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
             <Icon size={18} strokeWidth={1.8} />
           </span>
         )}
-        <h2 className="truncate text-title text-foreground">{title}</h2>
+        <h2 className="truncate text-title text-foreground" title={title}>
+          {title}
+        </h2>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
         {meta !== undefined && meta !== null && meta !== '' && <span className="text-label text-mute">{meta}</span>}
         {actions}
       </div>
@@ -50,5 +52,5 @@ export function PanelHeader({ icon: Icon, title, meta, actions, className }: Pan
 }
 
 export function PanelBody({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('p-5', className)}>{children}</div>;
+  return <div className={cn('px-(--panel-x) py-5', className)}>{children}</div>;
 }

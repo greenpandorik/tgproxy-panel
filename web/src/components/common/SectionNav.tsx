@@ -117,7 +117,7 @@ export function SectionTabs({ label, items, value, onChange }: SectionProps) {
                 aria-current={value === item.value ? 'page' : undefined}
                 onClick={() => onChange(item.value)}
                 className={cn(
-                  'relative inline-flex h-10 shrink-0 items-center whitespace-nowrap border-b-2 px-0.5 text-body font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                  'relative inline-flex h-10 shrink-0 items-center whitespace-nowrap border-b-2 px-0.5 text-body font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   value === item.value
                     ? 'border-foreground text-foreground'
                     : 'border-transparent text-mute hover:text-foreground',

@@ -59,8 +59,8 @@ export function CopyButton({ value, className, label, showLabel }: CopyButtonPro
     <Button
       type="button"
       variant={showLabel ? 'outline' : 'ghost'}
-      size={showLabel ? 'default' : 'icon-sm'}
-      className={cn(!showLabel && 'text-muted-foreground hover:text-foreground', className)}
+      size={showLabel ? 'default' : 'icon'}
+      className={cn(!showLabel && 'size-(--control-height) text-muted-foreground hover:text-foreground', className)}
       onClick={() => void handleClick()}
       aria-label={showLabel ? undefined : (label ?? t('common.copy'))}
     >

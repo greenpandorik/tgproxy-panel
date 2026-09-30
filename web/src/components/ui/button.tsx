@@ -1,10 +1,12 @@
 import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { mergeProps } from '@base-ui/react/merge-props';
+import { useRender } from '@base-ui/react/use-render';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control border border-transparent text-body font-medium whitespace-nowrap transition-[background-color,border-color,color,scale] outline-none select-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control border border-transparent text-body font-medium whitespace-nowrap transition-[background-color,border-color,color,scale] outline-none select-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -40,13 +42,34 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
+type ButtonProps = ButtonPrimitive.Props & VariantProps<typeof buttonVariants>;
+
+function LinkButton({
   className,
   variant = 'default',
   size = 'default',
+  render,
+  disabled,
+  nativeButton: _nativeButton,
+  focusableWhenDisabled: _focusableWhenDisabled,
+  type: _type,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
-  return <ButtonPrimitive data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+}: ButtonProps) {
+  return useRender({
+    render: render as useRender.ComponentProps<'a'>['render'],
+    props: mergeProps<'a'>(props as React.ComponentProps<'a'>, {
+      'aria-disabled': disabled || undefined,
+      className: cn(buttonVariants({ variant, size, className }), disabled && 'pointer-events-none'),
+    }),
+    state: { slot: 'button' },
+  });
+}
+
+function Button({ className, variant = 'default', size = 'default', ...props }: ButtonProps) {
+  if (props.nativeButton === false && props.render) {
+    return <LinkButton className={className} variant={variant} size={size} {...props} />;
+  }
+  return <ButtonPrimitive {...props} data-slot="button" className={cn(buttonVariants({ variant, size, className }))} />;
 }
 
 export { Button, buttonVariants };

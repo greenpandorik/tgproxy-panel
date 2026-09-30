@@ -51,13 +51,13 @@ function json(body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
 }
 
-function renderSidebar() {
+function renderSidebar(collapsed = false) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/']}>
         <AuthProvider>
-          <Sidebar />
+          <Sidebar collapsed={collapsed} />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -83,5 +83,12 @@ describe('Sidebar navigation', () => {
     renderSidebar();
     expect(await screen.findByRole('link', { name: 'Серверы' })).toHaveAttribute('href', '/nodes');
     expect(screen.queryByText('1/2')).toBeNull();
+  });
+
+  it('names the subscription items with their group on the icon rail', async () => {
+    renderSidebar(true);
+    expect(await screen.findByRole('link', { name: 'Подписка · Страница' })).toHaveAttribute('href', '/subscription');
+    expect(screen.getByRole('link', { name: 'Подписка · Сервис' })).toHaveAttribute('href', '/subscription/service');
+    expect(screen.getByRole('link', { name: 'Серверы' })).toHaveAttribute('href', '/nodes');
   });
 });

@@ -117,6 +117,40 @@ describe('CommandPalette', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it('finds the subscription sections by their group and names them with it', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.type(await screen.findByPlaceholderText('Поиск, команды…'), 'подписк');
+
+    expect(await screen.findByText('Подписка · Страница')).toBeInTheDocument();
+    expect(screen.getByText('Подписка · Сервис')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Новый пользователь')).not.toBeInTheDocument());
+    expect(screen.queryByText('Действия')).not.toBeInTheDocument();
+  });
+
+  it('runs the first match on Enter once the query narrows the list', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.type(await screen.findByPlaceholderText('Поиск, команды…'), 'применить');
+    await waitFor(() => expect(screen.queryByText('Обзор')).not.toBeInTheDocument());
+    await user.keyboard('{Enter}');
+
+    expect(await screen.findByText('Применить изменения на 2 серверах?')).toBeInTheDocument();
+  });
+
+  it('says nothing was found rather than showing empty groups', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.type(await screen.findByPlaceholderText('Поиск, команды…'), 'zzzz');
+
+    expect(await screen.findByText('Ничего не найдено')).toBeInTheDocument();
+    expect(screen.queryByText('Разделы')).not.toBeInTheDocument();
+    expect(screen.queryByText('Действия')).not.toBeInTheDocument();
+  });
+
   it('deep-links the create-user action into the users page', async () => {
     const user = userEvent.setup();
     renderPalette();

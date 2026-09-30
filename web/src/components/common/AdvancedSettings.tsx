@@ -29,15 +29,15 @@ export function AdvancedSettings({ children, label, defaultOpen = false, classNa
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls={contentId}
-        className="inline-flex min-h-10 w-fit items-center gap-2 rounded-control border border-hairline-strong bg-card px-3 py-2 text-label text-foreground transition-colors hover:bg-elevated focus-visible:outline-2 focus-visible:outline-ring"
+        className="inline-flex min-h-(--control-height) w-fit max-w-full items-center gap-2 rounded-control border border-hairline-strong bg-card px-3 py-2 text-left text-label text-foreground transition-[background-color,scale] hover:bg-elevated focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.985] pointer-coarse:min-h-11"
       >
-        <SlidersHorizontal size={14} strokeWidth={1.8} aria-hidden="true" />
+        <SlidersHorizontal size={14} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
         {label ?? t(open ? 'common.advanced_hide' : 'common.advanced_show')}
         <ChevronDown
           size={14}
           strokeWidth={1.8}
           aria-hidden="true"
-          className={cn('duration-fast transition-transform', open && 'rotate-180')}
+          className={cn('shrink-0 duration-fast transition-transform', open && 'rotate-180')}
         />
       </button>
       <div id={contentId} hidden={!open} className={cn('flex flex-col gap-4', contentClassName)}>
