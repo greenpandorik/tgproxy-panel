@@ -175,23 +175,23 @@ export function BackupsForm() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="pl-4">{t('settings.backups_column_name')}</TableHead>
+                      <TableHead>{t('settings.backups_column_name')}</TableHead>
                       <TableHead className="text-right">{t('settings.backups_column_size')}</TableHead>
                       <TableHead>{t('settings.backups_column_kind')}</TableHead>
                       <TableHead>{t('settings.backups_column_created')}</TableHead>
-                      <TableHead className="w-0 pr-4" />
+                      <TableHead className="w-0" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {backups.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="mono pl-4 text-mono text-foreground">{b.name}</TableCell>
+                        <TableCell className="mono text-mono text-foreground">{b.name}</TableCell>
                         <TableCell className="mono text-right text-mono text-mute">{formatBytes(b.size)}</TableCell>
                         <TableCell>
                           <KindTag kind={b.kind} />
                         </TableCell>
                         <TableCell className="mono text-mono text-mute">{formatDateTime(b.created_at, i18n.language)}</TableCell>
-                        <TableCell className="pr-4">
+                        <TableCell>
                           <div className="flex items-center justify-end gap-1">
                             <a
                               className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}

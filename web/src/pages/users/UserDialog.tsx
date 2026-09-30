@@ -505,7 +505,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                 </p>
               )}
 
-              <DialogFooter className="sticky -bottom-4 z-10 flex-row items-center justify-between bg-popover sm:justify-between">
+              <DialogFooter className="flex-row items-center justify-between sm:justify-between">
                 {isWriter ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button type="button" variant="outline" />}>

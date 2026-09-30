@@ -253,23 +253,23 @@ export function AdminsForm() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">{t('settings.admins_column_username')}</TableHead>
+                  <TableHead>{t('settings.admins_column_username')}</TableHead>
                   <TableHead>{t('settings.admins_column_role')}</TableHead>
                   <TableHead>{t('settings.admins_column_created')}</TableHead>
-                  <TableHead className="w-0 pr-4" />
+                  <TableHead className="w-0" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {admins.map((a) => (
                   <TableRow key={a.id}>
-                    <TableCell className="pl-4 font-medium text-foreground">{a.username}</TableCell>
+                    <TableCell className="font-medium text-foreground">{a.username}</TableCell>
                     <TableCell>
                       <RoleTag role={a.role} />
                     </TableCell>
                     <TableCell className="mono text-mono text-mute">
                       {a.created_at ? formatDate(a.created_at, i18n.language) : '—'}
                     </TableCell>
-                    <TableCell className="pr-4 text-right">
+                    <TableCell className="text-right">
                       {a.id !== user?.id && (
                         <Button
                           type="button"

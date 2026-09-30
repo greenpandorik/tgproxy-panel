@@ -91,7 +91,7 @@ export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSerie
               <XAxis {...xAxisProps} tickFormatter={(v: string) => formatTimeTick(v, locale)} />
               <YAxis {...yAxisProps} width={52} tickFormatter={(v: number) => formatBytes(v, 0)} />
               <Tooltip
-                content={<ChartTooltip locale={locale} formatValue={(v) => `${formatBytes(v)}/s`} />}
+                content={<ChartTooltip locale={locale} formatValue={(v) => t('common.per_second', { value: formatBytes(v) })} />}
                 cursor={{ stroke: 'var(--line-2)', strokeWidth: 1 }}
                 isAnimationActive={false}
               />

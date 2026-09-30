@@ -1,4 +1,4 @@
-import { ArrowDownUp, KeyRound, Radio, Server } from 'lucide-react';
+import { ArrowDownUp, Radio, Server, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -60,7 +60,7 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
     },
     {
       id: 'keys',
-      icon: KeyRound,
+      icon: Users,
       label: t('dashboard.keys_active'),
       to: '/users',
       tone: 'var(--brand-primary)',

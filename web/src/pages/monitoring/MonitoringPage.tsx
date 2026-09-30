@@ -152,7 +152,7 @@ function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Rec
     [t('monitoring.fleet_healthy'), formatNumber(healthy, i18n.language)],
     [t('monitoring.fleet_degraded'), formatNumber(degraded, i18n.language)],
     [t('monitoring.fleet_sessions'), formatNumber(sessions, i18n.language)],
-    [t('monitoring.fleet_traffic'), measuredThroughput ? `${formatBytes(throughput)}/s` : t('common.not_available')],
+    [t('monitoring.fleet_traffic'), measuredThroughput ? t('common.per_second', { value: formatBytes(throughput) }) : t('common.not_available')],
   ];
   return (
     <Panel>

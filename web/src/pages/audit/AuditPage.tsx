@@ -288,17 +288,17 @@ export function AuditPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="pl-4">{t('audit.column_time')}</TableHead>
+                    <TableHead>{t('audit.column_time')}</TableHead>
                     <TableHead>{t('audit.column_user')}</TableHead>
                     <TableHead>{t('audit.column_action')}</TableHead>
                     <TableHead>{t('audit.column_target')}</TableHead>
-                    <TableHead className="pr-4">{t('audit.column_meta')}</TableHead>
+                    <TableHead>{t('audit.column_meta')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="mono pl-4 text-mono whitespace-nowrap text-mute">
+                      <TableCell className="mono text-mono whitespace-nowrap text-mute">
                         <EntryTime at={entry.created_at} />
                       </TableCell>
                       <TableCell>
@@ -310,7 +310,7 @@ export function AuditPage() {
                       <TableCell>
                         <TargetCell type={entry.target_type} id={entry.target_id} names={names} />
                       </TableCell>
-                      <TableCell className="w-full max-w-0 pr-4">
+                      <TableCell className="w-full max-w-0">
                         <MetaCell meta={entry.meta} />
                       </TableCell>
                     </TableRow>

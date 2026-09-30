@@ -67,7 +67,8 @@
       "not_available_description": "The panel could not obtain this: the source is unreachable, or this version does not report it."
     },
     "advanced_show": "Show advanced settings",
-    "advanced_hide": "Hide advanced settings"
+    "advanced_hide": "Hide advanced settings",
+    "per_second": "{{value}}/s"
   },
   "auth": {
     "login_title": "Sign in",

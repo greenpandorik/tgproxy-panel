@@ -311,7 +311,7 @@ export function UsersPage() {
         <MoreHorizontal />
         <span className="sr-only">{t('common.actions')}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-52" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         {(u.subscription_short_url ?? u.subscription_url) && (
           <DropdownMenuItem onClick={() => void copyLink(u)}>
             <Copy />
@@ -398,7 +398,7 @@ export function UsersPage() {
               context={tile.id === 'expiring' ? t('users.tile_expiring_context') : undefined}
               value={tile.value ?? 0}
               loading={summaryQuery.isLoading}
-              className="pointer-events-none max-sm:px-3.5"
+              className="pointer-events-none"
             />
           </button>
         ))}
@@ -474,7 +474,7 @@ export function UsersPage() {
             <Columns3 />
             {t('users.columns')}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-56">
+          <DropdownMenuContent align="end">
             <DropdownMenuGroup>
               <DropdownMenuLabel>{t('users.columns_hint')}</DropdownMenuLabel>
               {COLUMNS.map((col) => (
@@ -558,7 +558,7 @@ export function UsersPage() {
                 <TableHeader>
                   <TableRow>
                     {isWriter && (
-                      <TableHead className="w-0 pr-0 pl-4">
+                      <TableHead className="w-0 pr-0">
                         <Checkbox
                           checked={items.length > 0 && selected.size === items.length}
                           onCheckedChange={(v) => toggleAll(!!v)}
@@ -591,7 +591,7 @@ export function UsersPage() {
                       onClick={() => openUser(u.id)}
                     >
                       {isWriter && (
-                        <TableCell className="w-0 pr-0 pl-4" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="w-0 pr-0" onClick={(e) => e.stopPropagation()}>
                           <Checkbox checked={selected.has(u.id)} onCheckedChange={(v) => toggleOne(u.id, !!v)} aria-label={u.label} />
                         </TableCell>
                       )}

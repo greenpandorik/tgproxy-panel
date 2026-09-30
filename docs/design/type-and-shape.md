@@ -271,7 +271,7 @@ from `TONE_VAR` (`components/common/statTone.ts`) or a brand variable:
 
 - `.tgwp-tone-plate`: 13 % of the tone mixed into `--bg-2`, a 1px inset ring at 16 %,
   content in the tone. It is the round 44px icon plate on stat tiles and dashboard
-  metrics.
+  metrics, 40px in the two-column phone layout.
 - `.tgwp-tone-tint`: 10 % of the tone as the background, a border at 20 %, content in
   the tone. It is used for the empty-state icon, the dashboard verdict line, small
   status squares in the branding profile list and the server dialog, and the status
@@ -298,11 +298,12 @@ Sizing that depends on density and pointer:
 |---|---|---|---|
 | `--control-height` | 38px | 32px | The default button height, and the minimum height of inputs and select triggers |
 | `--cell-padding-y` | 14px | 8px | Vertical padding of table cells |
+| `--panel-x` | 20px (16px below `sm`) | same | Horizontal inset of panel headers, panel bodies and the outer table cells, so a table's first and last columns line up with its panel's title |
 
-Density is a personal preference (`data-density` on `<html>`). Under
-`pointer: coarse`, buttons, inputs, select triggers and sidebar links get a 44px
-minimum height, and native selects (`.ops-select`) are at least 2.75rem tall
-everywhere.
+Density is a personal preference (`data-density` on `<html>`). Native selects
+(`.ops-select`) follow `--control-height` like inputs. Under `pointer: coarse`,
+buttons, inputs, select triggers, native selects and sidebar links get a 44px minimum
+height. Inner table cells keep 12px of horizontal padding.
 
 The sidebar is 276px wide, or 84px as a rail, with 40px links. Below `lg` it opens as
 a 256px drawer from the left.

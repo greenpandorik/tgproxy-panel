@@ -176,7 +176,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
           </p>
         )}
 
-        <DialogFooter className="sticky -bottom-4 z-10 flex-row justify-end bg-popover">
+        <DialogFooter className="flex-row justify-end">
           <Button type="button" variant="outline" onClick={close} disabled={isSubmitting}>
             {t('common.cancel')}
           </Button>
