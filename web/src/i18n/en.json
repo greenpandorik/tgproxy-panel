@@ -991,7 +991,11 @@
     "policy_unsupported": "This telemt version cannot negotiate carriers, so the strategy cannot be changed.",
     "policy_undetermined": "The panel has not yet found out whether this server's telemt can negotiate carriers. Until it does, the strategy cannot be changed.",
     "update_offline": "telemt can be updated only while the server is connected.",
-    "counters_none": "The server sent no failure counters in this window."
+    "counters_none": "The server sent no failure counters in this window.",
+    "capability_unsupported_title_fleet": "No server supports {{feature}}",
+    "capability_unsupported_description_fleet": "The servers answered that their telemt versions lack this feature. This is not an error.",
+    "capability_undetermined_title_fleet": "Not known yet whether the servers support {{feature}}",
+    "capability_undetermined_description_fleet": "The panel finds out once the servers' agents connect."
   },
   "audit": {
     "title": "Activity log",

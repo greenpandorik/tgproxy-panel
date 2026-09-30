@@ -997,7 +997,11 @@
     "policy_unsupported": "Эта версия telemt не умеет подбирать транспорт, поэтому стратегию изменить нельзя.",
     "policy_undetermined": "Панель ещё не выяснила, умеет ли telemt на этом сервере подбирать транспорт. Пока это неизвестно, стратегию изменить нельзя.",
     "update_offline": "Обновить telemt можно, только когда сервер на связи.",
-    "counters_none": "Сервер не прислал счётчики сбоев за это время."
+    "counters_none": "Сервер не прислал счётчики сбоев за это время.",
+    "capability_unsupported_title_fleet": "Ни на одном сервере нет функции: {{feature}}",
+    "capability_unsupported_description_fleet": "Серверы ответили, что в их версиях telemt такой функции нет. Это не ошибка.",
+    "capability_undetermined_title_fleet": "Пока неизвестно, есть ли на серверах {{feature}}",
+    "capability_undetermined_description_fleet": "Панель узнает это, когда агенты серверов выйдут на связь."
   },
   "audit": {
     "title": "Журнал действий",

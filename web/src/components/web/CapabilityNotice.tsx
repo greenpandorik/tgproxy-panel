@@ -15,6 +15,8 @@ interface CapabilityNoticeProps {
   /** When the panel last worked the capability set out, for the undetermined wording. */
   checkedAt?: string | null;
   action?: ReactNode;
+  /** 'fleet' speaks about all servers at once instead of the one on screen. */
+  scope?: 'server' | 'fleet';
   className?: string;
 }
 
@@ -23,8 +25,9 @@ interface CapabilityNoticeProps {
  * out" are different answers and are drawn differently - neither is an error, and neither is
  * an empty measurement.
  */
-export function CapabilityNotice({ state, feature, checkedAt, action, className }: CapabilityNoticeProps) {
+export function CapabilityNotice({ state, feature, checkedAt, action, scope = 'server', className }: CapabilityNoticeProps) {
   const { t, i18n } = useTranslation();
+  const fleet = scope === 'fleet' ? '_fleet' : '';
 
   if (state === 'unsupported') {
     return (
@@ -33,8 +36,8 @@ export function CapabilityNotice({ state, feature, checkedAt, action, className 
           icon={Ban}
           tone="neutral"
           role="status"
-          title={t('web.capability_unsupported_title', { feature })}
-          description={t('web.capability_unsupported_description')}
+          title={t(`web.capability_unsupported_title${fleet}`, { feature })}
+          description={t(`web.capability_unsupported_description${fleet}`)}
           action={action}
           className="border-0 py-10"
         />
@@ -48,11 +51,11 @@ export function CapabilityNotice({ state, feature, checkedAt, action, className 
         icon={CircleHelp}
         tone="info"
         role="status"
-        title={t('web.capability_undetermined_title', { feature })}
+        title={t(`web.capability_undetermined_title${fleet}`, { feature })}
         description={
           checkedAt
             ? t('web.capability_undetermined_description_checked', { at: formatDateTime(checkedAt, i18n.language) })
-            : t('web.capability_undetermined_description')
+            : t(`web.capability_undetermined_description${fleet}`)
         }
         action={action}
         className="border-0 py-10"

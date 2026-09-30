@@ -33,6 +33,7 @@ export function FleetCarriersCard({ nodes }: { nodes: Node[] }) {
           <CapabilityNotice
             state={caps.undetermined > 0 ? 'undetermined' : 'unsupported'}
             feature={t('web.feature_web')}
+            scope="fleet"
           />
         ) : carriersQuery.isLoading ? (
           <>

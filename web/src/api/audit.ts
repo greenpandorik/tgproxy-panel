@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
@@ -25,4 +25,5 @@ export const useAudit = (filters: AuditFilters = {}) =>
     queryKey: auditKeys.list(filters),
     queryFn: () => api.get<Paginated<AuditEntry>>(`/api/v1/audit${filtersToQuery(filters)}`),
     refetchInterval: 30_000,
+    placeholderData: keepPreviousData,
   });
