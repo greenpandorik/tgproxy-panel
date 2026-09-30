@@ -187,6 +187,14 @@ WITH deltas AS (
 )
 SELECT access_key_id, coalesce(sum(octets), 0)::bigint AS traffic FROM deltas GROUP BY access_key_id;
 
+-- name: KeyLiveForKeys :many
+SELECT access_key_id, COALESCE(sum(connections), 0)::bigint AS connections, COALESCE(sum(active_ips), 0)::bigint AS active_ips
+FROM (
+  SELECT DISTINCT ON (access_key_id, node_id) access_key_id, connections, active_ips FROM key_stats_snapshots
+  WHERE access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) AND taken_at > sqlc.arg('since')
+  ORDER BY access_key_id, node_id, taken_at DESC
+) latest GROUP BY access_key_id;
+
 -- name: LatestKeyStatsSnapshots :many
 SELECT DISTINCT ON (node_id) * FROM key_stats_snapshots WHERE access_key_id = $1 ORDER BY node_id, taken_at DESC;
 

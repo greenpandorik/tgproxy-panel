@@ -28,7 +28,16 @@ SELECT count(*) FROM access_keys k
 WHERE ($1::key_type IS NULL OR k.type = $1)
   AND ($2::key_status IS NULL OR k.status = $2)
   AND ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = k.id AND b.node_id = $3))
-  AND ($4::text IS NULL OR k.label ILIKE '%' || $4 || '%' OR k.owner_label ILIKE '%' || $4 || '%')
+  AND ($4::text IS NULL OR k.label ILIKE '%' || $4 || '%' OR k.owner_label ILIKE '%' || $4 || '%'
+    OR k.note ILIKE '%' || $4 || '%' OR k.sub_slug ILIKE '%' || $4 || '%')
+  AND ($5::text IS NULL OR CASE $5::text
+    WHEN 'revoked' THEN k.status = 'revoked'
+    WHEN 'disabled' THEN k.status <> 'revoked' AND k.disabled_at IS NOT NULL
+    WHEN 'expired' THEN k.status <> 'revoked' AND k.disabled_at IS NULL AND k.expires_at <= now()
+    WHEN 'expiring' THEN k.status <> 'revoked' AND k.disabled_at IS NULL AND k.expires_at > now() AND k.expires_at <= now() + interval '7 days'
+    WHEN 'pending' THEN k.status = 'pending' AND k.disabled_at IS NULL AND (k.expires_at IS NULL OR k.expires_at > now())
+    WHEN 'active' THEN k.status = 'active' AND k.disabled_at IS NULL AND (k.expires_at IS NULL OR k.expires_at > now())
+    ELSE false END)
 `
 
 type CountKeysParams struct {
@@ -36,6 +45,7 @@ type CountKeysParams struct {
 	Status NullKeyStatus `json:"status"`
 	NodeID uuid.NullUUID `json:"node_id"`
 	Q      *string       `json:"q"`
+	State  *string       `json:"state"`
 }
 
 func (q *Queries) CountKeys(ctx context.Context, arg CountKeysParams) (int64, error) {
@@ -44,6 +54,7 @@ func (q *Queries) CountKeys(ctx context.Context, arg CountKeysParams) (int64, er
 		arg.Status,
 		arg.NodeID,
 		arg.Q,
+		arg.State,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -96,7 +107,7 @@ func (q *Queries) CreateBinding(ctx context.Context, arg CreateBindingParams) er
 
 const createKey = `-- name: CreateKey :one
 INSERT INTO access_keys (label, type, owner_label, secret_enc, carrier_mode, limits, expires_at, note, created_by, telemt_limits)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10::jsonb, '{}'::jsonb)) RETURNING id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10::jsonb, '{}'::jsonb)) RETURNING id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits, disabled_at, expired_at, last_seen_at, sub_slug
 `
 
 type CreateKeyParams struct {
@@ -141,27 +152,34 @@ func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (AccessKey
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.TelemtLimits,
+		&i.DisabledAt,
+		&i.ExpiredAt,
+		&i.LastSeenAt,
+		&i.SubSlug,
 	)
 	return i, err
 }
 
 const createSubscriptionToken = `-- name: CreateSubscriptionToken :one
-INSERT INTO subscription_tokens (token_hash, access_key_id) VALUES ($1, $2) RETURNING token_hash, access_key_id, created_at, revoked_at
+INSERT INTO subscription_tokens (token_hash, access_key_id, token_enc) VALUES ($1, $2, $3) RETURNING token_hash, access_key_id, created_at, revoked_at, token_enc, id
 `
 
 type CreateSubscriptionTokenParams struct {
 	TokenHash   string    `json:"token_hash"`
 	AccessKeyID uuid.UUID `json:"access_key_id"`
+	TokenEnc    []byte    `json:"token_enc"`
 }
 
 func (q *Queries) CreateSubscriptionToken(ctx context.Context, arg CreateSubscriptionTokenParams) (SubscriptionToken, error) {
-	row := q.db.QueryRow(ctx, createSubscriptionToken, arg.TokenHash, arg.AccessKeyID)
+	row := q.db.QueryRow(ctx, createSubscriptionToken, arg.TokenHash, arg.AccessKeyID, arg.TokenEnc)
 	var i SubscriptionToken
 	err := row.Scan(
 		&i.TokenHash,
 		&i.AccessKeyID,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.TokenEnc,
+		&i.ID,
 	)
 	return i, err
 }
@@ -190,7 +208,7 @@ func (q *Queries) DeleteKey(ctx context.Context, id uuid.UUID) error {
 }
 
 const getKey = `-- name: GetKey :one
-SELECT id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits FROM access_keys WHERE id = $1
+SELECT id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits, disabled_at, expired_at, last_seen_at, sub_slug FROM access_keys WHERE id = $1
 `
 
 func (q *Queries) GetKey(ctx context.Context, id uuid.UUID) (AccessKey, error) {
@@ -211,12 +229,46 @@ func (q *Queries) GetKey(ctx context.Context, id uuid.UUID) (AccessKey, error) {
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.TelemtLimits,
+		&i.DisabledAt,
+		&i.ExpiredAt,
+		&i.LastSeenAt,
+		&i.SubSlug,
+	)
+	return i, err
+}
+
+const getKeyBySlug = `-- name: GetKeyBySlug :one
+SELECT id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits, disabled_at, expired_at, last_seen_at, sub_slug FROM access_keys WHERE sub_slug = $1
+`
+
+func (q *Queries) GetKeyBySlug(ctx context.Context, subSlug *string) (AccessKey, error) {
+	row := q.db.QueryRow(ctx, getKeyBySlug, subSlug)
+	var i AccessKey
+	err := row.Scan(
+		&i.ID,
+		&i.Label,
+		&i.Type,
+		&i.OwnerLabel,
+		&i.SecretEnc,
+		&i.Status,
+		&i.CarrierMode,
+		&i.Limits,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.Note,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.TelemtLimits,
+		&i.DisabledAt,
+		&i.ExpiredAt,
+		&i.LastSeenAt,
+		&i.SubSlug,
 	)
 	return i, err
 }
 
 const getKeySubscription = `-- name: GetKeySubscription :one
-SELECT token_hash, access_key_id, created_at, revoked_at FROM subscription_tokens WHERE access_key_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1
+SELECT token_hash, access_key_id, created_at, revoked_at, token_enc, id FROM subscription_tokens WHERE access_key_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) GetKeySubscription(ctx context.Context, accessKeyID uuid.UUID) (SubscriptionToken, error) {
@@ -227,12 +279,14 @@ func (q *Queries) GetKeySubscription(ctx context.Context, accessKeyID uuid.UUID)
 		&i.AccessKeyID,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.TokenEnc,
+		&i.ID,
 	)
 	return i, err
 }
 
 const getSubscriptionByHash = `-- name: GetSubscriptionByHash :one
-SELECT token_hash, access_key_id, created_at, revoked_at FROM subscription_tokens WHERE token_hash = $1
+SELECT token_hash, access_key_id, created_at, revoked_at, token_enc, id FROM subscription_tokens WHERE token_hash = $1
 `
 
 func (q *Queries) GetSubscriptionByHash(ctx context.Context, tokenHash string) (SubscriptionToken, error) {
@@ -243,30 +297,72 @@ func (q *Queries) GetSubscriptionByHash(ctx context.Context, tokenHash string) (
 		&i.AccessKeyID,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.TokenEnc,
+		&i.ID,
 	)
 	return i, err
 }
 
-const listActiveSubscriptionAccessKeyIDs = `-- name: ListActiveSubscriptionAccessKeyIDs :many
-SELECT DISTINCT access_key_id FROM subscription_tokens
-WHERE access_key_id = ANY($1::uuid[]) AND revoked_at IS NULL
+const keySummary = `-- name: KeySummary :one
+SELECT count(*) AS total,
+  count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NULL AND (expires_at IS NULL OR expires_at > now())) AS active,
+  count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NULL AND expires_at > now() AND expires_at <= now() + interval '7 days') AS expiring,
+  count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NULL AND expires_at <= now()) AS expired,
+  count(*) FILTER (WHERE status <> 'revoked' AND disabled_at IS NOT NULL) AS disabled,
+  count(*) FILTER (WHERE status = 'revoked') AS revoked
+FROM access_keys
 `
 
-// ListActiveSubscriptionAccessKeyIDs is GetKeySubscription for a whole page of keys at
-// once, so the list endpoint can flag subscription_active without one query per row.
-func (q *Queries) ListActiveSubscriptionAccessKeyIDs(ctx context.Context, keyIds []uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, listActiveSubscriptionAccessKeyIDs, keyIds)
+type KeySummaryRow struct {
+	Total    int64 `json:"total"`
+	Active   int64 `json:"active"`
+	Expiring int64 `json:"expiring"`
+	Expired  int64 `json:"expired"`
+	Disabled int64 `json:"disabled"`
+	Revoked  int64 `json:"revoked"`
+}
+
+func (q *Queries) KeySummary(ctx context.Context) (KeySummaryRow, error) {
+	row := q.db.QueryRow(ctx, keySummary)
+	var i KeySummaryRow
+	err := row.Scan(
+		&i.Total,
+		&i.Active,
+		&i.Expiring,
+		&i.Expired,
+		&i.Disabled,
+		&i.Revoked,
+	)
+	return i, err
+}
+
+const listActiveSubscriptions = `-- name: ListActiveSubscriptions :many
+SELECT DISTINCT ON (access_key_id) token_hash, access_key_id, created_at, revoked_at, token_enc, id FROM subscription_tokens
+WHERE access_key_id = ANY($1::uuid[]) AND revoked_at IS NULL
+ORDER BY access_key_id, created_at DESC
+`
+
+// ListActiveSubscriptions is GetKeySubscription for a whole page of keys at once.
+func (q *Queries) ListActiveSubscriptions(ctx context.Context, keyIds []uuid.UUID) ([]SubscriptionToken, error) {
+	rows, err := q.db.Query(ctx, listActiveSubscriptions, keyIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []uuid.UUID{}
+	items := []SubscriptionToken{}
 	for rows.Next() {
-		var access_key_id uuid.UUID
-		if err := rows.Scan(&access_key_id); err != nil {
+		var i SubscriptionToken
+		if err := rows.Scan(
+			&i.TokenHash,
+			&i.AccessKeyID,
+			&i.CreatedAt,
+			&i.RevokedAt,
+			&i.TokenEnc,
+			&i.ID,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, access_key_id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -327,7 +423,7 @@ func (q *Queries) ListBindingsForKeys(ctx context.Context, keyIds []uuid.UUID) (
 }
 
 const listExpiredActiveKeys = `-- name: ListExpiredActiveKeys :many
-SELECT id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits FROM access_keys WHERE status IN ('pending','active') AND expires_at IS NOT NULL AND expires_at <= now()
+SELECT id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits, disabled_at, expired_at, last_seen_at, sub_slug FROM access_keys WHERE status IN ('pending','active') AND expires_at IS NOT NULL AND expires_at <= now() AND expired_at IS NULL
 `
 
 func (q *Queries) ListExpiredActiveKeys(ctx context.Context) ([]AccessKey, error) {
@@ -354,6 +450,10 @@ func (q *Queries) ListExpiredActiveKeys(ctx context.Context) ([]AccessKey, error
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.TelemtLimits,
+			&i.DisabledAt,
+			&i.ExpiredAt,
+			&i.LastSeenAt,
+			&i.SubSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -416,11 +516,20 @@ func (q *Queries) ListKeyBindings(ctx context.Context, accessKeyID uuid.UUID) ([
 }
 
 const listKeys = `-- name: ListKeys :many
-SELECT k.id, k.label, k.type, k.owner_label, k.secret_enc, k.status, k.carrier_mode, k.limits, k.expires_at, k.revoked_at, k.note, k.created_by, k.created_at, k.telemt_limits FROM access_keys k
+SELECT k.id, k.label, k.type, k.owner_label, k.secret_enc, k.status, k.carrier_mode, k.limits, k.expires_at, k.revoked_at, k.note, k.created_by, k.created_at, k.telemt_limits, k.disabled_at, k.expired_at, k.last_seen_at, k.sub_slug FROM access_keys k
 WHERE ($3::key_type IS NULL OR k.type = $3)
   AND ($4::key_status IS NULL OR k.status = $4)
   AND ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = k.id AND b.node_id = $5))
-  AND ($6::text IS NULL OR k.label ILIKE '%' || $6 || '%' OR k.owner_label ILIKE '%' || $6 || '%')
+  AND ($6::text IS NULL OR k.label ILIKE '%' || $6 || '%' OR k.owner_label ILIKE '%' || $6 || '%'
+    OR k.note ILIKE '%' || $6 || '%' OR k.sub_slug ILIKE '%' || $6 || '%')
+  AND ($7::text IS NULL OR CASE $7::text
+    WHEN 'revoked' THEN k.status = 'revoked'
+    WHEN 'disabled' THEN k.status <> 'revoked' AND k.disabled_at IS NOT NULL
+    WHEN 'expired' THEN k.status <> 'revoked' AND k.disabled_at IS NULL AND k.expires_at <= now()
+    WHEN 'expiring' THEN k.status <> 'revoked' AND k.disabled_at IS NULL AND k.expires_at > now() AND k.expires_at <= now() + interval '7 days'
+    WHEN 'pending' THEN k.status = 'pending' AND k.disabled_at IS NULL AND (k.expires_at IS NULL OR k.expires_at > now())
+    WHEN 'active' THEN k.status = 'active' AND k.disabled_at IS NULL AND (k.expires_at IS NULL OR k.expires_at > now())
+    ELSE false END)
 ORDER BY k.created_at DESC LIMIT $1 OFFSET $2
 `
 
@@ -431,6 +540,7 @@ type ListKeysParams struct {
 	Status NullKeyStatus `json:"status"`
 	NodeID uuid.NullUUID `json:"node_id"`
 	Q      *string       `json:"q"`
+	State  *string       `json:"state"`
 }
 
 func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]AccessKey, error) {
@@ -441,6 +551,7 @@ func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]AccessKey
 		arg.Status,
 		arg.NodeID,
 		arg.Q,
+		arg.State,
 	)
 	if err != nil {
 		return nil, err
@@ -464,6 +575,10 @@ func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]AccessKey
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.TelemtLimits,
+			&i.DisabledAt,
+			&i.ExpiredAt,
+			&i.LastSeenAt,
+			&i.SubSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -520,8 +635,31 @@ func (q *Queries) RevokeSubscriptionTokensForKey(ctx context.Context, accessKeyI
 	return err
 }
 
+const setKeyDisabled = `-- name: SetKeyDisabled :exec
+UPDATE access_keys SET disabled_at = $2 WHERE id = $1
+`
+
+type SetKeyDisabledParams struct {
+	ID         uuid.UUID  `json:"id"`
+	DisabledAt *time.Time `json:"disabled_at"`
+}
+
+func (q *Queries) SetKeyDisabled(ctx context.Context, arg SetKeyDisabledParams) error {
+	_, err := q.db.Exec(ctx, setKeyDisabled, arg.ID, arg.DisabledAt)
+	return err
+}
+
+const setKeyExpired = `-- name: SetKeyExpired :exec
+UPDATE access_keys SET expired_at = now() WHERE id = $1
+`
+
+func (q *Queries) SetKeyExpired(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setKeyExpired, id)
+	return err
+}
+
 const setKeyExpiry = `-- name: SetKeyExpiry :exec
-UPDATE access_keys SET expires_at = $2 WHERE id = $1
+UPDATE access_keys SET expires_at = $2, expired_at = NULL WHERE id = $1
 `
 
 type SetKeyExpiryParams struct {
@@ -548,6 +686,20 @@ func (q *Queries) SetKeySecret(ctx context.Context, arg SetKeySecretParams) erro
 	return err
 }
 
+const setKeySlug = `-- name: SetKeySlug :exec
+UPDATE access_keys SET sub_slug = $2 WHERE id = $1
+`
+
+type SetKeySlugParams struct {
+	ID      uuid.UUID `json:"id"`
+	SubSlug *string   `json:"sub_slug"`
+}
+
+func (q *Queries) SetKeySlug(ctx context.Context, arg SetKeySlugParams) error {
+	_, err := q.db.Exec(ctx, setKeySlug, arg.ID, arg.SubSlug)
+	return err
+}
+
 const setKeyStatus = `-- name: SetKeyStatus :exec
 UPDATE access_keys SET status = $2::key_status, revoked_at = CASE WHEN $2::key_status = 'revoked' THEN now() ELSE revoked_at END WHERE id = $1
 `
@@ -562,10 +714,20 @@ func (q *Queries) SetKeyStatus(ctx context.Context, arg SetKeyStatusParams) erro
 	return err
 }
 
+const touchKeyLastSeen = `-- name: TouchKeyLastSeen :exec
+UPDATE access_keys SET last_seen_at = now() WHERE id = $1
+`
+
+func (q *Queries) TouchKeyLastSeen(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, touchKeyLastSeen, id)
+	return err
+}
+
 const updateKey = `-- name: UpdateKey :one
 UPDATE access_keys SET label = $2, owner_label = $3, note = $4, expires_at = $5, carrier_mode = $6, limits = $7,
+  expired_at = CASE WHEN $5::timestamptz IS NULL OR $5::timestamptz > now() THEN NULL ELSE expired_at END,
   telemt_limits = COALESCE($8::jsonb, telemt_limits)
-WHERE id = $1 RETURNING id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits
+WHERE id = $1 RETURNING id, label, type, owner_label, secret_enc, status, carrier_mode, limits, expires_at, revoked_at, note, created_by, created_at, telemt_limits, disabled_at, expired_at, last_seen_at, sub_slug
 `
 
 type UpdateKeyParams struct {
@@ -606,6 +768,10 @@ func (q *Queries) UpdateKey(ctx context.Context, arg UpdateKeyParams) (AccessKey
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.TelemtLimits,
+		&i.DisabledAt,
+		&i.ExpiredAt,
+		&i.LastSeenAt,
+		&i.SubSlug,
 	)
 	return i, err
 }

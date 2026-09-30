@@ -530,6 +530,11 @@ func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetr
 		if err := s.st.Q.InsertKeyStatsSnapshot(ctx, row); err != nil {
 			return err
 		}
+		if row.Connections > 0 {
+			if err := s.st.Q.TouchKeyLastSeen(ctx, row.AccessKeyID); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

@@ -324,6 +324,7 @@ func printKeysReport(label string, r store.Report) {
 	fmt.Printf("  admin_users.totp_secret_enc:  %d\n", r.TOTPSecrets)
 	fmt.Printf("  admin_users.totp_pending_enc: %d\n", r.TOTPPending)
 	fmt.Printf("  settings.telegram_alerts:     %d\n", r.Settings)
+	fmt.Printf("  subscription_tokens.token_enc: %d\n", r.SubLinks)
 }
 
 const panelAdvisoryLockID int64 = 0x7467_7770_0000_0001

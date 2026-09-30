@@ -19,7 +19,7 @@ func NewExpiry(st *store.Store, k *keys.Service, log *slog.Logger) *Expiry {
 	return &Expiry{st: st, keys: k, log: log}
 }
 
-// RunOnce revokes every access key whose expires_at has passed and returns how many were revoked.
+// RunOnce takes every key whose expires_at has passed off its servers and returns how many it handled.
 func (e *Expiry) RunOnce(ctx context.Context) (int, error) {
 	rows, err := e.st.Q.ListExpiredActiveKeys(ctx)
 	if err != nil {
@@ -27,7 +27,7 @@ func (e *Expiry) RunOnce(ctx context.Context) (int, error) {
 	}
 	n := 0
 	for _, k := range rows {
-		if err := e.keys.Revoke(ctx, k.ID); err != nil {
+		if err := e.keys.Expire(ctx, k.ID); err != nil {
 			e.log.Error("expire key", "key", k.ID, "err", err)
 			continue
 		}

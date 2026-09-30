@@ -1,15 +1,15 @@
 package api
 
 import (
-	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/crypto"
+	"tgwebproxy/internal/keys"
 	"tgwebproxy/internal/qrlink"
 	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/subscription"
@@ -18,49 +18,17 @@ import (
 // subscriptionQRSize is the edge, in pixels, of the QR code embedded in the create response.
 const subscriptionQRSize = 256
 
-func (s *Server) hasActiveSubscription(ctx context.Context, keyID uuid.UUID) bool {
-	_, err := s.store.Q.GetKeySubscription(ctx, keyID)
-	return err == nil
-}
-
 func (s *Server) handleCreateSubscription(w http.ResponseWriter, r *http.Request) {
 	k, ok := s.loadKey(w, r)
 	if !ok {
 		return
 	}
-	token, err := crypto.NewToken(32)
+	token, err := s.keys.IssueSubscription(r.Context(), k.ID)
 	if err != nil {
-		s.log.Error("subscription: generate token", "err", err)
-		internal(w)
+		s.keysErr(w, err)
 		return
 	}
-	hash := crypto.HashToken(token)
-	revoked := false
-	err = s.store.Tx(r.Context(), func(q *db.Queries) error {
-		current, err := q.GetKey(r.Context(), k.ID)
-		if err != nil {
-			return err
-		}
-		if current.Status == db.KeyStatusRevoked {
-			revoked = true
-			return nil
-		}
-		if err := q.RevokeSubscriptionTokensForKey(r.Context(), k.ID); err != nil {
-			return err
-		}
-		_, err = q.CreateSubscriptionToken(r.Context(), db.CreateSubscriptionTokenParams{TokenHash: hash, AccessKeyID: k.ID})
-		return err
-	})
-	if err != nil {
-		s.log.Error("subscription: create token", "err", err)
-		internal(w)
-		return
-	}
-	if revoked {
-		conflict(w, "key is revoked")
-		return
-	}
-	url := s.cfg.PublicURL + "/s/" + token
+	url := s.subscriptionURL(token)
 	qr, err := qrlink.DataURI(url, subscriptionQRSize)
 	if err != nil {
 		s.log.Error("subscription: render qr", "err", err)
@@ -86,19 +54,45 @@ func (s *Server) handleRevokeSubscription(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(204)
 }
 
-func (s *Server) subscriptionLookup(r *http.Request, token string) (db.AccessKey, int) {
-	sub, err := s.store.Q.GetSubscriptionByHash(r.Context(), crypto.HashToken(token))
-	if err != nil || sub.RevokedAt != nil {
-		return db.AccessKey{}, http.StatusNotFound
+// subscriptionLookup finds the key behind a token or short address. A failure comes back as
+// the key's state: not_found, revoked, disabled or expired.
+func (s *Server) subscriptionLookup(r *http.Request, token string) (db.AccessKey, string) {
+	ctx := r.Context()
+	var key db.AccessKey
+	sub, err := s.store.Q.GetSubscriptionByHash(ctx, crypto.HashToken(token))
+	switch {
+	case err == nil:
+		if sub.RevokedAt != nil {
+			return db.AccessKey{}, "not_found"
+		}
+		if key, err = s.store.Q.GetKey(ctx, sub.AccessKeyID); err != nil {
+			return db.AccessKey{}, "not_found"
+		}
+	case keys.ValidSlug(token):
+		if key, err = s.store.Q.GetKeyBySlug(ctx, &token); err != nil {
+			return db.AccessKey{}, "not_found"
+		}
+		if _, err := s.store.Q.GetKeySubscription(ctx, key.ID); err != nil {
+			return db.AccessKey{}, "not_found"
+		}
+	default:
+		return db.AccessKey{}, "not_found"
 	}
-	key, err := s.store.Q.GetKey(r.Context(), sub.AccessKeyID)
-	if err != nil {
-		return db.AccessKey{}, http.StatusNotFound
+	switch state := keyState(key, time.Now()); state {
+	case "revoked", "disabled", "expired":
+		return db.AccessKey{}, state
 	}
-	if key.Status == db.KeyStatusRevoked {
-		return db.AccessKey{}, http.StatusGone
-	}
-	return key, 0
+	return key, ""
+}
+
+var subscriptionFailures = map[string]struct {
+	status  int
+	message string
+}{
+	"not_found": {http.StatusNotFound, "subpage.error_not_found"},
+	"revoked":   {http.StatusGone, "subpage.error_gone"},
+	"disabled":  {http.StatusForbidden, "subpage.error_disabled"},
+	"expired":   {http.StatusGone, "subpage.error_expired"},
 }
 
 func subscriptionSecurityHeaders(w http.ResponseWriter) {
@@ -116,9 +110,9 @@ func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) 
 		_, _ = w.Write([]byte("too many requests\n"))
 		return
 	}
-	key, status := s.subscriptionLookup(r, chi.URLParam(r, "token"))
-	if status != 0 {
-		s.writeSubscriptionErrorPage(w, r, status)
+	key, failure := s.subscriptionLookup(r, chi.URLParam(r, "token"))
+	if failure != "" {
+		s.writeSubscriptionErrorPage(w, r, failure)
 		return
 	}
 	page, err := s.subscriptionPage(r, key)
@@ -133,16 +127,13 @@ func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Request, status int) {
+func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Request, failure string) {
 	b := s.subscriptionBranding(r.Context())
 	lang := subscription.PageLang(r.URL.Query().Get("lang"), s.subscriptionSettings(r.Context()).Language, r.Header.Get("Accept-Language"))
-	key := "subpage.error_not_found"
-	if status == http.StatusGone {
-		key = "subpage.error_gone"
-	}
+	f := subscriptionFailures[failure]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	page := subscription.ErrorPage{Lang: string(lang), PanelName: b.PanelName, Theme: b.Theme, Message: alerttext.Default().T(lang, key, nil)}
+	w.WriteHeader(f.status)
+	page := subscription.ErrorPage{Lang: string(lang), PanelName: b.PanelName, Theme: b.Theme, Message: alerttext.Default().T(lang, f.message, nil)}
 	if err := subscription.RenderError(w, page); err != nil {
 		s.log.Error("subscription: render error page", "err", err)
 	}
@@ -154,13 +145,18 @@ func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) 
 		writeError(w, 429, "rate_limited", "too many requests", nil)
 		return
 	}
-	key, status := s.subscriptionLookup(r, chi.URLParam(r, "token"))
-	switch status {
-	case http.StatusNotFound:
+	key, failure := s.subscriptionLookup(r, chi.URLParam(r, "token"))
+	switch failure {
+	case "":
+	case "not_found":
 		notFound(w)
 		return
-	case http.StatusGone:
+	case "revoked":
 		gone(w, "key revoked")
+		return
+	default:
+		f := subscriptionFailures[failure]
+		writeError(w, f.status, failure, "access is "+failure, nil)
 		return
 	}
 	links, err := s.keys.NodeLinks(r.Context(), key.ID)

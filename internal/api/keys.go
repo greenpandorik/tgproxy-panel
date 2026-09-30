@@ -23,6 +23,7 @@ var clientSupport = map[string]string{"desktop": "stable", "android": "experimen
 
 func (s *Server) mountKeys(r chi.Router) {
 	r.Get("/keys", s.handleListKeys)
+	r.Get("/keys/summary", s.handleKeySummary)
 	r.With(RequireRole(writers...)).Post("/keys", s.handleCreateKey)
 	r.With(RequireRole(writers...)).Post("/keys/batch", s.handleBatchKeys)
 	r.With(RequireRole(writers...)).Post("/keys/bulk", s.handleBulkKeys)
@@ -33,6 +34,8 @@ func (s *Server) mountKeys(r chi.Router) {
 		r.With(RequireRole(writers...)).Delete("/", s.handleDeleteKey)
 		r.With(RequireRole(writers...)).Post("/revoke", s.handleRevokeKey)
 		r.With(RequireRole(writers...)).Post("/rotate", s.handleRotateKey)
+		r.With(RequireRole(writers...)).Post("/disable", s.handleDisableKey)
+		r.With(RequireRole(writers...)).Post("/enable", s.handleEnableKey)
 		r.With(RequireRole(writers...)).Get("/links", s.handleKeyLinks)
 		r.With(RequireRole(writers...)).Get("/qr", s.handleKeyQR)
 		r.With(RequireRole(writers...)).Post("/bindings", s.handleBindKey)
@@ -62,7 +65,44 @@ type keyJSON struct {
 	SubscriptionActive bool              `json:"subscription_active"`
 	// Traffic30d is the octets the key moved across all its telemt nodes in the last 30 days.
 	Traffic30d int64 `json:"traffic_30d"`
+	// State folds status, disabled_at and expires_at into what the list shows:
+	// active, pending, disabled, expired or revoked.
+	State                string      `json:"state"`
+	DisabledAt           *time.Time  `json:"disabled_at"`
+	LastSeenAt           *time.Time  `json:"last_seen_at"`
+	SubSlug              *string     `json:"sub_slug"`
+	SubscriptionURL      *string     `json:"subscription_url"`
+	SubscriptionShortURL *string     `json:"subscription_short_url"`
+	SubscriptionLegacy   bool        `json:"subscription_legacy"`
+	Live                 keyLiveJSON `json:"live"`
 }
+
+type keyLiveJSON struct {
+	Connections int64 `json:"connections"`
+	IPs         int64 `json:"ips"`
+}
+
+type keyExtras struct {
+	nodes   []keyNodeJSON
+	sub     *db.SubscriptionToken
+	traffic int64
+	live    keyLiveJSON
+}
+
+func keyState(k db.AccessKey, now time.Time) string {
+	switch {
+	case k.Status == db.KeyStatusRevoked:
+		return "revoked"
+	case k.DisabledAt != nil:
+		return "disabled"
+	case k.ExpiresAt != nil && !k.ExpiresAt.After(now):
+		return "expired"
+	}
+	return string(k.Status)
+}
+
+// keyLiveWindow is how old a stats row may be and still count as "online now".
+const keyLiveWindow = 3 * time.Minute
 
 func telemtLimitsJSON(raw []byte) json.RawMessage {
 	if len(raw) == 0 {
@@ -79,26 +119,57 @@ type keyNodeJSON struct {
 }
 
 func (s *Server) keyJSON(r *http.Request, k db.AccessKey, withSecret bool) keyJSON {
-	bindings, _ := s.store.Q.ListKeyBindings(r.Context(), k.ID)
-	nodes := make([]keyNodeJSON, 0, len(bindings))
-	for _, b := range bindings {
-		nodes = append(nodes, keyNodeJSON{NodeID: b.NodeID, NodeName: b.NodeName, Hostname: b.Hostname, Sync: string(b.SyncState)})
-	}
-	return s.keyJSONWith(r, k, withSecret, nodes, s.hasActiveSubscription(r.Context(), k.ID), s.trafficByKey(r.Context(), []db.AccessKey{k})[k.ID])
+	return s.keyJSONWith(r, k, withSecret, s.extrasFor(r.Context(), []db.AccessKey{k})[k.ID])
 }
 
-func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, nodes []keyNodeJSON, subscriptionActive bool, traffic30d int64) keyJSON {
+func (s *Server) subscriptionURL(token string) string { return s.cfg.PublicURL + "/s/" + token }
+
+func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, x keyExtras) keyJSON {
+	nodes := x.nodes
 	if nodes == nil {
 		nodes = []keyNodeJSON{}
 	}
 	out := keyJSON{
 		ID: k.ID, Label: k.Label, Type: string(k.Type), OwnerLabel: k.OwnerLabel, Status: string(k.Status), CarrierMode: k.CarrierMode,
 		Limits: k.Limits, TelemtLimits: telemtLimitsJSON(k.TelemtLimits), ExpiresAt: k.ExpiresAt, RevokedAt: k.RevokedAt, Note: k.Note, CreatedAt: k.CreatedAt, Nodes: nodes, ClientSupport: clientSupport,
-		SubscriptionActive: subscriptionActive, Traffic30d: traffic30d,
+		SubscriptionActive: x.sub != nil, Traffic30d: x.traffic,
+		State: keyState(k, time.Now()), DisabledAt: k.DisabledAt, LastSeenAt: k.LastSeenAt, SubSlug: k.SubSlug, Live: x.live,
+	}
+	if x.sub != nil && k.Status != db.KeyStatusRevoked {
+		if token, ok := s.keys.SubscriptionToken(*x.sub); ok {
+			u := s.subscriptionURL(token)
+			out.SubscriptionURL = &u
+		} else {
+			out.SubscriptionLegacy = true
+		}
+		if k.SubSlug != nil {
+			u := s.subscriptionURL(*k.SubSlug)
+			out.SubscriptionShortURL = &u
+		}
 	}
 	if withSecret && k.Status != db.KeyStatusRevoked {
 		out.Secret, _ = s.keys.Secret(r.Context(), k)
 		out.Links, _ = s.keys.Links(r.Context(), k.ID)
+	}
+	return out
+}
+
+// extrasFor loads bindings, subscriptions, traffic and live counters for a page of keys in a few queries.
+func (s *Server) extrasFor(ctx context.Context, ks []db.AccessKey) map[uuid.UUID]keyExtras {
+	out := make(map[uuid.UUID]keyExtras, len(ks))
+	if len(ks) == 0 {
+		return out
+	}
+	nodes := s.bindingsByKey(ctx, ks)
+	subs := s.subscriptionsByKey(ctx, ks)
+	traffic := s.trafficByKey(ctx, ks)
+	live := s.liveByKey(ctx, ks)
+	for _, k := range ks {
+		x := keyExtras{nodes: nodes[k.ID], traffic: traffic[k.ID], live: live[k.ID]}
+		if sub, ok := subs[k.ID]; ok {
+			x.sub = &sub
+		}
+		out[k.ID] = x
 	}
 	return out
 }
@@ -124,22 +195,36 @@ func (s *Server) bindingsByKey(ctx context.Context, ks []db.AccessKey) map[uuid.
 	return out
 }
 
-func (s *Server) activeSubscriptionsByKey(ctx context.Context, ks []db.AccessKey) map[uuid.UUID]bool {
-	out := make(map[uuid.UUID]bool, len(ks))
-	if len(ks) == 0 {
-		return out
-	}
+func keyIDs(ks []db.AccessKey) []uuid.UUID {
 	ids := make([]uuid.UUID, 0, len(ks))
 	for _, k := range ks {
 		ids = append(ids, k.ID)
 	}
-	rows, err := s.store.Q.ListActiveSubscriptionAccessKeyIDs(ctx, ids)
+	return ids
+}
+
+func (s *Server) subscriptionsByKey(ctx context.Context, ks []db.AccessKey) map[uuid.UUID]db.SubscriptionToken {
+	out := make(map[uuid.UUID]db.SubscriptionToken, len(ks))
+	rows, err := s.store.Q.ListActiveSubscriptions(ctx, keyIDs(ks))
 	if err != nil {
 		s.log.Error("list active subscriptions", "err", err)
 		return out
 	}
-	for _, id := range rows {
-		out[id] = true
+	for _, sub := range rows {
+		out[sub.AccessKeyID] = sub
+	}
+	return out
+}
+
+func (s *Server) liveByKey(ctx context.Context, ks []db.AccessKey) map[uuid.UUID]keyLiveJSON {
+	out := make(map[uuid.UUID]keyLiveJSON, len(ks))
+	rows, err := s.store.Q.KeyLiveForKeys(ctx, db.KeyLiveForKeysParams{KeyIds: keyIDs(ks), Since: time.Now().Add(-keyLiveWindow)})
+	if err != nil {
+		s.log.Error("key live counters", "err", err)
+		return out
+	}
+	for _, r := range rows {
+		out[r.AccessKeyID] = keyLiveJSON{Connections: r.Connections, IPs: r.ActiveIps}
 	}
 	return out
 }
@@ -179,6 +264,8 @@ func (s *Server) keysErr(w http.ResponseWriter, err error) {
 		conflict(w, err.Error())
 	case errors.Is(err, keys.ErrNotFound):
 		notFound(w)
+	case errors.Is(err, keys.ErrRevoked):
+		conflict(w, "key is revoked")
 	default:
 		s.log.Error("keys", "err", err)
 		internal(w)
@@ -239,12 +326,10 @@ func (s *Server) handleBatchKeys(w http.ResponseWriter, r *http.Request) {
 		s.keysErr(w, err)
 		return
 	}
-	byKey := s.bindingsByKey(r.Context(), ks)
-	subByKey := s.activeSubscriptionsByKey(r.Context(), ks)
-	trafficByKey := s.trafficByKey(r.Context(), ks)
+	extras := s.extrasFor(r.Context(), ks)
 	items := make([]keyJSON, 0, len(ks))
 	for _, k := range ks {
-		items = append(items, s.keyJSONWith(r, k, true, byKey[k.ID], subByKey[k.ID], trafficByKey[k.ID]))
+		items = append(items, s.keyJSONWith(r, k, true, extras[k.ID]))
 	}
 	s.Audit(r.Context(), "key.batch_create", "key", "", map[string]any{"prefix": in.Prefix, "count": len(ks)})
 	writeJSON(w, 201, map[string]any{"items": items, "total": len(items)})
@@ -276,19 +361,21 @@ func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("q"); v != "" {
 		search = &v
 	}
-	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search})
+	var state *string
+	if v := q.Get("state"); v != "" {
+		state = &v
+	}
+	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
 	if err != nil {
 		s.log.Error("list keys", "err", err)
 		internal(w)
 		return
 	}
-	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{Type: typ, Status: status, NodeID: nodeID, Q: search})
-	byKey := s.bindingsByKey(r.Context(), rows)
-	subByKey := s.activeSubscriptionsByKey(r.Context(), rows)
-	trafficByKey := s.trafficByKey(r.Context(), rows)
+	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
+	extras := s.extrasFor(r.Context(), rows)
 	items := make([]keyJSON, 0, len(rows))
 	for _, k := range rows {
-		items = append(items, s.keyJSONWith(r, k, false, byKey[k.ID], subByKey[k.ID], trafficByKey[k.ID]))
+		items = append(items, s.keyJSONWith(r, k, false, extras[k.ID]))
 	}
 	writeJSON(w, 200, map[string]any{"items": items, "total": total, "page": page, "per_page": per})
 }
@@ -329,6 +416,7 @@ func (s *Server) handlePatchKey(w http.ResponseWriter, r *http.Request) {
 		TelemtLimits *domain.TelemtLimits  `json:"telemt_limits"`
 		ExpiresAt    *time.Time            `json:"expires_at"`
 		ClearExpiry  bool                  `json:"clear_expiry"`
+		SubSlug      *string               `json:"sub_slug"`
 	}
 	if err := decodeJSON(r, &in); err != nil {
 		badRequest(w, err.Error())
@@ -364,6 +452,10 @@ func (s *Server) handlePatchKey(w http.ResponseWriter, r *http.Request) {
 	if in.ClearExpiry {
 		exp = nil
 	}
+	if in.SubSlug != nil && *in.SubSlug != "" && !keys.ValidSlug(*in.SubSlug) {
+		validation(w, map[string]string{"sub_slug": "3-32 characters: a-z, 0-9 and dashes, not at the ends"})
+		return
+	}
 	updated, err := s.keys.Update(r.Context(), k.ID, keys.UpdateInput{
 		Label: label, OwnerLabel: owner, Note: note, ExpiresAt: exp,
 		CarrierMode: domain.CarrierMode(cm), Limits: limits, TelemtLimits: telemtLimits,
@@ -371,6 +463,13 @@ func (s *Server) handlePatchKey(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.keysErr(w, err)
 		return
+	}
+	if in.SubSlug != nil && (k.SubSlug == nil || *k.SubSlug != *in.SubSlug) {
+		if err := s.keys.SetSlug(r.Context(), k.ID, *in.SubSlug); err != nil {
+			s.keysErr(w, err)
+			return
+		}
+		updated, _ = s.store.Q.GetKey(r.Context(), k.ID)
 	}
 	s.Audit(r.Context(), "key.update", "key", k.ID.String(), nil)
 	writeJSON(w, 200, s.keyJSON(r, updated, true))
@@ -415,6 +514,45 @@ func (s *Server) handleRotateKey(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Audit(r.Context(), "key.rotate", "key", k.ID.String(), map[string]any{"label": k.Label})
 	writeJSON(w, 200, s.keyJSON(r, updated, true))
+}
+
+func (s *Server) handleDisableKey(w http.ResponseWriter, r *http.Request) {
+	s.setKeyDisabled(w, r, true)
+}
+
+func (s *Server) handleEnableKey(w http.ResponseWriter, r *http.Request) {
+	s.setKeyDisabled(w, r, false)
+}
+
+func (s *Server) setKeyDisabled(w http.ResponseWriter, r *http.Request, disabled bool) {
+	k, ok := s.loadKey(w, r)
+	if !ok {
+		return
+	}
+	if err := s.keys.SetDisabled(r.Context(), k.ID, disabled); err != nil {
+		s.keysErr(w, err)
+		return
+	}
+	action := "key.enable"
+	if disabled {
+		action = "key.disable"
+	}
+	s.Audit(r.Context(), action, "key", k.ID.String(), map[string]any{"label": k.Label})
+	k, _ = s.store.Q.GetKey(r.Context(), k.ID)
+	writeJSON(w, 200, s.keyJSON(r, k, true))
+}
+
+func (s *Server) handleKeySummary(w http.ResponseWriter, r *http.Request) {
+	sum, err := s.store.Q.KeySummary(r.Context())
+	if err != nil {
+		s.log.Error("key summary", "err", err)
+		internal(w)
+		return
+	}
+	writeJSON(w, 200, map[string]int64{
+		"total": sum.Total, "active": sum.Active, "expiring": sum.Expiring, "expired": sum.Expired,
+		"disabled": sum.Disabled, "revoked": sum.Revoked,
+	})
 }
 
 func (s *Server) handleKeyLinks(w http.ResponseWriter, r *http.Request) {
@@ -540,6 +678,10 @@ func (s *Server) handleBulkKeys(w http.ResponseWriter, r *http.Request) {
 			err = s.keys.Revoke(r.Context(), id)
 		case "delete":
 			err = s.keys.Delete(r.Context(), id)
+		case "disable":
+			err = s.keys.SetDisabled(r.Context(), id, true)
+		case "enable":
+			err = s.keys.SetDisabled(r.Context(), id, false)
 		case "extend":
 			if in.ExpiresAt == nil {
 				validation(w, map[string]string{"expires_at": "required for extend"})
@@ -547,7 +689,7 @@ func (s *Server) handleBulkKeys(w http.ResponseWriter, r *http.Request) {
 			}
 			err = s.keys.Extend(r.Context(), id, *in.ExpiresAt)
 		default:
-			validation(w, map[string]string{"action": "revoke, delete or extend"})
+			validation(w, map[string]string{"action": "revoke, delete, extend, disable or enable"})
 			return
 		}
 		if err != nil {

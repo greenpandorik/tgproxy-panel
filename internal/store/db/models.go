@@ -415,6 +415,10 @@ type AccessKey struct {
 	CreatedBy    uuid.NullUUID `json:"created_by"`
 	CreatedAt    time.Time     `json:"created_at"`
 	TelemtLimits []byte        `json:"telemt_limits"`
+	DisabledAt   *time.Time    `json:"disabled_at"`
+	ExpiredAt    *time.Time    `json:"expired_at"`
+	LastSeenAt   *time.Time    `json:"last_seen_at"`
+	SubSlug      *string       `json:"sub_slug"`
 }
 
 type AdminUser struct {
@@ -656,6 +660,8 @@ type SubscriptionToken struct {
 	AccessKeyID uuid.UUID  `json:"access_key_id"`
 	CreatedAt   time.Time  `json:"created_at"`
 	RevokedAt   *time.Time `json:"revoked_at"`
+	TokenEnc    []byte     `json:"token_enc"`
+	ID          uuid.UUID  `json:"id"`
 }
 
 type TelemtUpdateJob struct {

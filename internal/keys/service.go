@@ -102,6 +102,9 @@ func (s *Service) createTx(ctx context.Context, q *db.Queries, in CreateInput) (
 			return db.AccessKey{}, err
 		}
 	}
+	if _, err := s.issueSubscriptionTx(ctx, q, key.ID); err != nil {
+		return db.AccessKey{}, err
+	}
 	return key, nil
 }
 
@@ -351,9 +354,19 @@ func (s *Service) Update(ctx context.Context, keyID uuid.UUID, in UpdateInput) (
 			}
 			return s.dirtyKeyNodes(ctx, q, keyID)
 		}
+		if !sameTime(old.ExpiresAt, in.ExpiresAt) {
+			return s.dirtyKeyNodes(ctx, q, keyID)
+		}
 		return nil
 	})
 	return key, err
+}
+
+func sameTime(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(*b)
 }
 
 // Extend moves a key's expiry forward.
@@ -370,7 +383,10 @@ func (s *Service) Extend(ctx context.Context, keyID uuid.UUID, expiresAt time.Ti
 			return ValidationError{"status": "key is revoked"}
 		}
 		exp := expiresAt
-		return q.SetKeyExpiry(ctx, db.SetKeyExpiryParams{ID: keyID, ExpiresAt: &exp})
+		if err := q.SetKeyExpiry(ctx, db.SetKeyExpiryParams{ID: keyID, ExpiresAt: &exp}); err != nil {
+			return err
+		}
+		return s.dirtyKeyNodes(ctx, q, keyID)
 	})
 }
 

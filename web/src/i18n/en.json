@@ -2609,6 +2609,8 @@
     "trouble_wait": "Wait a minute: sometimes Telegram takes a moment to connect.",
     "trouble_alt": "Press \"Use the backup link\" under the \"Connect\" button.",
     "trouble_next": "Press \"Connect\" next to the next server.",
-    "trouble_contact": "If nothing helps, call or text whoever sent you this link."
+    "trouble_contact": "If nothing helps, call or text whoever sent you this link.",
+    "error_disabled": "Access through this link is turned off for now. Message whoever sent you the link.",
+    "error_expired": "Access through this link has expired. Ask whoever sent you the link to extend it."
   }
 }

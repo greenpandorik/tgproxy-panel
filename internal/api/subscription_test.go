@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"tgwebproxy/internal/api/apitest"
 )
@@ -124,23 +125,123 @@ func TestSubscriptionCreateServesPublicPageAndJSON(t *testing.T) {
 	}
 }
 
-func TestSubscriptionKeyJSONReportsActive(t *testing.T) {
-	_, c, keyID := twoNodeKey(t)
-	var before keyResp2
-	c.JSON(c.Get("/api/v1/keys/"+keyID), &before)
-	if before.SubscriptionActive {
-		t.Fatal("subscription_active should start false")
+func TestNewKeyShowsItsSubscriptionLinkEveryTime(t *testing.T) {
+	h, c, keyID := twoNodeKey(t)
+	var first, again keyResp2
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &first)
+	if !first.SubscriptionActive || first.SubscriptionURL == nil || first.SubscriptionLegacy {
+		t.Fatalf("a new key should come with a visible subscription link: %+v", first)
 	}
-	createSubscription(t, c, keyID)
-	var after keyResp2
-	c.JSON(c.Get("/api/v1/keys/"+keyID), &after)
-	if !after.SubscriptionActive {
-		t.Fatal("subscription_active should be true after create")
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &again)
+	if again.SubscriptionURL == nil || *again.SubscriptionURL != *first.SubscriptionURL {
+		t.Fatal("the same link must be shown every time")
+	}
+	if resp := h.Anonymous().Get("/s/" + tokenFromURL(t, *first.SubscriptionURL)); resp.StatusCode != 200 {
+		t.Fatalf("the shown link does not open: %d", resp.StatusCode)
+	}
+	fresh := createSubscription(t, c, keyID)
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &again)
+	if again.SubscriptionURL == nil || *again.SubscriptionURL != fresh.URL {
+		t.Fatal("after a new link the key shows the new one")
+	}
+	if resp := c.Delete("/api/v1/keys/" + keyID + "/subscription"); resp.StatusCode != 204 {
+		t.Fatalf("revoke %d", resp.StatusCode)
+	}
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &again)
+	if again.SubscriptionActive || again.SubscriptionURL != nil {
+		t.Fatal("a revoked link must not be shown")
 	}
 }
 
 type keyResp2 struct {
-	SubscriptionActive bool `json:"subscription_active"`
+	SubscriptionActive   bool    `json:"subscription_active"`
+	SubscriptionURL      *string `json:"subscription_url"`
+	SubscriptionShortURL *string `json:"subscription_short_url"`
+	SubscriptionLegacy   bool    `json:"subscription_legacy"`
+	State                string  `json:"state"`
+}
+
+func TestSharedKeyShortAddressAndStates(t *testing.T) {
+	h, c, keyID := twoNodeKey(t)
+	anon := h.Anonymous()
+	if resp := c.Patch("/api/v1/keys/"+keyID, map[string]any{"sub_slug": "Bad Slug"}); resp.StatusCode != 422 {
+		t.Fatalf("bad slug accepted: %d", resp.StatusCode)
+	}
+	if resp := c.Patch("/api/v1/keys/"+keyID, map[string]any{"sub_slug": "team"}); resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("set slug %d %s", resp.StatusCode, b)
+	}
+	var k keyResp2
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &k)
+	if k.SubscriptionShortURL == nil || !strings.HasSuffix(*k.SubscriptionShortURL, "/s/team") {
+		t.Fatalf("short url %+v", k.SubscriptionShortURL)
+	}
+	if resp := anon.Get("/s/team"); resp.StatusCode != 200 {
+		t.Fatalf("short address does not open: %d", resp.StatusCode)
+	}
+
+	var personal keyResp
+	c.JSON(c.Post("/api/v1/keys", map[string]any{"label": "p", "type": "PERSONAL", "carrier_mode": "https", "node_ids": nodeIDsOf(t, c)}), &personal)
+	if resp := c.Patch("/api/v1/keys/"+personal.ID.String(), map[string]any{"sub_slug": "team"}); resp.StatusCode != 422 {
+		t.Fatalf("a personal key got a short address: %d", resp.StatusCode)
+	}
+
+	if resp := c.Post("/api/v1/keys/"+keyID+"/disable", nil); resp.StatusCode != 200 {
+		t.Fatalf("disable %d", resp.StatusCode)
+	}
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &k)
+	if k.State != "disabled" {
+		t.Fatalf("state %s", k.State)
+	}
+	resp := anon.Get("/s/team")
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 403 || !strings.Contains(string(body), "временно выключен") {
+		t.Fatalf("disabled page %d", resp.StatusCode)
+	}
+	var sum map[string]int64
+	c.JSON(c.Get("/api/v1/keys/summary"), &sum)
+	if sum["disabled"] != 1 || sum["total"] != 2 {
+		t.Fatalf("summary %v", sum)
+	}
+	var list struct {
+		Items []keyResp2 `json:"items"`
+		Total int        `json:"total"`
+	}
+	c.JSON(c.Get("/api/v1/keys?state=disabled"), &list)
+	if list.Total != 1 {
+		t.Fatalf("state filter %+v", list)
+	}
+	if resp := c.Post("/api/v1/keys/"+keyID+"/enable", nil); resp.StatusCode != 200 {
+		t.Fatalf("enable %d", resp.StatusCode)
+	}
+	if resp := anon.Get("/s/team"); resp.StatusCode != 200 {
+		t.Fatalf("enabled key page %d", resp.StatusCode)
+	}
+
+	past := time.Now().Add(-time.Hour)
+	if resp := c.Patch("/api/v1/keys/"+keyID, map[string]any{"expires_at": past}); resp.StatusCode != 200 {
+		t.Fatalf("set past expiry %d", resp.StatusCode)
+	}
+	resp = anon.Get("/s/team")
+	body, _ = io.ReadAll(resp.Body)
+	if resp.StatusCode != 410 || !strings.Contains(string(body), "Срок доступа") {
+		t.Fatalf("expired page %d", resp.StatusCode)
+	}
+}
+
+func nodeIDsOf(t *testing.T, c *apitest.Client) []string {
+	t.Helper()
+	var nodes struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/nodes"), &nodes)
+	out := make([]string, 0, len(nodes.Items))
+	for _, n := range nodes.Items {
+		out = append(out, n.ID)
+	}
+	return out
 }
 
 func TestSubscriptionRotateInvalidatesOldToken(t *testing.T) {

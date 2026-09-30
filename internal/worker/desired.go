@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -57,7 +58,7 @@ func profileRevision(p db.ListNodeProfilesWithKeyRow) string {
 		write("no-expiry")
 	}
 	if p.KeyStatus.Valid {
-		write(string(p.KeyStatus.KeyStatus))
+		write(string(p.KeyStatus.KeyStatus), p.KeyDisabledAt != nil)
 	} else {
 		write("no-key")
 	}
@@ -81,6 +82,17 @@ func ProfilesStillAtRevision(ctx context.Context, q interface {
 		}
 	}
 	return out, nil
+}
+
+// profileEnabled is false for a key that is revoked, turned off, or past its expiry.
+func profileEnabled(p db.ListNodeProfilesWithKeyRow, now time.Time) bool {
+	if !p.KeyStatus.Valid {
+		return true
+	}
+	if p.KeyStatus.KeyStatus == db.KeyStatusRevoked || p.KeyDisabledAt != nil {
+		return false
+	}
+	return p.KeyExpiresAt == nil || p.KeyExpiresAt.After(now)
 }
 
 // desiredQuerier is the slice of the store that DesiredState reads.
@@ -115,6 +127,7 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 		req.WebPolicy = &policy
 	}
 	seen := map[string]bool{}
+	now := time.Now()
 	for _, p := range rows {
 		secret, err := box.DecryptString(p.SecretEnc)
 		if err != nil {
@@ -126,7 +139,7 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 		prof := nodedriver.Profile{
 			Name: p.Name, Secret: secret, Backend: p.Backend, CarrierMode: p.CarrierMode,
 			ExpiresAt: p.KeyExpiresAt,
-			Enabled:   !p.KeyStatus.Valid || p.KeyStatus.KeyStatus != db.KeyStatusRevoked,
+			Enabled:   profileEnabled(p, now),
 		}
 		var telemt domain.TelemtLimits
 		if len(p.KeyTelemtLimits) > 0 {
@@ -143,7 +156,7 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 			}
 		}
 		req.Profiles = append(req.Profiles, prof)
-		if !seen[secret] {
+		if prof.Enabled && !seen[secret] {
 			seen[secret] = true
 			req.MTProxySecrets = append(req.MTProxySecrets, secret)
 		}

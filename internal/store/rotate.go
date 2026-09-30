@@ -22,6 +22,7 @@ type Report struct {
 	TOTPSecrets int
 	TOTPPending int
 	Settings    int
+	SubLinks    int
 }
 
 // settingTelegramAlertsKey mirrors the unexported settingTelegramAlerts constant in internal/api.
@@ -35,6 +36,7 @@ var rotatableColumns = []encColumn{
 	{"access_keys", "secret_enc"},
 	{"admin_users", "totp_secret_enc"},
 	{"admin_users", "totp_pending_enc"},
+	{"subscription_tokens", "token_enc"},
 }
 
 // Rotate re-encrypts every encrypted column from key version `from` to key version `to`, in one transaction.
@@ -60,6 +62,8 @@ func Rotate(ctx context.Context, st *Store, from, to *crypto.Box) (Report, error
 			report.TOTPSecrets = n
 		case c.column == "totp_pending_enc":
 			report.TOTPPending = n
+		case c.table == "subscription_tokens":
+			report.SubLinks = n
 		}
 	}
 
@@ -98,6 +102,8 @@ func CountPending(ctx context.Context, st *Store, to *crypto.Box) (Report, error
 			report.TOTPSecrets = n
 		case c.column == "totp_pending_enc":
 			report.TOTPPending = n
+		case c.table == "subscription_tokens":
+			report.SubLinks = n
 		}
 	}
 

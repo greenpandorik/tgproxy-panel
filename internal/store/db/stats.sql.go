@@ -192,6 +192,46 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 	return err
 }
 
+const keyLiveForKeys = `-- name: KeyLiveForKeys :many
+SELECT access_key_id, COALESCE(sum(connections), 0)::bigint AS connections, COALESCE(sum(active_ips), 0)::bigint AS active_ips
+FROM (
+  SELECT DISTINCT ON (access_key_id, node_id) access_key_id, connections, active_ips FROM key_stats_snapshots
+  WHERE access_key_id = ANY($1::uuid[]) AND taken_at > $2
+  ORDER BY access_key_id, node_id, taken_at DESC
+) latest GROUP BY access_key_id
+`
+
+type KeyLiveForKeysParams struct {
+	KeyIds []uuid.UUID `json:"key_ids"`
+	Since  time.Time   `json:"since"`
+}
+
+type KeyLiveForKeysRow struct {
+	AccessKeyID uuid.UUID `json:"access_key_id"`
+	Connections int64     `json:"connections"`
+	ActiveIps   int64     `json:"active_ips"`
+}
+
+func (q *Queries) KeyLiveForKeys(ctx context.Context, arg KeyLiveForKeysParams) ([]KeyLiveForKeysRow, error) {
+	rows, err := q.db.Query(ctx, keyLiveForKeys, arg.KeyIds, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []KeyLiveForKeysRow{}
+	for rows.Next() {
+		var i KeyLiveForKeysRow
+		if err := rows.Scan(&i.AccessKeyID, &i.Connections, &i.ActiveIps); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const keyTrafficLast30d = `-- name: KeyTrafficLast30d :many
 WITH deltas AS (
   SELECT access_key_id,
