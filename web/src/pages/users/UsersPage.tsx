@@ -15,6 +15,7 @@ import {
   TriangleAlert,
   UserCheck,
   Users,
+  X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +41,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -309,7 +311,7 @@ export function UsersPage() {
         <MoreHorizontal />
         <span className="sr-only">{t('common.actions')}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuContent align="end" className="min-w-52" onClick={(e) => e.stopPropagation()}>
         {(u.subscription_short_url ?? u.subscription_url) && (
           <DropdownMenuItem onClick={() => void copyLink(u)}>
             <Copy />
@@ -328,6 +330,7 @@ export function UsersPage() {
             {u.state === 'disabled' ? t('users.enable') : t('users.disable')}
           </DropdownMenuItem>
         )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(u)}>
           <Trash2 />
           {t('common.delete')}
@@ -460,12 +463,18 @@ export function UsersPage() {
             ))}
           </SelectContent>
         </Select>
+        {filtered && (
+          <Button type="button" variant="ghost" className="col-span-2" onClick={resetFilters}>
+            <X />
+            {t('users.reset_filters')}
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button type="button" variant="outline" className="hidden md:ml-auto md:inline-flex" />}>
             <Columns3 />
             {t('users.columns')}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="min-w-56">
             <DropdownMenuGroup>
               <DropdownMenuLabel>{t('users.columns_hint')}</DropdownMenuLabel>
               {COLUMNS.map((col) => (

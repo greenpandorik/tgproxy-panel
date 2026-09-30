@@ -86,6 +86,7 @@ describe('UsersPage pagination', () => {
     expect((await screen.findAllByText('Ольга К.')).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /Вперёд/ })).toBeNull();
     expect(screen.queryByText(/Страница 1 из 1/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Сбросить фильтры' })).toBeNull();
   });
 
   it('says how many users a filter found', async () => {
@@ -94,6 +95,7 @@ describe('UsersPage pagination', () => {
 
     expect(await screen.findByText('Найдено: 1')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Вперёд/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toBeInTheDocument();
   });
 
   it('pages through a long list', async () => {
