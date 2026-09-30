@@ -25,7 +25,7 @@ export function SegmentedControl<T extends string>({ value, options, onChange, l
           aria-checked={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            'rounded-control px-2.5 py-1 text-label transition-[background-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
+            'rounded-control px-2.5 py-1 text-label transition-[background-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring',
             value === option.value ? 'bg-elevated text-foreground' : 'text-mute hover:text-foreground',
           )}
         >

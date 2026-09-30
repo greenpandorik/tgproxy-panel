@@ -254,6 +254,11 @@
   input[type='number'] {
     font-variant-numeric: tabular-nums;
   }
+
+  :where(a, button, summary):focus-visible {
+    outline: 2px solid var(--brand-ink);
+    outline-offset: 3px;
+  }
 }
 
 @layer utilities {
@@ -408,10 +413,6 @@ a,
 button,
 summary {
   -webkit-tap-highlight-color: transparent;
-}
-:where(a, button, summary):focus-visible {
-  outline: 2px solid var(--brand-ink);
-  outline-offset: 3px;
 }
 @media (pointer: coarse) {
   [data-slot='button'],
