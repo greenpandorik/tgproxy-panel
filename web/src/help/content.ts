@@ -144,7 +144,7 @@ export const HELP_TOPICS = {
     docs: 'monitoring',
   },
   'settings.telegram': {
-    fields: ['enabled', 'bot_token', 'chat_id', 'test'],
+    fields: ['enabled', 'bot_token', 'chat_id', 'language', 'test'],
     docs: 'monitoring',
   },
   'settings.security': {

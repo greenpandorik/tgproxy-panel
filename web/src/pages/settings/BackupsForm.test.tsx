@@ -20,7 +20,7 @@ const ME = { id: 'u1', username: 'root', role: 'owner', totp_enabled: false, fea
 const SETTINGS: Settings = {
   apply_interval: 45,
   offline_after: 90,
-  telegram_alerts: { enabled: false, bot_token_set: false, chat_id: '' },
+  telegram_alerts: { enabled: false, bot_token_set: false, chat_id: '', language: 'ru' },
   backup_schedule: { enabled: false, hour: 3, keep: 7 },
 };
 

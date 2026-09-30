@@ -541,7 +541,11 @@ Settings → Notifications: enter the bot token and the chat ID, turn on "Enable
 empty fields. The token is stored encrypted and never sent back to the browser.
 
 The panel then writes to the chat when a server goes offline and comes back, when an apply
-fails, and when an incident on a server opens and closes. Each server and kind of message gets
+fails, and when an incident on a server opens and closes. A message names the problem, explains it
+in a sentence, shows the current value where it helps (for example "Connections now: 2 of 3" for a
+Telegram datacentre) and links to the server page, the Checks tab for scheduled checks. It is
+written in the "Notification language" chosen on the same tab, Russian by default. The webhook
+receives the same text without formatting. Each server and kind of message gets
 at most one message in 5 minutes, so a flapping server does not flood the chat. If messages don't arrive,
 see [Telegram alerts do not arrive](runbook.md#telegram-alerts-do-not-arrive).
 

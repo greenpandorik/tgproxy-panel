@@ -3,10 +3,9 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"html"
 	"time"
 
+	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/nodedriver"
 	"tgwebproxy/internal/reliability"
 	"tgwebproxy/internal/store/db"
@@ -42,25 +41,28 @@ func (s *Stats) recordFindings(ctx context.Context, n db.Node, findings []reliab
 			// One stats sweep owns a node. Persisted incidents survive process restarts.
 			tag, e := s.st.Pool.Exec(ctx, `INSERT INTO alerts(node_id,kind,message) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND kind=$2 AND resolved_at IS NULL)`, n.ID, kind, f.Message)
 			if e == nil && tag.RowsAffected() > 0 {
-				s.notify(context.WithoutCancel(ctx), func(ctx context.Context) { s.alerts.Incident(ctx, n, kind, f.Message, false) })
+				s.notify(context.WithoutCancel(ctx), func(ctx context.Context) {
+					s.alerts.Incident(ctx, n, alerttext.Incident{Kind: kind, Message: f.Message})
+				})
 			}
 		} else {
 			rows, e := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: kind})
 			if e == nil && rows > 0 {
-				s.notify(context.WithoutCancel(ctx), func(ctx context.Context) { s.alerts.Incident(ctx, n, kind, f.Message, true) })
+				s.notify(context.WithoutCancel(ctx), func(ctx context.Context) {
+					s.alerts.Incident(ctx, n, alerttext.Incident{Kind: kind, Message: f.Message, Recovered: true})
+				})
 			}
 		}
 	}
 }
 
-func (a *Alerts) Incident(ctx context.Context, n db.Node, kind, message string, recovered bool) {
+func (a *Alerts) Incident(ctx context.Context, n db.Node, in alerttext.Incident) {
 	if a == nil {
 		return
 	}
-	state := "Incident"
-	if recovered {
-		state = "Recovered"
+	kind := in.Kind
+	if in.Recovered {
 		kind += "_recovered"
 	}
-	a.send(ctx, n.ID.String(), kind, fmt.Sprintf("%s: %s — %s", state, html.EscapeString(n.Name), html.EscapeString(message)))
+	a.send(ctx, n.ID.String(), kind, alerttext.Default().Incident(a.lang(ctx), textNode(n), in, a.PanelURL))
 }

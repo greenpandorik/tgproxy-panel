@@ -2,13 +2,11 @@ package worker
 
 import (
 	"context"
-	"fmt"
-	"html"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
+	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/notify"
 	"tgwebproxy/internal/store/db"
 )
@@ -22,9 +20,12 @@ const alertRateLimit = 5 * time.Minute
 
 type Alerts struct {
 	Webhook *notify.Webhook
-	src     func(ctx context.Context) (enabled bool, botToken, chatID string, err error)
-	tg      Sender
-	log     *slog.Logger
+	// Lang reports the notification language setting; nil means English.
+	Lang     func(ctx context.Context) string
+	PanelURL string
+	src      func(ctx context.Context) (enabled bool, botToken, chatID string, err error)
+	tg       Sender
+	log      *slog.Logger
 
 	mu   sync.Mutex
 	sent map[string]time.Time // key: "<nodeID>|<kind>"
@@ -50,9 +51,20 @@ func (a *Alerts) markSent(key string) {
 	a.sent[key] = time.Now()
 }
 
-func (a *Alerts) send(ctx context.Context, nodeID, kind, text string) {
+func (a *Alerts) lang(ctx context.Context) alerttext.Lang {
+	if a.Lang == nil {
+		return alerttext.EN
+	}
+	return alerttext.ParseLang(a.Lang(ctx))
+}
+
+func textNode(n db.Node) alerttext.Node {
+	return alerttext.Node{ID: n.ID.String(), Name: n.Name, Hostname: n.Hostname}
+}
+
+func (a *Alerts) send(ctx context.Context, nodeID, kind string, msg alerttext.Message) {
 	if a.Webhook != nil && a.allow(nodeID+"|webhook_"+kind) {
-		if err := a.Webhook.Send(ctx, nodeID, kind, text); err != nil {
+		if err := a.Webhook.Send(ctx, nodeID, kind, msg.Plain); err != nil {
 			a.log.Warn("webhook delivery", "kind", kind, "err", err)
 		} else {
 			a.markSent(nodeID + "|webhook_" + kind)
@@ -70,7 +82,7 @@ func (a *Alerts) send(ctx context.Context, nodeID, kind, text string) {
 	if !a.allow(key) {
 		return
 	}
-	if err := a.tg.SendWith(ctx, token, chatID, text); err != nil {
+	if err := a.tg.SendWith(ctx, token, chatID, msg.HTML); err != nil {
 		a.log.Warn("telegram send failed", "err", err, "kind", kind)
 		return
 	}
@@ -82,8 +94,7 @@ func (a *Alerts) NodeOffline(ctx context.Context, node db.Node) {
 	if a == nil {
 		return
 	}
-	text := fmt.Sprintf("⚠️ Server %s (%s) is offline", html.EscapeString(node.Name), html.EscapeString(node.Hostname))
-	a.send(ctx, node.ID.String(), "node_offline", text)
+	a.send(ctx, node.ID.String(), "node_offline", alerttext.Default().Offline(a.lang(ctx), textNode(node), a.PanelURL))
 }
 
 // NodeOnline notifies that a previously offline node is back.
@@ -91,8 +102,7 @@ func (a *Alerts) NodeOnline(ctx context.Context, node db.Node) {
 	if a == nil {
 		return
 	}
-	text := fmt.Sprintf("✅ Server %s (%s) is back online", html.EscapeString(node.Name), html.EscapeString(node.Hostname))
-	a.send(ctx, node.ID.String(), "node_online", text)
+	a.send(ctx, node.ID.String(), "node_online", alerttext.Default().Online(a.lang(ctx), textNode(node)))
 }
 
 // ApplyFailed notifies that an apply job failed on node.
@@ -100,7 +110,5 @@ func (a *Alerts) ApplyFailed(ctx context.Context, node db.Node, jobErr string) {
 	if a == nil {
 		return
 	}
-	firstLine, _, _ := strings.Cut(jobErr, "\n")
-	text := fmt.Sprintf("❌ Apply failed on %s: %s", html.EscapeString(node.Name), html.EscapeString(firstLine))
-	a.send(ctx, node.ID.String(), "apply_failed", text)
+	a.send(ctx, node.ID.String(), "apply_failed", alerttext.Default().ApplyFailed(a.lang(ctx), textNode(node), jobErr, a.PanelURL))
 }

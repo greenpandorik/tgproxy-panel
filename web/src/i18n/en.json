@@ -184,7 +184,12 @@
     "attention_unavailable": "The problem list could not be loaded",
     "attention_action_open": "Open server",
     "attention_action_apply": "Apply again",
-    "attention_action_restart": "Restart the proxy"
+    "attention_action_restart": "Restart the proxy",
+    "alert_connection_failures": "Many failed connections to Telegram",
+    "alert_upstream_failure": "A route to Telegram is down",
+    "alert_fd_pressure": "telemt is running out of file descriptors",
+    "alert_conntrack_pressure": "The connection table is filling up",
+    "alert_inode_pressure": "The disk is running out of inodes"
   },
   "nodes": {
     "verdict_ok": "All good",
@@ -1217,7 +1222,11 @@
     "branding_preview": "Preview",
     "branding_preview_hint": "Name and images in both themes. You can also preview colors directly in the interface.",
     "branding_restore_colors": "Restore default colors",
-    "branding_discard": "Discard changes"
+    "branding_discard": "Discard changes",
+    "panel_telegram_language": "Notification language",
+    "panel_telegram_language_hint": "The language the panel writes to Telegram in. Everyone picks their own interface language.",
+    "panel_telegram_language_ru": "Русский",
+    "panel_telegram_language_en": "English"
   },
   "drafts": {
     "banner": "Draft from <time>{{time}}</time>",
@@ -2098,6 +2107,10 @@
           "test": {
             "name": "Send a test message",
             "what": "Sends a probe with the token and chat id as typed, without saving them. If it arrives, save. The test result is written to the activity log."
+          },
+          "language": {
+            "name": "Notification language",
+            "what": "Every Telegram notification, the test message included, arrives in the chosen language: Russian or English. The panel interface does not change."
           }
         },
         "notes": {
@@ -2412,5 +2425,67 @@
     "ok": "Passed",
     "failed": "Failed",
     "not_run": "Not checked"
+  },
+  "notify": {
+    "offline_title": "{{name}} is not connected",
+    "offline_body": "The panel gets no reports from the agent on {{host}}. The proxy itself may still be serving people.",
+    "online_title": "{{name}} is connected again",
+    "apply_failed_title": "{{name}}: changes could not be applied",
+    "apply_failed_body": "The server kept its previous settings. The agent reported:",
+    "incident_title": "{{name}}: {{what}}",
+    "recovered_title": "{{name}}: back to normal",
+    "value": "Now: {{value}}",
+    "growth": "+{{growth}} since the previous check",
+    "source_scheduled": "Scheduled server check",
+    "source_agent": "Reported by the agent on the server",
+    "source_probe": "Check from another network",
+    "open_server": "Open the server",
+    "test": "Test: notifications from {{panel}} will arrive in this chat.",
+    "title_dc": "Telegram DC {{dc}}",
+    "title_dc_media": "Telegram media DC {{dc}}",
+    "title_route": "Route to Telegram ({{route}})",
+    "title_address": "Address {{address}}",
+    "explain": {
+      "a_record": "The server's domain does not resolve in DNS. Proxy links don't work until it does.",
+      "public_ip_match": "The server's domain points at another IP address. Check the A record at your registrar.",
+      "tcp_443": "Port 443 on the server refuses connections. The cover site and the WEB proxy are unreachable.",
+      "tls_handshake": "The server did not complete a TLS handshake on port 443. Usually Caddy or the certificate is at fault.",
+      "certificate": "The site certificate does not match the server's domain, so HTTPS connections will be refused.",
+      "certificate_expiry": "The site certificate is about to expire or has expired. Caddy normally renews it itself. If not, check the Caddy log on the server.",
+      "fake_tls_listener": "The Fake-TLS port does not mask as the server's domain. Fake-TLS links may not work.",
+      "https_response": "The site on the server's domain answers unexpectedly, with a redirect or an error.",
+      "decoy_site": "The cover site returns an empty page. A stranger visiting the address sees nothing.",
+      "caddy_service": "The Caddy web server is not running. Without it the cover site and the WEB proxy are down.",
+      "http2": "The server did not negotiate HTTP/2. The WEB proxy still works, but slower.",
+      "web_upstream": "Caddy cannot pass requests to telemt, so the WEB proxy is down.",
+      "carrier_failures": "Some WEB proxy transports report failures. If there are many, the WEB link works poorly for some people.",
+      "web_rejections": "The proxy rejected some WEB connections. The reasons are on the server's Checks tab.",
+      "agent_link": "The agent on the server did not answer the panel in time. This is usually a short network glitch. If it repeats, check that the server is reachable.",
+      "service": "The proxy service on the server is stopped, so nobody can connect.",
+      "control_api": "The proxy does not answer the panel's control API. Keys and settings won't apply until it does.",
+      "readiness": "The proxy is running but not ready to accept connections.",
+      "tls_emulation": "TLS emulation in the proxy is off, so Fake-TLS masks worse.",
+      "tls_front_cache": "The proxy could not capture the TLS profile of the masking domain. Fake-TLS may give itself away.",
+      "tls_front_errors": "TLS handshake failures are growing. Someone may be probing the server, or people have network trouble.",
+      "upstream_health": "The proxy cannot reach Telegram. People connect to the proxy, but messages don't go through.",
+      "upstream_latency": "The path from the server to Telegram is slow. Messages and media arrive late.",
+      "datacenters": "Some Telegram datacenters don't answer latency probes.",
+      "connect_attempts": "Some of the proxy's connections to Telegram failed in the last few minutes.",
+      "dc_writers": "The proxy keeps standing connections to every Telegram datacenter. This one has fewer than it needs, so some people may connect slowly or with errors. It usually recovers on its own.",
+      "dc_down": "There is no working connection to this Telegram datacenter. People whose accounts live there cannot use Telegram through this proxy.",
+      "route": "One of the routes to Telegram is down. The proxy tries the others.",
+      "public_address": "One of the domain's published addresses failed the TLS check or presents a certificate for another name.",
+      "connection_failures": "More than 20% of recent connections to Telegram failed.",
+      "fd_pressure": "telemt uses over 90% of its file descriptors and will soon stop accepting new connections.",
+      "conntrack_pressure": "The kernel connection tracking table is over 90% full. New connections may be dropped.",
+      "inode_pressure": "The disk is running out of inodes, the file entries, even if space remains.",
+      "disk_pressure": "The server's disk is at least 90% full.",
+      "memory_pressure": "The server's memory is at least 95% used.",
+      "engine_unready": "The proxy fails its readiness check, so people may not be able to connect.",
+      "web_admission_closed": "The proxy is not accepting new WEB sessions. This happens during an update or maintenance.",
+      "probe_stale": "The check from another network hasn't reported for a while. The check itself may be broken.",
+      "probe_failed": "The server failed a check from another network. It may be blocked there."
+    },
+    "value_dc": "Connections now: {{alive}} of {{required}}"
   }
 }

@@ -397,6 +397,8 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	}
 	srv := api.New(deps)
 	alerts := worker.NewAlerts(srv.TelegramConfig, tg, log)
+	alerts.Lang = srv.AlertLanguage
+	alerts.PanelURL = cfg.PublicURL
 	if cfg.AlertWebhookURL != "" {
 		alerts.Webhook = &notify.Webhook{URL: cfg.AlertWebhookURL, Secret: cfg.AlertWebhookSecret}
 	}

@@ -700,10 +700,13 @@ export interface MonitoringOverview {
 
 // --- settings ---------------------------------------------------------
 
+export type NotifyLanguage = 'ru' | 'en';
+
 export interface TelegramAlertsSettings {
   enabled: boolean;
   bot_token_set: boolean;
   chat_id: string;
+  language: NotifyLanguage;
 }
 
 /** Nightly database dump: off, or at a fixed UTC hour keeping the newest `keep` files. */
@@ -725,7 +728,7 @@ export interface Settings {
 export interface PutSettingsInput {
   apply_interval?: number;
   offline_after?: number;
-  telegram_alerts?: { enabled: boolean; bot_token?: string | null; chat_id: string };
+  telegram_alerts?: { enabled: boolean; bot_token?: string | null; chat_id: string; language?: NotifyLanguage };
   backup_schedule?: BackupSchedule;
 }
 
@@ -733,6 +736,7 @@ export interface TelegramTestInput {
   bot_token?: string;
   /** Overrides the stored chat id for this send only; never persisted. */
   chat_id?: string;
+  language?: NotifyLanguage;
 }
 
 export interface TelegramTestResult {

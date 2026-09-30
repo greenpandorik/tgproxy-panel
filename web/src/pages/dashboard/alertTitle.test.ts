@@ -17,6 +17,22 @@ it('names every incident the server raises in the interface language', () => {
   expect(title('probe_isp_b_faketls')).toMatch(/^Внешняя проверка isp_b: не прошла/);
 });
 
+it('reads the kinds the agent reports under the reliability_ prefix', () => {
+  expect(title('reliability_disk_pressure')).toBe('Заканчивается место на диске');
+  expect(title('reliability_probe_isp-a_stale')).toBe('Внешняя проверка isp-a давно не присылала отчёт');
+  expect(title('reliability_dc_2')).toBe('Датацентр Telegram 2');
+  expect(title('reliability_conntrack_pressure')).toBe('Переполняется таблица соединений');
+});
+
+it('names datacentre connections and routes from scheduled checks', () => {
+  expect(title('diagnostic_telegram_dc_writers_-5', 'Scheduled check: telegram / dc_writers_-5: partial DC coverage')).toBe(
+    'Диагностика: Медиа-датацентр Telegram 5',
+  );
+  expect(title('diagnostic_telegram_route_warp')).toBe('Диагностика: Маршрут до Telegram (warp)');
+  setLang('en');
+  expect(title('diagnostic_telegram_dc_writers_4')).toBe('Diagnostics: Telegram DC 4');
+});
+
 it('falls back to the server line for a kind it does not know', () => {
   expect(title('something_new', 'Something happened')).toBe('Something happened');
 });

@@ -31,6 +31,7 @@ const schema = z.object({
   offline_after: z.coerce.number().int().min(30).max(3600),
   telegram_enabled: z.boolean(),
   chat_id: z.string(),
+  telegram_language: z.enum(['ru', 'en']),
   bot_token: z.string(),
   clear_token: z.boolean(),
 });
@@ -42,6 +43,7 @@ const DEFAULT_VALUES: FormValues = {
   offline_after: 90,
   telegram_enabled: false,
   chat_id: '',
+  telegram_language: 'ru',
   bot_token: '',
   clear_token: false,
 };
@@ -55,6 +57,7 @@ function draftOf(v: FormValues): PanelDraft {
     offline_after: Number(v.offline_after),
     telegram_enabled: v.telegram_enabled,
     chat_id: v.chat_id,
+    telegram_language: v.telegram_language,
     clear_token: v.clear_token,
   };
 }
@@ -65,6 +68,7 @@ function valuesFromSettings(s: Settings): FormValues {
     offline_after: s.offline_after,
     telegram_enabled: s.telegram_alerts.enabled,
     chat_id: s.telegram_alerts.chat_id,
+    telegram_language: s.telegram_alerts.language === 'en' ? 'en' : 'ru',
     bot_token: '',
     clear_token: false,
   };
@@ -120,6 +124,7 @@ export function PanelForm() {
         telegram_alerts: {
           enabled: values.telegram_enabled,
           chat_id: values.chat_id.trim(),
+          language: values.telegram_language,
           bot_token: values.clear_token ? '' : values.bot_token.trim() ? values.bot_token.trim() : undefined,
         },
       });
@@ -135,6 +140,7 @@ export function PanelForm() {
       const result = await telegramTest.mutateAsync({
         bot_token: botTokenValue.trim() || undefined,
         chat_id: chatIdValue.trim() || undefined,
+        language: values.telegram_language,
       });
       toast.add({
         description: result.ok ? t('settings.panel_telegram_test_success') : t('common.error_generic'),
@@ -258,6 +264,23 @@ export function PanelForm() {
                 <div className="space-y-2">
                   <Label htmlFor="panel-chat-id">{t('settings.panel_telegram_chat_id')}</Label>
                   <Input id="panel-chat-id" className="mono text-mono max-w-48" disabled={disabled} {...register('chat_id')} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="panel-telegram-language">{t('settings.panel_telegram_language')}</Label>
+                  <select
+                    id="panel-telegram-language"
+                    className="ops-select max-w-48"
+                    disabled={disabled}
+                    aria-describedby="panel-telegram-language-hint"
+                    {...register('telegram_language')}
+                  >
+                    <option value="ru">{t('settings.panel_telegram_language_ru')}</option>
+                    <option value="en">{t('settings.panel_telegram_language_en')}</option>
+                  </select>
+                  <p id="panel-telegram-language-hint" className="text-label text-mute">
+                    {t('settings.panel_telegram_language_hint')}
+                  </p>
                 </div>
 
                 <div className="space-y-2">

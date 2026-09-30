@@ -847,7 +847,7 @@ so change it after logging in: the user menu → "Password and 2FA".
 ## A server is offline
 
 What you see: the server list shows Offline, Overview has "Server is not responding", and Telegram
-gets `⚠️ Server … is offline`. The server's Health tab says "Server is not connected" and shows
+gets `🔴 … is not connected` (or its Russian version, depending on the notification language). The server's Health tab says "Server is not connected" and shows
 commands to check.
 
 It means the panel has had no report from the agent for more than 90 seconds. The threshold is
@@ -889,7 +889,7 @@ If every server went Offline at once, the panel is the likely cause: start with
    `systemctl status tproxy-server mtproxy caddy` on a tproxy server.
 
 It worked if the server is Healthy again within a minute and Telegram gets
-`✅ Server … is back online`.
+`🟢 … is connected again`.
 
 ## A server is degraded
 

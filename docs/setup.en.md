@@ -655,8 +655,10 @@ Open Settings → Notifications (the "Notifications and polling" section). Turn 
 alerts" switch, paste the "Bot token" and "Chat ID", press "Send test message" and then "Save". The panel sends a message when a
 server goes offline and comes back, when an apply fails, and when something is wrong on a server,
 for example the disk is running out or the proxy is not ready to accept connections. When such a
-problem clears, a second message follows. The same tab sets how many seconds without a response
-mark a server as down.
+problem clears, a second message follows. Each message says in plain words what is wrong, what it
+means and where to look, with a link to the server in the panel. "Notification language" picks
+Russian or English for these messages; the test message uses the language chosen in the form. The
+same tab sets how many seconds without a response mark a server as down.
 
 Alerts can also go to your own HTTPS endpoint through `ALERT_WEBHOOK_URL` (section 13).
 

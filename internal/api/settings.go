@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/backup"
 	"tgwebproxy/internal/branding"
 	"tgwebproxy/internal/store/db"
@@ -52,6 +53,7 @@ type telegramAlertsStored struct {
 	Enabled     bool   `json:"enabled"`
 	BotTokenEnc string `json:"bot_token_enc"`
 	ChatID      string `json:"chat_id"`
+	Language    string `json:"language,omitempty"`
 }
 
 // telegramAlertsOut is the shape returned to clients: bot_token_set instead of the token itself.
@@ -59,6 +61,12 @@ type telegramAlertsOut struct {
 	Enabled     bool   `json:"enabled"`
 	BotTokenSet bool   `json:"bot_token_set"`
 	ChatID      string `json:"chat_id"`
+	Language    string `json:"language"`
+}
+
+// AlertLanguage is the language notifications are written in; Russian until the owner picks one.
+func (s *Server) AlertLanguage(ctx context.Context) string {
+	return string(alerttext.ParseLang(s.getTelegramAlerts(ctx).Language))
 }
 
 func (s *Server) getSettingInt(ctx context.Context, key string, def int) int {
@@ -95,6 +103,7 @@ func (s *Server) settingsJSON(ctx context.Context) map[string]any {
 		"offline_after":  offlineAfter,
 		"telegram_alerts": telegramAlertsOut{
 			Enabled: stored.Enabled, BotTokenSet: stored.BotTokenEnc != "", ChatID: stored.ChatID,
+			Language: string(alerttext.ParseLang(stored.Language)),
 		},
 		"backup_schedule": s.backupSchedule(ctx),
 	}
@@ -108,6 +117,7 @@ type putTelegramAlertsReq struct {
 	Enabled  bool    `json:"enabled"`
 	BotToken *string `json:"bot_token"`
 	ChatID   string  `json:"chat_id"`
+	Language *string `json:"language"`
 }
 
 type putSettingsReq struct {
@@ -134,6 +144,9 @@ func (s *Server) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 		for k, v := range req.BackupSchedule.Validate() {
 			fields[k] = v
 		}
+	}
+	if t := req.TelegramAlerts; t != nil && t.Language != nil && *t.Language != string(alerttext.RU) && *t.Language != string(alerttext.EN) {
+		fields["telegram_alerts.language"] = "must be ru or en"
 	}
 	if len(fields) > 0 {
 		validation(w, fields)
@@ -168,11 +181,15 @@ func (s *Server) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.TelegramAlerts != nil {
-		stored := telegramAlertsStored{Enabled: req.TelegramAlerts.Enabled, ChatID: req.TelegramAlerts.ChatID}
+		previous := s.getTelegramAlerts(ctx)
+		stored := telegramAlertsStored{Enabled: req.TelegramAlerts.Enabled, ChatID: req.TelegramAlerts.ChatID, Language: previous.Language}
+		if l := req.TelegramAlerts.Language; l != nil {
+			stored.Language = *l
+		}
 		switch {
 		case req.TelegramAlerts.BotToken == nil:
 			// Omitted: preserve whatever token (if any) is already stored.
-			stored.BotTokenEnc = s.getTelegramAlerts(ctx).BotTokenEnc
+			stored.BotTokenEnc = previous.BotTokenEnc
 		case *req.TelegramAlerts.BotToken == "":
 			// Explicit empty string: clear the stored token.
 			stored.BotTokenEnc = ""
@@ -201,6 +218,7 @@ func (s *Server) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 type postTelegramTestReq struct {
 	BotToken *string `json:"bot_token"`
 	ChatID   *string `json:"chat_id"`
+	Language *string `json:"language"`
 }
 
 func (s *Server) handleTelegramTest(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +259,11 @@ func (s *Server) handleTelegramTest(w http.ResponseWriter, r *http.Request) {
 		panelName = b.PanelName
 	}
 
-	if err := s.tg.SendWith(ctx, token, chatID, "Test message from "+panelName); err != nil {
+	lang := alerttext.ParseLang(s.AlertLanguage(ctx))
+	if req.Language != nil {
+		lang = alerttext.ParseLang(*req.Language)
+	}
+	if err := s.tg.SendWith(ctx, token, chatID, alerttext.Default().Test(lang, panelName).HTML); err != nil {
 		s.Audit(ctx, "settings.telegram_test", "settings", "", map[string]any{"ok": false})
 		writeError(w, 502, "telegram_error", err.Error(), nil)
 		return

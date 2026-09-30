@@ -102,7 +102,7 @@ func TestTelegramTestEndpointSendsAndAuditsWithoutLeakingToken(t *testing.T) {
 	if len(sender.calls) != 1 || sender.calls[0].token != "111:AAA-STORED" || sender.calls[0].chatID != "42" {
 		t.Fatalf("sender calls = %+v", sender.calls)
 	}
-	if !strings.Contains(sender.calls[0].text, "Test message from") {
+	if !strings.Contains(sender.calls[0].text, "Проверка связи") || !strings.Contains(sender.calls[0].text, "TGProxy Panel") {
 		t.Fatalf("text = %q", sender.calls[0].text)
 	}
 
@@ -121,6 +121,46 @@ func TestTelegramTestEndpointSendsAndAuditsWithoutLeakingToken(t *testing.T) {
 	}
 	if !strings.Contains(string(audit.Items[0].Meta), `"ok":true`) {
 		t.Fatalf("audit meta missing ok:true: %s", audit.Items[0].Meta)
+	}
+}
+
+func TestTelegramLanguageIsSavedAndUsedForTheTestMessage(t *testing.T) {
+	sender := &fakeTGSender{}
+	_, c := ownerHarnessWithSender(t, sender)
+
+	resp := c.Put("/api/v1/settings", map[string]any{
+		"telegram_alerts": map[string]any{"enabled": true, "bot_token": "111:AAA", "chat_id": "42", "language": "en"},
+	})
+	var out struct {
+		TelegramAlerts struct {
+			Language string `json:"language"`
+		} `json:"telegram_alerts"`
+	}
+	c.JSON(resp, &out)
+	if out.TelegramAlerts.Language != "en" {
+		t.Fatalf("language = %q", out.TelegramAlerts.Language)
+	}
+	if resp := c.Post("/api/v1/settings/telegram/test", map[string]any{}); resp.StatusCode != 200 {
+		t.Fatalf("test endpoint %d", resp.StatusCode)
+	}
+	if len(sender.calls) != 1 || !strings.Contains(sender.calls[0].text, "notifications from TGProxy Panel") {
+		t.Fatalf("sender calls = %+v", sender.calls)
+	}
+	if resp := c.Post("/api/v1/settings/telegram/test", map[string]any{"language": "ru"}); resp.StatusCode != 200 {
+		t.Fatalf("test endpoint %d", resp.StatusCode)
+	}
+	if !strings.Contains(sender.calls[1].text, "Проверка связи") {
+		t.Fatalf("override ignored: %q", sender.calls[1].text)
+	}
+
+	resp = c.Put("/api/v1/settings", map[string]any{"telegram_alerts": map[string]any{"enabled": true, "chat_id": "42", "language": "de"}})
+	if resp.StatusCode != 422 {
+		t.Fatalf("bad language accepted: %d", resp.StatusCode)
+	}
+	resp = c.Put("/api/v1/settings", map[string]any{"telegram_alerts": map[string]any{"enabled": false, "chat_id": "42"}})
+	c.JSON(resp, &out)
+	if out.TelegramAlerts.Language != "en" {
+		t.Fatalf("saving without a language reset it to %q", out.TelegramAlerts.Language)
 	}
 }
 

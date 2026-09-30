@@ -79,7 +79,7 @@ func TestAlertsRateLimitsPerNodeAndKind(t *testing.T) {
 	if sender.count() != 1 {
 		t.Fatalf("expected 1 send within the rate-limit window, got %d", sender.count())
 	}
-	if !strings.Contains(sender.last().text, "offline") {
+	if !strings.Contains(sender.last().text, "is not connected") {
 		t.Fatalf("text = %q", sender.last().text)
 	}
 	if sender.last().token != "tok" || sender.last().chatID != "42" {
@@ -152,7 +152,7 @@ func TestAlertsEscapesNodeNameAndHostname(t *testing.T) {
 
 	a.NodeOffline(t.Context(), node)
 	text := sender.last().text
-	if strings.Contains(text, "<b>") {
+	if strings.Contains(text, "<b>n1</b>") {
 		t.Fatalf("node name not HTML-escaped: %q", text)
 	}
 	if !strings.Contains(text, "&lt;b&gt;") {

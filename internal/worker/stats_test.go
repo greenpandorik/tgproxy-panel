@@ -87,7 +87,7 @@ func TestStatsNotifiesOfflineThenOnlineOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.WaitNotifications()
-	if sender.count() != 1 || !strings.Contains(sender.last().text, "offline") {
+	if sender.count() != 1 || !strings.Contains(sender.last().text, "is not connected") {
 		t.Fatalf("expected 1 offline notification, sends=%d last=%q", sender.count(), sender.last().text)
 	}
 
@@ -97,8 +97,8 @@ func TestStatsNotifiesOfflineThenOnlineOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.WaitNotifications()
-	if sender.count() != 2 || !strings.Contains(sender.last().text, "back online") {
-		t.Fatalf("expected the 2nd notification to be 'back online', sends=%d last=%q", sender.count(), sender.last().text)
+	if sender.count() != 2 || !strings.Contains(sender.last().text, "connected again") {
+		t.Fatalf("expected the 2nd notification to be 'connected again', sends=%d last=%q", sender.count(), sender.last().text)
 	}
 
 	if err := s.RunOnce(ctx); err != nil {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodediag"
 	"tgwebproxy/internal/nodedriver"
@@ -58,25 +59,32 @@ func (s *Server) scheduledDiagnostics(ctx context.Context, alerts *worker.Alerts
 				if check.Detail != nil {
 					message += ": " + *check.Detail
 				}
+				incident := alerttext.Incident{Kind: kind}
+				if check.Value != nil {
+					incident.Value = *check.Value
+				}
 				if failed && nodediag.LifetimeCounter(check.Key) {
 					growth, grew := counterGrowth(previous, g.Key, check)
 					failed = grew
 					if grew {
-						message += " (+" + strconv.FormatFloat(growth, 'f', -1, 64) + " since the previous check)"
+						incident.Growth = strconv.FormatFloat(growth, 'f', -1, 64)
+						message += " (+" + incident.Growth + " since the previous check)"
 					}
 				}
+				incident.Message = message
 				if failed {
 					tag, e := s.store.Pool.Exec(ctx, `INSERT INTO alerts(node_id,kind,message) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND kind=$2 AND resolved_at IS NULL)`, n.ID, kind, message)
 					if e == nil && tag.RowsAffected() > 0 {
 						notifyCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-						alerts.Incident(notifyCtx, n, kind, message, false)
+						alerts.Incident(notifyCtx, n, incident)
 						cancel()
 					}
 				} else {
 					count, e := s.store.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: uuid.NullUUID{UUID: n.ID, Valid: true}, Kind: kind})
 					if e == nil && count > 0 {
 						notifyCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-						alerts.Incident(notifyCtx, n, kind, message, true)
+						incident.Recovered = true
+						alerts.Incident(notifyCtx, n, incident)
 						cancel()
 					}
 				}
