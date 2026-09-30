@@ -5,12 +5,15 @@ import { SlidersHorizontal } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/auth/AuthProvider';
 import { useApplyNode, nodeKeys } from '@/api/nodes';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { Panel, PanelHeader, PanelBody } from '@/components/common/Panel';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+
+import type { CapabilityState } from './capability';
 
 interface WebPolicy {
   preset: string;
@@ -35,7 +38,7 @@ interface PolicyResponse {
 }
 const PRESETS = ['automatic', 'compatibility', 'prefer_websocket', 'https_only', 'custom'];
 
-export function WebPolicyCard({ nodeId, enabled }: { nodeId: string; enabled: boolean }) {
+export function WebPolicyCard({ nodeId, capability }: { nodeId: string; capability: CapabilityState }) {
   const query = useQuery({
     queryKey: ['web-policy', nodeId],
     queryFn: () => api.get<PolicyResponse>(`/api/v1/nodes/${nodeId}/web-policy`),
@@ -48,15 +51,18 @@ export function WebPolicyCard({ nodeId, enabled }: { nodeId: string; enabled: bo
         {query.isLoading ? (
           <Skeleton className="h-44" />
         ) : query.isError ? (
-          <ErrorState message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
+          <ErrorState inset message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
         ) : (
-          query.data && <PolicyForm key={JSON.stringify(query.data.policy)} nodeId={nodeId} data={query.data} enabled={enabled} />
+          query.data && (
+            <PolicyForm key={JSON.stringify(query.data.policy)} nodeId={nodeId} data={query.data} capability={capability} />
+          )
         )}
       </PanelBody>
     </Panel>
   );
 }
-function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyResponse; enabled: boolean }) {
+function PolicyForm({ nodeId, data, capability }: { nodeId: string; data: PolicyResponse; capability: CapabilityState }) {
+  const enabled = capability === 'supported';
   const { t } = useTranslation();
   const { isWriter } = useAuth();
   const qc = useQueryClient();
@@ -111,14 +117,20 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
         save.mutate();
       }}
     >
-      <p className="max-w-3xl text-label text-mute">{t('web.policy_hint')}</p>
+      <p className="max-w-[72ch] text-label text-mute">{t('web.policy_hint')}</p>
+      {!enabled && (
+        <p role="status" className="flex max-w-[72ch] items-start gap-2 text-label text-warn">
+          <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
+          {t(capability === 'unsupported' ? 'web.policy_unsupported' : 'web.policy_undetermined')}
+        </p>
+      )}
       <fieldset disabled={!isWriter || !enabled || save.isPending} className="space-y-4">
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((preset) => (
             <Button
               type="button"
               key={preset}
-              variant={policy.preset === preset ? 'secondary' : 'outline'}
+              variant={policy.preset === preset ? 'default' : 'outline'}
               aria-pressed={policy.preset === preset}
               onClick={() => selectPreset(preset)}
             >
@@ -126,15 +138,14 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
             </Button>
           ))}
         </div>
-        <p className="text-label">
+        <p className="text-label text-mute">
           {t('web.policy_order')}:{' '}
-          <span className="font-medium">
-            {policy.carriers === false ? 'HTTPS' : [...new Set([...policy.carriers, policy.carrier])].join(' → ')}
+          <span className="mono text-mono text-foreground">
+            {policy.carriers === false ? 'https' : [...new Set([...policy.carriers, policy.carrier])].join(' → ')}
           </span>
         </p>
-        <details>
-          <summary className="cursor-pointer text-label text-mute">{t('web.policy_advanced')}</summary>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <AdvancedSettings label={t('web.policy_advanced')}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <section className="space-y-3 rounded-control border border-hairline bg-background p-3 sm:col-span-2 xl:col-span-3">
               <div>
                 <p className="text-label font-medium text-foreground">{t('web.overload_title')}</p>
@@ -146,7 +157,7 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
                     type="button"
                     size="sm"
                     key={preset}
-                    variant={policy.overload.preset === preset ? 'secondary' : 'outline'}
+                    variant={policy.overload.preset === preset ? 'default' : 'outline'}
                     aria-pressed={policy.overload.preset === preset}
                     onClick={() => selectOverloadPreset(preset)}
                   >
@@ -158,7 +169,7 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
                 <Label htmlFor="web-capacity-action">{t('web.overload_action')}</Label>
                 <select
                   id="web-capacity-action"
-                  className="h-9 w-full rounded-control border border-hairline bg-card px-2"
+                  className="ops-select"
                   value={policy.overload.connection_capacity_action}
                   onChange={(e) =>
                     setPolicy({
@@ -181,9 +192,10 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
                 </p>
               </div>
             </section>
-            <label className="flex items-center gap-2">
+            <label className="flex min-h-10 items-center gap-3 self-end text-body">
               <input
                 type="checkbox"
+                className="size-4 accent-primary"
                 checked={policy.carrier_learning}
                 onChange={(e) => setPolicy({ ...policy, preset: 'custom', carrier_learning: e.target.checked })}
               />
@@ -193,7 +205,7 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
               <Label htmlFor="web-aggressiveness">{t('web.learning_policy')}</Label>
               <select
                 id="web-aggressiveness"
-                className="h-9 w-full rounded-control border border-hairline bg-background px-2"
+                className="ops-select"
                 value={policy.carrier_negotiation_aggressiveness}
                 onChange={(e) => setPolicy({ ...policy, preset: 'custom', carrier_negotiation_aggressiveness: e.target.value })}
               >
@@ -253,15 +265,15 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
               </div>
             </div>
           </div>
-        </details>
+        </AdvancedSettings>
       </fieldset>
       {save.isError && (
-        <p className="text-destructive" role="alert">
+        <p className="text-body text-destructive" role="alert">
           {save.error.message}
         </p>
       )}
       {apply.isError && (
-        <p className="text-destructive" role="alert">
+        <p className="text-body text-destructive" role="alert">
           {apply.error.message}
         </p>
       )}
@@ -271,7 +283,7 @@ function PolicyForm({ nodeId, data, enabled }: { nodeId: string; data: PolicyRes
             {t('web.policy_save')}
           </Button>
           {dirty && (
-            <Button variant="ghost" onClick={() => setPolicy(data.policy)}>
+            <Button type="button" variant="ghost" onClick={() => setPolicy(data.policy)}>
               {t('common.cancel')}
             </Button>
           )}

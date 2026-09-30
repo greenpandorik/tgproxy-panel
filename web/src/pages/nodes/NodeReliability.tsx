@@ -6,6 +6,7 @@ import type { RecoveryPolicy, RecoveryState, ReliabilityReport } from '@/api/rel
 import type { Node } from '@/api/types';
 import { useAuth } from '@/auth/AuthProvider';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
+import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,7 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
       }}
     >
       <fieldset disabled={!isWriter || save.isPending} className="space-y-5 disabled:opacity-70">
-        <div className="space-y-2">
+        <div className="max-w-xl space-y-2">
           <Label htmlFor="recovery-mode">{t('reliability.recovery')}</Label>
           <select
             id="recovery-mode"
@@ -66,7 +67,7 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
           </span>
         </label>
         <AdvancedSettings label={t('reliability.thresholds')}>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid max-w-2xl gap-4 sm:grid-cols-3">
             {(['failure_threshold', 'cooldown_seconds', 'max_actions_hour'] as const).map((key) => (
               <div className="space-y-2" key={key}>
                 <Label htmlFor={key}>{t(`reliability.${key}`)}</Label>
@@ -89,7 +90,7 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
           className="border-t border-hairline pt-5"
         >
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div className="max-w-xl space-y-2">
               <Label htmlFor="egress-mode">{t('reliability.egress')}</Label>
               <select
                 id="egress-mode"
@@ -106,13 +107,14 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
                 <option value="direct">{t('reliability.direct')}</option>
                 <option value="socks5">{t('reliability.socks5')}</option>
               </select>
-              <p className="max-w-[72ch] text-label text-mute">{t('reliability.egress_hint')}</p>
+              <p className="text-label text-mute">{t('reliability.egress_hint')}</p>
             </div>
             {policy.egress === 'socks5' && (
-              <div className="space-y-2">
+              <div className="max-w-xl space-y-2">
                 <Label htmlFor="primary-socks">{t('reliability.primary')}</Label>
                 <Input
                   id="primary-socks"
+                  className="mono"
                   placeholder="127.0.0.1:1080"
                   value={policy.socks_address}
                   onChange={(e) => change('socks_address', e.target.value)}
@@ -132,10 +134,11 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
                   {t('reliability.failover')}
                 </label>
                 {policy.automatic_failover && (
-                  <div className="space-y-2">
+                  <div className="max-w-xl space-y-2">
                     <Label htmlFor="reserve-socks">{t('reliability.reserve')}</Label>
                     <Input
                       id="reserve-socks"
+                      className="mono"
                       placeholder="127.0.0.1:1081"
                       value={policy.reserve_socks_address}
                       onChange={(e) => change('reserve_socks_address', e.target.value)}
@@ -149,7 +152,7 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
           </div>
         </AdvancedSettings>
       </fieldset>
-      <p className="text-label text-mute">{t('reliability.apply_hint')}</p>
+      <p className="max-w-[72ch] text-label text-mute">{t('reliability.apply_hint')}</p>
       {save.isError && (
         <p role="alert" className="text-body text-err">
           {save.error instanceof ApiError ? save.error.message : t('common.error_generic')}
@@ -184,25 +187,24 @@ export function NodeReliability({ node }: { node: Node }) {
   return (
     <Panel>
       <PanelHeader icon={LifeBuoy} title={t('reliability.title')} />
-      <PanelBody>
-        {!node.online ? (
-          <p className="text-body text-mute">{t('nodes.offline_message')}</p>
-        ) : query.isLoading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : query.isError ? (
-          <ErrorState
-            inset
-            message={query.error instanceof ApiError ? query.error.message : t('common.error_generic')}
-            retryLabel={t('common.refresh')}
-            onRetry={() => void query.refetch()}
-          />
-        ) : query.data ? (
-          <PolicyForm node={node} state={query.data} />
-        ) : null}
-      </PanelBody>
+      {!node.online ? (
+        <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
+      ) : query.isError ? (
+        <ErrorState
+          inset
+          message={query.error instanceof ApiError ? query.error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void query.refetch()}
+        />
+      ) : (
+        <PanelBody>
+          {query.isLoading ? <Skeleton className="h-48 w-full" /> : query.data && <PolicyForm node={node} state={query.data} />}
+        </PanelBody>
+      )}
     </Panel>
   );
 }
+
 const ROUTE_DOT = { healthy: 'bg-ok', failed: 'bg-err', stale: 'border border-hairline-strong' } as const;
 
 export function ReliabilityReadings({ report }: { report?: ReliabilityReport | null }) {

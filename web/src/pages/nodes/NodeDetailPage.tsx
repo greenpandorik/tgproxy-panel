@@ -233,7 +233,7 @@ export function NodeDetailPage() {
             {section === 'proxy' && node.engine === 'telemt' && (
               <>
                 <NodeListenersCard node={node} canEdit={isWriter} />
-                <WebPolicyCard nodeId={node.id} enabled={nodeCapability(node, CAP_CARRIER_NEGOTIATION) === 'supported'} />
+                <WebPolicyCard nodeId={node.id} capability={nodeCapability(node, CAP_CARRIER_NEGOTIATION)} />
                 <NodeReliability node={node} />
               </>
             )}
