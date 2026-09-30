@@ -24,10 +24,10 @@ type Settings struct {
 	HiddenNodes       []string `json:"hidden_nodes"`
 }
 
-// DefaultSettings shows everything in Russian with the Android tab open; nothing is guessed from the visitor.
+// DefaultSettings shows everything, in the visitor's language and on the tab of their device.
 func DefaultSettings() Settings {
 	return Settings{
-		Language: "ru", Platform: string(Android), ShowFakeTLS: true, ShowWeb: true, ShowBackupDomains: true,
+		Language: "auto", Platform: "auto", ShowFakeTLS: true, ShowWeb: true, ShowBackupDomains: true,
 		ShowGuide: true, ShowStatus: true, ShowQR: true, HiddenNodes: []string{},
 	}
 }

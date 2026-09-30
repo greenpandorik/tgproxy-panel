@@ -470,3 +470,17 @@ func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
 		t.Fatalf("hiding every link kind was accepted: %d", resp.StatusCode)
 	}
 }
+
+func TestPageFollowsTheVisitorByDefault(t *testing.T) {
+	h, c, keyID := twoNodeKey(t)
+	var k keyResp2
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &k)
+	iphone := h.Anonymous().
+		SetHeader("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15").
+		SetHeader("Accept-Language", "en-GB,en;q=0.9")
+	body, _ := io.ReadAll(iphone.Get("/s/" + tokenFromURL(t, *k.SubscriptionURL)).Body)
+	page := string(body)
+	if !strings.Contains(page, `<body data-platform="ios">`) || !strings.Contains(page, `lang="en"`) {
+		t.Fatal("without settings the page should open on the visitor's device and language")
+	}
+}

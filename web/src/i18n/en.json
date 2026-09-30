@@ -1259,7 +1259,7 @@
     "subpage_preview_hint": "An example with all your servers and fake secrets; changes show up right away, before you save. On a real page the servers and the expiry come from the user.",
     "subpage_preview_open": "Open separately",
     "subpage_platform": "Tab shown first",
-    "subpage_platform_hint": "The chosen tab opens for everyone, and visitors can switch it themselves. If your people use a mix of Android, iPhone and computers, pick \"Detect from the visitor's device\".",
+    "subpage_platform_hint": "By default the tab follows the device the link is opened on: iPhone, Android or computer. Visitors can switch it themselves. If all your people use one kind of device, you can always open its tab.",
     "subpage_platform_auto": "Detect from the visitor's device",
     "subpage_no_tls_warning": "Without Fake-TLS, iPhone users get no link on the page.",
     "subpage_servers_required": "Keep at least one server on the page.",
@@ -2337,7 +2337,7 @@
         "fields": {
           "language": {
             "name": "Page language",
-            "what": "The page is in Russian by default. \"Browser language\" shows Russian to people whose browser is in Russian and English to everyone else."
+            "what": "\"Browser language\" by default: Russian for browsers set to Russian, Ukrainian, Belarusian or Kazakh, English for everyone else. Pick Russian or English to always open the page in it. Visitors can switch the language themselves either way."
           },
           "title": {
             "name": "Title and greeting",
@@ -2357,7 +2357,7 @@
           },
           "platform": {
             "name": "Tab shown first",
-            "what": "Which tab is open when a person arrives: Android, iPhone and iPad, or Computer. Android by default. \"Detect from the visitor's device\" picks the tab from the phone or computer the link is opened on."
+            "what": "Which tab is open when a person arrives. \"Detect from the visitor's device\" by default: the tab follows the phone or computer the link is opened on. You can always open Android, iPhone and iPad, or Computer instead."
           }
         }
       },

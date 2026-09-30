@@ -47,8 +47,8 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 const DEFAULTS: FormValues = {
-  language: 'ru',
-  platform: 'android',
+  language: 'auto',
+  platform: 'auto',
   title_ru: '',
   title_en: '',
   intro_ru: '',
@@ -244,9 +244,9 @@ export function SubscriptionPageForm() {
               <div className="space-y-2">
                 <Label htmlFor="subpage-language">{t('settings.subpage_language')}</Label>
                 <select id="subpage-language" className="ops-select w-full max-w-sm" disabled={disabled} {...register('language', { onChange: () => setTextLang(null) })}>
+                  <option value="auto">{t('settings.subpage_language_auto')}</option>
                   <option value="ru">{t('settings.panel_telegram_language_ru')}</option>
                   <option value="en">{t('settings.panel_telegram_language_en')}</option>
-                  <option value="auto">{t('settings.subpage_language_auto')}</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -258,10 +258,10 @@ export function SubscriptionPageForm() {
                   aria-describedby="subpage-platform-hint"
                   {...register('platform')}
                 >
+                  <option value="auto">{t('settings.subpage_platform_auto')}</option>
                   <option value="android">{t('subpage.platform_android')}</option>
                   <option value="ios">{t('subpage.platform_ios')}</option>
                   <option value="desktop">{t('subpage.platform_desktop')}</option>
-                  <option value="auto">{t('settings.subpage_platform_auto')}</option>
                 </select>
                 <p id="subpage-platform-hint" className="text-label text-mute">
                   {t('settings.subpage_platform_hint')}

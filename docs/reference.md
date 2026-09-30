@@ -491,8 +491,8 @@ What the page shows is set under Subscription → Page, with a live preview. The
 
 | Setting | What it does |
 |---|---|
-| Page language | Russian (default), English, or the visitor's browser language |
-| Tab shown first | Android (default), iPhone and iPad, Computer, or detected from the visitor's device |
+| Page language | The visitor's browser language (default), Russian or English |
+| Tab shown first | Detected from the visitor's device (default), or always Android, iPhone and iPad, or Computer |
 | Title and greeting | Text at the top, separately in Russian and in English; empty fields use "Connect Telegram" and a standard greeting in the page language |
 | Which links to show | Fake-TLS, WEB proxy, backup domains; at least one of the first two stays on |
 | What else to show | The step-by-step guide, the access end date, QR codes |
