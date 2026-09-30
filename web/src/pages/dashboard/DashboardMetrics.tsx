@@ -31,6 +31,9 @@ interface Cell {
   value: ReactNode;
 }
 
+const ABSENT_VALUE =
+  '[&_[data-metric=absent]]:font-sans [&_[data-metric=absent]]:text-body [&_[data-metric=absent]]:font-normal [&_[data-metric=absent]]:tracking-normal';
+
 /** The four numbers that give the verdict its context. Compact on purpose. */
 export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions, traffic, loading }: DashboardMetricsProps) {
   const { t, i18n } = useTranslation();
@@ -82,23 +85,23 @@ export function DashboardMetrics({ nodesOnline, nodesTotal, keysActive, sessions
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {cells.map((cell) => (
         <Link
           key={cell.id}
           to={cell.to}
-          className="flex items-center gap-4 rounded-surface border border-hairline-strong bg-card px-5 py-4 transition-[background-color,border-color] hover:border-brand-primary/40 hover:bg-elevated/40"
+          className="flex items-center gap-4 rounded-surface border border-hairline-strong bg-card px-4 py-3 transition-[background-color,border-color] hover:border-brand-primary/40 hover:bg-elevated/40 sm:px-5 sm:py-4"
         >
           <span
-            className="tgwp-tone-plate flex size-11 shrink-0 items-center justify-center rounded-pill"
+            className="tgwp-tone-plate hidden size-11 shrink-0 items-center justify-center rounded-pill sm:flex"
             style={{ '--tone': cell.tone } as CSSProperties}
             aria-hidden="true"
           >
             <cell.icon size={20} strokeWidth={1.7} />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-label text-mute">{cell.label}</span>
-            <span className={cn('mono mt-0.5 block text-[19px] leading-7 font-semibold tabular')}>
+            <span className="block text-label text-mute sm:truncate">{cell.label}</span>
+            <span className={cn('mono mt-0.5 block text-[19px] leading-7 font-semibold tabular', ABSENT_VALUE)}>
               {loading ? <Skeleton className="h-6 w-16" /> : cell.value}
             </span>
           </span>
