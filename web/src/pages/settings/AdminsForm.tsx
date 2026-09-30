@@ -275,8 +275,9 @@ export function AdminsForm() {
                           type="button"
                           variant="ghost"
                           size="icon-sm"
+                          className="-my-2"
                           onClick={() => setDeleteTarget(a)}
-                          aria-label={t('common.delete')}
+                          aria-label={`${t('common.delete')}: ${a.username}`}
                         >
                           <Trash2 />
                         </Button>
@@ -306,7 +307,7 @@ export function AdminsForm() {
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => setDeleteTarget(a)}
-                    aria-label={t('common.delete')}
+                    aria-label={`${t('common.delete')}: ${a.username}`}
                   >
                     <Trash2 />
                   </Button>
