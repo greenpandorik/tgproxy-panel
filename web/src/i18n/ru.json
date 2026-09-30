@@ -2497,7 +2497,9 @@
     "settings_group_personal": "Только для вас",
     "settings_tab_subscription": "Страница подписки",
     "settings_subscription": "Страница подписки",
-    "settings_subscription_hint": "Что видит человек, который открыл свою ссылку подписки."
+    "settings_subscription_hint": "Что видит человек, который открыл свою ссылку подписки.",
+    "description_overview_tproxy": "Службы и нагрузка сервера.",
+    "description_stats_tproxy": "Нагрузка сервера во времени и счётчики прокси."
   },
   "reliability": {
     "routing_toggle": "Маршрут через SOCKS5 или WARP",

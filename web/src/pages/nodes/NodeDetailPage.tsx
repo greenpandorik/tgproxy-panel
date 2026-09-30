@@ -238,7 +238,13 @@ export function NodeDetailPage() {
           <section className="min-w-0 space-y-5" aria-label={t(`workspace.section_${section}`)}>
             <div className="space-y-1">
               <h2 className="text-title">{t(`workspace.section_${section}`)}</h2>
-              <p className="max-w-[72ch] text-body text-mute">{t(`workspace.description_${section}`)}</p>
+              <p className="max-w-[72ch] text-body text-mute">
+                {t(
+                  node.engine === 'tproxy' && (section === 'overview' || section === 'stats')
+                    ? `workspace.description_${section}_tproxy`
+                    : `workspace.description_${section}`,
+                )}
+              </p>
             </div>
             {section === 'overview' && <NodeOverviewTab node={node} />}
             {section === 'stats' && (

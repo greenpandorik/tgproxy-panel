@@ -345,7 +345,7 @@ export function NodesPage() {
           }
         />
 
-        <FleetUpdates nodes={nodes} />
+        {nodes.some((n) => n.engine === 'telemt') && <FleetUpdates nodes={nodes} />}
         {isLoading ? (
           <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
         ) : nodes.length === 0 ? (

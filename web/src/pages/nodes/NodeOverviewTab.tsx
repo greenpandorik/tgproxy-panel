@@ -260,13 +260,15 @@ export function NodeOverviewTab({ node, maintenance = false }: { node: Node; mai
           {/* The same health readout, read for its other half: how the node reaches
           Telegram. It follows the services panel because the two answer the
           same question in order - is the proxy up, and can it get through. */}
-          <NodeDcsCard
-            engine={node.engine}
-            offline={offline}
-            health={health}
-            error={healthQuery.isError}
-            onRetry={() => void healthQuery.refetch()}
-          />
+          {telemt && (
+            <NodeDcsCard
+              engine={node.engine}
+              offline={offline}
+              health={health}
+              error={healthQuery.isError}
+              onRetry={() => void healthQuery.refetch()}
+            />
+          )}
 
           <ReliabilityReadings report={health?.reliability} />
         </>

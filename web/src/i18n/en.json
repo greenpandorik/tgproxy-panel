@@ -2493,7 +2493,9 @@
     "settings_group_personal": "Just for you",
     "settings_tab_subscription": "Subscription page",
     "settings_subscription": "Subscription page",
-    "settings_subscription_hint": "What a person sees after opening their subscription link."
+    "settings_subscription_hint": "What a person sees after opening their subscription link.",
+    "description_overview_tproxy": "The server's services and load.",
+    "description_stats_tproxy": "Server load over time and the proxy's counters."
   },
   "reliability": {
     "routing_toggle": "Route through SOCKS5 or WARP",

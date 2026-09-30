@@ -300,3 +300,32 @@ describe('NodesPage install command', () => {
     expect(screen.getByText('The old install command stops working.')).toBeInTheDocument();
   });
 });
+
+describe('NodesPage fleet update', () => {
+  beforeEach(() => {
+    setLang('en');
+    vi.mocked(useAuth).mockReturnValue({ isWriter: true } as unknown as ReturnType<typeof useAuth>);
+  });
+
+  it('does not offer a telemt update when no server runs telemt', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: { items: [{ ...node('n1', 'online'), engine: 'tproxy' }], total: 1 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    expect(screen.queryByRole('button', { name: 'Update telemt on servers' })).toBeNull();
+  });
+
+  it('offers it once a telemt server is in the list', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: { items: [node('n1', 'online')], total: 1 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    expect(screen.getByRole('button', { name: 'Update telemt on servers' })).toBeInTheDocument();
+  });
+});

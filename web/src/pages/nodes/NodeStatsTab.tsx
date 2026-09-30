@@ -204,7 +204,7 @@ export function NodeStatsTab({ nodeId, online, engine }: { nodeId: string; onlin
   return (
     <div className={cn(ENTER_CLASS, 'space-y-4')}>
       <NodeLoadPanel nodeId={nodeId} />
-      <NodeDcLatencyPanel nodeId={nodeId} engine={engine} />
+      {engine === 'telemt' && <NodeDcLatencyPanel nodeId={nodeId} engine={engine} />}
       <NodeCountersPanel nodeId={nodeId} online={online} />
     </div>
   );
