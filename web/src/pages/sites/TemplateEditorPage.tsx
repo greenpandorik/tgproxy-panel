@@ -118,6 +118,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
 
   const loaded = templateQuery.data;
   const isPreset = !!loaded?.is_preset;
+  const displayName = loaded?.display_name || loaded?.name || name;
 
   const [syncedId, setSyncedId] = useState<string | undefined>(undefined);
   if (loaded && loaded.id !== syncedId) {
@@ -261,7 +262,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
         </Link>
 
         <PageHeader
-          title={isNew ? t('sites.editor_title_new') : t('sites.editor_title_edit', { name: loaded?.name ?? name })}
+          title={isNew ? t('sites.editor_title_new') : t('sites.editor_title_edit', { name: displayName })}
           description={
             saved && !saving ? (
               <span className="flex items-center gap-1.5">
@@ -311,7 +312,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
         <Input
           id="tpl-name"
           className="max-w-xs"
-          value={name}
+          value={isPreset ? displayName : name}
           onChange={(e) => {
             setSaved(false);
             setName(e.target.value);
@@ -401,13 +402,18 @@ function TemplateEditorInner({ id }: { id?: string }) {
         <div className="flex min-w-0 flex-col gap-4">
           <Arriving index={2}>
             <Panel>
-              <PanelHeader icon={Eye} title={t('sites.preview_title')} />
+              <PanelHeader icon={Eye} title={t('sites.preview')} />
               <PanelBody>
                 {/* The rendered site is someone else's page: it keeps its own white
                   ground, framed by the panel rather than themed by it. The wrapper
                   carries the radius because an iframe does not clip its own. */}
                 <div className={cn(SURFACE_HEIGHT, 'overflow-hidden rounded-control border border-hairline-strong bg-white')}>
-                  <iframe sandbox="" srcDoc={previewSrcdoc} title={t('sites.preview_title')} className="size-full" />
+                  <iframe
+                    sandbox=""
+                    srcDoc={previewSrcdoc}
+                    title={t('sites.preview_title', { name: displayName })}
+                    className="size-full"
+                  />
                 </div>
               </PanelBody>
             </Panel>
@@ -418,7 +424,14 @@ function TemplateEditorInner({ id }: { id?: string }) {
               <PanelHeader
                 icon={CircleCheck}
                 title={t('sites.validation_title')}
-                meta={lastValidation ? `${lastValidation.errors.length} err · ${lastValidation.warnings.length} warn` : undefined}
+                meta={
+                  lastValidation
+                    ? t('sites.validation_meta', {
+                        errors: lastValidation.errors.length,
+                        warnings: lastValidation.warnings.length,
+                      })
+                    : undefined
+                }
               />
               <PanelBody>
                 {validateTemplate.isPending ? (
@@ -458,7 +471,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
           open={assignOpen}
           onOpenChange={setAssignOpen}
           templateId={id}
-          templateName={loaded?.name ?? name}
+          templateName={displayName}
         />
       )}
     </>
