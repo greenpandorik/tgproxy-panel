@@ -40,7 +40,7 @@ function hostOf(url: string): string {
 function CommandBox({ value, label }: { value: string; label: string }) {
   return (
     <div className="mt-2 flex items-start gap-2">
-      <pre className="mono min-w-0 flex-1 overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2 text-mono whitespace-pre-wrap break-all">
+      <pre className="mono min-w-0 flex-1 overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2 text-mono whitespace-pre-wrap wrap-anywhere">
         {value}
       </pre>
       <CopyButton
