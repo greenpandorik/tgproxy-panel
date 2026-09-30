@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -245,9 +245,9 @@ export function NodeDetailPage() {
                 <NodeOverviewTab node={node} maintenance />
                 {isWriter && (
                   <Panel>
-                    <PanelHeader title={t('workspace.service_actions')} />
+                    <PanelHeader icon={Wrench} title={t('workspace.service_actions')} />
                     <PanelBody className="space-y-4">
-                      <p className="text-body text-mute">{t('workspace.service_warning')}</p>
+                      <p className="max-w-[72ch] text-body text-mute">{t('workspace.service_warning')}</p>
                       <div className="flex flex-wrap gap-3">
                         <Button type="button" variant="outline" size="sm" onClick={() => setRestartOpen(true)}>
                           {restartLabel}
@@ -277,7 +277,10 @@ export function NodeDetailPage() {
       <ConfirmDialog
         open={restartOpen}
         onOpenChange={setRestartOpen}
-        title={t('nodes.restart_confirm_title', { name: node.name })}
+        title={t('nodes.restart_confirm_title_service', {
+          name: node.name,
+          service: node.engine === 'telemt' ? 'telemt' : 'relay',
+        })}
         description={t('nodes.restart_confirm_description')}
         destructive
         confirmLabel={restartLabel}

@@ -19,6 +19,7 @@ export function WebCounters({ stats }: { stats: WebCarrierStats }) {
   const values = WEB_COUNTERS.map((counter) => stats[counter.id]);
   const troubled = values.some((v) => typeof v === 'number' && v > 0);
   const measured = values.every((v) => typeof v === 'number');
+  const unreported = values.every((v) => typeof v !== 'number');
 
   const grid = (
     <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-control border border-hairline bg-hairline sm:grid-cols-2">
@@ -74,7 +75,7 @@ export function WebCounters({ stats }: { stats: WebCarrierStats }) {
   return (
     <div className="flex flex-col gap-3">
       <p data-testid="web-counters-summary" className="text-body text-mute">
-        {t(measured ? 'web.counters_quiet' : 'web.counters_partial')}
+        {t(unreported ? 'web.counters_none' : measured ? 'web.counters_quiet' : 'web.counters_partial')}
       </p>
       <AdvancedSettings label={t('web.counters_show')}>
         {grid}

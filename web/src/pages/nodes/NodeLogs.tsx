@@ -44,7 +44,7 @@ function ServiceChip({ label, selected, onToggle }: { label: string; selected: b
       aria-checked={selected}
       onClick={onToggle}
       className={cn(
-        'mono h-7 rounded-control border px-2 text-micro transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
+        'mono h-[var(--control-height)] rounded-control border px-3 text-mono transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring/70',
         selected
           ? 'border-hairline-strong bg-elevated text-foreground'
           : 'border-hairline bg-transparent text-mute hover:text-foreground',
@@ -158,7 +158,7 @@ export function NodeLogs({ nodeId, online, engine }: { nodeId: string; online: b
             {t('nodes.logs_lines')}
           </Label>
           <Select value={String(lines)} onValueChange={(v) => v && setLines(Number(v))}>
-            <SelectTrigger id="log-lines" size="sm" className="mono">
+            <SelectTrigger id="log-lines" className="mono h-[var(--control-height)] text-mono">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -176,7 +176,7 @@ export function NodeLogs({ nodeId, online, engine }: { nodeId: string; online: b
           {t('nodes.logs_follow')}
         </label>
 
-        <span className="ml-auto inline-flex items-center gap-2 text-micro text-mute">
+        <span className="ml-auto inline-flex items-center gap-2 text-label text-mute">
           <span
             className={cn(
               'size-[7px] shrink-0 rounded-pill',

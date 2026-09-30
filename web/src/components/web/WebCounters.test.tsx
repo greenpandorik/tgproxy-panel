@@ -39,5 +39,14 @@ it('shows every counter as soon as one of them is not zero', () => {
 
 it('does not claim a quiet window when a counter was not reported', () => {
   render(<WebCounters stats={stats({ evicted_sessions: null })} />);
-  expect(screen.getByTestId('web-counters-summary')).toHaveTextContent('does not report some of these counters');
+  expect(screen.getByTestId('web-counters-summary')).toHaveTextContent('does not send some of these counters');
+});
+
+it('does not speak of failures when the server reported no counter at all', () => {
+  render(
+    <WebCounters
+      stats={stats({ carrier_failures: null, rejected_attempts: null, evicted_sessions: null, bridge_recoveries: null })}
+    />,
+  );
+  expect(screen.getByTestId('web-counters-summary')).toHaveTextContent('The server sent no failure counters in this window.');
 });

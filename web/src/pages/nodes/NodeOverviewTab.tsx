@@ -164,7 +164,7 @@ function JobRow({ job }: { job: ApplyJob }) {
             {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </button>
         </TableCell>
-        <TableCell className="mono text-mono text-mute">{t(`nodes.job_kind_${job.kind}`, job.kind)}</TableCell>
+        <TableCell className="text-mute">{t(`nodes.job_kind_${job.kind}`, job.kind)}</TableCell>
         <TableCell className="mono text-mono text-mute">{formatDateTime(job.created_at, i18n.language)}</TableCell>
         <TableCell className="mono text-right text-mono text-mute">
           {job.started_at && job.finished_at
@@ -174,7 +174,7 @@ function JobRow({ job }: { job: ApplyJob }) {
               )
             : DASH}
         </TableCell>
-        <TableCell className={cn('mono text-right text-mono', failed ? 'text-err' : 'text-mute')}>
+        <TableCell className={cn('text-right', failed ? 'text-err' : 'text-mute')}>
           {t(`nodes.job_status_${job.status}`, job.status)}
         </TableCell>
       </TableRow>

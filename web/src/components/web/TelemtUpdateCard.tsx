@@ -7,6 +7,7 @@ import { nodeKeys } from '@/api/nodes';
 import type { Node } from '@/api/types';
 import { useAuth } from '@/auth/AuthProvider';
 import { Panel, PanelHeader, PanelBody } from '@/components/common/Panel';
+import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { ErrorState } from '@/components/common/ErrorState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,7 @@ export function TelemtUpdateCard({ node }: { node: Node }) {
         {query.isLoading ? (
           <Skeleton className="h-28" />
         ) : query.isError ? (
-          <ErrorState message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
+          <ErrorState inset message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -88,6 +89,7 @@ export function TelemtUpdateCard({ node }: { node: Node }) {
                 )
               )}
             </div>
+            {isWriter && !upToDate && !node.online && <p className="text-label text-mute">{t('web.update_offline')}</p>}
             {latest && (
               <div className="space-y-3 border-t border-hairline pt-4" role="status" aria-live="polite">
                 <p className="font-medium">
@@ -122,16 +124,15 @@ export function TelemtUpdateCard({ node }: { node: Node }) {
                   ))}
                 </ol>
                 {latest.error && (
-                  <p className="text-destructive" role="alert">
+                  <p className="text-body text-destructive" role="alert">
                     {latest.error}
                   </p>
                 )}
               </div>
             )}
             {(query.data?.items.length ?? 0) > 1 && (
-              <details>
-                <summary className="cursor-pointer text-label text-mute">{t('web.update_history')}</summary>
-                <ul className="mt-3 space-y-2">
+              <AdvancedSettings label={t('web.update_history')}>
+                <ul className="space-y-2">
                   {query.data?.items.slice(1).map((job) => (
                     <li key={job.id} className="text-label">
                       {formatDateTime(job.started_at, i18n.language)} · {job.from_version} → {job.to_version} ·{' '}
@@ -139,12 +140,12 @@ export function TelemtUpdateCard({ node }: { node: Node }) {
                     </li>
                   ))}
                 </ul>
-              </details>
+              </AdvancedSettings>
             )}
           </>
         )}
         {start.isError && (
-          <p role="alert" className="text-destructive">
+          <p role="alert" className="text-body text-destructive">
             {start.error.message}
           </p>
         )}
