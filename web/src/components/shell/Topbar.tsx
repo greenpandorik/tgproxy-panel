@@ -29,7 +29,8 @@ const ROLE_KEY: Record<string, string> = {
 };
 
 /** One square in the header's control row. The chips next to it carry the same height and radius. */
-const SQUARE = 'size-10 rounded-surface border border-hairline-strong bg-surface text-mute hover:text-foreground';
+const SQUARE =
+  'size-10 rounded-surface border border-hairline-strong bg-surface text-mute hover:text-foreground pointer-coarse:size-11';
 
 function HeaderButton({
   label,
@@ -82,7 +83,7 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="lg:hidden"
+        className={cn(SQUARE, 'lg:hidden')}
         onClick={onOpenMenu}
         aria-label={t('shell.open_menu')}
       >
@@ -122,22 +123,27 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="h-10 gap-2 rounded-surface border border-hairline-strong bg-surface px-2 pr-3"
+              className="h-10 gap-2 rounded-surface border border-hairline-strong bg-surface px-2 pr-3 pointer-coarse:h-11"
             />
           }
         >
           <span className="flex size-5 items-center justify-center rounded-pill border border-hairline-strong text-micro font-medium text-foreground">
             {(user?.username ?? '?').charAt(0).toUpperCase()}
           </span>
-          <span className="hidden max-w-28 truncate sm:inline">{user?.username}</span>
+          <span className="hidden max-w-28 truncate sm:inline" title={user?.username}>
+            {user?.username}
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          {/* Below lg the header has no room for the chips, so the same facts open the menu as rows. */}
-          <StatusMenuRows />
-          <DropdownMenuSeparator />
+          <div className="lg:hidden">
+            <StatusMenuRows />
+            <DropdownMenuSeparator />
+          </div>
           <DropdownMenuGroup>
             <DropdownMenuLabel className="flex items-center justify-between gap-2">
-              <span className="truncate">{user?.username}</span>
+              <span className="truncate" title={user?.username}>
+                {user?.username}
+              </span>
               {user && <Badge>{t(ROLE_KEY[user.role] ?? 'common.role_viewer')}</Badge>}
             </DropdownMenuLabel>
           </DropdownMenuGroup>
