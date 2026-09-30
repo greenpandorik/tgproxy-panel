@@ -129,6 +129,17 @@ describe('CommandPalette', () => {
     expect(screen.queryByText('Действия')).not.toBeInTheDocument();
   });
 
+  it('runs the first match on Enter once the query narrows the list', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.type(await screen.findByPlaceholderText('Поиск, команды…'), 'применить');
+    await waitFor(() => expect(screen.queryByText('Обзор')).not.toBeInTheDocument());
+    await user.keyboard('{Enter}');
+
+    expect(await screen.findByText('Применить изменения на 2 серверах?')).toBeInTheDocument();
+  });
+
   it('says nothing was found rather than showing empty groups', async () => {
     const user = userEvent.setup();
     renderPalette();

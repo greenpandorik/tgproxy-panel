@@ -52,6 +52,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [applyConfirmOpen, setApplyConfirmOpen] = useState(false);
+  const [selection, setSelection] = useState({ term: '', value: '' });
 
   const nodesQuery = useNodes();
   const nodes = useMemo(() => nodesQuery.data?.items ?? [], [nodesQuery.data]);
@@ -163,6 +164,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     },
   ].filter((action) => matches(action.label));
 
+  const visible = [
+    ...sections.map((item) => `section:${item.to}`),
+    ...matchedNodes.map((node) => `node:${node.id}`),
+    ...matchedKeys.map((k) => `key:${k.id}`),
+    ...actions.map((action) => action.value),
+  ];
+  const selected = selection.term === term && visible.includes(selection.value) ? selection.value : (visible[0] ?? '');
+
   return (
     <>
       <ConfirmDialog
@@ -174,7 +183,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         onConfirm={applyEverywhere}
       />
       <CommandDialog open={open} onOpenChange={setOpen} title={t('command.title')} description={t('command.description')}>
-        <Command shouldFilter={false} loop>
+        <Command shouldFilter={false} loop value={selected} onValueChange={(value) => setSelection({ term, value })}>
           <CommandInput value={query} onValueChange={setQuery} placeholder={t('command.placeholder')} />
           <CommandList>
             <CommandEmpty>{t('command.empty')}</CommandEmpty>
