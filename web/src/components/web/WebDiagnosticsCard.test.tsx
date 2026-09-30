@@ -15,15 +15,34 @@ import type { DiagnosticGroup, DiagnosticsRun } from '@/api/types';
 vi.mock('@/api/web', () => ({ useNodeDiagnostics: vi.fn(), useRunWebDiagnostics: vi.fn() }));
 vi.mock('@/auth/AuthProvider', () => ({ useAuth: vi.fn() }));
 
-const check = (key: string, status: 'ok' | 'warn' | 'fail' | 'not_available', detail: string) => ({ key, status, value: '1', detail });
+const check = (key: string, status: 'ok' | 'warn' | 'fail' | 'not_available', detail: string) => ({
+  key,
+  status,
+  value: '1',
+  detail,
+});
 
 function renderWith(groups: DiagnosticGroup[]) {
   const run: DiagnosticsRun = {
-    id: 1, node_id: 'n1', started_at: '2026-09-28T10:00:00Z', finished_at: '2026-09-28T10:00:05Z',
-    overall_status: 'healthy', trigger: 'manual', groups, passed: 0, total: 0, not_run: 0,
+    id: 1,
+    node_id: 'n1',
+    started_at: '2026-09-28T10:00:00Z',
+    finished_at: '2026-09-28T10:00:05Z',
+    overall_status: 'healthy',
+    trigger: 'manual',
+    groups,
+    passed: 0,
+    total: 0,
+    not_run: 0,
   };
-  vi.mocked(useNodeDiagnostics).mockReturnValue({ data: { items: [run] }, isLoading: false, isError: false } as unknown as ReturnType<typeof useNodeDiagnostics>);
-  vi.mocked(useRunWebDiagnostics).mockReturnValue({ mutate: vi.fn(), isPending: false, isError: false } as unknown as ReturnType<typeof useRunWebDiagnostics>);
+  vi.mocked(useNodeDiagnostics).mockReturnValue({
+    data: { items: [run] },
+    isLoading: false,
+    isError: false,
+  } as unknown as ReturnType<typeof useNodeDiagnostics>);
+  vi.mocked(useRunWebDiagnostics).mockReturnValue({ mutate: vi.fn(), isPending: false, isError: false } as unknown as ReturnType<
+    typeof useRunWebDiagnostics
+  >);
   render(<WebDiagnosticsCard nodeId="n1" />);
 }
 
@@ -35,8 +54,20 @@ describe('WebDiagnosticsCard', () => {
 
   it('leads with what needs attention and keeps passing checks behind a toggle', async () => {
     renderWith([
-      { key: 'telemt', checks: [check('telemt_service', 'ok', 'telemt is running on the node'), check('tls_front_errors', 'warn', 'worth reading (timeout: 300)')] },
-      { key: 'web', checks: [check('http2', 'ok', 'the front negotiates HTTP/2'), check('carrier_selections', 'not_available', 'no family yet')] },
+      {
+        key: 'telemt',
+        checks: [
+          check('telemt_service', 'ok', 'telemt is running on the node'),
+          check('tls_front_errors', 'warn', 'worth reading (timeout: 300)'),
+        ],
+      },
+      {
+        key: 'web',
+        checks: [
+          check('http2', 'ok', 'the front negotiates HTTP/2'),
+          check('carrier_selections', 'not_available', 'no family yet'),
+        ],
+      },
     ]);
 
     expect(screen.getByTestId('diagnostics-summary')).toHaveTextContent('Needs attention: 1');

@@ -81,65 +81,69 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
             ))}
           </div>
         </AdvancedSettings>
-        <AdvancedSettings label={t('reliability.routing_toggle')} defaultOpen={state.policy.egress !== 'unmanaged'} className="border-t border-hairline pt-5">
+        <AdvancedSettings
+          label={t('reliability.routing_toggle')}
+          defaultOpen={state.policy.egress !== 'unmanaged'}
+          className="border-t border-hairline pt-5"
+        >
           <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="egress-mode">{t('reliability.egress')}</Label>
-            <select
-              id="egress-mode"
-              className="ops-select"
-              value={policy.egress}
-              onChange={(e) => {
-                change('egress', e.target.value as RecoveryPolicy['egress']);
-                if (e.target.value === 'unmanaged') change('automatic_failover', false);
-              }}
-            >
-              <option value="unmanaged" disabled={state.policy.egress !== 'unmanaged' && state.active !== 'direct'}>
-                {t('reliability.unmanaged')}
-              </option>
-              <option value="direct">{t('reliability.direct')}</option>
-              <option value="socks5">{t('reliability.socks5')}</option>
-            </select>
-            <p className="max-w-[72ch] text-label text-mute">{t('reliability.egress_hint')}</p>
-          </div>
-          {policy.egress === 'socks5' && (
             <div className="space-y-2">
-              <Label htmlFor="primary-socks">{t('reliability.primary')}</Label>
-              <Input
-                id="primary-socks"
-                placeholder="127.0.0.1:1080"
-                value={policy.socks_address}
-                onChange={(e) => change('socks_address', e.target.value)}
-                required
-              />
+              <Label htmlFor="egress-mode">{t('reliability.egress')}</Label>
+              <select
+                id="egress-mode"
+                className="ops-select"
+                value={policy.egress}
+                onChange={(e) => {
+                  change('egress', e.target.value as RecoveryPolicy['egress']);
+                  if (e.target.value === 'unmanaged') change('automatic_failover', false);
+                }}
+              >
+                <option value="unmanaged" disabled={state.policy.egress !== 'unmanaged' && state.active !== 'direct'}>
+                  {t('reliability.unmanaged')}
+                </option>
+                <option value="direct">{t('reliability.direct')}</option>
+                <option value="socks5">{t('reliability.socks5')}</option>
+              </select>
+              <p className="max-w-[72ch] text-label text-mute">{t('reliability.egress_hint')}</p>
             </div>
-          )}
-          {policy.egress !== 'unmanaged' && (
-            <>
-              <label className="flex items-center gap-3 text-body">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={policy.automatic_failover}
-                  onChange={(e) => change('automatic_failover', e.target.checked)}
+            {policy.egress === 'socks5' && (
+              <div className="space-y-2">
+                <Label htmlFor="primary-socks">{t('reliability.primary')}</Label>
+                <Input
+                  id="primary-socks"
+                  placeholder="127.0.0.1:1080"
+                  value={policy.socks_address}
+                  onChange={(e) => change('socks_address', e.target.value)}
+                  required
                 />
-                {t('reliability.failover')}
-              </label>
-              {policy.automatic_failover && (
-                <div className="space-y-2">
-                  <Label htmlFor="reserve-socks">{t('reliability.reserve')}</Label>
-                  <Input
-                    id="reserve-socks"
-                    placeholder="127.0.0.1:1081"
-                    value={policy.reserve_socks_address}
-                    onChange={(e) => change('reserve_socks_address', e.target.value)}
-                    required
+              </div>
+            )}
+            {policy.egress !== 'unmanaged' && (
+              <>
+                <label className="flex items-center gap-3 text-body">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={policy.automatic_failover}
+                    onChange={(e) => change('automatic_failover', e.target.checked)}
                   />
-                  <p className="text-label text-mute">{t('reliability.reserve_hint')}</p>
-                </div>
-              )}
-            </>
-          )}
+                  {t('reliability.failover')}
+                </label>
+                {policy.automatic_failover && (
+                  <div className="space-y-2">
+                    <Label htmlFor="reserve-socks">{t('reliability.reserve')}</Label>
+                    <Input
+                      id="reserve-socks"
+                      placeholder="127.0.0.1:1081"
+                      value={policy.reserve_socks_address}
+                      onChange={(e) => change('reserve_socks_address', e.target.value)}
+                      required
+                    />
+                    <p className="text-label text-mute">{t('reliability.reserve_hint')}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </AdvancedSettings>
       </fieldset>

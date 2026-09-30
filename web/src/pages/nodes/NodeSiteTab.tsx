@@ -100,7 +100,11 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
           <span className="text-body text-foreground">
-            {isUpstream ? t('sites.upstream_title') : currentTemplate?.display_name ?? currentTemplate?.name ?? (site?.bundle_hash ? t('sites.legacy') : t('nodes.site_none'))}
+            {isUpstream
+              ? t('sites.upstream_title')
+              : (currentTemplate?.display_name ??
+                currentTemplate?.name ??
+                (site?.bundle_hash ? t('sites.legacy') : t('nodes.site_none')))}
           </span>
           {site?.bundle_hash && (
             <>
@@ -116,37 +120,145 @@ export function NodeSiteTab({ nodeId }: { nodeId: string }) {
 
           {isWriter && (
             <div className="flex flex-wrap gap-2 sm:ml-auto">
-              <Button variant="outline" onClick={() => { setPicker(!picker); setUpstreamOpen(false); }} disabled={assignSite.isPending}>{t('sites.change')}</Button>
-              {nodeQuery.data?.engine === 'telemt' && <Button variant="outline" onClick={() => { setUpstreamOpen(!upstreamOpen); setPicker(false); }} disabled={!upstreamSupported || assignUpstream.isPending}><Network />{t('sites.upstream_action')}</Button>}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPicker(!picker);
+                  setUpstreamOpen(false);
+                }}
+                disabled={assignSite.isPending}
+              >
+                {t('sites.change')}
+              </Button>
+              {nodeQuery.data?.engine === 'telemt' && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setUpstreamOpen(!upstreamOpen);
+                    setPicker(false);
+                  }}
+                  disabled={!upstreamSupported || assignUpstream.isPending}
+                >
+                  <Network />
+                  {t('sites.upstream_action')}
+                </Button>
+              )}
             </div>
           )}
         </div>
 
-        {nodeQuery.data && <div className="border-t border-hairline px-4 py-3"><a className="text-brand-ink underline underline-offset-4" href={`https://${nodeQuery.data.hostname}`} target="_blank" rel="noreferrer">https://{nodeQuery.data.hostname}</a></div>}
-        {isUpstream && site.origin && <div className="border-t border-hairline px-4 py-3"><span className="text-label text-mute">{t('sites.upstream_origin')} </span><span className="mono text-mono">{site.origin}</span></div>}
-        {!deployed && site?.bundle_hash && <p className="px-4 pb-4 text-label text-mute" role="status">{t('sites.deploy_pending')}</p>}
-        {jobsQuery.data?.items[0]?.status === 'failed' && !deployed && <p className="px-4 pb-4 text-destructive" role="alert">{t('sites.deploy_failed')}</p>}
-        <details className="border-t border-hairline p-4"><summary className="cursor-pointer text-label text-mute">{t('sites.files')}</summary><ul className="mt-2 text-mono text-mute">{site?.files?.map((f) => <li key={f}>{f}</li>)}</ul></details>
+        {nodeQuery.data && (
+          <div className="border-t border-hairline px-4 py-3">
+            <a
+              className="text-brand-ink underline underline-offset-4"
+              href={`https://${nodeQuery.data.hostname}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              https://{nodeQuery.data.hostname}
+            </a>
+          </div>
+        )}
+        {isUpstream && site.origin && (
+          <div className="border-t border-hairline px-4 py-3">
+            <span className="text-label text-mute">{t('sites.upstream_origin')} </span>
+            <span className="mono text-mono">{site.origin}</span>
+          </div>
+        )}
+        {!deployed && site?.bundle_hash && (
+          <p className="px-4 pb-4 text-label text-mute" role="status">
+            {t('sites.deploy_pending')}
+          </p>
+        )}
+        {jobsQuery.data?.items[0]?.status === 'failed' && !deployed && (
+          <p className="px-4 pb-4 text-destructive" role="alert">
+            {t('sites.deploy_failed')}
+          </p>
+        )}
+        <details className="border-t border-hairline p-4">
+          <summary className="cursor-pointer text-label text-mute">{t('sites.files')}</summary>
+          <ul className="mt-2 text-mono text-mute">
+            {site?.files?.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </details>
       </Panel>
 
-      {upstreamOpen && <Panel>
-        <PanelHeader icon={Network} title={t('sites.upstream_title')} />
-        <form className="space-y-4 p-4" onSubmit={(event) => { event.preventDefault(); void handleAssignUpstream(); }}>
-          <p className="max-w-3xl text-label text-mute">{t('sites.upstream_hint')}</p>
-          <div className="max-w-xl space-y-2">
-            <Label htmlFor="site-upstream-origin">{t('sites.upstream_origin')}</Label>
-            <Input id="site-upstream-origin" className="mono" type="url" required pattern="http://.*" value={origin} onChange={(event) => setOrigin(event.target.value)} aria-describedby="site-upstream-security" />
-            <p id="site-upstream-security" className="text-micro text-mute">{t(upstreamSupported ? 'sites.upstream_security' : 'sites.upstream_unsupported')}</p>
-          </div>
-          {assignUpstream.isError && <p role="alert" className="text-destructive">{assignUpstream.error.message}</p>}
-          <div className="flex flex-wrap gap-2"><Button type="submit" disabled={!upstreamSupported || assignUpstream.isPending}>{t('sites.upstream_test_apply')}</Button><Button type="button" variant="ghost" onClick={() => setUpstreamOpen(false)}>{t('common.cancel')}</Button></div>
-        </form>
-      </Panel>}
+      {upstreamOpen && (
+        <Panel>
+          <PanelHeader icon={Network} title={t('sites.upstream_title')} />
+          <form
+            className="space-y-4 p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleAssignUpstream();
+            }}
+          >
+            <p className="max-w-3xl text-label text-mute">{t('sites.upstream_hint')}</p>
+            <div className="max-w-xl space-y-2">
+              <Label htmlFor="site-upstream-origin">{t('sites.upstream_origin')}</Label>
+              <Input
+                id="site-upstream-origin"
+                className="mono"
+                type="url"
+                required
+                pattern="http://.*"
+                value={origin}
+                onChange={(event) => setOrigin(event.target.value)}
+                aria-describedby="site-upstream-security"
+              />
+              <p id="site-upstream-security" className="text-micro text-mute">
+                {t(upstreamSupported ? 'sites.upstream_security' : 'sites.upstream_unsupported')}
+              </p>
+            </div>
+            {assignUpstream.isError && (
+              <p role="alert" className="text-destructive">
+                {assignUpstream.error.message}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={!upstreamSupported || assignUpstream.isPending}>
+                {t('sites.upstream_test_apply')}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setUpstreamOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+            </div>
+          </form>
+        </Panel>
+      )}
 
-      {picker && <div className="space-y-4">
-        {templatesQuery.isError ? <ErrorState message={templatesQuery.error.message} onRetry={() => void templatesQuery.refetch()} retryLabel={t('common.refresh')} /> : <WebsiteGallery websites={templates} currentId={site?.template_id} onPreview={setPreview} onUse={assignSite.isPending ? undefined : (tpl) => void handleAssign(tpl)} />}
-      </div>}
-      <WebsitePreview website={preview} onClose={() => setPreview(null)} onUse={isWriter ? (tpl) => { setPreview(null); void handleAssign(tpl); } : undefined} />
+      {picker && (
+        <div className="space-y-4">
+          {templatesQuery.isError ? (
+            <ErrorState
+              message={templatesQuery.error.message}
+              onRetry={() => void templatesQuery.refetch()}
+              retryLabel={t('common.refresh')}
+            />
+          ) : (
+            <WebsiteGallery
+              websites={templates}
+              currentId={site?.template_id}
+              onPreview={setPreview}
+              onUse={assignSite.isPending ? undefined : (tpl) => void handleAssign(tpl)}
+            />
+          )}
+        </div>
+      )}
+      <WebsitePreview
+        website={preview}
+        onClose={() => setPreview(null)}
+        onUse={
+          isWriter
+            ? (tpl) => {
+                setPreview(null);
+                void handleAssign(tpl);
+              }
+            : undefined
+        }
+      />
       <Panel>
         <PanelHeader icon={Eye} title={t('nodes.site_preview')} />
         {site?.bundle_hash && !isUpstream ? (

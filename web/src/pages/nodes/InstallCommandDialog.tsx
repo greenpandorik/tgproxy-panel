@@ -24,7 +24,7 @@ const STEPS = ['nodes.install_step1', 'nodes.install_step2', 'nodes.install_step
 // The one line that turns a bare server into a node.
 export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, regenerated, nodeId }: InstallCommandDialogProps) {
   const { t, i18n } = useTranslation();
-  const node = useNode(open ? nodeId ?? '' : '');
+  const node = useNode(open ? (nodeId ?? '') : '');
   const health = useNodeHealth(nodeId ?? '', open && !!node.data?.online);
 
   return (
@@ -41,10 +41,13 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
         <ol className="flex gap-4 border-b border-hairline pb-3 text-label">
           {[1, 2].map((step) => (
             <li key={step} className="flex items-center gap-1.5 text-ok">
-              <span aria-hidden="true">✓</span>{step}. {t(`nodes.wizard_step_${step}`)}
+              <span aria-hidden="true">✓</span>
+              {step}. {t(`nodes.wizard_step_${step}`)}
             </li>
           ))}
-          <li aria-current="step" className="font-semibold text-foreground">3. {t('nodes.wizard_step_3')}</li>
+          <li aria-current="step" className="font-semibold text-foreground">
+            3. {t('nodes.wizard_step_3')}
+          </li>
         </ol>
 
         <div>
@@ -70,12 +73,39 @@ export function InstallCommandDialog({ open, onOpenChange, command, expiresAt, r
           ))}
         </ol>
 
-        {nodeId && <div className="space-y-3 border-t border-hairline pt-4">
-          <p role="status" className="font-medium">{t(node.data?.online ? 'nodes.install_connected' : 'nodes.install_waiting')}</p>
-          {(node.isError || health.isError) && <p role="alert" className="text-destructive">{node.error?.message ?? health.error?.message}</p>}
-          {health.data && <ul className="grid grid-cols-1 gap-2 text-label sm:grid-cols-2">{[['engine', health.data.relay_active], ['caddy', health.data.caddy_active], ['ready', health.data.readyz]].map(([name, ok]) => <li key={String(name)} className={ok ? 'text-ok' : 'text-warn'}>{ok ? '✓' : '○'} {t(`nodes.install_health_${name}`)}</li>)}</ul>}
-          {node.data?.online && <><WebDiagnosticsCard nodeId={nodeId} /><Button nativeButton={false} render={<Link to={`/nodes/${nodeId}`} />}>{t('nodes.install_open')}</Button></>}
-        </div>}
+        {nodeId && (
+          <div className="space-y-3 border-t border-hairline pt-4">
+            <p role="status" className="font-medium">
+              {t(node.data?.online ? 'nodes.install_connected' : 'nodes.install_waiting')}
+            </p>
+            {(node.isError || health.isError) && (
+              <p role="alert" className="text-destructive">
+                {node.error?.message ?? health.error?.message}
+              </p>
+            )}
+            {health.data && (
+              <ul className="grid grid-cols-1 gap-2 text-label sm:grid-cols-2">
+                {[
+                  ['engine', health.data.relay_active],
+                  ['caddy', health.data.caddy_active],
+                  ['ready', health.data.readyz],
+                ].map(([name, ok]) => (
+                  <li key={String(name)} className={ok ? 'text-ok' : 'text-warn'}>
+                    {ok ? '✓' : '○'} {t(`nodes.install_health_${name}`)}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {node.data?.online && (
+              <>
+                <WebDiagnosticsCard nodeId={nodeId} />
+                <Button nativeButton={false} render={<Link to={`/nodes/${nodeId}`} />}>
+                  {t('nodes.install_open')}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
         {regenerated && (
           <p role="alert" className="flex items-start gap-2 text-label text-warn">
             <span className="mt-1 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />

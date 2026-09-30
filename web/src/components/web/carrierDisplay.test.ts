@@ -34,11 +34,7 @@ describe('carrierRows', () => {
   it('treats a carrier the API omitted entirely as absent', () => {
     const rows = carrierRows([api('https', 5, 1)]);
 
-    expect(rows.filter((r) => r.share === null).map((r) => r.carrier)).toEqual([
-      'websocket-lanes',
-      'websocket',
-      'https-lanes',
-    ]);
+    expect(rows.filter((r) => r.share === null).map((r) => r.carrier)).toEqual(['websocket-lanes', 'websocket', 'https-lanes']);
   });
 
   it('reports the whole distribution as absent only when nothing was measured', () => {
@@ -50,7 +46,12 @@ describe('carrierRows', () => {
 describe('drawableRows', () => {
   it('draws only the measured shares, largest first', () => {
     const rows = drawableRows(
-      carrierRows([api('https', 25, 0.25), api('websocket-lanes', 75, 0.75), api('websocket', 0, 0), api('https-lanes', null, null)]),
+      carrierRows([
+        api('https', 25, 0.25),
+        api('websocket-lanes', 75, 0.75),
+        api('websocket', 0, 0),
+        api('https-lanes', null, null),
+      ]),
     );
 
     expect(rows.map((r) => r.carrier)).toEqual(['websocket-lanes', 'https']);

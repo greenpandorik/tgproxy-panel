@@ -9,9 +9,18 @@ import { WebCounters } from './WebCounters';
 import type { WebCarrierStats } from '@/api/types';
 
 const stats = (over: Partial<WebCarrierStats> = {}): WebCarrierStats => ({
-  from: '2026-09-27T10:00:00Z', to: '2026-09-28T10:00:00Z', samples: 1440, counter_resets: 0,
-  carrier_selections: 812, carrier_failures: 0, rejected_attempts: 0, evicted_sessions: 0, bridge_recoveries: 0,
-  learning_entries: 14, carrier_selection_distribution: [], ...over,
+  from: '2026-09-27T10:00:00Z',
+  to: '2026-09-28T10:00:00Z',
+  samples: 1440,
+  counter_resets: 0,
+  carrier_selections: 812,
+  carrier_failures: 0,
+  rejected_attempts: 0,
+  evicted_sessions: 0,
+  bridge_recoveries: 0,
+  learning_entries: 14,
+  carrier_selection_distribution: [],
+  ...over,
 });
 
 beforeEach(() => setLang('en'));

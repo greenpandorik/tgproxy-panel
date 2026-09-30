@@ -136,7 +136,9 @@ export function NodeCheckCard({ node }: { node: Node }) {
         </div>
       ) : (
         (() => {
-          const ordered = CHECK_NAMES.map((name) => results.find((r) => r.name === name)).filter((r): r is NodeCheckResult => Boolean(r));
+          const ordered = CHECK_NAMES.map((name) => results.find((r) => r.name === name)).filter((r): r is NodeCheckResult =>
+            Boolean(r),
+          );
           const failing = ordered.filter((r) => !r.ok);
           const passing = ordered.filter((r) => r.ok);
           return (

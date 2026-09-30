@@ -180,7 +180,9 @@ function JobRow({ job }: { job: ApplyJob }) {
               )
             : DASH}
         </TableCell>
-        <TableCell className={cn('mono text-right text-mono', failed ? 'text-err' : 'text-mute')}>{t(`nodes.job_status_${job.status}`, job.status)}</TableCell>
+        <TableCell className={cn('mono text-right text-mono', failed ? 'text-err' : 'text-mute')}>
+          {t(`nodes.job_status_${job.status}`, job.status)}
+        </TableCell>
       </TableRow>
       {expanded && (
         <TableRow className="hover:bg-transparent">
