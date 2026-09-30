@@ -418,6 +418,7 @@ summary {
   [data-slot='button'],
   [data-slot='input'],
   [data-slot='select-trigger'],
+  .ops-select,
   .panel-nav-link {
     min-height: 44px;
   }
@@ -441,8 +442,8 @@ summary {
 .ops-select {
   display: block;
   width: 100%;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
+  min-height: var(--control-height);
+  padding: 0.25rem 0.625rem;
   border: 1px solid var(--color-hairline-strong);
   border-radius: var(--radius-control);
   background: var(--color-background);
