@@ -22,6 +22,22 @@ import { cn } from '@/lib/utils';
 
 const PER_PAGE = 50;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function EntryTime({ at }: { at: string }) {
+  const { i18n } = useTranslation();
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime()) || d.getFullYear() !== new Date().getFullYear()) {
+    return <>{formatDateTime(at, i18n.language)}</>;
+  }
+  const short = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return (
+    <time dateTime={at} title={formatDateTime(at, i18n.language)}>
+      {short.format(d)}
+    </time>
+  );
+}
+
 /** Fixed action-prefix categories the panel writes audit entries under (see server actions). */
 const ACTION_PREFIXES = ['auth.', 'admin.', 'node.', 'key.', 'site_template.', 'branding.', 'settings.', 'alert.'] as const;
 
@@ -57,11 +73,11 @@ function MetaCell({ meta }: { meta: unknown }) {
   const { t } = useTranslation();
 
   return (
-    <div className="flex max-w-72 items-center gap-1">
-      <span className="mono min-w-0 flex-1 truncate text-mono text-mute">{metaCompact(meta)}</span>
+    <div className="flex max-w-96 items-center gap-1">
+      <span className="mono min-w-0 truncate text-mono text-mute">{metaCompact(meta)}</span>
       {hasMeta(meta) && (
         <Popover>
-          <PopoverTrigger render={<Button type="button" variant="ghost" size="icon-xs" className="-mr-1 shrink-0" />}>
+          <PopoverTrigger render={<Button type="button" variant="ghost" size="icon-xs" className="-my-1 shrink-0" />}>
             <Info />
             <span className="sr-only">{t('audit.details')}</span>
           </PopoverTrigger>
@@ -82,7 +98,7 @@ function TargetCell({ type, id, names }: { type: string; id: string; names: Read
   const typeKey = `audit.target.${type}`;
   const name = names.get(id);
   return (
-    <span className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap">
+    <span className="flex max-w-56 min-w-0 items-baseline gap-1.5 whitespace-nowrap">
       {type && <span className="text-label text-mute">{i18n.exists(typeKey) ? t(typeKey) : type}</span>}
       {id &&
         (name ? (
@@ -91,9 +107,19 @@ function TargetCell({ type, id, names }: { type: string; id: string; names: Read
           </span>
         ) : (
           <span className="mono truncate text-mono text-mute" title={id}>
-            {id.slice(0, 8)}
+            {UUID.test(id) ? id.slice(0, 8) : id}
           </span>
         ))}
+    </span>
+  );
+}
+
+function Actor({ username, ip }: { username?: string; ip: string }) {
+  const { t } = useTranslation();
+  return (
+    <span className="flex items-baseline gap-2 whitespace-nowrap">
+      <span className="text-label text-foreground">{username || t('audit.system_user')}</span>
+      {ip && <span className="mono text-mono text-mute">{ip}</span>}
     </span>
   );
 }
@@ -115,7 +141,7 @@ function ActionName({ action }: { action: string }) {
 }
 
 export function AuditPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const nodesQuery = useNodes();
   const names = useMemo(() => new Map((nodesQuery.data?.items ?? []).map((n) => [n.id, n.name])), [nodesQuery.data]);
 
@@ -232,7 +258,7 @@ export function AuditPage() {
       </div>
 
       {isLoading ? (
-        <DataTableSkeleton columns={6} rows={8} />
+        <DataTableSkeleton columns={5} rows={8} />
       ) : auditQuery.isError ? (
         /* A failed page of the log is not an empty one: say which it was, and
            offer the ask-again the filters above cannot do on their own. */
@@ -266,25 +292,25 @@ export function AuditPage() {
                     <TableHead>{t('audit.column_user')}</TableHead>
                     <TableHead>{t('audit.column_action')}</TableHead>
                     <TableHead>{t('audit.column_target')}</TableHead>
-                    <TableHead>{t('audit.column_ip')}</TableHead>
                     <TableHead className="pr-4">{t('audit.column_meta')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="mono pl-4 text-mono text-mute">
-                        {formatDateTime(entry.created_at, i18n.language)}
+                      <TableCell className="mono pl-4 text-mono whitespace-nowrap text-mute">
+                        <EntryTime at={entry.created_at} />
                       </TableCell>
-                      <TableCell className="text-label text-foreground">{entry.username || t('audit.system_user')}</TableCell>
+                      <TableCell>
+                        <Actor username={entry.username} ip={entry.ip} />
+                      </TableCell>
                       <TableCell>
                         <ActionName action={entry.action} />
                       </TableCell>
                       <TableCell>
                         <TargetCell type={entry.target_type} id={entry.target_id} names={names} />
                       </TableCell>
-                      <TableCell className="mono text-mono text-mute">{entry.ip || '—'}</TableCell>
-                      <TableCell className="pr-4">
+                      <TableCell className="w-full max-w-0 pr-4">
                         <MetaCell meta={entry.meta} />
                       </TableCell>
                     </TableRow>
@@ -298,12 +324,13 @@ export function AuditPage() {
                 <li key={entry.id} className="space-y-1.5 px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <ActionName action={entry.action} />
-                    <span className="mono shrink-0 text-mono text-mute">{formatDateTime(entry.created_at, i18n.language)}</span>
+                    <span className="mono shrink-0 text-mono text-mute">
+                      <EntryTime at={entry.created_at} />
+                    </span>
                   </div>
                   <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="text-label text-foreground">{entry.username || t('audit.system_user')}</span>
+                    <Actor username={entry.username} ip={entry.ip} />
                     <TargetCell type={entry.target_type} id={entry.target_id} names={names} />
-                    {entry.ip && <span className="mono text-mono text-mute">{entry.ip}</span>}
                   </div>
                   {hasMeta(entry.meta) && <MetaCell meta={entry.meta} />}
                 </li>

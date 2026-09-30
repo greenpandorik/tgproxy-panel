@@ -1005,7 +1005,6 @@
     "column_user": "Учётная запись",
     "column_action": "Действие",
     "column_target": "Объект",
-    "column_ip": "IP",
     "column_meta": "Детали",
     "details": "Подробнее",
     "system_user": "Система",
@@ -1068,7 +1067,11 @@
       "site_template_import": "Импортирован шаблон сайта",
       "site_template_update": "Изменён шаблон сайта",
       "key_disable": "Доступ выключен",
-      "key_enable": "Доступ включён"
+      "key_enable": "Доступ включён",
+      "auth_totp_reset": "Сброшена 2FA",
+      "settings_subscription_service": "Изменён сервис подписки",
+      "settings_subscription_service_token": "Выпущен токен сервиса подписки",
+      "settings_subscription_service_token_revoke": "Отозван токен сервиса подписки"
     },
     "target": {
       "node": "Сервер",

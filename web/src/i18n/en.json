@@ -999,7 +999,6 @@
     "column_user": "Account",
     "column_action": "Action",
     "column_target": "Target",
-    "column_ip": "IP",
     "column_meta": "Details",
     "details": "Details",
     "system_user": "System",
@@ -1062,7 +1061,11 @@
       "site_template_import": "Site template imported",
       "site_template_update": "Site template changed",
       "key_disable": "Access turned off",
-      "key_enable": "Access turned on"
+      "key_enable": "Access turned on",
+      "auth_totp_reset": "2FA reset",
+      "settings_subscription_service": "Subscription service changed",
+      "settings_subscription_service_token": "Subscription service token issued",
+      "settings_subscription_service_token_revoke": "Subscription service token revoked"
     },
     "target": {
       "node": "Server",
