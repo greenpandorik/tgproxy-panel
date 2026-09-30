@@ -29,19 +29,21 @@ type Config struct {
 	OldMasterKeys      map[int][]byte // MASTER_KEY_V<n>=base64 for decrypting older versions
 	SessionSecret      []byte
 	PublicURL          string // e.g. https://panel.example.com, no trailing slash
-	DataDir            string
-	NodeDriver         string // gateway | mock
-	MetricsToken       string
-	TProxyCommit       string
-	TelemtVersion      string
-	TelemtSHA256       string
-	FeatureTOTP        bool
-	LogLevel           string
-	ApplyInterval      int // seconds
-	OfflineAfter       int // seconds
-	GitHubRepo         string
-	GitHubToken        string
-	UpdateCheck        bool
+	// SubpageDomain is the second domain install.sh --sub-domain points at this server; only subscription pages are served there.
+	SubpageDomain string
+	DataDir       string
+	NodeDriver    string // gateway | mock
+	MetricsToken  string
+	TProxyCommit  string
+	TelemtVersion string
+	TelemtSHA256  string
+	FeatureTOTP   bool
+	LogLevel      string
+	ApplyInterval int // seconds
+	OfflineAfter  int // seconds
+	GitHubRepo    string
+	GitHubToken   string
+	UpdateCheck   bool
 }
 
 const (
@@ -64,6 +66,7 @@ func Load(getenv func(string) string) (Config, error) {
 		HTTPAddr:      get("PANEL_HTTP_ADDR", ":8080"),
 		DatabaseURL:   get("DATABASE_URL", ""),
 		PublicURL:     strings.TrimRight(get("PANEL_PUBLIC_URL", "http://localhost:8080"), "/"),
+		SubpageDomain: strings.ToLower(strings.TrimSpace(get("SUBPAGE_DOMAIN", ""))),
 		DataDir:       get("DATA_DIR", "./data"),
 		NodeDriver:    get("NODE_DRIVER", "gateway"),
 		MetricsToken:  get("METRICS_TOKEN", ""),

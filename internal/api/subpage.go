@@ -107,14 +107,19 @@ func normalizePublicURL(raw string) (string, bool) {
 	return u.Scheme + "://" + strings.ToLower(u.Host), true
 }
 
-// onSubscriptionHost reports whether the request came in on the separate subscription domain.
+// onSubscriptionHost reports whether the request came in on the separate subscription domain:
+// the one saved under Subscription → Service, or the one install.sh --sub-domain pointed here.
 func (s *Server) onSubscriptionHost(r *http.Request) bool {
+	host, panel := requestHost(r), hostOf(s.cfg.PublicURL)
+	if d := s.cfg.SubpageDomain; d != "" && d != panel && host == d {
+		return true
+	}
 	svc := s.serviceSettings(r.Context())
 	if svc.PublicURL == "" {
 		return false
 	}
 	h := hostOf(svc.PublicURL)
-	return h != "" && h != hostOf(s.cfg.PublicURL) && requestHost(r) == h
+	return h != "" && h != panel && host == h
 }
 
 // subscriptionHostGuard keeps the panel itself off the subscription domain when both share a server.

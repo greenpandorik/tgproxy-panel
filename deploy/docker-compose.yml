@@ -1,5 +1,6 @@
 services:
   postgres:
+    restart: unless-stopped
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: tgwp
@@ -15,6 +16,7 @@ services:
       retries: 10
 
   panel:
+    restart: unless-stopped
     # To run a published image instead of building from this checkout, replace
     # the build block with:  image: ghcr.io/greenpandorik/tgproxy-panel:1.6.0
     build:
@@ -45,6 +47,7 @@ services:
       start_period: 10s
 
   caddy:
+    restart: unless-stopped
     image: caddy:2-alpine
     ports: ["80:80", "443:443"]
     environment:

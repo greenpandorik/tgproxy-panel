@@ -2790,7 +2790,7 @@
     "unsaved": "Есть несохранённые изменения",
     "create_title_batch": "Несколько пользователей",
     "card_names": "Имена",
-    "tile_expiring_context": "в ближайшие 7 дней",
+    "tile_expiring_context": "за неделю",
     "reset_filters": "Сбросить фильтры",
     "extend_month": "Продлить на месяц",
     "extended": "Продлено до {{date}}",

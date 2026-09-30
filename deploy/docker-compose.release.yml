@@ -12,6 +12,7 @@
 #          docker compose -f docker-compose.yml -f docker-compose.local.yml up -d   locally.
 services:
   postgres:
+    restart: unless-stopped
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: tgwp
@@ -27,6 +28,7 @@ services:
       retries: 10
 
   panel:
+    restart: unless-stopped
     image: ${PANEL_IMAGE:-ghcr.io/greenpandorik/tgproxy-panel:${PANEL_VERSION:-latest}}
     env_file: .env
     environment:
@@ -53,6 +55,7 @@ services:
       start_period: 10s
 
   caddy:
+    restart: unless-stopped
     image: caddy:2-alpine
     profiles: [caddy]
     ports: ["80:80", "443:443"]

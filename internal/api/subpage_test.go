@@ -6,6 +6,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"tgwebproxy/internal/api"
+	"tgwebproxy/internal/api/apitest"
 )
 
 type serviceResp struct {
@@ -100,5 +103,25 @@ func TestSubscriptionPagesOnTheirOwnDomain(t *testing.T) {
 	}
 	if resp := svc.Get("/api/v1/subpage/pages/" + token); resp.StatusCode != 401 {
 		t.Fatalf("a revoked service token still works: %d", resp.StatusCode)
+	}
+}
+
+func TestSecondDomainShowsOnlyPagesBeforeItIsSaved(t *testing.T) {
+	h := apitest.New(t, func(d *api.Deps) { d.Cfg.SubpageDomain = "sub.example.org" })
+	onSub := func(path string) int {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Host = "sub.example.org"
+		rec := httptest.NewRecorder()
+		h.Router().ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if code := onSub("/login"); code != 404 {
+		t.Fatalf("the panel must stay hidden on the page domain even before it is saved: %d", code)
+	}
+	if code := onSub("/s/unknown"); code != 404 {
+		t.Fatalf("pages are still answered there: %d", code)
+	}
+	if code := onSub("/healthz"); code != 200 {
+		t.Fatalf("healthz on the page domain: %d", code)
 	}
 }

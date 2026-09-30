@@ -72,8 +72,8 @@ const STATE_FILTERS: StateFilter[] = ['all', 'active', 'pending', 'expiring', 'e
 
 const COLUMNS = ['link', 'type', 'servers', 'traffic', 'online', 'expires', 'created'] as const;
 type Column = (typeof COLUMNS)[number];
-const DEFAULT_COLUMNS: Column[] = ['link', 'type', 'servers', 'traffic', 'online', 'expires'];
-const COLUMNS_STORAGE = 'tgwp-users-columns';
+const DEFAULT_COLUMNS: Column[] = ['link', 'servers', 'traffic', 'online', 'expires'];
+const COLUMNS_STORAGE = 'tgwp-users-columns-v2';
 
 function loadColumns(): Set<Column> {
   try {
@@ -142,9 +142,13 @@ function ServerChips({ nodes }: { nodes: AccessKey['nodes'] }) {
 }
 
 function UserName({ user }: { user: AccessKey }) {
+  const { t } = useTranslation();
   return (
     <span className="block min-w-0">
-      <span className="block truncate text-body font-medium text-foreground">{user.label}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="truncate text-body font-medium text-foreground">{user.label}</span>
+        {user.type === 'SHARED' && <Badge className="shrink-0">{t('keys.type_shared')}</Badge>}
+      </span>
       {(user.owner_label || user.sub_slug) && (
         <span className="block truncate text-label text-mute">
           {user.owner_label}

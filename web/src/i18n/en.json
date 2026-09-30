@@ -2784,7 +2784,7 @@
     "unsaved": "Unsaved changes",
     "create_title_batch": "Several users",
     "card_names": "Names",
-    "tile_expiring_context": "within 7 days",
+    "tile_expiring_context": "within a week",
     "reset_filters": "Reset filters",
     "extend_month": "Extend by a month",
     "extended": "Extended until {{date}}",
