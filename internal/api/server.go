@@ -116,7 +116,7 @@ func New(d Deps) *Server {
 // Handler builds the panel router.
 func (s *Server) Handler() chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.Recoverer, denyFraming, securityHeaders, withIP, s.subscriptionHostGuard, s.loadSession, s.accessLog)
+	r.Use(middleware.RequestID, middleware.Recoverer, denyFraming, securityHeaders, s.withIP, s.subscriptionHostGuard, s.loadSession, s.accessLog)
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
 	r.Get("/metrics", s.handleMetrics)
 	r.Get("/s/{token}", s.handleSubscriptionPage)

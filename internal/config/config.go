@@ -31,19 +31,21 @@ type Config struct {
 	PublicURL          string // e.g. https://panel.example.com, no trailing slash
 	// SubpageDomain is the second domain install.sh --sub-domain points at this server; only subscription pages are served there.
 	SubpageDomain string
-	DataDir       string
-	NodeDriver    string // gateway | mock
-	MetricsToken  string
-	TProxyCommit  string
-	TelemtVersion string
-	TelemtSHA256  string
-	FeatureTOTP   bool
-	LogLevel      string
-	ApplyInterval int // seconds
-	OfflineAfter  int // seconds
-	GitHubRepo    string
-	GitHubToken   string
-	UpdateCheck   bool
+	// TrustForwardedFor lets X-Forwarded-For name the client. Off when nothing in front rewrites it.
+	TrustForwardedFor bool
+	DataDir           string
+	NodeDriver        string // gateway | mock
+	MetricsToken      string
+	TProxyCommit      string
+	TelemtVersion     string
+	TelemtSHA256      string
+	FeatureTOTP       bool
+	LogLevel          string
+	ApplyInterval     int // seconds
+	OfflineAfter      int // seconds
+	GitHubRepo        string
+	GitHubToken       string
+	UpdateCheck       bool
 }
 
 const (
@@ -63,22 +65,23 @@ func Load(getenv func(string) string) (Config, error) {
 		ProbeToken: get("PROBE_TOKEN", ""), ProbeLocations: strings.FieldsFunc(get("PROBE_LOCATIONS", ""), func(r rune) bool { return r == ',' || r == ' ' }),
 		BackupRecipient: get("BACKUP_AGE_RECIPIENT", ""), BackupUploadURL: get("BACKUP_UPLOAD_URL", ""), BackupUploadToken: get("BACKUP_UPLOAD_TOKEN", ""), BackupVerify: get("BACKUP_VERIFY", "false") == "true",
 		AlertWebhookURL: get("ALERT_WEBHOOK_URL", ""), AlertWebhookSecret: get("ALERT_WEBHOOK_SECRET", ""),
-		HTTPAddr:      get("PANEL_HTTP_ADDR", ":8080"),
-		DatabaseURL:   get("DATABASE_URL", ""),
-		PublicURL:     strings.TrimRight(get("PANEL_PUBLIC_URL", "http://localhost:8080"), "/"),
-		SubpageDomain: strings.ToLower(strings.TrimSpace(get("SUBPAGE_DOMAIN", ""))),
-		DataDir:       get("DATA_DIR", "./data"),
-		NodeDriver:    get("NODE_DRIVER", "gateway"),
-		MetricsToken:  get("METRICS_TOKEN", ""),
-		TProxyCommit:  get("TPROXY_COMMIT", DefaultTProxyCommit),
-		TelemtVersion: get("TELEMT_VERSION", DefaultTelemtVersion),
-		TelemtSHA256:  strings.ToLower(get("TELEMT_SHA256_X86_64", "")),
-		FeatureTOTP:   get("FEATURE_TOTP", "true") == "true",
-		LogLevel:      get("LOG_LEVEL", "info"),
-		OldMasterKeys: map[int][]byte{},
-		GitHubRepo:    get("GITHUB_REPO", DefaultGitHubRepo),
-		GitHubToken:   get("GITHUB_TOKEN", ""),
-		UpdateCheck:   get("UPDATE_CHECK", "true") != "false",
+		HTTPAddr:          get("PANEL_HTTP_ADDR", ":8080"),
+		DatabaseURL:       get("DATABASE_URL", ""),
+		PublicURL:         strings.TrimRight(get("PANEL_PUBLIC_URL", "http://localhost:8080"), "/"),
+		SubpageDomain:     strings.ToLower(strings.TrimSpace(get("SUBPAGE_DOMAIN", ""))),
+		DataDir:           get("DATA_DIR", "./data"),
+		NodeDriver:        get("NODE_DRIVER", "gateway"),
+		MetricsToken:      get("METRICS_TOKEN", ""),
+		TProxyCommit:      get("TPROXY_COMMIT", DefaultTProxyCommit),
+		TelemtVersion:     get("TELEMT_VERSION", DefaultTelemtVersion),
+		TelemtSHA256:      strings.ToLower(get("TELEMT_SHA256_X86_64", "")),
+		FeatureTOTP:       get("FEATURE_TOTP", "true") == "true",
+		TrustForwardedFor: get("TRUST_FORWARDED_FOR", "true") == "true",
+		LogLevel:          get("LOG_LEVEL", "info"),
+		OldMasterKeys:     map[int][]byte{},
+		GitHubRepo:        get("GITHUB_REPO", DefaultGitHubRepo),
+		GitHubToken:       get("GITHUB_TOKEN", ""),
+		UpdateCheck:       get("UPDATE_CHECK", "true") != "false",
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("DATABASE_URL is required")

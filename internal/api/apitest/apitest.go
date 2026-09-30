@@ -62,7 +62,7 @@ func New(t *testing.T, opts ...Option) *Harness {
 	key := bytes.Repeat([]byte{7}, 32)
 	box, _ := crypto.NewBox(1, map[int][]byte{1: key})
 	cfg := config.Config{
-		PublicURL: "http://panel.test", DataDir: t.TempDir(), NodeDriver: "mock",
+		PublicURL: "http://panel.test", DataDir: t.TempDir(), NodeDriver: "mock", TrustForwardedFor: true,
 		MasterKey: key, MasterKeyVersion: 1, SessionSecret: key, TProxyCommit: config.DefaultTProxyCommit,
 		TelemtVersion: config.DefaultTelemtVersion, TelemtSHA256: strings.Repeat("5c", 32),
 		ApplyInterval: 45, OfflineAfter: 90,

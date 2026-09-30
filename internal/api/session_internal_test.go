@@ -29,9 +29,18 @@ func TestClientIPIgnoresClientSuppliedForwardedEntries(t *testing.T) {
 			for _, v := range tc.forwarded {
 				r.Header.Add("X-Forwarded-For", v)
 			}
-			if got := clientIP(r); got != tc.want {
+			if got := clientIP(r, true); got != tc.want {
 				t.Fatalf("clientIP = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestClientIPIgnoresForwardedWhenNothingRewritesIt(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = "172.17.0.1:5555"
+	r.Header.Set("X-Forwarded-For", "10.83.0.1")
+	if got := clientIP(r, false); got != "172.17.0.1" {
+		t.Fatalf("a client-sent X-Forwarded-For must not choose the address: %s", got)
 	}
 }

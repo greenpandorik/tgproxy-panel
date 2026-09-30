@@ -898,6 +898,7 @@ The panel reads its settings from `.env`. The file `.env.example` lists them all
 | `TELEMT_VERSION` | `3.5.9` | The telemt release for telemt servers, like `3.5.7` |
 | `TELEMT_SHA256_X86_64` | none, filled in `.env.example` | sha256 of `telemt-x86_64-linux-gnu.tar.gz` for that release. Required with `gateway`. Change it together with `TELEMT_VERSION` |
 | `FEATURE_TOTP` | `true` | `false` hides two-factor login |
+| `TRUST_FORWARDED_FOR` | `true` | Take the visitor's IP from `X-Forwarded-For`. Right when Caddy sits in front, since it rewrites the header. Local mode without Caddy sets `false`, otherwise the login attempt limit could be bypassed with a forged header |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `APPLY_INTERVAL` | `45` | Seconds between applies to servers with changes. Settings → Notifications can override it |
 | `OFFLINE_AFTER` | `90` | Seconds without a heartbeat before a server is offline. Settings → Notifications can override it |

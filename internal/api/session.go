@@ -47,8 +47,8 @@ func ipFrom(ctx context.Context) string {
 	return s
 }
 
-func clientIP(r *http.Request) string {
-	if values := r.Header.Values("X-Forwarded-For"); len(values) > 0 {
+func clientIP(r *http.Request, trustForwarded bool) string {
+	if values := r.Header.Values("X-Forwarded-For"); trustForwarded && len(values) > 0 {
 		last := values[len(values)-1]
 		if i := strings.LastIndex(last, ","); i >= 0 {
 			last = last[i+1:]
@@ -71,9 +71,9 @@ func clientIP(r *http.Request) string {
 }
 
 // withIP stores the client IP in the context for audit and rate limiting.
-func withIP(next http.Handler) http.Handler {
+func (s *Server) withIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxIP, clientIP(r))))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxIP, clientIP(r, s.cfg.TrustForwardedFor))))
 	})
 }
 
