@@ -153,6 +153,9 @@ func (s *Server) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 		for k, v := range req.SubscriptionPage.Normalized().Validate() {
 			fields[k] = v
 		}
+		if s.hidesEveryServer(r.Context(), req.SubscriptionPage.HiddenNodes) {
+			fields["subscription_page.hidden_nodes"] = "keep at least one server"
+		}
 	}
 	if t := req.TelegramAlerts; t != nil && t.Language != nil && *t.Language != string(alerttext.RU) && *t.Language != string(alerttext.EN) {
 		fields["telegram_alerts.language"] = "must be ru or en"

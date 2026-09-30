@@ -339,6 +339,15 @@ func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
 		t.Fatalf("preview %d: %.300s", preview.StatusCode, html)
 	}
 
+	all := []string{}
+	for _, n := range nodes.Items {
+		all = append(all, n.ID)
+	}
+	settings["hidden_nodes"] = all
+	if resp := c.Put("/api/v1/settings", map[string]any{"subscription_page": settings}); resp.StatusCode != 422 {
+		t.Fatalf("hiding every server was accepted: %d", resp.StatusCode)
+	}
+	settings["hidden_nodes"] = []string{hidden}
 	settings["show_web"], settings["show_fake_tls"] = false, false
 	if resp := c.Put("/api/v1/settings", map[string]any{"subscription_page": settings}); resp.StatusCode != 422 {
 		t.Fatalf("hiding every link kind was accepted: %d", resp.StatusCode)

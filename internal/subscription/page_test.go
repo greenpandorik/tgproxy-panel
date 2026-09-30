@@ -95,7 +95,7 @@ func TestSettingsHideLinksServersAndBlocks(t *testing.T) {
 
 func TestBackupDomainsGetTheirOwnLabel(t *testing.T) {
 	_, out := build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Android, nil)
-	if !strings.Contains(out, "Fake-TLS, backup.example.org") {
+	if !strings.Contains(out, "Standard link, backup domain backup.example.org") {
 		t.Fatal("the backup domain link is not labelled with its domain")
 	}
 }
@@ -105,13 +105,16 @@ func TestLanguageStatusAndTitles(t *testing.T) {
 	s := subscription.DefaultSettings()
 	s.Title, s.Intro = "Мой прокси", "Привет!"
 	_, ru := build(t, s, alerttext.RU, subscription.Android, &expires)
-	for _, want := range []string{`lang="ru"`, "Мой прокси", "Привет!", "Доступ активен", "до 31 декабря 2026", "Установите Telegram", "Подключить", "Открыть Google Play"} {
+	for _, want := range []string{
+		`lang="ru"`, "Мой прокси", "Привет!", "Доступ активен", "до 31 декабря 2026", "Установите Telegram", "Подключить", "Открыть Google Play",
+		"«Соединение…»", "«Настройки прокси»", "Если не подключается", `href="?lang=en"`, "Серверов несколько",
+	} {
 		if !strings.Contains(ru, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
 	_, en := build(t, subscription.DefaultSettings(), alerttext.EN, subscription.Desktop, nil)
-	for _, want := range []string{`lang="en"`, "<title>Demo</title>", "with no end date", "Download Telegram Desktop", "Connection type", "Won&#39;t connect? Try Fake-TLS"} {
+	for _, want := range []string{`lang="en"`, "<title>Demo</title>", "with no end date", "Download Telegram Desktop", "Connection type", "Didn&#39;t connect within a minute? Try another way", "opens Telegram Desktop"} {
 		if !strings.Contains(en, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -164,5 +167,26 @@ func TestErrorPageIsTranslated(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, `lang="en"`) || !strings.Contains(out, "This link was not found.") || strings.Contains(out, "<script") {
 		t.Fatalf("error page: %s", out)
+	}
+}
+
+func TestIPhoneTabHidesWebLinksAndVisitorLanguageWins(t *testing.T) {
+	_, out := build(t, subscription.DefaultSettings(), alerttext.RU, subscription.IOS, nil)
+	for _, want := range []string{`<body data-platform="ios">`, `data-kind="web"`, `data-web-only`, `body[data-platform="ios"] .lnk[data-kind="web"]`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if subscription.PageLang("en", "ru", "ru-RU") != alerttext.EN || subscription.PageLang("", "ru", "en-US") != alerttext.RU {
+		t.Fatal("the visitor's ?lang= must win, and the owner's fixed language otherwise")
+	}
+}
+
+func TestNoQRMeansNoTalkOfScanning(t *testing.T) {
+	s := subscription.DefaultSettings()
+	s.ShowQR = false
+	_, out := build(t, s, alerttext.RU, subscription.Android, nil)
+	if strings.Contains(out, "QR-код") || !strings.Contains(out, "Все ссылки") {
+		t.Fatal("without QR codes the block should not mention them")
 	}
 }

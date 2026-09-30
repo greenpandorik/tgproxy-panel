@@ -443,7 +443,7 @@
   "keys": {
     "title": "Keys",
     "create": "New key",
-    "client_support_title": "Client support",
+    "client_support_title": "WEB link support",
     "client_support": "Works in Telegram Desktop. Android is experimental. iOS is planned.",
     "platform_desktop": "Desktop",
     "platform_android": "Android",
@@ -631,7 +631,7 @@
     "subscription_rotate_success": "Subscription link rotated",
     "subscription_revoke_success": "Subscription link revoked",
     "subscription_rotate_confirm_title": "Rotate the subscription link?",
-    "subscription_rotate_confirm_description": "The old link stops working. Devices already connected through it will need the new one.",
+    "subscription_rotate_confirm_description": "The old subscription page link stops opening, so send the new one around. Proxies already added in Telegram keep working.",
     "header_total": "{{count}} total",
     "danger_zone": "Danger zone",
     "show_links": "Connection links",
@@ -1237,9 +1237,9 @@
     "subpage_intro_hint": "A short text under the title. Leave empty for the standard text in the page language.",
     "subpage_links": "Which links to show",
     "subpage_show_fake_tls": "Fake-TLS",
-    "subpage_show_fake_tls_hint": "Works in every Telegram app.",
+    "subpage_show_fake_tls_hint": "The standard link: works in every Telegram app.",
     "subpage_show_web": "WEB proxy",
-    "subpage_show_web_hint": "Harder to block, but for now it only works in Telegram Desktop and recent Android versions. It isn't shown on iPhone.",
+    "subpage_show_web_hint": "The link over HTTPS: harder to block, but it only works in Telegram Desktop and recent Android versions. Never shown on the iPhone tab.",
     "subpage_show_backup": "Backup domains",
     "subpage_show_backup_hint": "Extra Fake-TLS links on the servers' backup domains, in the All links block.",
     "subpage_links_required": "Keep at least one kind of link: Fake-TLS or the WEB proxy.",
@@ -1253,9 +1253,12 @@
     "subpage_preview": "Preview",
     "subpage_preview_hint": "An example with your servers and fake secrets. Changes show up right away, before you save.",
     "subpage_preview_open": "Open separately",
-    "subpage_platform": "Device shown first",
-    "subpage_platform_hint": "Visitors can always switch the tab themselves.",
-    "subpage_platform_auto": "Detect from the visitor's device"
+    "subpage_platform": "Tab shown first",
+    "subpage_platform_hint": "The chosen tab opens for everyone, and visitors can switch it themselves. If your people use a mix of Android, iPhone and computers, pick \"Detect from the visitor's device\".",
+    "subpage_platform_auto": "Detect from the visitor's device",
+    "subpage_no_tls_warning": "Without Fake-TLS, iPhone users get no link on the page.",
+    "subpage_servers_required": "Keep at least one server on the page.",
+    "subpage_title_count": "{{count}} of 80"
   },
   "drafts": {
     "banner": "Draft from <time>{{time}}</time>",
@@ -2308,7 +2311,7 @@
       },
       "settings.subscription": {
         "title": "Subscription page",
-        "intro": "The public page a person opens from their key's subscription link. Choose here what it shows; the preview on the right shows each device.",
+        "intro": "The public page a person opens from their key's subscription link. Choose here what it shows. The live preview on the right has working device tabs.",
         "fields": {
           "language": {
             "name": "Page language",
@@ -2316,7 +2319,7 @@
           },
           "title": {
             "name": "Title and greeting",
-            "what": "The text at the top of the page. Empty fields fall back to the panel name and the standard greeting."
+            "what": "The text at the top of the page. Your own greeting replaces the standard one entirely. Empty fields fall back to the panel name and the standard greeting."
           },
           "links": {
             "name": "Which links to show",
@@ -2331,7 +2334,7 @@
             "what": "An unticked server appears on no subscription page, but keys on it keep working. Handy for hiding a test or a spare server."
           },
           "platform": {
-            "name": "Device shown first",
+            "name": "Tab shown first",
             "what": "Which tab is open when a person arrives: Android, iPhone and iPad, or Computer. Android by default. \"Detect from the visitor's device\" picks the tab from the phone or computer the link is opened on."
           }
         }
@@ -2554,7 +2557,7 @@
     "status_active": "Access is active",
     "status_until": "until {{date}}",
     "status_forever": "with no end date",
-    "intro_default": "This is your access to Telegram through a proxy. Pick your device and follow the three steps.",
+    "intro_default": "This is your access to Telegram through a proxy. Pick your device and press \"Connect\".",
     "device": "Your device",
     "platform_android": "Android",
     "platform_ios": "iPhone, iPad",
@@ -2566,24 +2569,34 @@
     "store_android": "Open Google Play",
     "store_ios": "Open the App Store",
     "store_desktop": "Download Telegram Desktop",
-    "step2_title": "Add the proxy",
-    "step2_text": "Tap \"Connect\" next to a server. If there are several, start with the one closest to you; the others help if it stops working.",
+    "step2_title": "Press \"Connect\"",
+    "step2_text": "The button opens Telegram with the proxy settings already filled in.",
     "connect": "Connect",
-    "alt": "Won't connect? Try {{label}}",
-    "step3_title": "Confirm in Telegram",
-    "step3_mobile": "Telegram asks whether to connect the proxy. Tap \"Connect\". You can check it in Telegram's settings under \"Data and Storage\" → \"Proxy\".",
-    "step3_desktop": "Telegram asks whether to connect the proxy. Click \"Connect\". You can check it in Telegram Desktop under \"Settings\" → \"Advanced\" → \"Connection type\".",
+    "alt": "Didn't connect within a minute? Try another way",
+    "step3_title": "Confirm and check",
     "all_links": "All links and QR codes",
-    "all_links_hint": "Scan a QR code with a phone camera, or copy a link and open it where Telegram is installed.",
-    "label_web": "WEB proxy",
-    "label_tls": "Fake-TLS",
-    "label_tls_domain": "Fake-TLS, {{domain}}",
+    "all_links_hint": "To connect another device, point its camera at a QR code. You can also copy a link and send it to yourself.",
+    "label_web": "Link over HTTPS",
+    "label_tls": "Standard link",
+    "label_tls_domain": "Standard link, backup domain {{domain}}",
     "copy": "Copy",
     "copied": "Copied",
     "open": "Open in Telegram",
     "empty": "There are no servers for this access yet.",
     "support": "Contact support",
     "error_not_found": "This link was not found.",
-    "error_gone": "This link is no longer valid."
+    "error_gone": "This link is no longer valid.",
+    "step2_text_desktop": "The button opens Telegram Desktop with the proxy settings already filled in.",
+    "step2_many": "There are several servers: press the top button. The others help if that server stops working.",
+    "step3_confirm": "Telegram asks whether to connect the proxy. Press \"Connect\".",
+    "step3_success": "You are done when messages load again and the top of the screen no longer says \"Connecting…\" or \"Waiting for network\".",
+    "step3_check_android": "To check in Telegram: ☰ (three lines, top left) → \"Settings\" → \"Data and Storage\" → \"Proxy Settings\". The server there says \"Connected\".",
+    "step3_check_ios": "To check in Telegram: \"Settings\" → \"Data and Storage\" → \"Proxy\". The server there says \"Connected\".",
+    "step3_check_desktop": "To check in Telegram Desktop: \"Settings\" → \"Advanced\" → \"Connection type\". The server there says \"Connected\".",
+    "trouble_title": "If it doesn't connect",
+    "trouble_text": "Check that the internet works, then try another server or another way. If that does not help, write to whoever sent you this link.",
+    "all_links_plain": "All links",
+    "all_links_hint_plain": "Copy a link and open it on a device where Telegram is installed.",
+    "language": "Language"
   }
 }

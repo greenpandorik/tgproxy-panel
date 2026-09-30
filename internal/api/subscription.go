@@ -135,7 +135,7 @@ func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) writeSubscriptionErrorPage(w http.ResponseWriter, r *http.Request, status int) {
 	b := s.subscriptionBranding(r.Context())
-	lang := subscription.DetectLang(s.subscriptionSettings(r.Context()).Language, r.Header.Get("Accept-Language"))
+	lang := subscription.PageLang(r.URL.Query().Get("lang"), s.subscriptionSettings(r.Context()).Language, r.Header.Get("Accept-Language"))
 	key := "subpage.error_not_found"
 	if status == http.StatusGone {
 		key = "subpage.error_gone"
@@ -200,7 +200,7 @@ func (s *Server) subscriptionPage(r *http.Request, key db.AccessKey) (subscripti
 	}
 	return subscription.Build(subscription.Input{
 		Settings:  settings,
-		Lang:      subscription.DetectLang(settings.Language, r.Header.Get("Accept-Language")),
+		Lang:      subscription.PageLang(r.URL.Query().Get("lang"), settings.Language, r.Header.Get("Accept-Language")),
 		Platform:  platform,
 		Locations: links,
 		ExpiresAt: key.ExpiresAt,

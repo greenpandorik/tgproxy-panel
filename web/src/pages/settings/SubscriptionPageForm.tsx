@@ -102,7 +102,7 @@ export function SubscriptionPageForm() {
     register,
     reset,
     handleSubmit,
-    formState: { isDirty, isSubmitting, errors },
+    formState: { isDirty, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: DEFAULTS });
 
   useEffect(() => {
@@ -110,6 +110,7 @@ export function SubscriptionPageForm() {
   }, [settingsQuery.data, reset]);
 
   const values = useWatch({ control }) as FormValues;
+  const noLinks = !values.show_fake_tls && !values.show_web;
   const platform: SubscriptionPlatform = values.platform && values.platform !== 'auto' ? values.platform : 'android';
   const previewLanguage = values.language === 'auto' ? (i18n.language?.startsWith('en') ? 'en' : 'ru') : values.language;
   const payload = JSON.stringify({ values, platform, previewLanguage });
@@ -149,6 +150,7 @@ export function SubscriptionPageForm() {
   }
 
   const nodes = nodesQuery.data?.items ?? [];
+  const noServers = nodes.length > 0 && nodes.every((n) => (values.hidden_nodes ?? []).includes(n.id));
 
   return (
     <form
@@ -200,8 +202,11 @@ export function SubscriptionPageForm() {
                   aria-describedby="subpage-title-hint"
                   {...register('title')}
                 />
-                <p id="subpage-title-hint" className="text-label text-mute">
-                  {t('settings.subpage_title_hint')}
+                <p id="subpage-title-hint" className="flex justify-between gap-3 text-label text-mute">
+                  <span>{t('settings.subpage_title_hint')}</span>
+                  <span className="shrink-0 tabular-nums">
+                    {t('settings.subpage_title_count', { count: (values.title ?? '').length })}
+                  </span>
                 </p>
               </div>
               <div className="space-y-2">
@@ -245,12 +250,18 @@ export function SubscriptionPageForm() {
                 label={t('settings.subpage_show_backup')}
                 hint={t('settings.subpage_show_backup_hint')}
                 control={control}
-                disabled={disabled}
+                disabled={disabled || !values.show_fake_tls}
               />
-              {errors.show_fake_tls && (
+              {noLinks ? (
                 <p role="alert" className="text-label text-err">
                   {t('settings.subpage_links_required')}
                 </p>
+              ) : (
+                !values.show_fake_tls && (
+                  <p role="status" className="text-label text-warn">
+                    {t('settings.subpage_no_tls_warning')}
+                  </p>
+                )
               )}
             </PanelBody>
           </Panel>
@@ -299,13 +310,18 @@ export function SubscriptionPageForm() {
                   </ul>
                 )}
               />
+              {noServers && (
+                <p role="alert" className="text-label text-err">
+                  {t('settings.subpage_servers_required')}
+                </p>
+              )}
             </PanelBody>
           </Panel>
         </Arriving>
 
         <FormFooter note={!isOwner ? t('settings.panel_owner_only_note') : undefined}>
           {isOwner && (
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
+            <Button type="submit" disabled={isSubmitting || !isDirty || noLinks || noServers}>
               {t('common.save')}
             </Button>
           )}

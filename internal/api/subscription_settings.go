@@ -85,8 +85,8 @@ func (s *Server) handleSubscriptionPreview(w http.ResponseWriter, r *http.Reques
 	if platform == "" {
 		platform = subscription.Android
 	}
-	lang := subscription.DetectLang(settings.Language, r.Header.Get("Accept-Language"))
-	if l := q.Get("language"); l == "ru" || l == "en" {
+	lang := subscription.PageLang(q.Get("lang"), settings.Language, r.Header.Get("Accept-Language"))
+	if l := q.Get("language"); q.Get("lang") == "" && (l == "ru" || l == "en") {
 		lang = alerttext.Lang(l)
 	}
 	page, err := subscription.Build(subscription.Input{
@@ -146,4 +146,20 @@ func settingsHidesNode(settings subscription.Settings, id uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+func (s *Server) hidesEveryServer(ctx context.Context, hidden []string) bool {
+	if len(hidden) == 0 {
+		return false
+	}
+	nodes, err := s.store.Q.ListNodes(ctx)
+	if err != nil || len(nodes) == 0 {
+		return false
+	}
+	for _, n := range nodes {
+		if !settingsHidesNode(subscription.Settings{HiddenNodes: hidden}, n.ID) {
+			return false
+		}
+	}
+	return true
 }

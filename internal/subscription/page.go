@@ -69,6 +69,14 @@ func ParsePlatform(s string) Platform {
 	return ""
 }
 
+// PageLang is the visitor's own ?lang= choice when present, else the owner's setting.
+func PageLang(query, setting, acceptLanguage string) alerttext.Lang {
+	if query == "ru" || query == "en" {
+		return alerttext.Lang(query)
+	}
+	return DetectLang(setting, acceptLanguage)
+}
+
 // DetectLang picks the page language: the owner's choice, or the browser's first language.
 func DetectLang(setting, acceptLanguage string) alerttext.Lang {
 	if setting == "ru" || setting == "en" {
@@ -109,6 +117,7 @@ type Server struct {
 	Name     string
 	Hostname string
 	Links    []Link
+	WebOnly  bool
 }
 
 // Action is what the "Connect" row offers for one server on one device.
@@ -240,6 +249,7 @@ func Build(in Input) (Page, error) {
 		if len(server.Links) == 0 {
 			continue
 		}
+		server.WebOnly = ch.tls < 0
 		page.Servers = append(page.Servers, server)
 		choices = append(choices, ch)
 	}
