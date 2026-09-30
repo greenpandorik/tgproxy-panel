@@ -380,7 +380,7 @@
   --cell-padding-y: 8px;
 }
 [data-slot='input'],
-[data-slot='select-trigger'] {
+[data-slot='select-trigger']:not([data-size='sm']) {
   min-height: var(--control-height);
 }
 [data-slot='table-cell'] {
