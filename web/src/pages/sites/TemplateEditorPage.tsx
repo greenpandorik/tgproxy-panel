@@ -467,12 +467,7 @@ function TemplateEditorInner({ id }: { id?: string }) {
       </div>
 
       {!isNew && (
-        <AssignTemplateDialog
-          open={assignOpen}
-          onOpenChange={setAssignOpen}
-          templateId={id}
-          templateName={displayName}
-        />
+        <AssignTemplateDialog open={assignOpen} onOpenChange={setAssignOpen} templateId={id} templateName={displayName} />
       )}
     </>
   );

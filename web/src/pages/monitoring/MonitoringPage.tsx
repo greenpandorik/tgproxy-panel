@@ -90,7 +90,13 @@ function NodeCard({
           <h2 className="truncate text-title text-foreground">{node.node_name}</h2>
           <span className="mono truncate text-mono text-mute">{node.hostname}</span>
         </div>
-        <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link to={`/nodes/${node.node_id}`} />}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          nativeButton={false}
+          render={<Link to={`/nodes/${node.node_id}`} />}
+        >
           {t('monitoring.open_node')}
         </Button>
       </div>
