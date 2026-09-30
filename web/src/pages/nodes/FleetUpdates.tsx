@@ -6,6 +6,7 @@ import type { Node } from '@/api/types';
 import { useAuth } from '@/auth/AuthProvider';
 import { api, ApiError } from '@/lib/api';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { formatDateTime } from '@/lib/format';
@@ -53,28 +54,31 @@ export function FleetUpdates({ nodes }: { nodes: Node[] }) {
           </p>
         )}
         {isWriter && !active && (
-          <fieldset disabled={start.isPending || query.isLoading || query.isError} className="space-y-3">
-            <legend className="mb-3 text-body font-medium">{t('fleet.select')}</legend>
+          <fieldset disabled={start.isPending || query.isLoading || query.isError} className="space-y-4">
+            <legend className="mb-2 text-body font-medium">{t('fleet.select')}</legend>
             {eligible.length === 0 ? (
               <p className="text-label text-mute">{t('fleet.empty')}</p>
             ) : (
-              eligible.map((n) => (
-                <label key={n.id} className="flex min-h-10 items-center gap-3 text-body">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={selected.includes(n.id)}
-                    onChange={(e) => setSelected((v) => (e.target.checked ? [...v, n.id] : v.filter((id) => id !== n.id)))}
-                  />
-                  {n.name}
-                  <span className="text-label text-mute">
-                    {n.hostname}
-                    {selected.includes(n.id) ? ` · ${selected.indexOf(n.id) + 1}` : ''}
-                  </span>
-                </label>
-              ))
+              <div className="space-y-1">
+                {eligible.map((n) => {
+                  const order = selected.indexOf(n.id);
+                  return (
+                    <label key={n.id} className="flex min-h-9 items-center gap-3 text-body">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        checked={order >= 0}
+                        onChange={(e) => setSelected((v) => (e.target.checked ? [...v, n.id] : v.filter((id) => id !== n.id)))}
+                      />
+                      <span>{n.name}</span>
+                      <span className="mono text-mono text-mute">{n.hostname}</span>
+                      {order >= 0 && <Badge className="mono">{order + 1}</Badge>}
+                    </label>
+                  );
+                })}
+              </div>
             )}
-            <Button disabled={selected.length === 0} onClick={() => setConfirm(true)}>
+            <Button type="button" disabled={selected.length === 0} onClick={() => setConfirm(true)}>
               {t('fleet.start')}
             </Button>
           </fieldset>
@@ -96,9 +100,9 @@ export function FleetUpdates({ nodes }: { nodes: Node[] }) {
                 </li>
               ))}
             </ol>
-            {v.error && <p className="text-label text-err">{v.error}</p>}
+            {v.error && <p className="mono text-mono text-err">{v.error}</p>}
             {v.status === 'running' && isWriter && (
-              <Button variant="outline" disabled={stop.isPending} onClick={() => stop.mutate(v.id)}>
+              <Button type="button" variant="outline" disabled={stop.isPending} onClick={() => stop.mutate(v.id)}>
                 {t('fleet.stop')}
               </Button>
             )}
