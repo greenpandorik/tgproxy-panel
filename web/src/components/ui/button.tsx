@@ -1,4 +1,6 @@
 import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { mergeProps } from '@base-ui/react/merge-props';
+import { useRender } from '@base-ui/react/use-render';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
@@ -40,12 +42,33 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
+type ButtonProps = ButtonPrimitive.Props & VariantProps<typeof buttonVariants>;
+
+function LinkButton({
   className,
   variant = 'default',
   size = 'default',
+  render,
+  disabled,
+  nativeButton: _nativeButton,
+  focusableWhenDisabled: _focusableWhenDisabled,
+  type: _type,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
+  return useRender({
+    render: render as useRender.ComponentProps<'a'>['render'],
+    props: mergeProps<'a'>(props as React.ComponentProps<'a'>, {
+      'aria-disabled': disabled || undefined,
+      className: cn(buttonVariants({ variant, size, className }), disabled && 'pointer-events-none'),
+    }),
+    state: { slot: 'button' },
+  });
+}
+
+function Button({ className, variant = 'default', size = 'default', ...props }: ButtonProps) {
+  if (props.nativeButton === false && props.render) {
+    return <LinkButton className={className} variant={variant} size={size} {...props} />;
+  }
   return <ButtonPrimitive {...props} data-slot="button" className={cn(buttonVariants({ variant, size, className }))} />;
 }
 
