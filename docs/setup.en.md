@@ -413,6 +413,7 @@ A server's page is split into tabs:
   to Telegram.
 - Users: the users set up on this server.
 - Cover site: the website on the server's domain (section 9).
+- Blocklist: addresses and networks the server refuses connections from.
 - Maintenance: telemt updates, apply history, restart, the install command and deleting the
   server.
 
@@ -432,6 +433,25 @@ chart over 1 hour, 6 hours, 24 hours or 7 days. The same chart is in the server'
 Monitoring → Servers.
 
 ![Server load](screenshots/node-stats.png)
+
+### Blocking addresses
+
+The Blocklist tab holds the server's blocklist: single IPv4 and IPv6 addresses and networks such as
+`198.51.100.0/24`. Type them into "Add addresses", one per line; a note may follow the address
+after a space, for example "guessing secrets". The panel refuses networks that are too wide (wider
+than `/8` for IPv4 or `/16` for IPv6), local and special addresses, and an address already covered
+by a network in the list.
+
+The server drops everything coming from these addresses, connections already open included.
+Replies to connections the server opened itself, to the panel and to Telegram, always get through,
+so the server stays in touch with the panel. Do not add your own address: you would not be able to
+reach the server over SSH from it either. Each entry shows how many packets it has dropped since
+the list last changed.
+
+The panel keeps the list. The agent enforces it with nftables (a table of its own, `tgwp_block`;
+telemt servers already have the package) and puts it back after a reboot. If the server was offline
+or has been reinstalled, the panel sends the list as soon as the server connects. Blocking needs
+this agent version or newer; with an older agent the tab asks you to update it.
 
 ### When changes reach the server
 

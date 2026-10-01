@@ -413,6 +413,7 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 	statsW.SetAlerts(alerts)
 	statsW.SetProbeLocations(cfg.ProbeLocations)
 	stopWorkers := worker.Start(ctx, applyW, worker.NewExpiry(st, keySvc, log), statsW, worker.NewBackup(st, backupRunner, log))
+	go worker.NewBlocklists(st, driver, log).Run(ctx, time.Minute)
 	httpHandler := srv.Handler()
 	mux := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {

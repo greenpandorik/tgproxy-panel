@@ -67,6 +67,8 @@ message HealthReport {
   optional double load_average_15 = 26;
   // Versioned operational readings; absent from older agents, never assumed healthy.
   bytes reliability_json = 27;
+  // firewall is the blocklist the node enforces, without per-entry counters; absent from older agents.
+  FirewallStatus firewall = 28;
 }
 
 // WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
@@ -246,6 +248,7 @@ message Request {
     WebControlRequest web_control = 11;
     CancelRequest cancel = 12;
     ReliabilityRequest reliability = 13;
+    FirewallRequest firewall = 14;
   }
 }
 
@@ -330,6 +333,7 @@ message Response {
     Empty empty = 8;
     TelemtUpdate telemt_update = 9;
     ReliabilityResponse reliability = 10;
+    FirewallStatus firewall = 11;
   }
 }
 message ApplyResult {
@@ -354,3 +358,20 @@ message LogChunk { repeated LogLine lines = 1; bool done = 2; string error = 3; 
 message WebControlRequest { string action = 1; int32 timeout_secs = 2; }
 message ReliabilityRequest { bytes policy_json = 1; }
 message ReliabilityResponse { bytes json = 1; }
+
+// FirewallRequest replaces the node's blocklist when set is true and reads it back either way.
+// entries are IPv4 and IPv6 addresses and networks the panel has already checked.
+message FirewallRequest {
+  bool set = 1;
+  int64 revision = 2;
+  repeated string entries = 3;
+}
+message FirewallCounter { string entry = 1; uint64 packets = 2; uint64 bytes = 3; }
+message FirewallStatus {
+  int64 revision = 1;
+  int32 entries = 2;
+  uint64 dropped_packets = 3;
+  uint64 dropped_bytes = 4;
+  repeated FirewallCounter counters = 5;
+  string error = 6;
+}

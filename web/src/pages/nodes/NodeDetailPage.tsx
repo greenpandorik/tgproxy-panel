@@ -30,6 +30,7 @@ import { InstallCommandDialog } from './InstallCommandDialog';
 import { NodeProbes } from './NodeProbes';
 import { NodeReliability } from './NodeReliability';
 import { NodeLogs } from './NodeLogs';
+import { NodeBlocklist } from './NodeBlocklist';
 import { NodeOverviewTab } from './NodeOverviewTab';
 import { NodeProfilesTab } from './NodeProfilesTab';
 import { NodeSiteTab } from './NodeSiteTab';
@@ -71,8 +72,8 @@ export function NodeDetailPage() {
 
   const [section, setSection] = useSection(
     nodeQuery.data?.engine === 'tproxy'
-      ? ['overview', 'stats', 'diagnostics', 'logs', 'profiles', 'site', 'settings']
-      : ['overview', 'stats', 'diagnostics', 'logs', 'proxy', 'profiles', 'site', 'settings'],
+      ? ['overview', 'stats', 'diagnostics', 'logs', 'profiles', 'site', 'blocklist', 'settings']
+      : ['overview', 'stats', 'diagnostics', 'logs', 'proxy', 'profiles', 'site', 'blocklist', 'settings'],
     'overview',
     'section',
     { web: 'stats' },
@@ -232,6 +233,7 @@ export function NodeDetailPage() {
                 : []),
               { value: 'profiles', label: t('workspace.tab_profiles'), group: t('workspace.configure') },
               { value: 'site', label: t('workspace.tab_site'), group: t('workspace.configure') },
+              { value: 'blocklist', label: t('workspace.tab_blocklist'), group: t('workspace.configure') },
               { value: 'settings', label: t('workspace.tab_settings'), group: t('workspace.service') },
             ]}
           />
@@ -270,6 +272,7 @@ export function NodeDetailPage() {
             )}
             {section === 'profiles' && <NodeProfilesTab nodeId={node.id} online={node.online} engine={node.engine} />}
             {section === 'site' && <NodeSiteTab nodeId={node.id} />}
+            {section === 'blocklist' && <NodeBlocklist node={node} />}
             {section === 'settings' && (
               <>
                 {node.engine === 'telemt' && <TelemtUpdateCard node={node} />}

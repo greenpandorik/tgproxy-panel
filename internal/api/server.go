@@ -174,6 +174,8 @@ func (s *Server) mountProtected(r chi.Router) {
 		r.Get("/health", s.handleNodeHealth)
 		r.Get("/reliability", s.handleNodeReliability)
 		r.With(RequireRole(writers...)).Put("/reliability", s.handleNodeReliability)
+		r.Get("/blocklist", s.handleGetNodeBlocklist)
+		r.With(RequireRole(writers...)).Put("/blocklist", s.handlePutNodeBlocklist)
 		r.Get("/profiles", s.handleNodeProfiles)
 		r.Get("/stats", s.handleNodeStats)
 		r.Get("/metrics", s.handleNodeMetrics)

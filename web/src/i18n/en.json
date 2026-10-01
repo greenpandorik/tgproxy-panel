@@ -2542,7 +2542,10 @@
     "settings_subscription": "Subscription page",
     "settings_subscription_hint": "What a person sees after opening their subscription link.",
     "description_overview_tproxy": "The server's services and load.",
-    "description_stats_tproxy": "Server load over time and the proxy's counters."
+    "description_stats_tproxy": "Server load over time and the proxy's counters.",
+    "tab_blocklist": "Blocklist",
+    "section_blocklist": "Blocked addresses",
+    "description_blocklist": "Addresses and networks the server refuses connections from. The panel keeps the list and puts it back on the server after a reboot or a reinstall."
   },
   "reliability": {
     "routing_toggle": "Route through SOCKS5 or WARP",
@@ -2916,5 +2919,39 @@
     "revoke_title": "Disconnect the service?",
     "revoke_description": "The service stops getting data from the panel. Pages on its domain work from the saved copy for a while and then stop opening.",
     "revoked": "Service disconnected"
+  },
+  "blocklist": {
+    "title": "Blocklist",
+    "count_one": "{{count}} entry",
+    "count_other": "{{count}} entries",
+    "status_active": "In force on the server",
+    "status_sending": "On its way to the server, usually in under a minute",
+    "status_waiting": "The server is not connected: the list goes out as soon as it is back",
+    "status_old_agent": "The agent on this server cannot block addresses. Update the agent and the list starts working.",
+    "status_error": "The server did not apply the list: {{error}}",
+    "dropped_total": "Packets dropped since the list last changed: {{packets}} ({{bytes}})",
+    "dropped_hint": "Packets dropped since the list last changed",
+    "packets_one": "{{value}} packet",
+    "packets_other": "{{value}} packets",
+    "add_label": "Add addresses",
+    "add_hint": "One per line: IPv4 or IPv6, a single address or a network such as 198.51.100.0/24. A note may follow the address after a space.",
+    "add": "Add",
+    "add_many": "Add ({{count}})",
+    "line_error": "Line {{line}}: {{error}}",
+    "how_it_works": "The server drops everything coming from these addresses, connections already open included. Replies to connections the server opened itself (to the panel and to Telegram) always get through. Do not add your own address: you would not be able to reach the server over SSH from it either.",
+    "empty": "The list is empty. Add an address when it guesses secrets, scans the server or loads it for nothing.",
+    "filter": "Find an address or note",
+    "no_note": "no note",
+    "remove": "Remove {{prefix}} from the list",
+    "saved": "List saved and in force on the server",
+    "saved_waiting": "List saved; it goes to the server once the server is connected",
+    "saved_not_applied": "List saved, but the server did not apply it. The reason is shown above the list.",
+    "error_too_wide": "Too wide: at most /8 for IPv4 and /16 for IPv6",
+    "error_special": "Not a public address: local, special and multicast addresses cannot be blocked",
+    "error_invalid": "Does not look like an address or network",
+    "error_duplicate": "Already in the list",
+    "error_covered": "Already covered by {{prefix}}",
+    "error_covers": "Overlaps {{prefix}} from the list: keep one of them",
+    "error_too_many": "The list holds at most {{max}} entries"
   }
 }

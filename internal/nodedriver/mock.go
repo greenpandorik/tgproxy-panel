@@ -31,6 +31,11 @@ type mockNode struct {
 	updateErr     string
 	updateStates  []TelemtUpdate
 	updateVersion string
+
+	firewall        FirewallStatus
+	firewallEntries []string
+	firewallDrops   map[string]uint64
+	firewallErr     string
 }
 
 // Mock is an in-memory Driver for tests and NODE_DRIVER=mock.

@@ -1069,6 +1069,8 @@ header equal to the `tgwp_csrf` cookie. Some routes are useful on their own:
 | `GET /api/v1/monitoring/overview?from&to&step` | Any role | Series for the Monitoring charts |
 | `GET /api/v1/audit` | Any role | The activity log |
 | `GET /api/v1/nodes/{id}/metrics` | Any role | The server's own proxy metrics in Prometheus format |
+| `GET /api/v1/nodes/{id}/blocklist` | Any role | The server's blocklist, its state on the server and dropped-packet counters |
+| `PUT /api/v1/nodes/{id}/blocklist` | Owner, admin | Replace the blocklist: `{entries: [{prefix, note}]}`, up to 2000 entries |
 | `GET /api/v1/status/update` | Any role | The update check result |
 | `GET /api/v1/node/upgrade` | Server token | What a server should run, for `tgwp-agent upgrade` |
 

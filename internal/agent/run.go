@@ -34,6 +34,9 @@ func Run(ctx context.Context, cfg Config, h *Handler, log *slog.Logger) error {
 	if err := h.recoverUpdate(ctx); err != nil {
 		log.Error("update recovery requires attention", "err", err)
 	}
+	if err := h.restoreFirewall(ctx); err != nil {
+		log.Error("blocklist not restored", "err", err)
+	}
 	go h.runRecovery(ctx)
 	u, err := url.Parse(cfg.PanelURL)
 	if err != nil {

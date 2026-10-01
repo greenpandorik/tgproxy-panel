@@ -87,6 +87,7 @@ func HealthFromProto(h *agentv1.HealthReport) HealthReport {
 		Web:             WebTelemetryFromProto(h.GetWeb()),
 		Capabilities:    CapabilitiesFromProto(h.GetCapabilities()),
 		TelemtBuild:     h.GetCapabilities().GetBuild(),
+		Firewall:        FirewallFromProto(h.GetFirewall()),
 	}
 	for _, d := range h.GetDcs() {
 		out.DCs = append(out.DCs, DcLatency{DC: int(d.GetDc()), LatencyMs: d.GetLatencyMs(), Known: d.GetKnown(), IPPreference: d.GetIpPreference()})
@@ -109,6 +110,7 @@ func HealthToProto(h HealthReport) *agentv1.HealthReport {
 		DcDataAvailable: h.DcDataAvailable,
 		Web:             WebTelemetryToProto(h.Web),
 		Capabilities:    CapabilitiesToProto(h.Capabilities, h.TelemtBuild),
+		Firewall:        FirewallToProto(h.Firewall),
 	}
 	for _, d := range h.DCs {
 		out.Dcs = append(out.Dcs, &agentv1.DcLatency{Dc: int32(d.DC), LatencyMs: d.LatencyMs, Known: d.Known, IpPreference: d.IPPreference})

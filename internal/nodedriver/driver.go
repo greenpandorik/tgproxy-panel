@@ -41,6 +41,8 @@ type HealthReport struct {
 
 	// Web is the WEB transport telemetry; nil when the node reported none of it.
 	Web *WebTelemetry
+	// Firewall is the blocklist the node enforces; nil from agents that cannot block addresses.
+	Firewall *FirewallStatus `json:",omitempty"`
 	// Capabilities is what the agent worked out the node's telemt can do; nil when it did
 	// not report a capability set.
 	Capabilities TelemtCapabilities

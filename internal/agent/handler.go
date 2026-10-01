@@ -19,6 +19,9 @@ import (
 
 type Handler struct {
 	maintenance      sync.Mutex
+	fwMu             sync.Mutex
+	fw               firewallState
+	fwErr            string
 	connections      connectionSampler
 	recoveryMu       sync.Mutex
 	recoveryPolicy   reliability.Policy
@@ -78,6 +81,12 @@ func (h *Handler) Handle(ctx context.Context, req *agentv1.Request) *agentv1.Res
 			return errResp(err)
 		}
 		return reliabilityReply(raw)
+	case *agentv1.Request_Firewall:
+		st, err := h.configureFirewall(ctx, b.Firewall)
+		if err != nil {
+			return errResp(err)
+		}
+		return &agentv1.Response{Body: &agentv1.Response_Firewall{Firewall: st}}
 	case *agentv1.Request_Health:
 		return &agentv1.Response{Body: &agentv1.Response_Health{Health: h.Health(ctx)}}
 	case *agentv1.Request_GetProfiles:

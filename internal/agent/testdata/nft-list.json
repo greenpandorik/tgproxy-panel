@@ -1,0 +1,191 @@
+{
+ "nftables": [
+  {
+   "metainfo": {
+    "version": "1.0.6",
+    "release_name": "Lester Gooch #5",
+    "json_schema_version": 1
+   }
+  },
+  {
+   "table": {
+    "family": "inet",
+    "name": "tgwp_block",
+    "handle": 4
+   }
+  },
+  {
+   "set": {
+    "family": "inet",
+    "name": "v4",
+    "table": "tgwp_block",
+    "type": "ipv4_addr",
+    "handle": 2,
+    "flags": [
+     "interval"
+    ],
+    "elem": [
+     {
+      "elem": {
+       "val": {
+        "prefix": {
+         "addr": "198.51.100.0",
+         "len": 24
+        }
+       },
+       "counter": {
+        "packets": 3,
+        "bytes": 252
+       }
+      }
+     },
+     {
+      "elem": {
+       "val": "203.0.113.7",
+       "counter": {
+        "packets": 0,
+        "bytes": 0
+       }
+      }
+     }
+    ],
+    "stmt": [
+     {
+      "counter": null
+     }
+    ]
+   }
+  },
+  {
+   "set": {
+    "family": "inet",
+    "name": "v6",
+    "table": "tgwp_block",
+    "type": "ipv6_addr",
+    "handle": 3,
+    "flags": [
+     "interval"
+    ],
+    "elem": [
+     {
+      "elem": {
+       "val": {
+        "prefix": {
+         "addr": "2001:db8::",
+         "len": 32
+        }
+       },
+       "counter": {
+        "packets": 0,
+        "bytes": 0
+       }
+      }
+     }
+    ],
+    "stmt": [
+     {
+      "counter": null
+     }
+    ]
+   }
+  },
+  {
+   "chain": {
+    "family": "inet",
+    "table": "tgwp_block",
+    "name": "prerouting",
+    "handle": 1,
+    "type": "filter",
+    "hook": "prerouting",
+    "prio": -150,
+    "policy": "accept"
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "tgwp_block",
+    "chain": "prerouting",
+    "handle": 4,
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "ct": {
+         "key": "direction"
+        }
+       },
+       "right": "reply"
+      }
+     },
+     {
+      "accept": null
+     }
+    ]
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "tgwp_block",
+    "chain": "prerouting",
+    "handle": 5,
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "payload": {
+         "protocol": "ip",
+         "field": "saddr"
+        }
+       },
+       "right": "@v4"
+      }
+     },
+     {
+      "counter": {
+       "packets": 3,
+       "bytes": 252
+      }
+     },
+     {
+      "drop": null
+     }
+    ]
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "tgwp_block",
+    "chain": "prerouting",
+    "handle": 6,
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "payload": {
+         "protocol": "ip6",
+         "field": "saddr"
+        }
+       },
+       "right": "@v6"
+      }
+     },
+     {
+      "counter": {
+       "packets": 0,
+       "bytes": 0
+      }
+     },
+     {
+      "drop": null
+     }
+    ]
+   }
+  }
+ ]
+}

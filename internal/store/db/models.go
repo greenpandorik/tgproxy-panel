@@ -556,6 +556,13 @@ type Node struct {
 	TlsDomains                  []string   `json:"tls_domains"`
 }
 
+type NodeBlocklist struct {
+	NodeID    uuid.UUID `json:"node_id"`
+	Entries   []byte    `json:"entries"`
+	Revision  int64     `json:"revision"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type NodeDiagnostic struct {
 	ID            int64      `json:"id"`
 	NodeID        uuid.UUID  `json:"node_id"`

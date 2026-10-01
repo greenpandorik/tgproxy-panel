@@ -185,6 +185,12 @@ func diskPercent(path string) float64 {
 }
 
 func (h *Handler) Health(ctx context.Context) *agentv1.HealthReport {
+	rep := h.engineHealth(ctx)
+	rep.Firewall = h.firewallStatus(ctx)
+	return rep
+}
+
+func (h *Handler) engineHealth(ctx context.Context) *agentv1.HealthReport {
 	if h.cfg.Engine == EngineTelemt {
 		return h.healthTelemt(ctx)
 	}
