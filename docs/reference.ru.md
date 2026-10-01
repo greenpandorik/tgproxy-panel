@@ -1135,7 +1135,9 @@ WEB настоящим клиентом. Он получает домен на �
 равны `null`, если последнему подсчёту больше трёх минут. В `GET /api/v1/dashboard/summary` те же
 `people_online` и `people_online_15m` стоят рядом с `sessions_live`, а у каждого сервера в
 `GET /api/v1/nodes` и `GET /api/v1/nodes/{id}` есть `people_online` и `connections` из его
-последнего снимка за три минуты или `null`.
+последнего снимка за три минуты или `null`. У серверов, помеченных как не в сети, их нет, и
+`sessions_live`, `streams_live`, `bytes_up` и `bytes_down` в сводке складываются только по
+остальным.
 
 `GET /api/v1/audit` принимает параметры:
 

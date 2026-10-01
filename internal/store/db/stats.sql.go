@@ -15,7 +15,7 @@ import (
 
 const clearKeyPresence = `-- name: ClearKeyPresence :exec
 UPDATE key_presence SET connections = 0, devices = 0, devices_15m = 0, updated_at = now()
-WHERE NOT (access_key_id = ANY($1::uuid[]))
+WHERE NOT (access_key_id = ANY(coalesce($1::uuid[], '{}'::uuid[])))
   AND (connections <> 0 OR devices <> 0 OR devices_15m <> 0)
 `
 
@@ -372,51 +372,6 @@ func (q *Queries) LatestKeyStatsSnapshots(ctx context.Context, accessKeyID uuid.
 		return nil, err
 	}
 	return items, nil
-}
-
-const latestNodeSnapshot = `-- name: LatestNodeSnapshot :one
-SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1, people_online FROM node_stats_snapshots WHERE node_id = $1 AND taken_at > $2
-ORDER BY taken_at DESC LIMIT 1
-`
-
-type LatestNodeSnapshotParams struct {
-	NodeID uuid.UUID `json:"node_id"`
-	Since  time.Time `json:"since"`
-}
-
-func (q *Queries) LatestNodeSnapshot(ctx context.Context, arg LatestNodeSnapshotParams) (NodeStatsSnapshot, error) {
-	row := q.db.QueryRow(ctx, latestNodeSnapshot, arg.NodeID, arg.Since)
-	var i NodeStatsSnapshot
-	err := row.Scan(
-		&i.ID,
-		&i.NodeID,
-		&i.TakenAt,
-		&i.SessionsLive,
-		&i.StreamsLive,
-		&i.BytesUp,
-		&i.BytesDown,
-		&i.SessionsCreated,
-		&i.LimitHits,
-		&i.MtproxyRaw,
-		&i.RelayRaw,
-		&i.CpuPercent,
-		&i.MemUsedPercent,
-		&i.DiskUsedPercent,
-		&i.DcLatency,
-		&i.WebCarrierSelectionsHttps,
-		&i.WebCarrierSelectionsHttpsLanes,
-		&i.WebCarrierSelectionsWebsocket,
-		&i.WebCarrierSelectionsWebsocketLanes,
-		&i.WebCarrierFailures,
-		&i.WebRejectedAttempts,
-		&i.WebEvictedSessions,
-		&i.WebBridgeRecoveries,
-		&i.WebLearningEntries,
-		&i.CpuUtilisationPercent,
-		&i.LoadAverage1,
-		&i.PeopleOnline,
-	)
-	return i, err
 }
 
 const latestSnapshots = `-- name: LatestSnapshots :many
@@ -889,6 +844,89 @@ func (q *Queries) ListSnapshotsAllNodesBucketed(ctx context.Context, arg ListSna
 		return nil, err
 	}
 	return items, nil
+}
+
+const liveSnapshots = `-- name: LiveSnapshots :many
+SELECT DISTINCT ON (s.node_id) s.node_id, s.taken_at, s.sessions_live, s.streams_live, s.bytes_up, s.bytes_down, s.people_online
+FROM node_stats_snapshots s JOIN nodes n ON n.id = s.node_id
+WHERE s.taken_at > $1 AND n.status <> 'offline'
+ORDER BY s.node_id, s.taken_at DESC
+`
+
+type LiveSnapshotsRow struct {
+	NodeID       uuid.UUID   `json:"node_id"`
+	TakenAt      time.Time   `json:"taken_at"`
+	SessionsLive int32       `json:"sessions_live"`
+	StreamsLive  int32       `json:"streams_live"`
+	BytesUp      pgtype.Int8 `json:"bytes_up"`
+	BytesDown    pgtype.Int8 `json:"bytes_down"`
+	PeopleOnline pgtype.Int4 `json:"people_online"`
+}
+
+// LiveSnapshots is LatestSnapshots for the live figures only, leaving out servers marked offline.
+func (q *Queries) LiveSnapshots(ctx context.Context, since time.Time) ([]LiveSnapshotsRow, error) {
+	rows, err := q.db.Query(ctx, liveSnapshots, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LiveSnapshotsRow{}
+	for rows.Next() {
+		var i LiveSnapshotsRow
+		if err := rows.Scan(
+			&i.NodeID,
+			&i.TakenAt,
+			&i.SessionsLive,
+			&i.StreamsLive,
+			&i.BytesUp,
+			&i.BytesDown,
+			&i.PeopleOnline,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const nodeLiveSnapshot = `-- name: NodeLiveSnapshot :one
+SELECT s.node_id, s.taken_at, s.sessions_live, s.streams_live, s.bytes_up, s.bytes_down, s.people_online
+FROM node_stats_snapshots s JOIN nodes n ON n.id = s.node_id
+WHERE s.node_id = $1 AND s.taken_at > $2 AND n.status <> 'offline'
+ORDER BY s.taken_at DESC LIMIT 1
+`
+
+type NodeLiveSnapshotParams struct {
+	NodeID uuid.UUID `json:"node_id"`
+	Since  time.Time `json:"since"`
+}
+
+type NodeLiveSnapshotRow struct {
+	NodeID       uuid.UUID   `json:"node_id"`
+	TakenAt      time.Time   `json:"taken_at"`
+	SessionsLive int32       `json:"sessions_live"`
+	StreamsLive  int32       `json:"streams_live"`
+	BytesUp      pgtype.Int8 `json:"bytes_up"`
+	BytesDown    pgtype.Int8 `json:"bytes_down"`
+	PeopleOnline pgtype.Int4 `json:"people_online"`
+}
+
+func (q *Queries) NodeLiveSnapshot(ctx context.Context, arg NodeLiveSnapshotParams) (NodeLiveSnapshotRow, error) {
+	row := q.db.QueryRow(ctx, nodeLiveSnapshot, arg.NodeID, arg.Since)
+	var i NodeLiveSnapshotRow
+	err := row.Scan(
+		&i.NodeID,
+		&i.TakenAt,
+		&i.SessionsLive,
+		&i.StreamsLive,
+		&i.BytesUp,
+		&i.BytesDown,
+		&i.PeopleOnline,
+	)
+	return i, err
 }
 
 const resolveAlert = `-- name: ResolveAlert :exec

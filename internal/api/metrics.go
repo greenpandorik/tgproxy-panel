@@ -71,7 +71,7 @@ func (c dbCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(descKeys, prometheus.GaugeValue, float64(keyCounts[status]), status)
 	}
 
-	if snaps, err := c.st.Q.LatestSnapshots(ctx, liveSince()); err == nil {
+	if snaps, err := c.st.Q.LiveSnapshots(ctx, liveSince()); err == nil {
 		for _, snap := range snaps {
 			node := snap.NodeID.String()
 			ch <- prometheus.MustNewConstMetric(descSessions, prometheus.GaugeValue, float64(snap.SessionsLive), node)

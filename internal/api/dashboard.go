@@ -44,7 +44,7 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 		"pending": int(sum.Total - sum.Revoked - sum.Active - sum.Expired - sum.Disabled),
 	}
 
-	snaps, err := s.store.Q.LatestSnapshots(ctx, liveSince())
+	snaps, err := s.store.Q.LiveSnapshots(ctx, liveSince())
 	if err != nil {
 		internal(w)
 		return

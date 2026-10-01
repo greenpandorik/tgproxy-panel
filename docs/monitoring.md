@@ -198,7 +198,8 @@ Things to know about the per-server metrics:
   server's page in the panel: `https://panel.example.com/nodes/<uuid>`.
 - A new server has no series until the panel takes its first snapshot.
 - The value is the server's latest snapshot, as long as it is no more than three minutes old.
-  A server that stopped answering loses its series until it comes back.
+  A server's series disappear as soon as the panel marks it offline or it stops sending data,
+  and come back with it.
 - `tgwp_people_online` and `tgwp_people_online_15m` disappear too when the panel has not counted
   people in the last three minutes.
 - When a server is deleted, its series disappear.

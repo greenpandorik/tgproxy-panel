@@ -1124,7 +1124,8 @@ counted people, and the `fleet` numbers are `null` when the newest count is olde
 minutes. `GET /api/v1/dashboard/summary` has the same `people_online` and `people_online_15m`
 next to `sessions_live`, and every server in `GET /api/v1/nodes` and `GET /api/v1/nodes/{id}`
 has `people_online` and `connections` from its latest snapshot of the last three minutes, or
-`null`.
+`null`. Servers marked offline have none, and the summary's `sessions_live`, `streams_live`,
+`bytes_up` and `bytes_down` add up only the servers that do.
 
 `GET /api/v1/audit` takes these parameters:
 

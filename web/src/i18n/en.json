@@ -1395,7 +1395,7 @@
           },
           "connections": {
             "name": "Connections",
-            "what": "The line under the head count: TCP connections open on all servers that answered in the last three minutes. One Telegram app holds several connections at once, usually 2 to 15, so there are always more connections than people."
+            "what": "The line under the head count: TCP connections open right now on all servers that are online. One Telegram app holds several connections at once, usually 2 to 15, so there are always more connections than people."
           },
           "traffic": {
             "name": "Traffic, 24 h",
@@ -1443,7 +1443,7 @@
           },
           "online": {
             "name": "Online",
-            "what": "An estimate of the people on the server right now, with its connections under it. A personal user with at least one connection is one person, a shared user counts as many as its distinct IP addresses; tproxy servers count WEB sessions. A dash means the server has not answered in the last three minutes."
+            "what": "An estimate of the people on the server right now, with its connections under it. A personal user with at least one connection is one person, a shared user counts as many as its distinct IP addresses; tproxy servers count WEB sessions. A dash means the server is offline or has sent nothing in the last three minutes."
           },
           "load": {
             "name": "CPU and RAM",

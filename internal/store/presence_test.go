@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"tgwebproxy/internal/store"
 	"tgwebproxy/internal/store/db"
@@ -70,6 +71,17 @@ func TestKeyPresenceUpsertClearAndCascade(t *testing.T) {
 	if r := presenceRows(t, st, a)[a]; r.Connections != 0 {
 		t.Fatalf("a = %+v: an empty keep list clears everyone", r)
 	}
+	if err := st.Q.UpsertKeyPresence(ctx, db.UpsertKeyPresenceParams{
+		KeyIds: []uuid.UUID{a}, Connections: []int32{2}, Devices: []int32{1}, Devices15m: []int32{1},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Q.ClearKeyPresence(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if r := presenceRows(t, st, a)[a]; r.Connections != 0 {
+		t.Fatalf("a = %+v: a nil keep list clears everyone too", r)
+	}
 
 	if err := st.Q.DeleteKey(ctx, a); err != nil {
 		t.Fatal(err)
@@ -100,11 +112,33 @@ func TestFreshSnapshotQueries(t *testing.T) {
 	if snaps, err := st.Q.LatestSnapshots(ctx, since); err != nil || len(snaps) != 0 {
 		t.Fatalf("latest = %+v err=%v: an hour-old snapshot is not current", snaps, err)
 	}
-	if _, err := st.Q.LatestNodeSnapshot(ctx, db.LatestNodeSnapshotParams{NodeID: node.ID, Since: since}); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := st.Q.NodeLiveSnapshot(ctx, db.NodeLiveSnapshotParams{NodeID: node.ID, Since: since}); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("latest node snapshot err = %v, want no rows", err)
 	}
 	if snaps, err := st.Q.LatestSnapshots(ctx, time.Now().Add(-2*time.Hour)); err != nil || len(snaps) != 1 || snaps[0].PeopleOnline.Valid {
 		t.Fatalf("latest = %+v err=%v: people_online stays NULL when nobody counted it", snaps, err)
+	}
+
+	if err := st.Q.InsertSnapshot(ctx, db.InsertSnapshotParams{
+		NodeID: node.ID, SessionsLive: 7, MtproxyRaw: []byte("{}"), PeopleOnline: pgtype.Int4{Int32: 2, Valid: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	live, err := st.Q.LiveSnapshots(ctx, since)
+	if err != nil || len(live) != 1 || live[0].SessionsLive != 7 || live[0].PeopleOnline.Int32 != 2 {
+		t.Fatalf("live = %+v err=%v", live, err)
+	}
+	if one, err := st.Q.NodeLiveSnapshot(ctx, db.NodeLiveSnapshotParams{NodeID: node.ID, Since: since}); err != nil || one.SessionsLive != 7 {
+		t.Fatalf("node live = %+v err=%v", one, err)
+	}
+	if _, err := st.Pool.Exec(ctx, `UPDATE nodes SET status = 'offline' WHERE id = $1`, node.ID); err != nil {
+		t.Fatal(err)
+	}
+	if live, err := st.Q.LiveSnapshots(ctx, since); err != nil || len(live) != 0 {
+		t.Fatalf("live = %+v err=%v: a server marked offline has no live figures", live, err)
+	}
+	if _, err := st.Q.NodeLiveSnapshot(ctx, db.NodeLiveSnapshotParams{NodeID: node.ID, Since: since}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("node live err = %v, want no rows for an offline server", err)
 	}
 
 	if _, err := st.Q.LatestFleetSnapshot(ctx, since); !errors.Is(err, pgx.ErrNoRows) {

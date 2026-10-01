@@ -118,9 +118,18 @@ ORDER BY scalars.node_id, scalars.taken_at;
 -- name: LatestSnapshots :many
 SELECT DISTINCT ON (node_id) * FROM node_stats_snapshots WHERE taken_at > sqlc.arg('since') ORDER BY node_id, taken_at DESC;
 
--- name: LatestNodeSnapshot :one
-SELECT * FROM node_stats_snapshots WHERE node_id = sqlc.arg('node_id') AND taken_at > sqlc.arg('since')
-ORDER BY taken_at DESC LIMIT 1;
+-- LiveSnapshots is LatestSnapshots for the live figures only, leaving out servers marked offline.
+-- name: LiveSnapshots :many
+SELECT DISTINCT ON (s.node_id) s.node_id, s.taken_at, s.sessions_live, s.streams_live, s.bytes_up, s.bytes_down, s.people_online
+FROM node_stats_snapshots s JOIN nodes n ON n.id = s.node_id
+WHERE s.taken_at > sqlc.arg('since') AND n.status <> 'offline'
+ORDER BY s.node_id, s.taken_at DESC;
+
+-- name: NodeLiveSnapshot :one
+SELECT s.node_id, s.taken_at, s.sessions_live, s.streams_live, s.bytes_up, s.bytes_down, s.people_online
+FROM node_stats_snapshots s JOIN nodes n ON n.id = s.node_id
+WHERE s.node_id = sqlc.arg('node_id') AND s.taken_at > sqlc.arg('since') AND n.status <> 'offline'
+ORDER BY s.taken_at DESC LIMIT 1;
 
 -- name: DeleteOldSnapshots :exec
 DELETE FROM node_stats_snapshots WHERE taken_at < $1;
@@ -221,7 +230,7 @@ ON CONFLICT (access_key_id) DO UPDATE SET connections = EXCLUDED.connections, de
 
 -- name: ClearKeyPresence :exec
 UPDATE key_presence SET connections = 0, devices = 0, devices_15m = 0, updated_at = now()
-WHERE NOT (access_key_id = ANY(sqlc.arg('keep')::uuid[]))
+WHERE NOT (access_key_id = ANY(coalesce(sqlc.arg('keep')::uuid[], '{}'::uuid[])))
   AND (connections <> 0 OR devices <> 0 OR devices_15m <> 0);
 
 -- name: KeyPresenceForKeys :many

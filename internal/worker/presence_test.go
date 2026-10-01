@@ -100,7 +100,7 @@ func TestStatsCountsPeopleAcrossTheFleet(t *testing.T) {
 		t.Fatalf("fleet = %+v, want Ivan once and three addresses behind the shared key, over 12 connections", fleet)
 	}
 	for _, id := range []uuid.UUID{p.a, p.b} {
-		snap, err := p.f.st.Q.LatestNodeSnapshot(ctx, db.LatestNodeSnapshotParams{NodeID: id, Since: time.Now().Add(-time.Minute)})
+		snap, err := p.f.st.Q.NodeLiveSnapshot(ctx, db.NodeLiveSnapshotParams{NodeID: id, Since: time.Now().Add(-time.Minute)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -188,7 +188,7 @@ func TestStatsCountsTproxySessionsAsPeople(t *testing.T) {
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snap, err := f.st.Q.LatestNodeSnapshot(ctx, db.LatestNodeSnapshotParams{NodeID: f.node.ID, Since: time.Now().Add(-time.Minute)})
+	snap, err := f.st.Q.NodeLiveSnapshot(ctx, db.NodeLiveSnapshotParams{NodeID: f.node.ID, Since: time.Now().Add(-time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}

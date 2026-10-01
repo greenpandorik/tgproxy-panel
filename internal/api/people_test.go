@@ -155,6 +155,30 @@ func TestNodesCarryPeopleOnline(t *testing.T) {
 	if one.PeopleOnline != nil || one.Connections == nil || *one.Connections != 6 {
 		t.Fatalf("get n2 = %+v: connections known, people not counted", one)
 	}
+
+	if _, err := h.Store.Pool.Exec(context.Background(), `UPDATE nodes SET status = 'offline' WHERE id = $1`, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	one = live{}
+	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &one)
+	if one.PeopleOnline != nil || one.Connections != nil {
+		t.Fatalf("get n1 = %+v: a server marked offline shows no live figures", one)
+	}
+	list.Items = nil
+	c.JSON(c.Get("/api/v1/nodes"), &list)
+	for _, it := range list.Items {
+		if it.ID == n.ID && (it.PeopleOnline != nil || it.Connections != nil) {
+			t.Fatalf("list n1 = %+v: a server marked offline shows no live figures", it)
+		}
+	}
+	var sum summaryResp
+	c.JSON(c.Get("/api/v1/dashboard/summary"), &sum)
+	if sum.SessionsLive != 6 {
+		t.Fatalf("sessions_live = %d, want only the server that is still online", sum.SessionsLive)
+	}
+	if body := metricsText(t, h); strings.Contains(body, n.ID.String()) {
+		t.Fatalf("metrics still report the offline server:\n%s", body)
+	}
 }
 
 type liveResp struct {

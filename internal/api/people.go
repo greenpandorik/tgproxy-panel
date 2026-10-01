@@ -36,12 +36,12 @@ func (s *Server) fleetPeople(ctx context.Context) (fleetPeopleJSON, error) {
 }
 
 // freshSnapshots is each node's newest snapshot inside liveWindow, by node.
-func (s *Server) freshSnapshots(ctx context.Context) (map[uuid.UUID]db.NodeStatsSnapshot, error) {
-	rows, err := s.store.Q.LatestSnapshots(ctx, liveSince())
+func (s *Server) freshSnapshots(ctx context.Context) (map[uuid.UUID]db.LiveSnapshotsRow, error) {
+	rows, err := s.store.Q.LiveSnapshots(ctx, liveSince())
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[uuid.UUID]db.NodeStatsSnapshot, len(rows))
+	out := make(map[uuid.UUID]db.LiveSnapshotsRow, len(rows))
 	for _, row := range rows {
 		out[row.NodeID] = row
 	}
