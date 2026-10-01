@@ -1,57 +1,35 @@
-import { MoreHorizontal, Plus, Server } from 'lucide-react';
+import { Plus, RefreshCw, Server } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { useApplyNode, useDeleteNode, useInstallCommand, useNodes } from '@/api/nodes';
+import { useFleetRollouts, useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { CopyButton } from '@/components/common/CopyButton';
 import { DataTableSkeleton } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Panel } from '@/components/common/Panel';
+import { RowChevron } from '@/components/common/RowChevron';
+import { ServerOrderList } from '@/components/common/ServerOrder';
+import { DragHandle } from '@/components/common/Sortable';
+import { useSortableItem } from '@/components/common/sortableItem';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ENTER_CLASS } from '@/components/ui/motion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
-import { ApiError } from '@/lib/api';
-import { formatCompactAge, formatNumber } from '@/lib/format';
+import { formatCompactAge } from '@/lib/format';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { cn } from '@/lib/utils';
 
-import { FleetUpdates } from './FleetUpdates';
 import { CreateNodeDialog } from './CreateNodeDialog';
-import { DC_TONE_TEXT, dcTone, nodeDcLatency } from './dcDisplay';
-import { EngineTag } from './EngineTag';
+import { FleetRolloutStatus, FleetUpdateDialog } from './FleetUpdates';
 import { InstallCommandDialog } from './InstallCommandDialog';
 import { NodePeople } from './NodePeople';
-import { capacityText, DASH, engineVersion, LOAD_TONE_CLASS, loadTone, nodeLoad, nodeStatus, shortVersion } from './nodeDisplay';
+import { DASH, LOAD_TONE_CLASS, loadTone, nodeLoad, nodeStatus } from './nodeDisplay';
 
 import type { MouseEvent, ReactNode } from 'react';
 import type { CreateNodeResult, Node } from '@/api/types';
-
-function CapacityBar({ count, max }: { count: number; max: number }) {
-  const capped = max > 0;
-  const pct = capped ? Math.min(100, Math.round((count / max) * 100)) : 0;
-  const tight = capped && pct >= 90;
-
-  return (
-    <div className="w-16">
-      <span className={cn('mono block text-mono', tight ? 'text-err' : 'text-mute')}>{capacityText(count, max)}</span>
-      {/* No cap configured means there is no proportion to draw; the rule is
-          omitted rather than shown permanently empty. */}
-      {capped && (
-        <div className="mt-1 h-[3px] w-full overflow-hidden rounded-pill bg-hairline">
-          <div className={cn('h-full', tight ? 'bg-err' : 'bg-brand-primary')} style={{ width: `${pct}%` }} />
-        </div>
-      )}
-    </div>
-  );
-}
 
 function LoadBar({ percent }: { percent: number | undefined }) {
   if (percent === undefined) return <span className="mono text-mono text-dim">{DASH}</span>;
@@ -73,112 +51,80 @@ function LoadText({ percent }: { percent: number | undefined }) {
   return <span className={cn('mono', LOAD_TONE_CLASS[loadTone(percent)].text)}>{Math.round(percent)}%</span>;
 }
 
-function DcLatencyText({ ms }: { ms: number | undefined }) {
-  const { t, i18n } = useTranslation();
-  if (ms === undefined) return <span className="mono text-mono text-dim">{DASH}</span>;
-  const tone = dcTone(ms);
-  return (
-    <span className={cn('mono text-mono', DC_TONE_TEXT[tone])} data-testid="dc-latency" data-tone={tone}>
-      {formatNumber(Math.round(ms), i18n.language)} {t('common.ms')}
-    </span>
-  );
-}
-
-/** The fields the machine reports about one node, formatted and toned once for both layouts. */
-function useNodeRow(node: Node) {
+function useHeartbeat(node: Node) {
   const { t, i18n } = useTranslation();
   const age = formatCompactAge(node.last_seen_at, i18n.language);
-  const version = engineVersion(node);
   return {
     offline: nodeStatus(node) === 'offline',
-    relay: shortVersion(version),
-    relayTone: version ? 'text-mute' : 'text-dim',
-    heartbeat: age ? t('common.ago', { value: age }) : t('nodes.last_seen_never'),
-    load: nodeLoad(node),
-    telegram: nodeDcLatency(node),
+    text: age ? t('common.ago', { value: age }) : t('nodes.last_seen_never'),
   };
 }
 
-function EngineCell({ node }: { node: Node }) {
-  const row = useNodeRow(node);
+/** Anything inside a row that handles its own click, so opening the server does not fire too. */
+const interactiveSelector = 'a, button, [role="checkbox"]';
+
+function useOpenNode(node: Node) {
+  const navigate = useNavigate();
+  return (e: MouseEvent<HTMLElement>) => {
+    if ((e.target as HTMLElement).closest(interactiveSelector)) return;
+    navigate(`/nodes/${node.id}`);
+  };
+}
+
+function NameCell({ node }: { node: Node }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <EngineTag engine={node.engine} />
-      <span className={cn('mono text-mono', row.relayTone)}>{row.relay}</span>
-    </span>
+    <>
+      <Link
+        to={`/nodes/${node.id}`}
+        className="flex w-fit max-w-full items-center gap-2 font-medium text-foreground outline-none"
+      >
+        <StatusBadge status={nodeStatus(node)} hideLabel />
+        <span className="truncate">{node.name}</span>
+      </Link>
+      <span className="mono block truncate pl-[15px] text-mono text-mute">{node.hostname}</span>
+    </>
   );
 }
 
-/** The "not yet pushed" tag: the node's config differs from what the agent last applied. */
-function DirtyTag({ dirty }: { dirty: boolean }) {
+function NodeTableRow({ node, writer }: { node: Node; writer: boolean }) {
   const { t } = useTranslation();
-  if (!dirty) return <span className="text-dim">{DASH}</span>;
-  return <Badge variant="warn">{t('nodes.dirty_tag')}</Badge>;
-}
-
-/** Hostname with a copy affordance that stays out of the way until the row is pointed at. */
-function HostLine({ hostname }: { hostname: string }) {
-  return (
-    <span className="flex items-center gap-1 pl-[15px]">
-      <span className="mono truncate text-mono text-mute">{hostname}</span>
-      <CopyButton
-        value={hostname}
-        className="-my-1 size-6 opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 [&_svg]:size-3"
-      />
-    </span>
-  );
-}
-
-interface InstallResult {
-  command: string;
-  expires_at: string;
-  nodeId: string;
-  regenerated: boolean;
-}
-
-interface RowActionsProps {
-  node: Node;
-  onShowInstall: (result: InstallResult) => void;
-  onDelete: (node: Node) => void;
-}
-
-function RowActions({ node, onShowInstall, onDelete }: RowActionsProps) {
-  const { t } = useTranslation();
-  const applyNode = useApplyNode(node.id);
-  const installCommand = useInstallCommand(node.id);
-
-  const handleApply = async () => {
-    try {
-      await applyNode.mutateAsync();
-      toast.add({ description: t('nodes.apply_queued'), type: 'success' });
-    } catch (err) {
-      toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
-    }
-  };
-
-  const handleInstall = async () => {
-    try {
-      const result = await installCommand.mutateAsync();
-      onShowInstall({ ...result, nodeId: node.id, regenerated: true });
-    } catch {
-      toast.add({ description: t('common.error_generic'), type: 'error' });
-    }
-  };
+  const { setNode, style, dragging, handle } = useSortableItem(node.id, !writer);
+  const { activator, attributes, listeners } = handle;
+  const heartbeat = useHeartbeat(node);
+  const load = nodeLoad(node);
+  const open = useOpenNode(node);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon-sm" />}>
-        <MoreHorizontal />
-        <span className="sr-only">{t('common.actions')}</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => void handleApply()}>{t('nodes.action_apply_now')}</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void handleInstall()}>{t('nodes.action_install_command')}</DropdownMenuItem>
-        <DropdownMenuItem variant="destructive" onClick={() => onDelete(node)}>
-          {t('nodes.action_delete')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <TableRow interactive ref={setNode} style={style} onClick={open} className={cn(dragging && 'bg-elevated shadow-popover')}>
+      {writer && (
+        <TableCell className="w-0 pr-0">
+          <DragHandle
+            activator={activator}
+            attributes={attributes}
+            listeners={listeners}
+            label={t('nodes.reorder_handle', { name: node.name })}
+          />
+        </TableCell>
+      )}
+      <TableCell className="max-w-72">
+        <NameCell node={node} />
+      </TableCell>
+      <TableCell>
+        <NodePeople node={node} />
+      </TableCell>
+      <TableCell>
+        <LoadBar percent={load?.cpu} />
+      </TableCell>
+      <TableCell>
+        <LoadBar percent={load?.mem} />
+      </TableCell>
+      <TableCell className={cn('mono text-right text-mono', heartbeat.offline ? 'text-err' : 'text-mute')}>
+        {heartbeat.text}
+      </TableCell>
+      <TableCell className="w-0 text-right">
+        <RowChevron />
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -187,151 +133,94 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="micro truncate text-mute">{label}</dt>
-      {/* No `truncate` here: it would clip the border of a tag sitting in the slot. */}
       <dd className="mt-1 min-w-0 text-mono">{children}</dd>
     </div>
   );
 }
 
-// Anything inside a row that handles its own click, so opening the node does not fire too.
-const interactiveSelector = 'a, button, [role="menuitem"], [role="menu"]';
-
-function NodeCard({ node, actions }: { node: Node; actions: ReactNode }) {
+function NodeCard({ node, writer }: { node: Node; writer: boolean }) {
   const { t } = useTranslation();
-  const row = useNodeRow(node);
-  const navigate = useNavigate();
-
-  const openNode = (e: MouseEvent<HTMLLIElement>) => {
-    if ((e.target as HTMLElement).closest(interactiveSelector)) return;
-    navigate(`/nodes/${node.id}`);
-  };
+  const { setNode, style, dragging, handle } = useSortableItem(node.id, !writer);
+  const { activator, attributes, listeners } = handle;
+  const heartbeat = useHeartbeat(node);
+  const load = nodeLoad(node);
+  const open = useOpenNode(node);
 
   return (
-    <li className="cursor-pointer px-4 py-3" onClick={openNode}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link
-            to={`/nodes/${node.id}`}
-            className="flex items-center gap-2 text-body font-medium text-foreground hover:underline"
-          >
-            <StatusBadge status={nodeStatus(node)} hideLabel />
-            <span className="truncate">{node.name}</span>
-          </Link>
-          <p className="mono mt-1 truncate pl-[15px] text-mono text-mute">{node.hostname}</p>
+    <li
+      ref={setNode}
+      style={style}
+      onClick={open}
+      className={cn(
+        'group/row cursor-pointer px-4 py-3 transition-colors hover:bg-elevated focus-within:bg-elevated',
+        dragging && 'bg-elevated shadow-popover',
+      )}
+    >
+      <div className="flex items-start gap-2">
+        {writer && (
+          <DragHandle
+            activator={activator}
+            attributes={attributes}
+            listeners={listeners}
+            label={t('nodes.reorder_handle', { name: node.name })}
+            className="-my-1 -ml-2"
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <NameCell node={node} />
         </div>
-        {actions}
+        <RowChevron className="mt-1" />
       </div>
-
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
-        <Field label={t('nodes.column_relay')}>
-          <EngineCell node={node} />
-        </Field>
-        <Field label={t('nodes.column_profiles')}>
-          <CapacityBar count={node.profile_count} max={node.max_profiles} />
-        </Field>
-        <Field label={t('nodes.column_online')}>
+        <Field label={t('common.people_online')}>
           <NodePeople node={node} />
         </Field>
+        <Field label={t('nodes.column_heartbeat')}>
+          <span className={cn('mono', heartbeat.offline ? 'text-err' : 'text-mute')}>{heartbeat.text}</span>
+        </Field>
         <Field label={t('nodes.load_cpu')}>
-          <LoadText percent={row.load?.cpu} />
+          <LoadText percent={load?.cpu} />
         </Field>
         <Field label={t('nodes.load_ram')}>
-          <LoadText percent={row.load?.mem} />
-        </Field>
-        <Field label={t('nodes.column_heartbeat')}>
-          <span className={cn('mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</span>
-        </Field>
-        <Field label={t('nodes.column_changes')}>
-          <DirtyTag dirty={node.dirty} />
+          <LoadText percent={load?.mem} />
         </Field>
       </dl>
     </li>
   );
 }
 
-function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
-  const row = useNodeRow(node);
-  const navigate = useNavigate();
-
-  const openNode = (e: MouseEvent<HTMLTableRowElement>) => {
-    if ((e.target as HTMLElement).closest(interactiveSelector)) return;
-    navigate(`/nodes/${node.id}`);
-  };
-
-  return (
-    <TableRow className="group/row cursor-pointer" onClick={openNode}>
-      <TableCell className="max-w-72">
-        <Link
-          to={`/nodes/${node.id}`}
-          className="flex w-fit max-w-full items-center gap-2 font-medium text-foreground hover:underline"
-        >
-          <StatusBadge status={nodeStatus(node)} hideLabel />
-          <span className="truncate">{node.name}</span>
-        </Link>
-        <HostLine hostname={node.hostname} />
-      </TableCell>
-      <TableCell>
-        <EngineCell node={node} />
-      </TableCell>
-      <TableCell>
-        <CapacityBar count={node.profile_count} max={node.max_profiles} />
-      </TableCell>
-      <TableCell>
-        <NodePeople node={node} />
-      </TableCell>
-      <TableCell>
-        <LoadBar percent={row.load?.cpu} />
-      </TableCell>
-      <TableCell>
-        <LoadBar percent={row.load?.mem} />
-      </TableCell>
-      <TableCell className="hidden text-right @min-[64rem]:table-cell">
-        <DcLatencyText ms={row.telegram} />
-      </TableCell>
-      <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
-      <TableCell className="text-right">
-        <DirtyTag dirty={node.dirty} />
-      </TableCell>
-      {actions && <TableCell className="w-0 text-right">{actions}</TableCell>}
-    </TableRow>
-  );
+interface InstallResult {
+  command: string;
+  expires_at: string;
+  nodeId: string;
 }
 
-// The fleet.
+// The fleet, in the order every list in the panel follows.
 export function NodesPage() {
   const { t } = useTranslation();
   const { isWriter } = useAuth();
   const { data, isLoading } = useNodes();
-  const deleteNode = useDeleteNode();
+  const rollouts = useFleetRollouts();
+  const narrow = useMediaQuery('(max-width: 767.98px)');
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
   const [installResult, setInstallResult] = useState<InstallResult | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Node | null>(null);
 
   const nodes = data?.items ?? [];
-  const online = nodes.filter((n) => nodeStatus(n) === 'online').length;
+  const telemt = nodes.some((n) => n.engine === 'telemt');
+  const running = rollouts.data?.items.find((r) => r.status === 'running');
 
   const handleCreated = (result: CreateNodeResult) => {
-    setInstallResult({
-      command: result.install_command,
-      expires_at: result.expires_at,
-      nodeId: result.node.id,
-      regenerated: false,
-    });
+    setInstallResult({ command: result.install_command, expires_at: result.expires_at, nodeId: result.node.id });
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      await deleteNode.mutateAsync(deleteTarget.id);
-      toast.add({ description: t('nodes.delete_success'), type: 'success' });
-    } catch (err) {
-      toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
-    }
-  };
-
-  const rowActions = (node: Node) =>
-    isWriter ? <RowActions node={node} onShowInstall={setInstallResult} onDelete={setDeleteTarget} /> : null;
+  const addButton = isWriter && (
+    <Button type="button" onClick={() => setCreateOpen(true)}>
+      <Plus />
+      {t('nodes.add')}
+    </Button>
+  );
 
   return (
     <>
@@ -342,72 +231,70 @@ export function NodesPage() {
           actions={
             <>
               <HelpButton topic="nodes.list" />
-              {isWriter && (
-                <Button type="button" onClick={() => setCreateOpen(true)}>
-                  <Plus />
-                  {t('nodes.add')}
+              {isWriter && telemt && (
+                <Button type="button" variant="outline" onClick={() => setUpdateOpen(true)}>
+                  <RefreshCw />
+                  {t('nodes.fleet_open')}
                 </Button>
               )}
+              {addButton}
             </>
           }
         />
 
-        {nodes.some((n) => n.engine === 'telemt') && <FleetUpdates nodes={nodes} />}
+        {running && <FleetRolloutStatus rollout={running} nodes={nodes} writer={isWriter} />}
         {isLoading ? (
-          <DataTableSkeleton columns={isWriter ? 10 : 9} rows={4} />
+          <DataTableSkeleton columns={isWriter ? 7 : 6} rows={4} />
         ) : nodes.length === 0 ? (
           <EmptyState
             icon={Server}
             title={t('nodes.empty_title')}
             description={t('nodes.empty_description')}
-            action={
-              isWriter && (
-                <Button type="button" onClick={() => setCreateOpen(true)}>
-                  <Plus />
-                  {t('nodes.add')}
-                </Button>
-              )
-            }
+            action={addButton}
           />
         ) : (
-          <Panel className={ENTER_CLASS}>
-            <div className="@container hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('nodes.column_name')}</TableHead>
-                    <TableHead>{t('nodes.column_relay')}</TableHead>
-                    <TableHead>{t('nodes.column_profiles')}</TableHead>
-                    <TableHead>{t('nodes.column_online')}</TableHead>
-                    <TableHead>{t('nodes.load_cpu')}</TableHead>
-                    <TableHead>{t('nodes.load_ram')}</TableHead>
-                    {/* Wide layout only: the card list below md carries the
-                        fields that decide where a key goes, and this one is
-                        read on the node page when it matters. */}
-                    <TableHead className="hidden text-right @min-[64rem]:table-cell">{t('nodes.column_telegram')}</TableHead>
-                    <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
-                    <TableHead className="text-right">{t('nodes.column_changes')}</TableHead>
-                    {isWriter && <TableHead className="w-0" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+          <ServerOrderList servers={nodes}>
+            {isWriter && nodes.length > 1 && (
+              <p className="-mt-3 text-label text-mute">{t(narrow ? 'nodes.reorder_hint_cards' : 'nodes.reorder_hint_rows')}</p>
+            )}
+            <Panel className={ENTER_CLASS}>
+              {narrow ? (
+                <ul className="divide-y divide-hairline">
                   {nodes.map((node) => (
-                    <NodeTableRow key={node.id} node={node} actions={rowActions(node)} />
+                    <NodeCard key={node.id} node={node} writer={isWriter} />
                   ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            <ul className="divide-y divide-hairline md:hidden">
-              {nodes.map((node) => (
-                <NodeCard key={node.id} node={node} actions={rowActions(node)} />
-              ))}
-            </ul>
-          </Panel>
+                </ul>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {isWriter && (
+                        <TableHead className="w-0">
+                          <span className="sr-only">{t('nodes.column_order')}</span>
+                        </TableHead>
+                      )}
+                      <TableHead>{t('nodes.column_name')}</TableHead>
+                      <TableHead>{t('common.people_online')}</TableHead>
+                      <TableHead>{t('nodes.load_cpu')}</TableHead>
+                      <TableHead>{t('nodes.load_ram')}</TableHead>
+                      <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
+                      <TableHead className="w-0" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {nodes.map((node) => (
+                      <NodeTableRow key={node.id} node={node} writer={isWriter} />
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Panel>
+          </ServerOrderList>
         )}
       </div>
 
       <CreateNodeDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={handleCreated} />
+      {isWriter && telemt && <FleetUpdateDialog open={updateOpen} onOpenChange={setUpdateOpen} nodes={nodes} />}
 
       {installResult && (
         <InstallCommandDialog
@@ -416,19 +303,9 @@ export function NodesPage() {
           nodeId={installResult.nodeId}
           command={installResult.command}
           expiresAt={installResult.expires_at}
-          regenerated={installResult.regenerated}
+          regenerated={false}
         />
       )}
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title={t('nodes.delete_confirm_title', { name: deleteTarget?.name ?? '' })}
-        description={t('nodes.delete_confirm_description')}
-        destructive
-        confirmLabel={t('nodes.action_delete')}
-        onConfirm={handleDelete}
-      />
     </>
   );
 }

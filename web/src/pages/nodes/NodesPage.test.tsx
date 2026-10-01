@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/i18n';
 import { setLang } from '@/i18n';
-import { useInstallCommand, useNode, useNodeHealth, useNodes } from '@/api/nodes';
+import { useFleetRollouts, useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 
 import { NodesPage } from './NodesPage';
@@ -19,9 +19,7 @@ vi.mock('@/auth/AuthProvider', () => ({ useAuth: vi.fn() }));
 vi.mock('@/api/nodes', async (importOriginal) => ({
   ...(await importOriginal<typeof NodesApi>()),
   useNodes: vi.fn(),
-  useInstallCommand: vi.fn(),
-  useNode: vi.fn(),
-  useNodeHealth: vi.fn(),
+  useFleetRollouts: vi.fn(),
 }));
 vi.mock('./CreateNodeDialog', () => ({ CreateNodeDialog: () => null }));
 
@@ -51,11 +49,6 @@ function health(cpu: number, mem: number, extra: Partial<NodeHealth> = {}): Node
     profile_count: 0,
     ...extra,
   };
-}
-
-/** The DC half of a heartbeat: telemt's one figure for the route to Telegram. */
-function dc(effective_latency_ms: number): Partial<NodeHealth> {
-  return { dc_data_available: true, effective_latency_ms };
 }
 
 function node(name: string, status: Node['status'], h?: NodeHealth): Node {
@@ -94,6 +87,12 @@ function rowOf(name: string): HTMLElement {
   if (!row) throw new Error(`no table row for ${name}`);
   return row;
 }
+
+beforeEach(() => {
+  vi.mocked(useFleetRollouts).mockReturnValue({ data: { items: [], version: '3.5.9' } } as unknown as ReturnType<
+    typeof useFleetRollouts
+  >);
+});
 
 describe('NodesPage load columns', () => {
   beforeEach(() => {
@@ -143,9 +142,6 @@ describe('NodesPage load columns', () => {
     expect(n2[0]).toHaveTextContent('97%');
     expect(n2[0].querySelector('.bg-err')).not.toBeNull();
     expect(n2[1]).toHaveAttribute('data-tone', 'ok');
-
-    // The narrow layout carries the same figures as text.
-    expect(screen.getAllByText('42%').length).toBeGreaterThanOrEqual(2);
   });
 
   it('prints a dash instead of a stale or missing figure', () => {
@@ -161,73 +157,6 @@ describe('NodesPage load columns', () => {
     expect(screen.queryByText('50%')).toBeNull();
     // Never reported: nothing to draw.
     expect(within(rowOf('n4')).queryAllByTestId('load-bar')).toHaveLength(0);
-  });
-});
-
-describe('NodesPage Telegram column', () => {
-  beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({ isWriter: false } as unknown as ReturnType<typeof useAuth>);
-    setLang('en');
-  });
-
-  it('prints the latency to Telegram from the last heartbeat, toned at 150 and 400 ms', () => {
-    vi.mocked(useNodes).mockReturnValue({
-      data: {
-        items: [
-          node('n1', 'online', health(1, 1, dc(42.4))),
-          node('n2', 'online', health(1, 1, dc(150))),
-          node('n3', 'degraded', health(1, 1, dc(812))),
-        ],
-        total: 3,
-      },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useNodes>);
-
-    render(wrap(<NodesPage />));
-
-    expect(screen.getByRole('columnheader', { name: 'Telegram' })).toBeInTheDocument();
-
-    const n1 = within(rowOf('n1')).getByTestId('dc-latency');
-    expect(n1).toHaveTextContent('42 ms');
-    expect(n1).toHaveAttribute('data-tone', 'ok');
-    expect(n1.className).toContain('text-mute');
-
-    const n2 = within(rowOf('n2')).getByTestId('dc-latency');
-    expect(n2).toHaveTextContent('150 ms');
-    expect(n2).toHaveAttribute('data-tone', 'warn');
-    expect(n2.className).toContain('text-warn');
-
-    const n3 = within(rowOf('n3')).getByTestId('dc-latency');
-    expect(n3).toHaveTextContent('812 ms');
-    expect(n3).toHaveAttribute('data-tone', 'err');
-    expect(n3.className).toContain('text-err');
-  });
-
-  it('prints a dash for a node that reports no figure', () => {
-    vi.mocked(useNodes).mockReturnValue({
-      data: {
-        items: [
-          // Offline: the last figure describes a moment the panel cannot vouch for.
-          node('n4', 'offline', health(1, 1, dc(42))),
-          // tproxy, or telemt with upstreams disabled: the agent says there is no data.
-          node('n5', 'online', health(1, 1, { dc_data_available: false, effective_latency_ms: 42 })),
-          // An older panel that omits the fields entirely.
-          node('n6', 'online', health(1, 1)),
-        ],
-        total: 3,
-      },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useNodes>);
-
-    render(wrap(<NodesPage />));
-
-    expect(screen.queryAllByTestId('dc-latency')).toHaveLength(0);
-    expect(screen.queryByText(/42 ms/)).toBeNull();
-    for (const name of ['n4', 'n5', 'n6']) {
-      const cells = within(rowOf(name)).getAllByRole('cell');
-      // Server, engine, users, online, CPU, RAM, Telegram, heartbeat, changes.
-      expect(cells[6]).toHaveTextContent('—');
-    }
   });
 });
 
@@ -252,8 +181,8 @@ describe('NodesPage online column', () => {
 
     render(wrap(<NodesPage />));
 
-    expect(screen.getByRole('columnheader', { name: 'Online' })).toBeInTheDocument();
-    const online = (name: string) => within(rowOf(name)).getAllByRole('cell')[3];
+    expect(screen.getByRole('columnheader', { name: 'People online' })).toBeInTheDocument();
+    const online = (name: string) => within(rowOf(name)).getAllByRole('cell')[1];
     expect(online('n1')).toHaveTextContent('≈ 3');
     expect(online('n1')).toHaveTextContent('connections: 17');
     expect(online('n2')).toHaveTextContent('—');
@@ -276,10 +205,10 @@ function wrapWithDetailRoute(nodeEl: ReactNode) {
   );
 }
 
-describe('NodesPage row click', () => {
+describe('NodesPage rows', () => {
   beforeEach(() => setLang('en'));
 
-  it('opens the node from anywhere in its row, not just the name', async () => {
+  it('opens the node from anywhere in its row, and marks the row as something to click', async () => {
     vi.mocked(useAuth).mockReturnValue({ isWriter: false } as unknown as ReturnType<typeof useAuth>);
     vi.mocked(useNodes).mockReturnValue({
       data: { items: [node('n1', 'online', health(42, 85))], total: 1 },
@@ -288,47 +217,37 @@ describe('NodesPage row click', () => {
 
     render(wrapWithDetailRoute(<NodesPage />));
 
+    expect(rowOf('n1').className).toContain('cursor-pointer');
+    expect(within(rowOf('n1')).queryByRole('button')).toBeNull();
     await userEvent.click(within(rowOf('n1')).getAllByTestId('load-bar')[0]);
     expect(await screen.findByText('node detail page')).toBeInTheDocument();
   });
 
-  it('does not navigate when the row actions menu is used', async () => {
+  it('gives a writer a grip to reorder that does not open the server', async () => {
     vi.mocked(useAuth).mockReturnValue({ isWriter: true } as unknown as ReturnType<typeof useAuth>);
     vi.mocked(useNodes).mockReturnValue({
-      data: { items: [node('n1', 'online', health(42, 85))], total: 1 },
+      data: { items: [node('n1', 'online', health(42, 85)), node('n2', 'online', health(1, 1))], total: 2 },
       isLoading: false,
     } as unknown as ReturnType<typeof useNodes>);
 
     render(wrapWithDetailRoute(<NodesPage />));
 
-    await userEvent.click(within(rowOf('n1')).getByRole('button', { name: 'Actions' }));
-    expect(await screen.findByRole('menuitem', { name: 'Apply now' })).toBeInTheDocument();
+    const grip = within(rowOf('n1')).getByRole('button', { name: 'Move n1' });
+    await userEvent.click(grip);
     expect(screen.queryByText('node detail page')).toBeNull();
+    expect(screen.getByText(/Drag a row by its handle/)).toBeInTheDocument();
   });
-});
 
-describe('NodesPage install command', () => {
-  beforeEach(() => setLang('en'));
-
-  it('warns that the previous command stops working when a new one is issued from the list', async () => {
-    vi.mocked(useAuth).mockReturnValue({ isWriter: true } as unknown as ReturnType<typeof useAuth>);
+  it('shows a viewer no grips', () => {
+    vi.mocked(useAuth).mockReturnValue({ isWriter: false } as unknown as ReturnType<typeof useAuth>);
     vi.mocked(useNodes).mockReturnValue({
-      data: { items: [node('n1', 'online', health(42, 85))], total: 1 },
+      data: { items: [node('n1', 'online', health(42, 85)), node('n2', 'online', health(1, 1))], total: 2 },
       isLoading: false,
     } as unknown as ReturnType<typeof useNodes>);
-    vi.mocked(useInstallCommand).mockReturnValue({
-      mutateAsync: vi.fn().mockResolvedValue({ command: 'curl -fsSL install | sh', expires_at: '2026-09-30T12:00:00Z' }),
-    } as unknown as ReturnType<typeof useInstallCommand>);
-    vi.mocked(useNode).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useNode>);
-    vi.mocked(useNodeHealth).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useNodeHealth>);
 
     render(wrap(<NodesPage />));
 
-    await userEvent.click(within(rowOf('n1')).getByRole('button', { name: 'Actions' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Install command' }));
-
-    expect(await screen.findByText('curl -fsSL install | sh')).toBeInTheDocument();
-    expect(screen.getByText('The old install command stops working.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Move/ })).toBeNull();
   });
 });
 
@@ -346,7 +265,7 @@ describe('NodesPage fleet update', () => {
 
     render(wrap(<NodesPage />));
 
-    expect(screen.queryByRole('button', { name: 'Update telemt on servers' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Update telemt…' })).toBeNull();
   });
 
   it('offers it once a telemt server is in the list', () => {
@@ -357,6 +276,6 @@ describe('NodesPage fleet update', () => {
 
     render(wrap(<NodesPage />));
 
-    expect(screen.getByRole('button', { name: 'Update telemt on servers' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update telemt…' })).toBeInTheDocument();
   });
 });
