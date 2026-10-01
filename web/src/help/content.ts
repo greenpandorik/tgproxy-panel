@@ -68,7 +68,7 @@ export const HELP_TOPICS = {
   },
 
   'keys.list': {
-    fields: ['tiles', 'state', 'type', 'columns', 'search', 'open', 'bulk'],
+    fields: ['chips', 'state', 'type', 'columns', 'search', 'open', 'pages', 'bulk'],
     docs: 'keys',
   },
   'keys.create': {
@@ -107,7 +107,7 @@ export const HELP_TOPICS = {
     docs: 'engine',
   },
   'keys.detail': {
-    fields: ['header', 'overview', 'subscription', 'direct_links', 'about', 'access', 'save', 'manage', 'danger'],
+    fields: ['header', 'overview', 'subscription', 'direct_links', 'about', 'access', 'limits', 'stats', 'save', 'manage', 'danger'],
     docs: 'keys',
   },
   'keys.link': {
@@ -133,7 +133,7 @@ export const HELP_TOPICS = {
   },
 
   monitoring: {
-    fields: ['range', 'people', 'sessions', 'streams', 'traffic', 'connections', 'prometheus'],
+    fields: ['range', 'people', 'sessions', 'streams', 'traffic', 'connections'],
     docs: 'monitoring',
   },
   audit: {

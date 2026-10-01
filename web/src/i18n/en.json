@@ -1743,9 +1743,9 @@
         "title": "Users",
         "intro": "A user is access to the proxy for one person or for a group. Every user has a subscription link: the person opens it and connects the proxy step by step. Here you find, filter, open, turn off, extend and delete users, one at a time or in bulk.",
         "fields": {
-          "tiles": {
-            "name": "Tiles on top",
-            "what": "How many users there are in total, active, expiring within 7 days, already expired and turned off. Click a tile to show only those in the list; click it again to clear the filter."
+          "chips": {
+            "name": "States above the list",
+            "what": "A row of buttons with counts: all users, active, expiring within 7 days, expired and turned off. Setting up and Revoked appear when there are any. The pressed button leaves only those in the list; All clears it."
           },
           "state": {
             "name": "State",
@@ -1757,16 +1757,20 @@
           },
           "columns": {
             "name": "Columns",
-            "what": "The Columns button hides and shows columns: type, servers, traffic for 30 days, activity, expiry, creation date. The choice is remembered in this browser.",
+            "what": "The Columns button hides and shows columns: activity, expiry, traffic for 30 days, servers, type, link and creation date. The choice is remembered in this browser.",
             "tip": "The Activity column shows whether the person is online and from about how many devices (distinct IP addresses), with their connections below; when offline, when they last connected. Only telemt servers count this."
           },
           "search": {
             "name": "Search and filters",
-            "what": "Search by name, contact, note and short address; filter by state, type and server. A link like /users?user=<id> opens one user, which is how the command palette gets there."
+            "what": "Search by name, contact, note and short address. Filters narrows the list by type and server; an active filter shows next to the state buttons, and its cross removes it. A link like /users?node=<id> opens the users of one server, and /users?user=<id> opens one user."
           },
           "open": {
             "name": "User window",
-            "what": "Click a row to open the user: the subscription link, expiry, servers, limits and every action. The \"…\" menu at the end of a row copies the subscription link, turns access off or on, or deletes the user."
+            "what": "Click anywhere on a row: it lights up and shows an arrow at its end, and a click opens the user window. The checkbox, the copy button and the \"…\" menu on the row work on their own. The menu copies the subscription link, extends by a month, turns access off or on, and deletes the user."
+          },
+          "pages": {
+            "name": "Pages",
+            "what": "Under the list it says which rows are shown, for example \"Showing 26–50 of 132\". Rows per page picks 25, 50 or 100, and the choice is remembered in this browser. The page number is in the address, so the browser's Back returns to the previous page. Changing a filter or the search goes back to the first page."
           },
           "bulk": {
             "name": "Bulk actions",
@@ -1984,15 +1988,15 @@
       },
       "keys.detail": {
         "title": "User window",
-        "intro": "Everything about one user in one window. On the left, what you send to the person and what is happening with them; on the right, access and limits. Save at the bottom saves every field at once, servers included; changes reach the servers at the next apply.",
+        "intro": "Everything about one user in one window with four tabs. Main holds what you send to the person and the basic fields; the others hold access, limits and statistics. Save at the bottom saves every tab at once, servers included; changes reach the servers at the next apply.",
         "fields": {
           "header": {
             "name": "Header",
-            "what": "Name, state, type, contact and creation date. Above the cards the panel says when access is waiting to apply, turned off, expired or revoked. A revoked user opens read-only."
+            "what": "Name, state, type, contact and whether the person is online: \"Online, ≈ 2 devices\" or when they were last seen. On the Main tab the panel says when access is waiting to apply, turned off, expired or revoked. A revoked user opens read-only."
           },
           "overview": {
-            "name": "Subscription and activity",
-            "what": "Access expiry (red once it has passed, amber with less than a week left), traffic for 30 days, whether the person is online and from about how many devices (or when they last connected), and the servers."
+            "name": "Main",
+            "what": "The \"Access is on\" switch and four facts: expiry (red once it has passed, amber with less than a week left), traffic for 30 days, on how many of all servers the user is, and when they were last online. The creation date is at the bottom of the tab."
           },
           "subscription": {
             "name": "Subscription link",
@@ -2001,19 +2005,27 @@
           },
           "direct_links": {
             "name": "Direct links",
-            "what": "t.me and tg:// links and QR codes for each server, WEB and Fake-TLS. Useful when the person prefers not to use the subscription page. Traffic and connections opens a chart per server."
+            "what": "The \"Direct proxy links\" row, with the number of links, opens t.me and tg:// links and QR codes for each server, WEB and Fake-TLS. They are useful when the person prefers not to use the subscription page."
           },
           "about": {
-            "name": "About the user",
-            "what": "Name, contact and note. Shared access also has its short address here."
+            "name": "About the user and expiry",
+            "what": "Name, contact and note; shared access also has its short address. Below is the expiry with +1 month, +3 months, +1 year or No end date. The buttons extend from the current end date, or from today if that date has already passed."
           },
           "access": {
-            "name": "Access",
-            "what": "The expiry with +1 month, +3 months, +1 year or No end date, the servers as checkboxes, and the transport. The buttons extend from the current end date, or from today if that date has already passed."
+            "name": "Access and servers",
+            "what": "The access type (chosen at creation and fixed), the servers as checkboxes in the same order as the server list, and the transport when some of the servers run tproxy."
+          },
+          "limits": {
+            "name": "Limits",
+            "what": "Traffic quota, speed, and the number of IP addresses and connections for telemt servers, plus the extended limits for tproxy. An empty field means no limit."
+          },
+          "stats": {
+            "name": "Statistics",
+            "what": "Connections right now, traffic over 24 hours or 7 days, and a chart for each server. Only telemt servers count these."
           },
           "save": {
             "name": "Save",
-            "what": "Becomes active once you change something. If you close the window without saving, the panel offers the draft back next time."
+            "what": "Becomes active once you change something. If a field does not pass the check, the window switches to the tab with that field and marks the tab. If you close the window without saving, the panel offers the draft back next time."
           },
           "manage": {
             "name": "More actions → Manage",
@@ -2026,7 +2038,7 @@
           }
         },
         "notes": {
-          "1": "Traffic and activity are counted only by telemt servers; on tproxy these tiles stay empty.",
+          "1": "Traffic and activity are counted only by telemt servers; on tproxy these values stay empty.",
           "2": "While the state is Waiting to apply, the link is already shown but starts working after the server applies it, usually within a minute."
         }
       },
@@ -2159,7 +2171,7 @@
       },
       "monitoring": {
         "title": "Monitoring",
-        "intro": "Charts per server over the chosen range. Values come from stats snapshots the panel takes from the servers regularly, so a line can trail \"now\" by a few minutes. For your own Prometheus/Grafana, the metrics address is at the bottom.",
+        "intro": "Charts per server over the chosen range. Values come from stats snapshots the panel takes from the servers regularly, so a line can trail \"now\" by a few minutes. Metrics export for Prometheus and Grafana is under Settings → Integrations.",
         "fields": {
           "range": {
             "name": "Range",
@@ -2184,10 +2196,6 @@
           "connections": {
             "name": "Connections (telemt)",
             "what": "On telemt servers, the TCP connections telemt itself counts are shown instead of sessions and streams. One Telegram app holds several connections at once, usually 2 to 15, so there are more of them than people."
-          },
-          "prometheus": {
-            "name": "Prometheus",
-            "what": "The panel's own metrics are served at /metrics with the header Authorization: Bearer <METRICS_TOKEN> (the token is in the panel's .env). Each server's metrics: /api/v1/nodes/{id}/metrics. A ready Grafana dashboard is in the repository under deploy/grafana/."
           }
         },
         "notes": {

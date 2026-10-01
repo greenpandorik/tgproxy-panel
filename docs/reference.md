@@ -266,7 +266,9 @@ The Monitoring page holds charts and history. Its views:
 | All servers | Fleet totals: servers online, healthy and degraded, people online with the connections under it, current traffic |
 | Servers | For each server: sessions and streams, upload and download rate, and CPU, RAM and disk. A telemt server has lines for people online and connections instead, and one for traffic |
 | WEB transport | WEB carriers across all telemt servers |
-| Metrics export | How to collect the panel's metrics with Prometheus |
+
+How to collect the panel's metrics with Prometheus is shown in Settings → Integrations; it used to
+be a Metrics export view here.
 
 The period switch offers 1, 6 and 24 hours and 7 days. Problems are listed on Overview only.
 
@@ -352,15 +354,18 @@ from the gallery or from the server's Cover site tab. How it works inside:
 
 ### Users
 
-At the top are the tiles Total, Active, Expiring (within the next 7 days), Expired and Turned off,
-and clicking a tile filters the list. Below is the list with search by name, contact, note and
-short address, filters by state, type and server, and bulk actions: extend, turn off, turn on,
-revoke access, delete. When nobody matches the filters, there is a "Reset filters" button.
-"Columns" hides and shows the link (with a copy button), type, servers, traffic over 30 days,
-activity, expiry and creation date, and the choice is remembered in the browser. The "⋯" menu of
-a row has "Copy link", "Extend by a month", "Turn off" or "Turn on", and "Delete". Clicking a row
-opens the user's window: the "Access is on" switch, the subscription link, expiry, traffic and
-activity on the left, access and limits on the right. The section used to be called Access keys;
+Above the list are the search by name, contact, note and short address, and the state buttons
+with counts: All, Active, Expiring soon (within the next 7 days), Expired, Turned off, plus Setting
+up and Revoked when there are any. "Filters" narrows the list by type and server, and an active
+filter shows as its own button with a cross. The address `/users?node=<id>` opens the users of one
+server. Bulk actions: extend, turn off, turn on, revoke access, delete. When nobody matches the
+filters, there is a "Reset filters" button. "Columns" hides and shows activity, expiry, traffic
+over 30 days, servers, type, the link (with a copy button) and creation date, and the choice is
+remembered in the browser. Under the list it says which rows are shown, and you can pick 25, 50 or
+100 rows per page; the choice is remembered and the page number is in the address. The "⋯" menu of
+a row has "Copy link", "Extend by a month", "Turn off" or "Turn on", and "Delete". Clicking
+anywhere on a row opens the user's window with the tabs Main, Access and servers, Limits and
+Statistics. The section used to be called Access keys;
 `/keys` and `/keys?key=<id>` lead to `/users` and `/users?user=<id>`. Everything about users is in
 [Users and links](#users-and-links).
 
@@ -388,6 +393,7 @@ The tabs come in two groups. "Whole panel" affects everyone, "Just for you" only
 | Tab | Group | What is there | Who can change it |
 |---|---|---|---|
 | Notifications | Whole panel | How often to apply changes (10 to 3600 s), when to treat a server as down (30 to 3600 s), Telegram alerts | Owner |
+| Integrations | Whole panel | Metrics export for Prometheus and Grafana with a scrape example, whether `METRICS_TOKEN` is set, whether the alert webhook is configured and how to set it | Read only: both are set in `.env` |
 | Branding | Whole panel | Branding variants: panel name, logo, logo for the dark theme, favicon, login background, colours, default theme, texts, custom CSS | Owner and admin |
 | Accounts | Whole panel | Panel accounts and their roles | Owner |
 | Backups | Whole panel | Database backups and the nightly schedule | Owner |
@@ -454,7 +460,7 @@ working, while the subscription link stays the same. "Revoke access" closes acce
 
 ### Links
 
-Each server gives a user their own direct links. "Direct links" in the user window opens them,
+Each server gives a user their own direct links. The "Direct proxy links" row in the user window opens them,
 with a QR code for each and a copy button for the `t.me` and `tg://` forms.
 
 | Link | Format | Where it works |
@@ -477,7 +483,7 @@ telemt the WEB carrier is chosen automatically for each connection.
 On telemt servers the panel also counts traffic per user. The user window shows the traffic
 over 30 days and whether the person is online, from about how many devices (distinct IP
 addresses across all servers) and over how many connections, or when they last connected.
-"Traffic and connections" draws a chart over 24 hours or 7 days.
+The Statistics tab draws a chart over 24 hours or 7 days.
 
 ### Subscription page
 
@@ -678,6 +684,8 @@ The same messages can go to your own HTTPS address: set `ALERT_WEBHOOK_URL` and
 a JSON body with `event_id`, `node_id`, `kind`, `message` and `at`, makes up to three attempts
 and does not follow redirects. Each request is signed with HMAC-SHA256 in the
 `X-TGWP-Signature` header, computed over the `X-TGWP-Timestamp` value, a dot and the body.
+Settings → Integrations shows whether the webhook is configured; the address and the secret never
+leave the server.
 
 ## Accounts and security
 
@@ -1067,7 +1075,7 @@ header equal to the `tgwp_csrf` cookie. Some routes are useful on their own:
 | `DELETE /api/v1/subscription-service/token` | Owner | Revoke the service token |
 | `GET /api/v1/subpage/pages/{token}`, `POST /api/v1/subpage/heartbeat` | Service token | One page's data and the "online" signal, for the subscription page service |
 | `GET /api/v1/keys` | Any role | The list of users. Parameters `q`, `type`, `node`, `state`, `page`, `per_page` |
-| `GET /api/v1/keys/summary` | Any role | The counts for the tiles: `{total, active, expiring, expired, disabled, revoked}` |
+| `GET /api/v1/keys/summary` | Any role | The counts for the state buttons above the list: `{total, active, expiring, expired, disabled, revoked}` |
 | `POST /api/v1/keys`, `PATCH /api/v1/keys/{id}` | Owner, admin | Create or change a user |
 | `POST /api/v1/keys/{id}/disable`, `POST /api/v1/keys/{id}/enable` | Owner, admin | Turn access off or on |
 | `POST /api/v1/keys/bulk` | Owner, admin | One action on several users: `extend`, `disable`, `enable`, `revoke` or `delete` |

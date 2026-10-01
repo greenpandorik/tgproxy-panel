@@ -639,7 +639,7 @@ on the panel server.
 7. Save a new copy of `.env` off the server.
 
 It worked if the panel opens and the user window shows the subscription link and opens "Direct
-links". The most thorough check is a fresh backup, since checking it decrypts every secret:
+proxy links". The most thorough check is a fresh backup, since checking it decrypts every secret:
 
 ```bash
 docker compose exec panel /app/panel db backup
@@ -1179,7 +1179,7 @@ Work from the person towards the server.
 
 1. Find the person under Users and look at their state:
    - Expired: the end date has passed and access was taken off the servers. Move the date forward
-     in the Access card, for example with "+1 month", and save. After the next apply the person
+     in "Access until" on the Main tab, for example with "+1 month", and save. After the next apply the person
      connects again with the same links.
    - Turned off: access is paused. Turn it on with the "Access is off" switch in the user window
      or with "More actions" → "Turn on".
@@ -1201,7 +1201,7 @@ Work from the person towards the server.
    - After "New subscription link" or "Revoke link" the previous subscription link stops opening.
 
    In these cases, send the person the subscription link from the user window: it is always
-   visible in the "Subscription and activity" card, and its page carries the current links. If the
+   visible on the Main tab, and its page carries the current links. If the
    window says the link cannot be shown, an earlier version of the panel issued it: press "Issue a
    new link" and send the new one.
 4. If people on one provider or in one region cannot connect while others can, the provider is

@@ -646,43 +646,59 @@ For the old links to work:
 
 ### The users list
 
-Five tiles sit above the list: "Total", "Active", "Expiring" (within the next 7 days), "Expired"
-and "Turned off". Clicking a tile leaves only those users in the list, and clicking it again clears
-the filter. The search looks at the name, contact, note and short address, and the filters narrow
-the list by state, type and server. When nobody matches, "Reset filters" brings the whole list
-back.
+Above the list are the search and a row of state buttons with counts: "All", "Active", "Expiring
+soon" (within the next 7 days), "Expired" and "Turned off", plus "Setting up" and "Revoked" when
+there are any. A pressed button leaves only those users in the list, and "All" brings everyone
+back. The search looks at the name, contact, note and short address. "Filters" narrows the list by
+type and by server; an active filter shows next to the state buttons, and its cross removes it.
+The server page links here as `/users?node=<id>`, which opens the users of that server. When
+nobody matches, "Reset filters" brings the whole list back.
 
-"Columns" hides and shows the link, type, servers, traffic over 30 days, activity, expiry and
+"Columns" hides and shows activity, expiry, traffic over 30 days, servers, type, the link and the
 creation date. The choice is remembered in this browser. The button in the Link column copies the
 subscription link. The Activity column shows whether the person is online and from about how many
 devices, with the number of connections under it, or when they last connected. Only telemt servers
 count traffic and activity.
 
+Under the list the panel says which rows are shown, for example "Showing 26–50 of 132". "Rows per
+page" picks 25, 50 or 100 and is remembered in this browser. The page number is part of the
+address, so the browser's Back button returns to the previous page, and changing a filter or the
+search goes back to the first page.
+
 ![Users](screenshots/keys.png)
 
-Clicking a row opens the user's window. The "⋯" menu at the end of a row has "Copy link", "Extend
+Clicking anywhere on a row opens the user's window; the row lights up and shows an arrow at its end
+when the pointer is over it. The checkbox, the copy button and the "⋯" menu keep their own clicks.
+The "⋯" menu at the end of a row has "Copy link", "Extend
 by a month", "Turn off" or "Turn on", and "Delete". "Extend by a month" counts a month from the
 current end date, or from today if the date has passed or there was none. Tick several rows and
 buttons for "Extend", "Turn off", "Turn on", "Revoke access" and "Delete" appear above the list.
 
 ### The user window
 
-On the left is the "Subscription and activity" card. At its top, a switch shows "Access is on" or
-"Access is off": you can turn access off for a while and back on later, and nothing is lost. Below
-are the expiry, the traffic over 30 days, the connections right now or the time of the last one,
-and the servers. The subscription link is in this card too, and it is always visible: copy it, show
-it with "QR code", or press "Open the page" to see what the person will see. "Traffic and
-connections" opens a chart per server. Below is the "About the user" card with the name, contact
-and note, and for shared access the short address.
+The header shows the name, the state, the type, the contact and whether the person is online:
+"Online, ≈ 2 devices" or when they were last seen. Below it are four tabs.
 
-On the right are the "Access" card (expiry, servers and transport) and "Limits". When all of the
-user's servers run telemt, there is no transport choice: telemt picks it by itself. "+1 month",
-"+3 months" and "+1 year" extend from the current end date, or from today if it has already
-passed. "Save" at the bottom saves everything at once, servers included. Until you save, the
-window says "Unsaved changes". What you save reaches the servers with the next apply.
+"Main" opens first. At its top, a switch shows "Access is on" or "Access is off": you can turn
+access off for a while and back on later, and nothing is lost. Below are four facts: the expiry,
+the traffic over 30 days, how many of your servers the user is on, and when they were last online.
+Then comes the subscription link, always visible: "Copy", "QR code", or "Open the page" to see what
+the person will see. Under it, "Direct proxy links" shows how many direct links there are and opens
+them. At the bottom are the name, contact and note, the short address for shared access, and the
+expiry with "+1 month", "+3 months", "+1 year" and "No expiry". The buttons extend from the current
+end date, or from today if it has already passed.
 
-"Direct links" in the left card shows the links for each server separately, with the Fake-TLS tab
-open first. Each link can be copied as a `t.me` or a `tg://` link, and each QR code downloaded as
+"Access and servers" shows the type, which is chosen when the user is created and does not change,
+the servers in the same order as the server list, and the transport. When all of the user's servers
+run telemt, there is no transport choice: telemt picks it by itself. "Limits" holds the limits, and
+"Statistics" the traffic and connection charts for each server, over 24 hours or 7 days.
+
+"Save" at the bottom saves every tab at once, servers included, and stays off until you change
+something. Until you save, the window says "Unsaved changes". If a field does not pass the check,
+the window opens the tab with that field and marks the tab. What you save reaches the servers with
+the next apply. On a phone the window fills the screen and its tabs scroll sideways.
+
+"Direct proxy links" shows the links for each server separately, with the Fake-TLS tab open first. Each link can be copied as a `t.me` or a `tg://` link, and each QR code downloaded as
 an image. If the server has backup domains, a "Masking domain" choice appears.
 
 ![Direct links](screenshots/key-link-dialog.png)
@@ -873,9 +889,10 @@ included.
 The Overview shows an overall verdict on the servers, a "Needs attention" list and every server at
 a glance.
 
-Monitoring has four views: "All servers", "Servers" (connections, traffic and load per server),
-"WEB transport" and "Metrics export". The range is picked at the top: 1h, 6h, 24h or 7d. The
-panel's own metrics are served on `/metrics` with `Authorization: Bearer <METRICS_TOKEN>`. A ready
+Monitoring has three views: "All servers", "Servers" (connections, traffic and load per server)
+and "WEB transport". The range is picked at the top: 1h, 6h, 24h or 7d. The panel's own metrics
+are served on `/metrics` with `Authorization: Bearer <METRICS_TOKEN>`; Settings → Integrations has
+a Prometheus example and shows whether the token is set. A ready
 Grafana dashboard is in `deploy/grafana/tgwp-panel.json`, and setting up Prometheus and Grafana is
 covered in [monitoring.md](monitoring.md).
 
@@ -883,8 +900,8 @@ covered in [monitoring.md](monitoring.md).
 
 ### Telegram alerts
 
-Open Settings → Notifications (the "Notifications and polling" section). Turn on the "Enable
-alerts" switch, paste the "Bot token" and "Chat ID", press "Send test message" and then "Save". The panel sends a message when a
+Open Settings → Notifications (the "Notifications and polling" section). Turn on the switch in the
+header of the "Telegram alerts" panel, paste the "Bot token" and "Chat ID", press "Send test message" and then "Save". The panel sends a message when a
 server goes offline and comes back, when an apply fails, and when something is wrong on a server,
 for example the disk is running out or the proxy is not ready to accept connections. When such a
 problem clears, a second message follows. Each message says in plain words what is wrong, what it
@@ -892,7 +909,8 @@ means and where to look, with a link to the server in the panel. "Notification l
 Russian or English for these messages; the test message uses the language chosen in the form. The
 same tab sets how many seconds without a response mark a server as down.
 
-Alerts can also go to your own HTTPS endpoint through `ALERT_WEBHOOK_URL` (section 13).
+Alerts can also go to your own HTTPS endpoint through `ALERT_WEBHOOK_URL` (section 13). Settings →
+Integrations shows whether the webhook is configured and which lines to add to `.env`.
 
 ![Panel settings](screenshots/settings-panel.png)
 

@@ -23,7 +23,7 @@ stay in the panel.
 
 ## What the panel shows without them
 
-The Monitoring page has four tabs and a period switch (1h, 6h, 24h, 7d):
+The Monitoring page has three tabs and a period switch (1h, 6h, 24h, 7d):
 
 - "All servers" shows totals: servers online, healthy, running with errors, people online (with
   the number of connections under it) and current traffic.
@@ -32,7 +32,10 @@ The Monitoring page has four tabs and a period switch (1h, 6h, 24h, 7d):
   and "Connections", and one "Traffic" line.
 - "WEB transport" shows which WEB carriers clients chose on all telemt servers over the last
   24 hours, plus counters of failures, rejected attempts, evicted sessions and bridge recoveries.
-- "Metrics export" has a short Prometheus snippet and points to this document.
+
+The export itself is described in "Settings" → "Integrations": a short Prometheus snippet,
+whether `METRICS_TOKEN` is set, and whether the alert webhook is configured. It used to be the
+"Metrics export" tab of the Monitoring page.
 
 The panel reads each online server once a minute and keeps this history for 30 days. The
 Overview page is the one place that lists problems, under "Needs attention". Details for one
@@ -189,7 +192,7 @@ What the statuses mean:
   turn `active` once every server has them.
 - A `revoked` user was revoked by hand. Users that earlier versions of the panel revoked on
   expiry stay here too.
-- Turned-off and expired users are not revoked and count as `active` or `pending`. The tiles in
+- Turned-off and expired users are not revoked and count as `active` or `pending`. The state buttons in
   the Users section and `GET /api/v1/keys/summary` show how many there are.
 
 Things to know about the per-server metrics:
@@ -247,7 +250,7 @@ draw these numbers.
 There is no `tgwp_key_*` metric. On telemt servers the panel records traffic, connections and
 unique IP addresses for each user, and shows them in Users: the "Traffic, 30 days" and
 "Activity" columns in the list ("Online, ≈ 2 devices" with the connections under it), and the
-same numbers plus the "Traffic and connections" chart in the user window. tproxy servers do not
+same numbers plus a traffic and connections chart on the Statistics tab of the user window. tproxy servers do not
 measure traffic per user: `tproxy-server` counts only per server.
 
 How the panel is built is described in the [reference](reference.md), installation in the

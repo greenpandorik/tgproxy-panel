@@ -181,7 +181,7 @@ server.
 
 The subscription link leads to a page where every server has "Connect via Fake-TLS" and "Connect
 via WEB" buttons. You can copy it or show it with "QR code". The separate proxy links are under
-"Direct links", and there are two of them:
+"Direct proxy links", and there are two of them:
 
 - Fake-TLS works in every Telegram app. If in doubt, send this one.
 - The WEB proxy is harder to block, but for now it only works in Telegram Desktop and recent
