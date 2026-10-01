@@ -51,7 +51,11 @@ export function UserCard({
 
 function FieldError({ children }: { children?: ReactNode }) {
   if (!children) return null;
-  return <p className="text-label text-destructive">{children}</p>;
+  return (
+    <p data-field-error="" tabIndex={-1} className="text-label text-destructive outline-none">
+      {children}
+    </p>
+  );
 }
 
 interface FormBits {
@@ -95,7 +99,9 @@ export function AboutFields({ control, register, errors, values, locked, subscri
         <div className="space-y-2">
           <Label htmlFor="user-label">{t('users.field_name')}</Label>
           <Input id="user-label" autoFocus={values.creating} disabled={locked} {...register('label')} aria-invalid={!!errors.label} />
-          <FieldError>{errors.label && t('common.required')}</FieldError>
+          <FieldError>
+            {errors.label && (errors.label.message && errors.label.message !== 'required' ? errors.label.message : t('common.required'))}
+          </FieldError>
         </div>
       )}
 
@@ -104,12 +110,19 @@ export function AboutFields({ control, register, errors, values, locked, subscri
           <Label htmlFor="user-contact">
             {t('users.field_contact')} <span className="font-normal text-mute">({t('keys.field_optional')})</span>
           </Label>
-          <Input id="user-contact" disabled={locked} placeholder={t('users.field_contact_placeholder')} {...register('owner_label')} />
+          <Input
+            id="user-contact"
+            disabled={locked}
+            placeholder={t('users.field_contact_placeholder')}
+            {...register('owner_label')}
+            aria-invalid={!!errors.owner_label}
+          />
+          <FieldError>{errors.owner_label?.message}</FieldError>
         </div>
       )}
 
       {values.mode === 'shared' && (
-        <div className="space-y-2">
+        <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="user-slug">
             {t('users.field_slug')} <span className="font-normal text-mute">({t('keys.field_optional')})</span>
           </Label>
@@ -142,26 +155,36 @@ export function AboutFields({ control, register, errors, values, locked, subscri
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2 sm:col-span-2">
         <Label htmlFor="user-note">
           {t('keys.field_note')} <span className="font-normal text-mute">({t('keys.field_optional')})</span>
         </Label>
-        <Textarea id="user-note" rows={2} disabled={locked} {...register('note')} />
+        <Textarea id="user-note" rows={2} disabled={locked} {...register('note')} aria-invalid={!!errors.note} />
+        <FieldError>{errors.note?.message}</FieldError>
       </div>
     </>
   );
 }
 
-export function AccessFields({
+type AccessBits = FormBits & { setValue: UseFormSetValue<UserFormValues>; nodes: Node[]; scope: TransportScope };
+
+export function AccessFields(props: AccessBits) {
+  return (
+    <>
+      <ExpiryField {...props} />
+      <ServersField {...props} />
+    </>
+  );
+}
+
+export function ExpiryField({
   control,
   register,
   errors,
   values,
   locked,
   setValue,
-  nodes,
-  scope,
-}: FormBits & { setValue: UseFormSetValue<UserFormValues>; nodes: Node[]; scope: TransportScope }) {
+}: Pick<AccessBits, 'control' | 'register' | 'errors' | 'values' | 'locked' | 'setValue'>) {
   const { t } = useTranslation();
   const setExpiry = (next: string) => {
     setValue('no_expiry', false, { shouldDirty: true });
@@ -208,11 +231,28 @@ export function AccessFields({
         )}
         <FieldError>
           {errors.expires_at &&
-            t(errors.expires_at.message === 'future' ? 'keys.validation_expires_future' : 'common.required')}
+            (errors.expires_at.message === 'future'
+              ? t('keys.validation_expires_future')
+              : errors.expires_at.message === 'required' || !errors.expires_at.message
+                ? t('common.required')
+                : errors.expires_at.message)}
         </FieldError>
       </div>
+    </>
+  );
+}
 
-      <div className="space-y-2">
+export function ServersField({
+  control,
+  errors,
+  locked,
+  nodes,
+  scope,
+}: Pick<AccessBits, 'control' | 'errors' | 'locked' | 'nodes' | 'scope'>) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <div className="space-y-2" data-field="node_ids">
         <Label>{t('keys.field_nodes')}</Label>
         <Controller
           control={control}
@@ -226,7 +266,12 @@ export function AccessFields({
             />
           )}
         />
-        <FieldError>{errors.node_ids && t('keys.validation_node_ids')}</FieldError>
+        <FieldError>
+          {errors.node_ids &&
+            (errors.node_ids.message && errors.node_ids.message !== 'required'
+              ? errors.node_ids.message
+              : t('keys.validation_node_ids'))}
+        </FieldError>
       </div>
 
       {!locked && scope !== 'telemt' && (
@@ -236,6 +281,7 @@ export function AccessFields({
           render={({ field }) => <TransportField scope={scope} value={field.value} onChange={field.onChange} />}
         />
       )}
+      <FieldError>{errors.carrier_mode?.message}</FieldError>
     </>
   );
 }
@@ -265,6 +311,8 @@ export function LimitsCardBody({
 
   return (
     <>
+      <FieldError>{errors.telemt_limits?.message}</FieldError>
+      <FieldError>{errors.limits?.message}</FieldError>
       {scope === 'none' ? (
         <p className="text-label text-mute">{t('users.limits_pick_servers')}</p>
       ) : (
