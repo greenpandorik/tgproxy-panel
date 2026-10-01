@@ -226,8 +226,8 @@ and a proxy server with a command on that server:
 sudo tgwp-agent upgrade
 ```
 
-If something doesn't work, open the server in the panel and its "Checks" tab: "Full server
-check" shows what is wrong. The [full installation guide](setup.en.md) has more detail, and you
+If something doesn't work, open the server in the panel and the "Server checks" row on its
+Health tab: "Full server check" shows what is wrong. The [full installation guide](setup.en.md) has more detail, and you
 can ask questions in [Discussions](https://github.com/greenpandorik/tgproxy-panel/discussions).
 
 ## Glossary

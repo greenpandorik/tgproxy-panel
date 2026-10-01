@@ -400,21 +400,21 @@ file safely; nothing but these values depends on it.
 
 ### The server page
 
-A server's page is split into tabs:
+A server's page has five tabs:
 
-- Health: services, CPU, memory, disk, uptime and the connection to the Telegram datacenters.
-- Stats: charts of load, latency to Telegram and proxy activity. On a telemt server the WEB
-  transport counters are here too.
-- Checks: the "Full server check" through the agent (telemt only), the "Check from the panel" from
-  outside, and "External network checks".
-- Logs: the server's service logs.
-- Settings, on telemt only: the Fake-TLS address, port and domains, the WEB transport and the route
-  to Telegram.
-- Users: the users set up on this server.
+- Health: what is wrong, if anything, a line of key numbers (status, people online, processor and
+  memory, latency to Telegram, the result of the checks) and a chart of people online, processor
+  and traffic. Below are rows that open on click: "Telegram datacenters", "Services" (services,
+  the server's resources and the proxy counters), "Server checks" (the "Full server check" through
+  the agent on telemt, the "Check from the panel" from outside and "External network checks") and,
+  on telemt, "WEB transport". A row with a problem is already open.
+- Settings, on telemt only: the Fake-TLS address, port and domains, the WEB transport strategy and
+  the route to Telegram.
 - Cover site: the website on the server's domain (section 9).
 - Blocklist: addresses and networks the server refuses connections from.
-- Maintenance: telemt updates, apply history, restart, the install command and deleting the
-  server.
+- Maintenance: the versions and the telemt update, restart, the install command, apply history
+  and deleting the server. Service logs are read on the server itself; the commands are in
+  [Server logs](runbook.md#server-logs).
 
 ![Server page](screenshots/node-detail.png)
 
@@ -427,8 +427,8 @@ that could not run are counted separately and never as passes.
 
 Server load shows up in several places. The servers list has CPU and RAM columns and the Overview
 has a CPU column; both come from the agent's last report and show a dash for an offline server.
-The Health tab shows current CPU, memory, disk and uptime. The Stats tab has a CPU, RAM and disk
-chart over 1 hour, 6 hours, 24 hours or 7 days. The same chart is in the server's card under
+The Health tab shows current processor and memory and a chart of people online, processor and
+traffic over a day or a week; its "Services" row has disk, uptime and a CPU, RAM and disk chart. The same chart is in the server's card under
 Monitoring → Servers.
 
 ![Server load](screenshots/node-stats.png)
@@ -559,8 +559,8 @@ previous binary, restarts the service and waits for it to report ready. If it do
 previous binary goes back. Restarting telemt drops the server's live sessions, so upgrade one
 server at a time.
 
-You can also update telemt from the panel: on the server page, open the Maintenance tab, find the
-"Telemt updates" card and press "Update Telemt". For several servers there is "Update telemt on
+You can also update telemt from the panel: on the server page, open the Maintenance tab and press
+"Update telemt" in the Versions block. For several servers there is "Update telemt on
 servers" on the Servers page: tick the servers in the order you want, and the panel updates them
 one by one, checks each server afterwards and watches it for a minute. An error stops the queue.
 This works only for telemt servers that are connected right now, and it updates only telemt; the
@@ -933,10 +933,10 @@ browser, and passwords and tokens are never stored in it.
 
 ### Telegram datacenters
 
-On the Health tab, the "Telegram datacenters" block shows how the server sees Telegram's network.
+On the Health tab, the "Telegram datacenters" row shows how the server sees Telegram's network.
 For each datacenter it gives the latency telemt measures with its own regular checks and averages,
 the IPv4 or IPv6 preference, the state of the direct route, and a connection counter. Latency is
-green under 150 ms, amber under 400 ms and red above. The Stats tab plots the same latencies over
+green under 150 ms, amber under 400 ms and red above. The same row plots these latencies over
 time, the servers list has a "Telegram" column with the overall latency, and the Overview tile
 "Latency to Telegram" averages it over the online servers. Servers on tproxy have no such data.
 
@@ -947,7 +947,7 @@ time, the servers list has a "Telegram" column with the overall latency, and the
 The panel checks servers from its own address. To see how a server looks from other networks, for
 example from different providers, connect external checks: set `PROBE_TOKEN` and
 `PROBE_LOCATIONS` on the panel host and run `tgwp-probe` in each of those networks. The results
-appear on the Checks tab under "External network checks".
+appear on the Health tab, in the "Server checks" row under "External network checks".
 
 ## 11. Branding
 
@@ -1087,8 +1087,8 @@ links work.
 - A user stays "Setting up" for more than a couple of minutes. The server is offline or the apply
   failed. Open the server's
   Maintenance tab and look at "Apply history": the operation details include the agent log.
-- The WEB link works but Fake-TLS does not. Look at Checks → "Check from the panel", the "Fake-TLS
-  mask" row. Usually port 8443 is closed in the provider's firewall, or the server cannot connect
+- The WEB link works but Fake-TLS does not. Look at "Server checks" → "Check from the panel" on
+  the Health tab, the "Fake-TLS mask" row. Usually port 8443 is closed in the provider's firewall, or the server cannot connect
   to itself on 443 (section 7).
 - Fake-TLS links stopped working after the Fake-TLS domain or port changed. That is expected;
   reissue the links.

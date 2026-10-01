@@ -73,7 +73,7 @@ When you add, turn off or revoke a user, change their limits or assign a cover s
 saves the change and marks the affected servers as having unapplied changes. Every `APPLY_INTERVAL`
 seconds (45 by default) a background task sends the full configuration to each marked server.
 Both intervals can also be changed without a restart under Settings → Notifications.
-"Apply now" on the server page sends the changes at once.
+"Apply changes" on the server page sends the changes at once.
 
 On a telemt server the agent applies the changes through telemt's control API, and connected
 users stay connected. On a tproxy server the agent rewrites the relay's files and restarts it,
@@ -219,8 +219,8 @@ every download against the panel's sha256, keeps the previous binary, restarts t
 waits for it to report healthy. If it does not, the previous binary goes back. No install token
 is needed.
 
-In the panel, for one server: the server page → Maintenance → "Telemt updates" → "Update
-Telemt". The agent checks the download's SHA256, pauses new WEB sessions, lets the current ones
+In the panel, for one server: the server page → Maintenance → the Versions block → "Update
+telemt". The agent checks the download's SHA256, pauses new WEB sessions, lets the current ones
 finish for up to 120 seconds, swaps the binary with a backup copy, restarts telemt, checks the
 version and readiness, and opens WEB sessions again. The result is one of `ok`, `refused`,
 `failed`, `rolled_back`, `rollback_failed` or `needs_attention`. Only `ok` means the update
@@ -313,21 +313,21 @@ opens a three-step wizard:
 ### Server page
 
 The header shows the server's status, domain, the versions of the engine and the agent, and the
-"Apply now" button, which is active while the server has unapplied changes. The tabs are grouped
-into Observe, Configure and Maintain:
+"Apply changes" button, which is active while the server has unapplied changes. There are five
+tabs:
 
 | Tab | What is there |
 |---|---|
-| Health | The verdict, the state of each service (telemt or relay, MTProxy, Caddy, API, readiness), CPU, memory, disk, uptime, the Telegram data centres table and resource headroom |
-| Stats | Server load and latency to the data centres over time, proxy counters. On telemt also the WEB transport: status, capacity, carrier learning over 24 hours and the buttons to pause, drain and resume WEB sessions |
-| Checks | "Full server check" (telemt), "Check from the panel" and "External network checks". See [Checks, incidents and alerts](#checks-incidents-and-alerts) |
-| Logs | Live logs of telemt or tproxy-server and MTProxy, Caddy and the agent |
-| Settings | telemt only: "Addresses and Fake-TLS" (public IP, Fake-TLS domain and port, backup masking domains, sponsor channel tag), "Transport strategy" with overload protection, and "Recovery and Telegram egress" |
-| Users | The users set up on this server, and "Compare with the server" |
+| Health | What is wrong, if anything (for an offline server, also the commands to check it). A line of key numbers: status, people online linking to this server's users, processor and memory, latency to Telegram, the result of the checks. People online, processor and traffic over a day or a week. Rows that open on click: "Telegram datacenters" (the route, each data centre's latency now and over time, the routes to Telegram), "Services" (each service's state, the server's resources and their history, resource headroom, proxy counters), "Server checks" ("Full server check" on telemt, "Check from the panel", "External network checks" and the "Check now" button) and, on telemt, "WEB transport" (status, capacity, carrier learning over 24 hours and the buttons to pause, drain and resume WEB sessions). A row with a problem is already open |
+| Settings | telemt only: "Addresses and Fake-TLS" (public IP, Fake-TLS domain and port, backup masking domains, sponsor channel tag), then the folded "Transport strategy" with overload protection and "Recovery and egress" |
 | Cover site | The current template, choosing another one, and an existing HTTP website on telemt servers that support it |
-| Maintenance | "Telemt updates", versions, apply history with logs, and the actions: restart telemt or the relay, show the install command, delete the server |
+| Blocklist | Addresses and subnets the server refuses connections from |
+| Maintenance | The telemt and agent versions with the telemt update, the actions (restart telemt or the relay, show the install command), apply history with logs and, set apart, deleting the server |
 
-The Telegram data centres table shows, for each data centre, the latency telemt measures with
+The panel shows no service logs: they are read on the server itself, and the commands are in the
+operations guide, under [Server logs](runbook.md#server-logs).
+
+The "Telegram datacenters" row shows, for each data centre, the latency telemt measures with
 its own health checks, the IPv4 or IPv6 preference and the state of the route. Latency under
 150 ms is green, under 400 ms amber, higher is red. tproxy servers have no such data.
 
@@ -336,7 +336,7 @@ through this server see the sponsored channel. The card has buttons that copy th
 the secret the bot asks for. Don't hand out the link the bot prints afterwards: give people the
 links from the Users section.
 
-"Recovery and Telegram egress" controls two things. Recovery decides what the agent does when
+"Recovery and egress" controls two things. Recovery decides what the agent does when
 telemt stops answering: only watch, or restart after several failed checks in a row. Egress can
 send telemt's traffic to Telegram through a local SOCKS5 proxy, for example WARP, with a reserve
 route. The runbook describes both in
@@ -604,8 +604,8 @@ The editor's preview doesn't show what was deployed.
 
 ### Check from the panel
 
-"Run check" in "Check from the panel" on the Checks tab makes the panel test the server from the
-outside. The result is saved with the server. The checks run in order and share a 15-second
+"Check now" by the "Server checks" row on the Health tab makes the panel test the server from the
+outside, and on telemt servers runs the full check too. The result is saved with the server. The checks run in order and share a 15-second
 budget:
 
 | Check | What it verifies |
@@ -637,8 +637,8 @@ The panel also runs this check by itself, at most once every 15 minutes per onli
 A check from the panel's own network does not show how the server is seen from other networks.
 For that there is `tgwp-probe`, a small program you run in other networks on a timer. It makes
 a real TLS handshake with the server and opens the cover site, and it can call your own adapter
-to test Fake-TLS and WEB with a real client. Results appear under "External network checks" on
-the Checks tab. A report older than three minutes counts as missing and opens an incident.
+to test Fake-TLS and WEB with a real client. Results appear under "External network checks" in
+the "Server checks" row. A report older than three minutes counts as missing and opens an incident.
 
 It is turned on with `PROBE_TOKEN` and `PROBE_LOCATIONS` in the panel's `.env`. The systemd
 service and timer are in `deploy/probe`, and the runbook describes the setup in
@@ -667,8 +667,8 @@ empty fields. The token is stored encrypted and never sent back to the browser.
 The panel then writes to the chat when a server goes offline and comes back, when an apply
 fails, and when an incident on a server opens and closes. A message names the problem, explains it
 in a sentence, shows the current value where it helps (for example "Connections now: 2 of 3" for a
-Telegram datacentre) and links to the server page, the Checks tab for scheduled checks. It is
-written in the "Notification language" chosen on the same tab, Russian by default. The webhook
+Telegram datacentre) and links to the server page, the "Server checks" row for scheduled checks. It is
+written in the "Notification language" chosen under Settings → Notifications, Russian by default. The webhook
 receives the same text without formatting. Each server and kind of message gets
 at most one message in 5 minutes, so a flapping server does not flood the chat. If messages don't arrive,
 see [Telegram alerts do not arrive](runbook.md#telegram-alerts-do-not-arrive).

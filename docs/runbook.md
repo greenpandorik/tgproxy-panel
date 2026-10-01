@@ -21,6 +21,7 @@ Replace `panel.example.com` with your panel's domain.
 Planned work:
 
 - [Where things are](#where-things-are)
+- [Server logs](#server-logs)
 - [Upgrading the panel](#upgrading-the-panel)
 - [Upgrading servers](#upgrading-servers)
 - [Backups and restore](#backups-and-restore)
@@ -57,14 +58,17 @@ Servers lists every server with its state: Healthy, Degraded or Offline. The "�
 server has "Apply now" and "Install command". The same page has a collapsed "Update telemt on
 servers" block.
 
-A server's page is split into tabs, arranged in three groups:
+A server's page has five tabs: Health, Settings (telemt servers only), Cover site, Blocklist and
+Maintenance.
 
-- Observe: Health, Stats, Checks, Logs;
-- Configure: Settings (telemt servers only), Users, Cover site;
-- Maintain: the Maintenance tab with versions, the telemt update, "Apply history", restarting the
-  proxy, the install command and deleting the server.
+Health starts with what is wrong, if anything. Below it are a line of key numbers (status, people
+online, load, latency to Telegram, the result of the checks), a load chart and rows that open on
+click: "Telegram datacenters", "Services", "Server checks" and "WEB transport". A row with a
+problem is already open. Maintenance has the versions and the telemt update, restarting the
+proxy, the install command, "Apply history" and deleting the server. The panel shows no logs; the
+commands for them are in [Server logs](#server-logs).
 
-The server page header has an "Apply now" button. It sends the pending changes to the server
+The server page header has an "Apply changes" button. It sends the pending changes to the server
 without waiting for the next scheduled apply, and it is active only when there are such changes.
 
 The panel's Settings are split into tabs as well. For the whole panel: Notifications, Branding,
@@ -124,7 +128,7 @@ systemctl status tgwp-agent
 journalctl -u tgwp-agent -n 100 --no-pager
 ```
 
-While the server is online, the same logs are also available in the panel, on the Logs tab.
+How to read these services' logs is described in [Server logs](#server-logs).
 
 telemt rewrites `telemt.toml` itself through its API, so do not edit it by hand while telemt is
 running. The token in `api.token` is the API's only protection: treat it as a password and never
@@ -149,6 +153,45 @@ tapi /v1/config         # the settings that can be changed through the API
 
 `-H @-` reads the header from standard input. That keeps the token out of the process list, which
 every user on the server can read. Do not pass it as `-H "Authorization: $TOKEN"`.
+
+## Server logs
+
+The proxy server's service logs are read on the server itself. Log in over SSH and become root
+(`sudo -i`). The services are named:
+
+| Service | What it does |
+|---|---|
+| `tgwp-agent` | The agent: the link to the panel, applying changes, health reports |
+| `telemt` | The proxy on a telemt server |
+| `tproxy-server` | The relay on a tproxy server |
+| `mtproxy` | MTProxy on a tproxy server |
+| `caddy` | The certificate, HTTPS and the cover site |
+
+The last 200 lines of one service's log:
+
+```bash
+journalctl -u tgwp-agent -n 200 --no-pager
+journalctl -u telemt -n 200 --no-pager
+journalctl -u caddy -n 200 --no-pager
+journalctl -u tproxy-server -n 200 --no-pager
+journalctl -u mtproxy -n 200 --no-pager
+```
+
+Follow a log live, Ctrl+C to stop:
+
+```bash
+journalctl -u telemt -f
+journalctl -u tgwp-agent -f
+```
+
+Several services at once over the last hour, lines in time order:
+
+```bash
+journalctl -u telemt -u caddy -u tgwp-agent --since "1 hour ago" --no-pager
+```
+
+`systemctl status telemt` (with the service you need) shows whether it is running and since when.
+Before you send a log to anyone, remove secrets and access links from it.
 
 ## Upgrading the panel
 
@@ -201,8 +244,8 @@ opens, and the chip shows the new version. If the script printed
 
 ## Upgrading servers
 
-Upgrade the servers when the panel upgrade reported a new telemt version, or when the "Telemt
-updates" card on the Maintenance tab shows an Installed version different from the Recommended
+Upgrade the servers when the panel upgrade reported a new telemt version, or when the Versions
+block on the Maintenance tab shows an Installed telemt version different from the Recommended
 version.
 
 There are three ways:
@@ -243,17 +286,17 @@ The queue is stored in the database and survives a panel restart. If the connect
 the command was being sent and it is unknown whether it arrived, the panel does not send it a
 second time. It stops the queue with
 `dispatch was interrupted; inspect the node before starting a new rollout`. Open that server,
-look at the "Telemt updates" card on its Maintenance tab, and start a new queue.
+look at the telemt row of the Versions block on its Maintenance tab, and start a new queue.
 
-It worked if the queue shows Complete and every server's "Telemt updates" card says "Updated and
+It worked if the queue shows Complete and every server's Versions block says "Updated and
 checked". If the queue shows "Needs attention", the reason is written under it, and
 [A telemt update failed](#a-telemt-update-failed) explains what to do next.
 
 ### One server from the panel
 
-Open the server, the Maintenance tab, the "Telemt updates" card, and click "Update Telemt". The
-button appears when the installed version differs from the recommended one, and works while the
-server is online. The steps show up in the card, and each one has "Technical details".
+Open the server, the Maintenance tab, and click "Update telemt" in the Versions block. The button
+appears when the installed version differs from the recommended one, and works while the server
+is online. The steps show up in that block, and each one has "Technical details".
 
 The panel requires telemt on the server to support draining. If it does not, or the panel could
 not find out, the update is refused with "Update refused; binary unchanged" and nothing on the
@@ -450,8 +493,8 @@ After the restore:
   itself: its row is written to the database only after the file is ready. The files on disk are
   not touched.
 - The servers keep running whatever they were sent last. To send them the users from the
-  restored database, open Servers and pick "Apply now" in the "⋯" menu of each server. "Compare
-  with the server" on a server's Users tab shows whether the users match.
+  restored database, open Servers and pick "Apply now" in the "⋯" menu of each server. Who is on
+  a server shows in Users: click "People online" on the server's page.
 
 It worked if the command printed
 `restore complete; restart the panel so it picks up the restored state`, the panel opens, and
@@ -616,8 +659,8 @@ Also keep in mind:
 
 ## Automatic restarts and the route to Telegram
 
-The "Recovery and Telegram egress" card is on a server's Settings tab and exists only on telemt
-servers. It sets what the agent does when telemt stops responding, and which way telemt reaches
+The "Recovery and egress" row is on a server's Settings tab and exists only on telemt servers. It
+is folded, and the row shows the current mode and route. It sets what the agent does when telemt stops responding, and which way telemt reaches
 Telegram.
 
 ### Restarts
@@ -645,7 +688,7 @@ server.
 
 "Route to Telegram through SOCKS5 or WARP" is for a server whose hosting provider or country gets
 in the way of reaching Telegram. It usually shows on the Health tab: the "Telegram datacenters"
-block has red latencies or failing connections.
+row has red latencies or failing connections.
 
 The "Outbound route" field:
 
@@ -673,13 +716,13 @@ Saving checks the new route and applies it on the server. If telemt needs a rest
 current connections drop.
 
 The route works if the latencies in "Telegram datacenters" on the Health tab are back to normal
-and "Resource headroom and routes" shows the route as Healthy.
+and "Routes to Telegram" in the same row shows the route as Healthy.
 
 ## Checks from other networks
 
 The panel checks servers from its own server. To see whether the proxy opens from particular
 providers' networks, run the external check `tgwp-probe` in those networks. Its results appear
-on the server's Checks tab, in the "External network checks" block.
+on the server's Health tab, in the "Server checks" row, block "External network checks".
 
 1. On the panel server, add to `/opt/tgproxy-panel/.env`:
 
@@ -946,7 +989,8 @@ accept connections", "WEB sessions are not being admitted", "Disk is running out
 
 The agent is online, but the proxy is stopped or reports that it is not fully ready.
 
-1. Open the server, the Health tab, the "Service health" block. It shows which service is down.
+1. Open the server, the Health tab, the "Services" row. It is already open when a service is
+   down, and its "Service health" block shows which one.
 2. If telemt is down (the relay on a tproxy server), read its log on the server:
 
    ```bash
@@ -961,11 +1005,11 @@ The agent is online, but the proxy is stopped or reports that it is not fully re
    [Asking telemt directly](#asking-telemt-directly)): `tapi /v1/health/ready`. An error answer
    carries a `reason` field:
    - `admission_closed`: new WEB sessions are refused on purpose, by the pause or drain buttons,
-     or admission stayed closed after an update. Open the Stats tab, the "WEB transport" block,
-     and click Resume. If the button answers with `interrupted update requires recovery…`, go to
+     or admission stayed closed after an update. Open the "WEB transport" row on the Health
+     tab and click Resume. If the button answers with `interrupted update requires recovery…`, go to
      [A telemt update failed](#a-telemt-update-failed).
    - `no_healthy_upstreams`: telemt cannot reach any Telegram datacenter. The "Telegram
-     datacenters" block on the Health tab shows which ones. The cause is the server's outbound
+     datacenters" row on the Health tab shows which ones. The cause is the server's outbound
      connectivity: check the firewall and routing. If the hosting provider blocks Telegram, send
      telemt through SOCKS5 or WARP (see [Route to Telegram](#route-to-telegram)).
 4. If Caddy is down, read `systemctl status caddy` and `journalctl -u caddy -n 50 --no-pager`. It
@@ -991,7 +1035,8 @@ opens "Operation details" with the agent's log.
 1. If the server is Offline, the changes wait for it. Bring the server back online first.
 2. Open the latest failed apply and read the last lines of the log. Common messages are listed
    below.
-3. Fix the cause and click "Apply now" in the server page header, or "Apply again" on Overview.
+3. Fix the cause and click "Apply changes" in the server page header, or "Apply again" on
+   Overview.
 
 It worked if the history has a new Succeeded row and no user is "Setting up" any more.
 
@@ -1057,8 +1102,8 @@ reports "Rolled back", so the server is never left half-changed.
 
 ## A telemt update failed
 
-What you see: the "Telemt updates" card on the Maintenance tab shows a status other than "Updated
-and checked", the queue on the Servers page stopped with "Needs attention", and Overview has a
+What you see: the Versions block on the Maintenance tab shows a status other than "Updated and
+checked", the queue on the Servers page stopped with "Needs attention", and Overview has a
 new problem for this server.
 
 | Status | What happened | The server now |
@@ -1076,8 +1121,8 @@ shown under the steps.
 1. "Update refused", "Update failed" or "Previous version restored": the server works as before.
    Read at which step and why it stopped, fix the cause and try again. If telemt on the server
    cannot drain, upgrade it over SSH with `tgwp-agent upgrade`.
-2. "Verification incomplete": open Checks → "Full server check" → "Run diagnostics" and see what
-   failed.
+2. "Verification incomplete": click "Check now" by the "Server checks" row on the Health tab and
+   see in it what failed.
 3. Applies, route changes and the WEB transport buttons answer with
    `interrupted update requires recovery; inspect agent logs and restart the agent after resolving the recovery error`.
    This means the agent holds a record of an unfinished update. It happens after "Rollback
@@ -1170,29 +1215,30 @@ Work from the person towards the server.
    [Checks from other networks](#checks-from-other-networks) let you see the server from a
    particular provider's network.
 5. Check the server even though it is Healthy:
-   - Overview has no "WEB sessions are not being admitted" problem. If it does, open the Stats
-     tab, the "WEB transport" block, and click Resume;
-   - on the Stats tab, the "WEB capacity" block shows None for "Saturated resources". If
-     resources are saturated, new WEB connections wait or get refused. What happens then is set in
-     "Overload protection" on the Settings tab;
-   - "Check from the panel" on the Checks tab passes "Fake-TLS mask". If it does not, open the
-     Fake-TLS port (8443 by default) in the hosting provider's firewall;
-   - Checks → "Full server check" finds nothing wrong.
+   - Overview has no "WEB sessions are not being admitted" problem. If it does, open the "WEB
+     transport" row on the Health tab and click Resume;
+   - in the same row, the "WEB capacity" block shows None for "Saturated resources". If resources
+     are saturated, new WEB connections wait or get refused. What happens then is set in
+     "Overload protection" under "Transport strategy" on the Settings tab;
+   - in the "Server checks" row, "Check from the panel" passes "Fake-TLS mask". If it does not,
+     open the Fake-TLS port (8443 by default) in the hosting provider's firewall;
+   - "Full server check" in the same row finds nothing wrong.
 
 It worked if the person is connected: mobile Telegram shows the proxy as connected under "Data and
 Storage" → "Proxy", and the user window shows their connections and growing traffic.
 
 ## A check found a problem
 
-A server's Checks tab has three kinds of checks: "Full server check" (telemt servers only),
+The "Server checks" row on a server's Health tab has three kinds of checks: "Full server check"
+(telemt servers only),
 "Check from the panel" and "External network checks"
 ([how to set them up](#checks-from-other-networks)).
 
 ### Check from the panel
 
 The panel checks the server from outside, from its own server: DNS, ports 80 and 443, the
-certificate, the site and, on telemt servers, the Fake-TLS mask. It runs with "Run check", and
-the result is saved. Failed checks are shown on top with details, passed ones are collapsed.
+certificate, the site and, on telemt servers, the Fake-TLS mask. It runs with "Check now" by
+the "Server checks" row, and the result is saved. Failed checks are shown on top with details, passed ones are collapsed.
 
 - "DNS record": the domain does not resolve (fix the DNS record and wait), or it points at
   another IP, and then the details read `<resolved addresses> (expected <address>)`. Fix the DNS
@@ -1228,7 +1274,8 @@ certificate, post-quantum and site checks can be skipped, and only when port 443
 
 ### Full server check
 
-On a telemt server, open Checks → "Full server check" and click "Run diagnostics". It walks the
+On a telemt server, click "Check now" by the "Server checks" row on the Health tab: it runs this
+check and the check from the panel. It walks the
 whole chain: DNS, ports and TLS, Caddy, the WEB transport, telemt, the connection to Telegram,
 and each published IP address of the domain separately (up to eight). Some checks the panel runs
 from outside, others come from the agent's readings.
@@ -1314,7 +1361,7 @@ What you see: you changed the site on the Cover site tab, but the server's domai
 old one.
 
 1. Look at the status on the Cover site tab. "Pending apply" means the site waits for the next
-   apply; click "Apply now" if you do not want to wait. Deployed means the site is already on the
+   apply; click "Apply changes" if you do not want to wait. Deployed means the site is already on the
    server. If it says the last apply failed, open "Apply history" on the Maintenance tab: when the
    rollback succeeds, the server keeps the previous site.
 2. Assigning the same template again changes nothing. Every server gets its own variant of a
@@ -1322,7 +1369,7 @@ old one.
    be matched by identical pages. The variant depends only on the template and the server, so the
    same template on the same server produces the same site. The panel does not send it again and
    restarts nothing. A new site goes to the server only when the template content changed, another
-   template was chosen, or you clicked "Apply now" yourself. You can compare `bundle_hash` and
+   template was chosen, or you clicked "Apply changes" yourself. You can compare `bundle_hash` and
    `deployed_hash` in the response of `GET /api/v1/nodes/{id}/site`.
 3. "Previously deployed website" means the server still runs a site installed before the template
    catalogue. Pick one of the 15 built-in sites or your own template under Cover websites and

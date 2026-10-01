@@ -55,9 +55,7 @@ reaches it through a child selector.
 
 Tailwind's t-shirt sizes (`text-xs`, `text-sm`, `text-base`, `text-xl`, `text-2xl`)
 are not used in `src/**`, and body text is `text-body`. `text-sm` resolves to
-Tailwind's stock 14px, which is not a role in this system. The one t-shirt size in
-the code today is `text-lg`, twice in `components/web/TelemtUpdateCard.tsx` for the
-installed and recommended versions.
+Tailwind's stock 14px, which is not a role in this system.
 
 Arbitrary sizes (`text-[Npx]`) are not part of the system either. Three exist today:
 `text-[19px]` in the two stat tiles and `text-[11px]` in the sidebar group label. Do

@@ -36,7 +36,7 @@ The Monitoring page has four tabs and a period switch (1h, 6h, 24h, 7d):
 
 The panel reads each online server once a minute and keeps this history for 30 days. The
 Overview page is the one place that lists problems, under "Needs attention". Details for one
-server are on its page: the "Stats" tab has the same charts, and on a telemt server also the
+server are on its page: the Health tab has the same charts, and on a telemt server also the
 WEB carriers of that server. Telegram alerts are set up in "Settings" → "Notifications". The
 panel sends a message when a server goes offline or comes back, when changes fail to apply,
 and about other problems it finds on servers.
@@ -64,7 +64,7 @@ How to read the WEB transport numbers:
   failure rate, since the panel does not know how many attempts succeeded.
 - "Not available" is not zero. A server that is offline, did not report a counter or does not
   support the feature shows up as a gap.
-- The timings in a server's "Checks" tab measure the path from the panel to the server. They do
+- The timings in a server's "Server checks" row measure the path from the panel to the server. They do
   not tell you how long a user's connection takes to set up.
 
 ## 1. Get the token
@@ -239,7 +239,7 @@ Prometheus text format:
   `telemt_user_connections_current` and `telemt_user_unique_ips_current`. The last two have a
   `user` label: `k` followed by the first 12 hex digits of the user's UUID.
 
-You will rarely need this address. The Monitoring page and the server's "Stats" tab already
+You will rarely need this address. The Monitoring page and the server's Health tab already
 draw these numbers.
 
 ## 6. Per-user statistics
