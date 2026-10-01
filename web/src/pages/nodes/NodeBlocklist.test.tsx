@@ -23,6 +23,7 @@ const LIST: Blocklist = {
   live: true,
   synced: true,
   node_revision: 3,
+  node_entries: 1,
   dropped_packets: 42,
   dropped_bytes: 2048,
   node_error: '',
@@ -86,9 +87,27 @@ describe('NodeBlocklist', () => {
     expect(await screen.findByText('Строка 2: Уже закрыт подсетью 198.51.100.0/24')).toBeInTheDocument();
   });
 
+  it('says so when someone else changed the list first', async () => {
+    const user = userEvent.setup();
+    let body: unknown;
+    renderCard((b) => {
+      body = b;
+      return reply(409, { error: { code: 'conflict', message: 'the blocklist changed since it was loaded' } });
+    });
+    await user.type(await screen.findByLabelText('Добавить адреса'), '203.0.113.7');
+    await user.click(screen.getByRole('button', { name: 'Добавить' }));
+    expect(await screen.findByText(/изменили в другом окне/)).toBeInTheDocument();
+    expect(body).toMatchObject({ revision: 3 });
+  });
+
+  it('points out rules left on the server from an earlier install', async () => {
+    renderCard(() => reply(200, LIST), { ...LIST, entries: [], revision: 0, synced: false, node_revision: 5, node_entries: 2 });
+    expect(await screen.findByText(/осталось 2 правила от прошлой установки/)).toBeInTheDocument();
+  });
+
   it('asks for an agent update instead of offering the form', async () => {
-    renderCard(() => reply(200, LIST), { ...LIST, entries: [], revision: 0, supported: false, synced: true, dropped_packets: null, dropped_bytes: null, node_revision: null });
-    expect(await screen.findByText(/Обновите агент/)).toBeInTheDocument();
+    renderCard(() => reply(200, LIST), { ...LIST, entries: [], revision: 0, supported: false, synced: true, dropped_packets: null, dropped_bytes: null, node_revision: null, node_entries: null });
+    expect(await screen.findByText(/tgwp-agent upgrade --agent/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Добавить адреса')).toBeNull();
   });
 });

@@ -2927,7 +2927,7 @@
     "status_active": "In force on the server",
     "status_sending": "On its way to the server, usually in under a minute",
     "status_waiting": "The server is not connected: the list goes out as soon as it is back",
-    "status_old_agent": "The agent on this server cannot block addresses. Update the agent and the list starts working.",
+    "status_old_agent": "The agent on this server cannot block addresses. Update it: on the server, as root, run tgwp-agent upgrade --agent. Only the agent restarts; people stay connected.",
     "status_error": "The server did not apply the list: {{error}}",
     "dropped_total": "Packets dropped since the list last changed: {{packets}} ({{bytes}})",
     "dropped_hint": "Packets dropped since the list last changed",
@@ -2952,6 +2952,11 @@
     "error_duplicate": "Already in the list",
     "error_covered": "Already covered by {{prefix}}",
     "error_covers": "Overlaps {{prefix}} from the list: keep one of them",
-    "error_too_many": "The list holds at most {{max}} entries"
+    "error_too_many": "The list holds at most {{max}} entries",
+    "status_leftover_one": "The server still has {{count}} rule from an earlier install that the panel does not know. The panel removes it within a minute.",
+    "status_leftover_other": "The server still has {{count}} rules from an earlier install that the panel does not know. The panel removes them within a minute.",
+    "status_leftover_waiting_one": "The server still has {{count}} rule from an earlier install. The panel removes it once the server is connected.",
+    "status_leftover_waiting_other": "The server still has {{count}} rules from an earlier install. The panel removes them once the server is connected.",
+    "conflict": "Someone changed the list in another window a moment ago. The fresh list is loaded; make your change again."
   }
 }

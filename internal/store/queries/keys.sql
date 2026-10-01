@@ -134,3 +134,6 @@ SELECT * FROM subscription_tokens WHERE access_key_id = $1 AND revoked_at IS NUL
 SELECT DISTINCT ON (access_key_id) * FROM subscription_tokens
 WHERE access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) AND revoked_at IS NULL
 ORDER BY access_key_id, created_at DESC;
+
+-- name: LockSecretImport :exec
+SELECT pg_advisory_xact_lock(8387804153920880643);

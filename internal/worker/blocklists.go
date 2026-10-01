@@ -20,8 +20,8 @@ type blocklistAttempt struct {
 	at       time.Time
 }
 
-// Blocklists sends a server its blocklist again when the server reports an older one: it was
-// offline when the list changed, or was reinstalled.
+// Blocklists sends a server its blocklist again when the server reports another one: it was
+// offline when the list changed, or was reinstalled, or came back as a new server with old rules.
 type Blocklists struct {
 	st     *store.Store
 	driver nodedriver.Driver
@@ -44,7 +44,10 @@ func (b *Blocklists) RunOnce(ctx context.Context) error {
 	}
 	for _, row := range rows {
 		var h nodedriver.HealthReport
-		if json.Unmarshal(row.LastHealth, &h) != nil || h.Firewall == nil || h.Firewall.Revision == row.Revision {
+		if json.Unmarshal(row.LastHealth, &h) != nil || h.Firewall == nil {
+			continue
+		}
+		if h.Firewall.Revision == row.Revision && (row.Revision > 0 || h.Firewall.Entries == 0) {
 			continue
 		}
 		if last, ok := b.tried[row.NodeID]; ok && last.revision == row.Revision && time.Since(last.at) < blocklistRetry {

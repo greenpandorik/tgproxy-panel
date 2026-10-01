@@ -21,7 +21,7 @@ export interface ParsedImport {
 
 const SKIP_RE = /^(#|\/\/|\[)/;
 const TOML_RE = /^"?([^"=]+?)"?\s*=\s*"([^"]*)"\s*,?$/;
-const URL_RE = /(?:tg:\/\/|https?:\/\/)[^\s"'<>]+/i;
+const URL_RE = /(?:tg:\/\/|https?:\/\/|(?<![\w./])t\.me\/)[^\s"'<>]+/i;
 const HEX_RE = /(?<![0-9a-z])[0-9a-f]{32,}(?![0-9a-z])/i;
 const EDGE_RE = /^[\s:;,=|"'-]+|[\s:;,=|"'-]+$/g;
 const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
@@ -86,7 +86,7 @@ function split(text: string): Found {
     return {
       label: clean(text.slice(0, url.index)),
       owner_label: clean(text.slice(url.index + url[0].length)),
-      raw: params.get('secret'),
+      raw: params.get('secret')?.replace(/ /g, '+') ?? null,
       server: host ? (port ? `${host}:${port}` : host) : undefined,
     };
   }

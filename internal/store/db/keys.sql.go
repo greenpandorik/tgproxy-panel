@@ -652,6 +652,15 @@ func (q *Queries) ListSecretsInUse(ctx context.Context) ([][]byte, error) {
 	return items, nil
 }
 
+const lockSecretImport = `-- name: LockSecretImport :exec
+SELECT pg_advisory_xact_lock(8387804153920880643)
+`
+
+func (q *Queries) LockSecretImport(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockSecretImport)
+	return err
+}
+
 const revokeSubscriptionTokensForKey = `-- name: RevokeSubscriptionTokensForKey :exec
 UPDATE subscription_tokens SET revoked_at = now() WHERE access_key_id = $1 AND revoked_at IS NULL
 `

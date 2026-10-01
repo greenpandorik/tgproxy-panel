@@ -31,10 +31,17 @@ function Status({ data, online }: { data: Blocklist; online: boolean }) {
   const problem = data.apply_error || data.node_error;
   if (data.supported === false) return <p className="text-label text-warn">{t('blocklist.status_old_agent')}</p>;
   if (problem) return <p className="text-label text-destructive">{t('blocklist.status_error', { error: problem })}</p>;
-  if (data.revision === 0) return null;
+  if (!data.synced && data.revision === 0) {
+    return (
+      <p className="text-label text-warn">
+        {t(online ? 'blocklist.status_leftover' : 'blocklist.status_leftover_waiting', { count: data.node_entries ?? 0 })}
+      </p>
+    );
+  }
   if (!data.synced) {
     return <p className="text-label text-warn">{t(online ? 'blocklist.status_sending' : 'blocklist.status_waiting')}</p>;
   }
+  if (data.revision === 0) return null;
   return <p className="text-label text-ok">{t('blocklist.status_active')}</p>;
 }
 
@@ -83,7 +90,7 @@ function BlocklistPanel({ node, data }: { node: Node; data: Blocklist }) {
     setListErrors({});
     setFormError('');
     try {
-      const result = await save.mutateAsync(entries);
+      const result = await save.mutateAsync({ revision: data.revision, entries });
       if (result.apply_error) {
         toast.add({ description: t('blocklist.saved_not_applied'), type: 'warning' });
       } else {
@@ -91,6 +98,10 @@ function BlocklistPanel({ node, data }: { node: Node; data: Blocklist }) {
       }
       return true;
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setFormError(t('blocklist.conflict'));
+        return false;
+      }
       if (err instanceof ApiError && Object.keys(err.fields).length > 0) {
         const byLine: Record<number, string> = {};
         const byPrefix: Record<string, string> = {};
@@ -137,7 +148,7 @@ function BlocklistPanel({ node, data }: { node: Node; data: Blocklist }) {
         meta={<span className="text-label text-mute">{t('blocklist.count', { count: data.entries.length })}</span>}
       />
       <PanelBody className="space-y-5">
-        {(data.revision > 0 || data.supported === false) && (
+        {(data.revision > 0 || data.supported === false || !data.synced) && (
           <div className="space-y-1.5">
             <Status data={data} online={node.online} />
             {totals && <p className="text-label text-mute">{totals}</p>}

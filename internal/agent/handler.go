@@ -21,7 +21,8 @@ type Handler struct {
 	maintenance      sync.Mutex
 	fwMu             sync.Mutex
 	fw               firewallState
-	fwErr            string
+	fwApplyErr       string
+	fwRunErr         string
 	connections      connectionSampler
 	recoveryMu       sync.Mutex
 	recoveryPolicy   reliability.Policy

@@ -116,3 +116,53 @@ func TestBlocklistIsUnknownForAServerThatNeverReported(t *testing.T) {
 		t.Fatalf("an offline server that never reported a blocklist is unknown, not unsupported: %+v", out)
 	}
 }
+
+func TestBlocklistClearsRulesLeftFromAnEarlierInstall(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	h.Mock.SetOnline(n.ID, true)
+	if _, err := h.Mock.Firewall(context.Background(), n.ID, true, 5, []string{"203.0.113.7"}); err != nil {
+		t.Fatal(err)
+	}
+	h.Presence.OnHeartbeat(context.Background(), n.ID, nodedriver.HealthToProto(nodedriver.HealthReport{
+		RelayActive: true, MTProxyActive: true, Healthz: true, Readyz: true, Firewall: &nodedriver.FirewallStatus{Revision: 5, Entries: 1},
+	}))
+	h.Mock.SetOnline(n.ID, false)
+
+	var out struct {
+		Synced      bool `json:"synced"`
+		NodeEntries *int `json:"node_entries"`
+	}
+	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()+"/blocklist"), &out)
+	if out.Synced || out.NodeEntries == nil || *out.NodeEntries != 1 {
+		t.Fatalf("rules the panel does not know about must show as out of sync: %+v", out)
+	}
+
+	h.Mock.SetOnline(n.ID, true)
+	if err := worker.NewBlocklists(h.Store, h.Mock, slog.New(slog.DiscardHandler)).RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if rev, got := h.Mock.FirewallEntries(n.ID); rev != 0 || len(got) != 0 {
+		t.Fatalf("old rules should be cleared: %d %v", rev, got)
+	}
+}
+
+func TestBlocklistRefusesToOverwriteANewerList(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	path := "/api/v1/nodes/" + n.ID.String() + "/blocklist"
+
+	if resp := c.Put(path, map[string]any{"revision": 0, "entries": []entryIn{{Prefix: "203.0.113.7"}}}); resp.StatusCode != 200 {
+		t.Fatalf("first save %d", resp.StatusCode)
+	}
+	if resp := c.Put(path, map[string]any{"revision": 0, "entries": []entryIn{{Prefix: "198.51.100.0/24"}}}); resp.StatusCode != 409 {
+		t.Fatalf("a save based on an older list must be refused, got %d", resp.StatusCode)
+	}
+	if resp := c.Put(path, map[string]any{"revision": 1, "entries": []entryIn{{Prefix: "203.0.113.7"}, {Prefix: "198.51.100.0/24"}}}); resp.StatusCode != 200 {
+		t.Fatalf("a save based on the current list %d", resp.StatusCode)
+	}
+}

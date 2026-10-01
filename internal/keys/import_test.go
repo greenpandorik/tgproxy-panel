@@ -77,3 +77,26 @@ func TestImportRefusesTheServersOwnSecret(t *testing.T) {
 		t.Fatalf("the default profile's secret must not be reused: %v", err)
 	}
 }
+
+func TestImportsAtTheSameTimeCannotShareASecret(t *testing.T) {
+	svc, _, nodeID := setup(t)
+	ctx := context.Background()
+	base := keys.CreateInput{Type: domain.KeyPersonal, CarrierMode: "https", NodeIDs: []uuid.UUID{nodeID}}
+
+	errs := make(chan error, 4)
+	for i := range 4 {
+		go func() {
+			_, err := svc.Import(ctx, base, []keys.ImportItem{{Label: "Same", Secret: oldSecretA}, {Label: "Own", Secret: strings.Repeat(string(rune('a'+i)), 32)}})
+			errs <- err
+		}()
+	}
+	ok := 0
+	for range 4 {
+		if err := <-errs; err == nil {
+			ok++
+		}
+	}
+	if ok != 1 {
+		t.Fatalf("exactly one import may take the secret, %d did", ok)
+	}
+}

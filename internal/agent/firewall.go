@@ -181,16 +181,16 @@ func (h *Handler) configureFirewall(ctx context.Context, req *agentv1.FirewallRe
 			return nil, fmt.Errorf("blocklist entry %d: %s", keys[0]+1, problems[keys[0]])
 		}
 		if err := h.enforceFirewall(ctx, entries); err != nil {
-			h.fwErr = err.Error()
+			h.fwApplyErr = err.Error()
 			return nil, err
 		}
 		next := firewallState{Revision: req.GetRevision(), Entries: entries}
 		raw, _ := json.Marshal(next)
 		if err := writeAtomic(h.firewallPath(), raw, 0o600); err != nil {
-			h.fwErr = "the blocklist works but was not saved and will not survive a reboot: " + err.Error()
-			return nil, errors.New(h.fwErr)
+			h.fwApplyErr = "the blocklist works but was not saved and will not survive a reboot: " + err.Error()
+			return nil, errors.New(h.fwApplyErr)
 		}
-		h.fw, h.fwErr = next, ""
+		h.fw, h.fwApplyErr, h.fwRunErr = next, "", ""
 	}
 	return h.firewallStatusLocked(ctx, true), nil
 }
@@ -203,15 +203,21 @@ func (h *Handler) firewallStatus(ctx context.Context) *agentv1.FirewallStatus {
 
 // firewallStatusLocked reads the counters, and puts the rules back if something removed the table.
 func (h *Handler) firewallStatusLocked(ctx context.Context, perEntry bool) *agentv1.FirewallStatus {
-	st := &agentv1.FirewallStatus{Revision: h.fw.Revision, Entries: int32(len(h.fw.Entries)), Error: h.fwErr}
-	if len(h.fw.Entries) == 0 {
+	st := &agentv1.FirewallStatus{Revision: h.fw.Revision, Entries: int32(len(h.fw.Entries)), Error: h.firewallErrLocked()}
+	if len(h.fw.Entries) == 0 || ctx.Err() != nil {
 		return st
 	}
 	list := func() ([]byte, error) { return h.exec.Run(ctx, "nft", "-j", "list", "table", "inet", firewallTable) }
 	out, err := list()
 	if err != nil {
+		if ctx.Err() != nil {
+			return st
+		}
 		if e := h.enforceFirewall(ctx, h.fw.Entries); e != nil {
-			h.fwErr, st.Error = e.Error(), e.Error()
+			if ctx.Err() == nil {
+				h.fwRunErr = e.Error()
+				st.Error = h.firewallErrLocked()
+			}
 			return st
 		}
 		h.log.Warn("blocklist table was missing, restored it")
@@ -219,6 +225,8 @@ func (h *Handler) firewallStatusLocked(ctx context.Context, perEntry bool) *agen
 			return st
 		}
 	}
+	h.fwRunErr = ""
+	st.Error = h.firewallErrLocked()
 	total, per, err := parseNftCounters(out)
 	if err != nil {
 		return st
@@ -252,8 +260,15 @@ func (h *Handler) restoreFirewall(ctx context.Context) error {
 		return nil
 	}
 	if err := h.enforceFirewall(ctx, st.Entries); err != nil {
-		h.fwErr = err.Error()
+		h.fwRunErr = err.Error()
 		return err
 	}
 	return nil
+}
+
+func (h *Handler) firewallErrLocked() string {
+	if h.fwApplyErr != "" {
+		return h.fwApplyErr
+	}
+	return h.fwRunErr
 }

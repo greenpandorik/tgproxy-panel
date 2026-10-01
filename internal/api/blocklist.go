@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"tgwebproxy/internal/blocklist"
 	"tgwebproxy/internal/nodedriver"
@@ -34,6 +35,7 @@ type blocklistJSON struct {
 	Live           bool                 `json:"live"`
 	Synced         bool                 `json:"synced"`
 	NodeRevision   *int64               `json:"node_revision"`
+	NodeEntries    *int                 `json:"node_entries"`
 	DroppedPackets *uint64              `json:"dropped_packets"`
 	DroppedBytes   *uint64              `json:"dropped_bytes"`
 	NodeError      string               `json:"node_error"`
@@ -85,14 +87,17 @@ func blocklistView(n db.Node, row db.NodeBlocklist, entries []blocklist.Entry, l
 	}
 	counters := map[string]nodedriver.FirewallCounter{}
 	if status != nil {
-		out.NodeRevision = &status.Revision
+		out.NodeRevision, out.NodeEntries = &status.Revision, &status.Entries
 		out.DroppedPackets, out.DroppedBytes = &status.DroppedPackets, &status.DroppedBytes
 		out.NodeError = status.Error
 		for _, c := range status.Counters {
 			counters[c.Entry] = c
 		}
 	}
-	out.Synced = row.Revision == 0 || (status != nil && status.Revision == row.Revision)
+	out.Synced = row.Revision == 0
+	if status != nil {
+		out.Synced = status.Revision == row.Revision && (row.Revision > 0 || status.Entries == 0)
+	}
 	for _, e := range entries {
 		item := blocklistEntryJSON{Prefix: e.Prefix, Note: e.Note, AddedAt: e.AddedAt}
 		if c, ok := counters[e.Prefix]; ok && out.Synced {
@@ -141,7 +146,8 @@ func (s *Server) handlePutNodeBlocklist(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var in struct {
-		Entries []struct {
+		Revision *int64 `json:"revision"`
+		Entries  []struct {
 			Prefix string `json:"prefix"`
 			Note   string `json:"note"`
 		} `json:"entries"`
@@ -191,7 +197,15 @@ func (s *Server) handlePutNodeBlocklist(w http.ResponseWriter, r *http.Request) 
 		entries[i] = blocklist.Entry{Prefix: p, Note: strings.TrimSpace(in.Entries[i].Note), AddedAt: at}
 	}
 	body, _ := json.Marshal(entries)
-	row, err := s.store.Q.SaveNodeBlocklist(r.Context(), db.SaveNodeBlocklistParams{NodeID: n.ID, Entries: body})
+	expected := pgtype.Int8{}
+	if in.Revision != nil {
+		expected = pgtype.Int8{Int64: *in.Revision, Valid: true}
+	}
+	row, err := s.store.Q.SaveNodeBlocklist(r.Context(), db.SaveNodeBlocklistParams{NodeID: n.ID, Entries: body, ExpectedRevision: expected})
+	if errors.Is(err, pgx.ErrNoRows) {
+		conflict(w, "the blocklist changed since it was loaded")
+		return
+	}
 	if err != nil {
 		internal(w)
 		return

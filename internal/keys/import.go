@@ -61,6 +61,9 @@ func (s *Service) Import(ctx context.Context, in CreateInput, items []ImportItem
 
 	var out []db.AccessKey
 	err := s.st.Tx(ctx, func(q *db.Queries) error {
+		if err := q.LockSecretImport(ctx); err != nil {
+			return err
+		}
 		used, err := q.ListSecretsInUse(ctx)
 		if err != nil {
 			return err

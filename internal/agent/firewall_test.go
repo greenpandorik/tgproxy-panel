@@ -140,3 +140,29 @@ func TestFirewallReportsWhatGoesWrong(t *testing.T) {
 		t.Fatal("the agent must check entries itself")
 	}
 }
+
+func TestFirewallErrorClearsOnceTheRulesAreBack(t *testing.T) {
+	ex := &nftExec{}
+	h := firewallHandler(t, ex)
+	if _, err := h.configureFirewall(context.Background(), &agentv1.FirewallRequest{Set: true, Revision: 2, Entries: []string{"203.0.113.7"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	again := NewHandler(Config{StateDir: h.cfg.StateDir}, &nftExec{refuse: "Error: busy"}, slog.New(slog.DiscardHandler))
+	if err := again.restoreFirewall(context.Background()); err == nil {
+		t.Fatal("restore should fail while nft refuses")
+	}
+	fresh := again.exec.(*nftExec)
+
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	listings := fresh.listings
+	if st := again.firewallStatus(cancelled); st.Error == "" || fresh.listings != listings {
+		t.Fatalf("a cancelled heartbeat must not touch nft: %+v", st)
+	}
+
+	fresh.refuse = ""
+	if st := again.firewallStatus(context.Background()); st.Error != "" || st.Revision != 2 {
+		t.Fatalf("once the table is back the error must go: %+v", st)
+	}
+}

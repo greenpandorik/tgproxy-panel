@@ -19,6 +19,7 @@ export interface Blocklist {
   live: boolean;
   synced: boolean;
   node_revision: number | null;
+  node_entries: number | null;
   dropped_packets: number | null;
   dropped_bytes: number | null;
   node_error: string;
@@ -43,7 +44,9 @@ export const useBlocklist = (id: string) =>
 export function useSaveBlocklist(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (entries: BlocklistEntryInput[]) => api.put<Blocklist>(`/api/v1/nodes/${id}/blocklist`, { entries }),
+    mutationFn: ({ revision, entries }: { revision: number; entries: BlocklistEntryInput[] }) =>
+      api.put<Blocklist>(`/api/v1/nodes/${id}/blocklist`, { revision, entries }),
     onSuccess: (data) => qc.setQueryData(blocklistKey(id), data),
+    onError: () => qc.invalidateQueries({ queryKey: blocklistKey(id) }),
   });
 }

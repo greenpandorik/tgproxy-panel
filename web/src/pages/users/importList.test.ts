@@ -48,6 +48,17 @@ describe('parseImport', () => {
     expect(parsed.servers).toEqual(['old.example.com:443']);
   });
 
+  it('reads t.me links written without a scheme and base64 secrets with a plus', () => {
+    const plus = base64url(`ee${'fb'.repeat(16)}${domainHex}`).replace(/-/g, '+').replace(/_/g, '/');
+    expect(plus).toContain('+');
+    const parsed = parseImport(`alice t.me/proxy?server=1.2.3.4&port=443&secret=${A}\nbob tg://proxy?server=1.2.3.4&port=443&secret=${plus}`);
+    expect(parsed.lines.map((l) => [l.label, l.secret, l.problem])).toEqual([
+      ['alice', A, undefined],
+      ['bob', 'fb'.repeat(16), undefined],
+    ]);
+    expect(parsed.servers).toEqual(['1.2.3.4:443']);
+  });
+
   it('marks lines it cannot use and repeated secrets', () => {
     const parsed = parseImport([`a ${A}`, 'just a name', `b ${'9'.repeat(31)}`, `c tg://proxy?server=x&secret=zz`, `d ${A}`].join('\n'));
     expect(parsed.lines.map((l) => [l.line, l.problem, l.same_as])).toEqual([

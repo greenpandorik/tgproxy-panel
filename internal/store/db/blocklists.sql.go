@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getNodeBlocklist = `-- name: GetNodeBlocklist :one
@@ -28,9 +29,12 @@ func (q *Queries) GetNodeBlocklist(ctx context.Context, nodeID uuid.UUID) (NodeB
 }
 
 const listBlocklistsToSync = `-- name: ListBlocklistsToSync :many
-SELECT b.node_id, b.entries, b.revision, n.last_health
-FROM node_blocklists b
-JOIN nodes n ON n.id = b.node_id
+SELECT n.id AS node_id,
+       COALESCE(b.entries, '[]'::jsonb)::jsonb AS entries,
+       COALESCE(b.revision, 0)::bigint AS revision,
+       n.last_health
+FROM nodes n
+LEFT JOIN node_blocklists b ON b.node_id = n.id
 WHERE n.status IN ('online', 'degraded')
 `
 
@@ -71,16 +75,18 @@ INSERT INTO node_blocklists (node_id, entries, revision, updated_at)
 VALUES ($1, $2, 1, now())
 ON CONFLICT (node_id) DO UPDATE
   SET entries = EXCLUDED.entries, revision = node_blocklists.revision + 1, updated_at = now()
+  WHERE $3::bigint IS NULL OR node_blocklists.revision = $3::bigint
 RETURNING node_id, entries, revision, updated_at
 `
 
 type SaveNodeBlocklistParams struct {
-	NodeID  uuid.UUID `json:"node_id"`
-	Entries []byte    `json:"entries"`
+	NodeID           uuid.UUID   `json:"node_id"`
+	Entries          []byte      `json:"entries"`
+	ExpectedRevision pgtype.Int8 `json:"expected_revision"`
 }
 
 func (q *Queries) SaveNodeBlocklist(ctx context.Context, arg SaveNodeBlocklistParams) (NodeBlocklist, error) {
-	row := q.db.QueryRow(ctx, saveNodeBlocklist, arg.NodeID, arg.Entries)
+	row := q.db.QueryRow(ctx, saveNodeBlocklist, arg.NodeID, arg.Entries, arg.ExpectedRevision)
 	var i NodeBlocklist
 	err := row.Scan(
 		&i.NodeID,
