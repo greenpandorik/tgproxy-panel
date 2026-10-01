@@ -204,9 +204,9 @@
     "verdict_offline_never": "The agent has never connected. Run the install command on the server.",
     "verdict_attention": "Needs attention: {{count}}",
     "verdict_diagnostics": "The full check found issues: {{count}}",
-    "verdict_diagnostics_hint": "What they are and how to fix them is on the Checks tab.",
+    "verdict_diagnostics_hint": "What they are and how to fix them is below, under Server checks.",
     "verdict_degraded": "Running with limitations",
-    "verdict_degraded_hint": "The proxy answers but reports that it is not fully ready. Details are on the Checks tab.",
+    "verdict_degraded_hint": "The proxy answers but reports that it is not fully ready. Details are below, under Services and Server checks.",
     "title": "Servers",
     "add": "Add server",
     "empty_title": "No servers yet",
@@ -1601,47 +1601,35 @@
       },
       "nodes.detail": {
         "title": "Server page",
-        "intro": "Everything about one server on eight tabs: four to observe it, three to configure it and one for maintenance. A tproxy server has no Settings tab. \"Apply now\" in the header sends the accumulated changes without waiting for the next cycle.",
+        "intro": "Everything about one server on five tabs. A tproxy server has no Settings tab. \"Apply changes\" in the header sends the accumulated changes without waiting for the next cycle.",
         "fields": {
           "header": {
             "name": "Header",
-            "what": "Status dot, name, domain with a copy button and tags: the telemt or relay version, the Fake-TLS address (domain:port) and the agent version."
+            "what": "Status dot, name, domain with a copy button and tags: the telemt or relay version, the Fake-TLS port (domain:port when it masks behind another domain) and the agent version."
           },
           "apply": {
-            "name": "Apply now",
+            "name": "Apply changes",
             "what": "Send the accumulated changes to the server now. The panel applies them on its own about once a minute anyway (set under Settings → Notifications and polling). On a telemt server keys go through the API without a restart; on a tproxy server the relay restarts and live sessions drop."
           },
           "tab_overview": {
             "name": "Health",
-            "what": "A one-line verdict, services, people online with their connections, uptime, CPU, memory, disk and the connection to the Telegram datacenters. Look here first."
-          },
-          "tab_stats": {
-            "name": "Statistics",
-            "what": "Load and Telegram latency charts over the chosen period and, on a telemt server, the WEB transport: which transports clients pick, sessions and failures."
-          },
-          "tab_checks": {
-            "name": "Checks",
-            "what": "\"Full server check\" runs through the agent and checks DNS, TLS, the site, telemt and the Telegram connection. \"Check from the panel\" looks at the server from outside: DNS, ports, certificate and Fake-TLS masking. Below are external checks from other networks, if connected."
-          },
-          "tab_logs": {
-            "name": "Logs",
-            "what": "Live service logs: telemt or tproxy-server and mtproxy, caddy, the agent. Available while the server's agent is connected."
+            "what": "At the top, what is wrong, if anything. Below, a line of key numbers: status, people online (click it for this server's users), processor and memory, latency to Telegram and the result of the checks. Under it, people online, processor and traffic over a day or a week, and rows that open on click: Telegram datacenters, Services, Server checks and WEB transport. Each row says in a few words how things are, and a row with a problem is already open. \"Check now\" runs the full check and the check from the panel."
           },
           "tab_settings": {
             "name": "Settings",
-            "what": "The Fake-TLS address, port and domains, the public IP, the sponsor channel tag, the WEB transport strategy and the route to Telegram. Changing the Fake-TLS domain or port breaks links already handed out; nothing else does."
-          },
-          "tab_keys": {
-            "name": "Keys",
-            "what": "The access keys installed on the server or waiting to be applied, with limits and expiry. \"Compare with the server\" asks the server for its list and shows where it differs from the panel."
+            "what": "The Fake-TLS address, port and domains, the public IP and the sponsor channel tag. Below, the WEB transport strategy and reliability with the route to Telegram are folded away, each row showing the current choice. Changing the Fake-TLS domain or port breaks links already handed out; nothing else does."
           },
           "tab_site": {
             "name": "Cover site",
             "what": "Which site an ordinary visitor of the server domain sees, a preview and a template switch. A new site reaches the server with the next apply."
           },
+          "tab_blocklist": {
+            "name": "Blocklist",
+            "what": "Addresses and subnets the server refuses connections from. The list lives in the panel and returns to the server after a reboot or a reinstall."
+          },
           "tab_maintenance": {
             "name": "Maintenance",
-            "what": "The telemt update, versions, apply history and actions: restart the proxy, the install command and deleting the server."
+            "what": "The telemt and agent versions with the telemt update, actions (restart the proxy, the install command), the apply history and, set apart, deleting the server."
           },
           "restart": {
             "name": "Restart relay / telemt",
@@ -1651,14 +1639,18 @@
             "name": "Show install command",
             "what": "On the Maintenance tab. Issues a new single-use token valid for 24 hours and shows the command. Use it to reinstall the agent or when the first install never reached registration. The old command stops working at once."
           },
+          "logs": {
+            "name": "Service logs",
+            "what": "The panel shows no logs: read them on the server itself over SSH. Ready-made commands for the agent, telemt, caddy and tproxy are in the \"Server logs\" section of docs/runbook.md."
+          },
           "delete": {
             "name": "Delete server",
             "what": "On the Maintenance tab. Removes the server from the panel together with its keys on it and bindings. The VPS itself is untouched: the proxy keeps running on the old configuration until you stop it. Keys bound only to this server are left without servers."
           }
         },
         "notes": {
-          "1": "While the server is not connected, the Keys and Logs tabs and live statistics stay empty until the agent connects. The card on Health tells you what to check.",
-          "2": "A yellow status on a running server usually means one service is down: see Health and that service's logs."
+          "1": "While the server is not connected, the top of Health says what to check on the server itself, and the rows with live data stay empty.",
+          "2": "A yellow status on a running server usually means one service is down: open Services on Health and read that service's logs on the server."
         }
       },
       "nodes.listeners": {
@@ -2658,7 +2650,7 @@
       "http2": "The server did not negotiate HTTP/2. The WEB proxy still works, but slower.",
       "web_upstream": "Caddy cannot pass requests to telemt, so the WEB proxy is down.",
       "carrier_failures": "Some WEB proxy transports report failures. If there are many, the WEB link works poorly for some people.",
-      "web_rejections": "The proxy rejected some WEB connections. The reasons are on the server's Checks tab.",
+      "web_rejections": "The proxy rejected some WEB connections. The reasons are under Server checks on the server's page.",
       "agent_link": "The agent on the server did not answer the panel in time. This is usually a short network glitch. If it repeats, check that the server is reachable.",
       "service": "The proxy service on the server is stopped, so nobody can connect.",
       "control_api": "The proxy does not answer the panel's control API. Keys and settings won't apply until it does.",
