@@ -157,6 +157,10 @@ export const HELP_TOPICS = {
     fields: ['enabled', 'bot_token', 'chat_id', 'language', 'test'],
     docs: 'monitoring',
   },
+  'settings.integrations': {
+    fields: ['prometheus', 'token', 'node_metrics', 'grafana', 'webhook'],
+    docs: 'monitoring',
+  },
   'settings.security': {
     fields: ['password', 'totp', 'recovery', 'disable'],
     docs: 'security',

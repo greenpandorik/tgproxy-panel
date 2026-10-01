@@ -1199,12 +1199,14 @@
     "admins_column_username": "Логин",
     "admins_column_role": "Роль",
     "admins_column_created": "Создана",
-    "panel_apply_interval": "Как часто применять изменения, сек",
+    "panel_apply_interval": "Применять изменения раз в",
     "panel_apply_interval_hint": "От 10 до 3600 секунд",
-    "panel_offline_after": "Считать сервер недоступным через, сек",
+    "panel_offline_after": "Считать сервер недоступным через",
     "panel_offline_after_hint": "От 30 до 3600 секунд",
+    "panel_seconds": "секунд",
     "panel_owner_only_note": "Изменить эти настройки может только владелец.",
     "panel_save_success": "Настройки сохранены",
+    "unsaved": "Изменения ещё не сохранены",
     "panel_telegram_alerts": "Уведомления в Telegram",
     "panel_telegram_enabled": "Включить уведомления",
     "panel_telegram_chat_id": "Chat ID",
@@ -1278,7 +1280,8 @@
     "totp_status_off": "Отключена",
     "security_password_title": "Пароль",
     "admins_add": "Добавить",
-    "panel_section_intervals": "Интервалы",
+    "panel_section_intervals": "Опрос серверов",
+    "panel_telegram_hint": "Сообщения приходят, когда сервер пропадает и возвращается, когда изменения не применились и когда на сервере что-то не так.",
     "branding_logo_dark": "Логотип для тёмной темы",
     "branding_logo_dark_hint": "Необязательно — иначе берётся основной логотип. PNG, JPEG, ICO или SVG, до 2 МБ.",
     "branding_assets_immediate": "Изображения сохраняются сразу после загрузки. Название, цвета и тексты — кнопкой «Сохранить».",
@@ -1291,6 +1294,24 @@
     "panel_telegram_language_hint": "На этом языке панель пишет в Telegram. Язык интерфейса каждый выбирает себе сам.",
     "panel_telegram_language_ru": "Русский",
     "panel_telegram_language_en": "English",
+    "integrations_prometheus_title": "Экспорт метрик в Prometheus",
+    "integrations_prometheus_description": "Prometheus забирает метрики панели с адреса /metrics, обычно раз в минуту. Каждый запрос несёт токен METRICS_TOKEN в заголовке Authorization: Bearer.",
+    "integrations_token_set": "Токен METRICS_TOKEN задан",
+    "integrations_token_missing": "METRICS_TOKEN не задан: адрес /metrics открыт без токена",
+    "integrations_snippet": "Пример задания для Prometheus",
+    "integrations_node_note": "Метрики реле каждого сервера доступны отдельно по адресу /api/v1/nodes/{id}/metrics (авторизация через сессионную куку).",
+    "integrations_grafana": "Готовый дашборд Grafana лежит в репозитории: deploy/grafana/tgwp-panel.json.",
+    "integrations_docs": "Полная настройка, импорт дашборда и справочник метрик:",
+    "integrations_docs_metrics": "docs/monitoring.ru.md",
+    "integrations_webhook_title": "Вебхук оповещений",
+    "integrations_webhook_on": "Настроен",
+    "integrations_webhook_off": "Не настроен",
+    "integrations_webhook_description": "Панель отправляет те же оповещения, что и в Telegram, POST-запросом на ваш HTTPS-адрес. Запрос подписан HMAC-SHA256 в заголовках X-TGWP-Timestamp и X-TGWP-Signature.",
+    "integrations_webhook_how": "Адрес и секрет хранятся в файле .env панели, обычно /opt/tgproxy-panel/.env. Добавьте туда две строки и перезапустите панель командой docker compose up -d panel:",
+    "integrations_webhook_secret_placeholder": "<не короче 32 символов>",
+    "integrations_webhook_rules": "Адрес только с https://, без логина, параметров и #. Секрет не короче 32 символов.",
+    "integrations_webhook_docs": "Как проверять подпись на своей стороне:",
+    "integrations_docs_webhook": "docs/runbook.ru.md, раздел «Уведомления на свой адрес»",
     "subpage_content": "Тексты страницы",
     "subpage_language": "Язык страницы",
     "subpage_language_auto": "Определять по языку браузера",
@@ -2223,7 +2244,7 @@
         }
       },
       "settings.panel": {
-        "title": "Интервалы",
+        "title": "Опрос серверов",
         "intro": "Два числа, которые определяют, как быстро панель реагирует. Менять может только владелец; значения из .env (APPLY_INTERVAL, OFFLINE_AFTER) — начальные, здесь их можно переопределить без перезапуска.",
         "fields": {
           "apply_interval": {
@@ -2273,6 +2294,33 @@
         "notes": {
           "1": "Ошибка «chat not found» — бот не может писать в этот чат: вы не нажали /start в личке или бота нет в группе.",
           "2": "Ошибка «unauthorized» — токен неверный или отозван в @BotFather."
+        }
+      },
+      "settings.integrations": {
+        "title": "Интеграции",
+        "intro": "Здесь собрано то, что связывает панель с другими системами. Сами настройки лежат в файле .env панели, поэтому вкладка показывает, что уже включено и как включить остальное.",
+        "fields": {
+          "prometheus": {
+            "name": "Экспорт метрик",
+            "what": "Панель отдаёт свои метрики на /metrics в текстовом формате Prometheus: серверы и пользователи по состояниям, живые сессии и люди онлайн. Пример задания для Prometheus можно скопировать прямо из вкладки."
+          },
+          "token": {
+            "name": "METRICS_TOKEN",
+            "what": "Токен из .env панели. Prometheus присылает его в заголовке Authorization: Bearer. Если токен не задан, адрес /metrics открыт всем, и вкладка об этом предупреждает."
+          },
+          "node_metrics": {
+            "name": "Метрики сервера",
+            "what": "Метрики реле одного сервера отдаются на /api/v1/nodes/{id}/metrics. Этот адрес требует входа в панель, Prometheus его не собирает."
+          },
+          "grafana": {
+            "name": "Дашборд Grafana",
+            "what": "Готовый дашборд лежит в репозитории в deploy/grafana/tgwp-panel.json. Импортируйте его в Grafana и выберите источник данных Prometheus."
+          },
+          "webhook": {
+            "name": "Вебхук оповещений",
+            "what": "Те же оповещения, что приходят в Telegram, панель может отправлять POST-запросом на ваш HTTPS-адрес. Адрес и секрет задаются в .env переменными ALERT_WEBHOOK_URL и ALERT_WEBHOOK_SECRET, после этого панель нужно перезапустить.",
+            "tip": "Проверяйте подпись X-TGWP-Signature на своей стороне и отбрасывайте запросы старше пяти минут."
+          }
         }
       },
       "settings.security": {
@@ -2534,6 +2582,8 @@
     "panel_settings_hint": "Общие правила работы панели, уведомления и безопасность. Порты и транспорты прокси настраиваются на странице каждого сервера.",
     "settings_panel": "Уведомления и опрос серверов",
     "settings_panel_hint": "Интервалы обновления и сообщения о сбоях. Настройки действуют для всей панели.",
+    "settings_integrations": "Интеграции",
+    "settings_integrations_hint": "Как связать панель с другими системами: метрики для Prometheus и Grafana и оповещения на ваш собственный адрес.",
     "settings_preferences": "Мой интерфейс",
     "settings_preferences_hint": "Тема, плотность и меню. Эти изменения сохраняются только в вашем браузере.",
     "settings_branding": "Оформление проекта",
@@ -2554,6 +2604,7 @@
     "backup_uploaded": "Отправлена во внешнее хранилище",
     "backup_verified": "Тест восстановления пройден",
     "settings_tab_panel": "Уведомления",
+    "settings_tab_integrations": "Интеграции",
     "settings_tab_branding": "Оформление",
     "settings_tab_admins": "Учётные записи",
     "settings_tab_backups": "Резервные копии",

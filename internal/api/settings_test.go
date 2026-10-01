@@ -255,3 +255,51 @@ func TestTelegramTestEndpointForbiddenForNonOwner(t *testing.T) {
 		t.Fatal("viewer must not be able to trigger a send")
 	}
 }
+
+func TestSettingsSayWhetherIntegrationsAreSetWithoutTheirSecrets(t *testing.T) {
+	const (
+		hookURL     = "https://alerts.example.com/tgproxy-hook-path"
+		hookSecret  = "0123456789abcdef0123456789abcdef-hook"
+		metricToken = "metrics-token-value-42"
+	)
+	h := apitest.New(t, func(d *api.Deps) {
+		d.Cfg.AlertWebhookURL = hookURL
+		d.Cfg.AlertWebhookSecret = hookSecret
+		d.Cfg.MetricsToken = metricToken
+	})
+	h.CreateAdmin("watcher", "pass-123456", "viewer")
+	c := h.Login("watcher", "pass-123456")
+
+	resp := c.Get("/api/v1/settings")
+	if resp.StatusCode != 200 {
+		t.Fatalf("get settings %d", resp.StatusCode)
+	}
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		AlertWebhookConfigured bool `json:"alert_webhook_configured"`
+		MetricsTokenSet        bool `json:"metrics_token_set"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.AlertWebhookConfigured || !got.MetricsTokenSet {
+		t.Fatalf("expected both integrations reported as set: %s", raw)
+	}
+	for _, secret := range []string{hookSecret, metricToken, "alerts.example.com", "tgproxy-hook-path"} {
+		if strings.Contains(string(raw), secret) {
+			t.Fatalf("settings response leaked %q: %s", secret, raw)
+		}
+	}
+}
+
+func TestSettingsReportIntegrationsOffByDefault(t *testing.T) {
+	_, c, _ := ownerWithNode(t)
+	var got map[string]any
+	c.JSON(c.Get("/api/v1/settings"), &got)
+	if got["alert_webhook_configured"] != false || got["metrics_token_set"] != false {
+		t.Fatalf("integrations = %v / %v", got["alert_webhook_configured"], got["metrics_token_set"])
+	}
+}

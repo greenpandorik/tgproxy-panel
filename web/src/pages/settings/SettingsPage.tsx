@@ -7,11 +7,13 @@ import { HelpButton, type HelpTopic } from '@/help';
 import { AdminsForm } from './AdminsForm';
 import { BackupsForm } from './BackupsForm';
 import { BrandingProfilesList } from './BrandingProfilesList';
+import { IntegrationsForm } from './IntegrationsForm';
 import { PreferencesForm } from './PreferencesForm';
 import { PanelForm } from './PanelForm';
 import { SecurityForm } from './SecurityForm';
 
 const TAB_HELP: Record<string, HelpTopic> = {
+  integrations: 'settings.integrations',
   branding: 'settings.branding',
   preferences: 'settings.branding',
   security: 'settings.security',
@@ -24,7 +26,7 @@ export function SettingsPage() {
   const { t } = useTranslation();
   const { isOwner } = useAuth();
   const [params] = useSearchParams();
-  const shared = ['panel', 'branding', ...(isOwner ? ['admins', 'backups'] : [])];
+  const shared = ['panel', 'integrations', 'branding', ...(isOwner ? ['admins', 'backups'] : [])];
   const personal = ['preferences', 'security'];
   const allowed = [...shared, ...personal];
   const [section, setSection] = useSection(allowed, 'panel');
@@ -48,6 +50,7 @@ export function SettingsPage() {
             <p className="max-w-[72ch] text-body text-mute">{t(`workspace.settings_${section}_hint`)}</p>
           </div>
           {section === 'panel' && <PanelForm />}
+          {section === 'integrations' && <IntegrationsForm />}
           {section === 'preferences' && <PreferencesForm />}
           {section === 'branding' && <BrandingProfilesList />}
           {section === 'security' && <SecurityForm />}

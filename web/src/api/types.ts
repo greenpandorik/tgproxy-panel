@@ -813,6 +813,10 @@ export interface Settings {
   telegram_alerts: TelegramAlertsSettings;
   backup_schedule: BackupSchedule;
   subscription_page: SubscriptionPageSettings;
+  /** ALERT_WEBHOOK_URL is set in the panel's environment. The address itself is never sent. */
+  alert_webhook_configured?: boolean;
+  /** METRICS_TOKEN is set, so /metrics asks for it. */
+  metrics_token_set?: boolean;
 }
 
 export interface PutSettingsInput {

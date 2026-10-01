@@ -22,7 +22,7 @@ import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
 import { cn } from '@/lib/utils';
 
-import { Arriving, FormFooter } from './formShell';
+import { Arriving, FormColumns, FormFooter } from './formShell';
 
 import type { Settings } from '@/api/types';
 
@@ -156,9 +156,11 @@ export function PanelForm() {
   if (settingsQuery.isLoading) {
     // Two panels and the footer strip, in silhouette, at the sizes they land at.
     return (
-      <div className="flex max-w-3xl flex-col gap-4">
-        <Skeleton className="h-40 w-full rounded-surface" />
-        <Skeleton className="h-48 w-full rounded-surface" />
+      <div className="flex flex-col gap-4">
+        <FormColumns>
+          <Skeleton className="h-40 w-full rounded-surface" />
+          <Skeleton className="h-40 w-full rounded-surface" />
+        </FormColumns>
         <Skeleton className="h-14 w-full rounded-surface" />
       </div>
     );
@@ -166,7 +168,7 @@ export function PanelForm() {
 
   if (settingsQuery.isError) {
     return (
-      <div className="max-w-3xl">
+      <div>
         <ErrorState
           message={settingsQuery.error instanceof ApiError ? settingsQuery.error.message : t('common.error_generic')}
           retryLabel={t('common.refresh')}
@@ -179,163 +181,174 @@ export function PanelForm() {
   const disabled = !isOwner;
 
   return (
-    <form className="flex max-w-3xl flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
+    <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
       {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
-      <Arriving>
-        <Panel>
-          <PanelHeader
-            icon={Clock}
-            title={t('settings.panel_section_intervals')}
-            actions={<HelpButton topic="settings.panel" />}
-          />
-          <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="panel-apply-interval">{t('settings.panel_apply_interval')}</Label>
-              <Input
-                id="panel-apply-interval"
-                type="number"
-                min={10}
-                max={3600}
-                className="mono text-mono max-w-32"
-                disabled={disabled}
-                {...register('apply_interval')}
-                aria-invalid={!!errors.apply_interval}
-                aria-describedby="panel-apply-interval-hint"
-              />
-              <p
-                id="panel-apply-interval-hint"
-                className={cn('text-label', errors.apply_interval ? 'text-destructive' : 'text-mute')}
-              >
-                {t('settings.panel_apply_interval_hint')}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="panel-offline-after">{t('settings.panel_offline_after')}</Label>
-              <Input
-                id="panel-offline-after"
-                type="number"
-                min={30}
-                max={3600}
-                className="mono text-mono max-w-32"
-                disabled={disabled}
-                {...register('offline_after')}
-                aria-invalid={!!errors.offline_after}
-                aria-describedby="panel-offline-after-hint"
-              />
-              <p
-                id="panel-offline-after-hint"
-                className={cn('text-label', errors.offline_after ? 'text-destructive' : 'text-mute')}
-              >
-                {t('settings.panel_offline_after_hint')}
-              </p>
-            </div>
-          </PanelBody>
-        </Panel>
-      </Arriving>
-
-      <Arriving index={1}>
-        <Panel>
-          <PanelHeader
-            icon={Send}
-            title={t('settings.panel_telegram_alerts')}
-            actions={<HelpButton topic="settings.telegram" />}
-          />
-          <PanelBody className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="panel-telegram-enabled">{t('settings.panel_telegram_enabled')}</Label>
-              <Controller
-                control={control}
-                name="telegram_enabled"
-                render={({ field }) => (
-                  <Switch
-                    id="panel-telegram-enabled"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+      <FormColumns>
+        <Arriving>
+          <Panel>
+            <PanelHeader
+              icon={Clock}
+              title={t('settings.panel_section_intervals')}
+              actions={<HelpButton topic="settings.panel" />}
+            />
+            <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="panel-apply-interval">{t('settings.panel_apply_interval')}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="panel-apply-interval"
+                    type="number"
+                    min={10}
+                    max={3600}
+                    className="mono text-mono max-w-32"
                     disabled={disabled}
+                    {...register('apply_interval')}
+                    aria-invalid={!!errors.apply_interval}
+                    aria-describedby="panel-apply-interval-hint"
                   />
-                )}
-              />
-            </div>
-
-            {telegramEnabled && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="panel-chat-id">{t('settings.panel_telegram_chat_id')}</Label>
-                  <Input id="panel-chat-id" className="mono text-mono max-w-48" disabled={disabled} {...register('chat_id')} />
+                  <span className="text-label text-mute">{t('settings.panel_seconds')}</span>
                 </div>
+                <p
+                  id="panel-apply-interval-hint"
+                  className={cn('text-label', errors.apply_interval ? 'text-destructive' : 'text-mute')}
+                >
+                  {t('settings.panel_apply_interval_hint')}
+                </p>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="panel-telegram-language">{t('settings.panel_telegram_language')}</Label>
-                  <select
-                    id="panel-telegram-language"
-                    className="ops-select max-w-48"
+              <div className="space-y-2">
+                <Label htmlFor="panel-offline-after">{t('settings.panel_offline_after')}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="panel-offline-after"
+                    type="number"
+                    min={30}
+                    max={3600}
+                    className="mono text-mono max-w-32"
                     disabled={disabled}
-                    aria-describedby="panel-telegram-language-hint"
-                    {...register('telegram_language')}
-                  >
-                    <option value="ru">{t('settings.panel_telegram_language_ru')}</option>
-                    <option value="en">{t('settings.panel_telegram_language_en')}</option>
-                  </select>
-                  <p id="panel-telegram-language-hint" className="text-label text-mute">
-                    {t('settings.panel_telegram_language_hint')}
-                  </p>
+                    {...register('offline_after')}
+                    aria-invalid={!!errors.offline_after}
+                    aria-describedby="panel-offline-after-hint"
+                  />
+                  <span className="text-label text-mute">{t('settings.panel_seconds')}</span>
                 </div>
+                <p
+                  id="panel-offline-after-hint"
+                  className={cn('text-label', errors.offline_after ? 'text-destructive' : 'text-mute')}
+                >
+                  {t('settings.panel_offline_after_hint')}
+                </p>
+              </div>
+            </PanelBody>
+          </Panel>
+        </Arriving>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="panel-bot-token">{t('settings.panel_telegram_bot_token')}</Label>
-                    <span className="flex items-center gap-1.5 text-label text-mute">
-                      <span
-                        className={cn('size-[7px] shrink-0 rounded-pill', tokenSet ? 'bg-ok' : 'bg-pending')}
-                        aria-hidden="true"
+        <Arriving index={1}>
+          <Panel>
+            <PanelHeader
+              icon={Send}
+              title={t('settings.panel_telegram_alerts')}
+              actions={
+                <>
+                  <HelpButton topic="settings.telegram" />
+                  <Controller
+                    control={control}
+                    name="telegram_enabled"
+                    render={({ field }) => (
+                      <Switch
+                        id="panel-telegram-enabled"
+                        aria-label={t('settings.panel_telegram_enabled')}
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={disabled}
                       />
-                      {tokenSet ? t('settings.panel_telegram_token_set') : t('settings.panel_telegram_token_not_set')}
-                    </span>
+                    )}
+                  />
+                </>
+              }
+            />
+            <PanelBody className="space-y-4">
+              <p className="text-label text-mute">{t('settings.panel_telegram_hint')}</p>
+
+              {telegramEnabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="panel-chat-id">{t('settings.panel_telegram_chat_id')}</Label>
+                    <Input id="panel-chat-id" className="mono text-mono max-w-48" disabled={disabled} {...register('chat_id')} />
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Input
-                      id="panel-bot-token"
-                      type="password"
-                      autoComplete="off"
-                      className="mono text-mono"
-                      placeholder={tokenSet ? t('settings.panel_telegram_bot_token_placeholder') : undefined}
-                      disabled={disabled || clearToken}
-                      {...register('bot_token')}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="self-start sm:shrink-0 sm:self-auto"
-                      disabled={disabled || !canTestTelegram || telegramTest.isPending}
-                      onClick={() => void onTestMessage()}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="panel-telegram-language">{t('settings.panel_telegram_language')}</Label>
+                    <select
+                      id="panel-telegram-language"
+                      className="ops-select max-w-48"
+                      disabled={disabled}
+                      aria-describedby="panel-telegram-language-hint"
+                      {...register('telegram_language')}
                     >
-                      {telegramTest.isPending
-                        ? t('settings.panel_telegram_test_sending')
-                        : t('settings.panel_telegram_test_button')}
-                    </Button>
+                      <option value="ru">{t('settings.panel_telegram_language_ru')}</option>
+                      <option value="en">{t('settings.panel_telegram_language_en')}</option>
+                    </select>
+                    <p id="panel-telegram-language-hint" className="text-label text-mute">
+                      {t('settings.panel_telegram_language_hint')}
+                    </p>
                   </div>
-                  {tokenSet && (
-                    <label className="flex items-center gap-2 pt-1 text-label text-mute">
-                      <Controller
-                        control={control}
-                        name="clear_token"
-                        render={({ field }) => (
-                          <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(!!v)} disabled={disabled} />
-                        )}
-                      />
-                      {t('settings.panel_telegram_clear_token')}
-                    </label>
-                  )}
-                </div>
-              </>
-            )}
-          </PanelBody>
-        </Panel>
-      </Arriving>
 
-      <FormFooter note={!isOwner ? t('settings.panel_owner_only_note') : undefined}>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="panel-bot-token">{t('settings.panel_telegram_bot_token')}</Label>
+                      <span className="flex items-center gap-1.5 text-label text-mute">
+                        <span
+                          className={cn('size-[7px] shrink-0 rounded-pill', tokenSet ? 'bg-ok' : 'bg-pending')}
+                          aria-hidden="true"
+                        />
+                        {tokenSet ? t('settings.panel_telegram_token_set') : t('settings.panel_telegram_token_not_set')}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <Input
+                        id="panel-bot-token"
+                        type="password"
+                        autoComplete="off"
+                        className="mono text-mono"
+                        placeholder={tokenSet ? t('settings.panel_telegram_bot_token_placeholder') : undefined}
+                        disabled={disabled || clearToken}
+                        {...register('bot_token')}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="self-start sm:shrink-0 sm:self-auto"
+                        disabled={disabled || !canTestTelegram || telegramTest.isPending}
+                        onClick={() => void onTestMessage()}
+                      >
+                        {telegramTest.isPending
+                          ? t('settings.panel_telegram_test_sending')
+                          : t('settings.panel_telegram_test_button')}
+                      </Button>
+                    </div>
+                    {tokenSet && (
+                      <label className="flex items-center gap-2 pt-1 text-label text-mute">
+                        <Controller
+                          control={control}
+                          name="clear_token"
+                          render={({ field }) => (
+                            <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(!!v)} disabled={disabled} />
+                          )}
+                        />
+                        {t('settings.panel_telegram_clear_token')}
+                      </label>
+                    )}
+                  </div>
+                </>
+              )}
+            </PanelBody>
+          </Panel>
+        </Arriving>
+      </FormColumns>
+
+      <FormFooter note={!isOwner ? t('settings.panel_owner_only_note') : undefined} dirty={isOwner && isDirty}>
         {isOwner && (
           <Button type="submit" disabled={isSubmitting || !isDirty}>
             {t('common.save')}

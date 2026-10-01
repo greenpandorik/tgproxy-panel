@@ -1185,12 +1185,14 @@
     "admins_column_username": "Username",
     "admins_column_role": "Role",
     "admins_column_created": "Created",
-    "panel_apply_interval": "How often to apply changes, sec",
+    "panel_apply_interval": "Apply changes every",
     "panel_apply_interval_hint": "10 to 3600 seconds",
-    "panel_offline_after": "Treat a server as down after, sec",
+    "panel_offline_after": "Treat a server as down after",
     "panel_offline_after_hint": "30 to 3600 seconds",
+    "panel_seconds": "seconds",
     "panel_owner_only_note": "Only the owner can change these settings.",
     "panel_save_success": "Settings saved",
+    "unsaved": "Changes are not saved yet",
     "panel_telegram_alerts": "Telegram alerts",
     "panel_telegram_enabled": "Enable alerts",
     "panel_telegram_chat_id": "Chat ID",
@@ -1264,7 +1266,8 @@
     "totp_status_off": "Off",
     "security_password_title": "Password",
     "admins_add": "Add",
-    "panel_section_intervals": "Intervals",
+    "panel_section_intervals": "Server polling",
+    "panel_telegram_hint": "Messages come when a server goes offline and comes back, when changes fail to apply, and when something is wrong on a server.",
     "branding_logo_dark": "Dark theme logo",
     "branding_logo_dark_hint": "Optional — the main logo is used instead. PNG, JPEG, ICO or SVG, up to 2 MB.",
     "branding_assets_immediate": "Images are saved immediately after upload. Use Save for name, color and text changes.",
@@ -1277,6 +1280,24 @@
     "panel_telegram_language_hint": "The language the panel writes to Telegram in. Everyone picks their own interface language.",
     "panel_telegram_language_ru": "Русский",
     "panel_telegram_language_en": "English",
+    "integrations_prometheus_title": "Metrics export to Prometheus",
+    "integrations_prometheus_description": "Prometheus collects the panel's metrics from /metrics, usually once a minute. Each request carries the METRICS_TOKEN in the Authorization: Bearer header.",
+    "integrations_token_set": "METRICS_TOKEN is set",
+    "integrations_token_missing": "METRICS_TOKEN is not set: /metrics is open without a token",
+    "integrations_snippet": "A Prometheus scrape job",
+    "integrations_node_note": "Each server's relay metrics are also available separately at /api/v1/nodes/{id}/metrics (session cookie auth).",
+    "integrations_grafana": "A ready Grafana dashboard is in the repository: deploy/grafana/tgwp-panel.json.",
+    "integrations_docs": "Full setup, dashboard import and metric reference:",
+    "integrations_docs_metrics": "docs/monitoring.md",
+    "integrations_webhook_title": "Alert webhook",
+    "integrations_webhook_on": "Configured",
+    "integrations_webhook_off": "Not configured",
+    "integrations_webhook_description": "The panel sends the same alerts as in Telegram as a POST to your HTTPS endpoint. Each request is signed with HMAC-SHA256 in the X-TGWP-Timestamp and X-TGWP-Signature headers.",
+    "integrations_webhook_how": "The endpoint and the secret live in the panel's .env file, usually /opt/tgproxy-panel/.env. Add these two lines there and restart the panel with docker compose up -d panel:",
+    "integrations_webhook_secret_placeholder": "<at least 32 characters>",
+    "integrations_webhook_rules": "The address must be https:// with no login, query or #. The secret needs at least 32 characters.",
+    "integrations_webhook_docs": "How to check the signature on your side:",
+    "integrations_docs_webhook": "docs/runbook.md, section \"Alerts to your own endpoint\"",
     "subpage_content": "Page texts",
     "subpage_language": "Page language",
     "subpage_language_auto": "Detect from the visitor's browser",
@@ -2209,7 +2230,7 @@
         }
       },
       "settings.panel": {
-        "title": "Intervals",
+        "title": "Server polling",
         "intro": "Two numbers that decide how fast the panel reacts. Only the owner can change them; the values from .env (APPLY_INTERVAL, OFFLINE_AFTER) are the initial ones, overridden here without a restart.",
         "fields": {
           "apply_interval": {
@@ -2259,6 +2280,33 @@
         "notes": {
           "1": "\"chat not found\" - the bot cannot write to this chat: you never pressed /start in the DM, or the bot is not in the group.",
           "2": "\"unauthorized\" - the token is wrong or was revoked in @BotFather."
+        }
+      },
+      "settings.integrations": {
+        "title": "Integrations",
+        "intro": "What connects the panel to other systems. These settings live in the panel's .env file, so the tab shows what is already on and how to turn on the rest.",
+        "fields": {
+          "prometheus": {
+            "name": "Metrics export",
+            "what": "The panel serves its metrics at /metrics in the Prometheus text format: servers and users by state, live sessions and people online. You can copy a Prometheus scrape job straight from the tab."
+          },
+          "token": {
+            "name": "METRICS_TOKEN",
+            "what": "A token from the panel's .env. Prometheus sends it in the Authorization: Bearer header. Without it /metrics is open to anyone, and the tab warns about that."
+          },
+          "node_metrics": {
+            "name": "Server metrics",
+            "what": "One server's relay metrics are served at /api/v1/nodes/{id}/metrics. That address needs a panel sign-in, so Prometheus does not collect it."
+          },
+          "grafana": {
+            "name": "Grafana dashboard",
+            "what": "A ready dashboard is in the repository at deploy/grafana/tgwp-panel.json. Import it into Grafana and pick your Prometheus data source."
+          },
+          "webhook": {
+            "name": "Alert webhook",
+            "what": "The panel can send the same alerts that go to Telegram as a POST to your HTTPS endpoint. The endpoint and the secret are set in .env as ALERT_WEBHOOK_URL and ALERT_WEBHOOK_SECRET, and the panel needs a restart afterwards.",
+            "tip": "Check the X-TGWP-Signature on your side and drop requests older than five minutes."
+          }
         }
       },
       "settings.security": {
@@ -2520,6 +2568,8 @@
     "panel_settings_hint": "Panel behavior, notifications and security. Configure proxy ports and transports on each server’s page.",
     "settings_panel": "Notifications and polling",
     "settings_panel_hint": "Refresh intervals and incident notifications. These settings apply to the entire panel.",
+    "settings_integrations": "Integrations",
+    "settings_integrations_hint": "How to connect the panel to other systems: metrics for Prometheus and Grafana, and alerts to your own endpoint.",
     "settings_preferences": "My interface",
     "settings_preferences_hint": "Theme, density and navigation. These changes are saved only in your browser.",
     "settings_branding": "Project identity",
@@ -2540,6 +2590,7 @@
     "backup_uploaded": "Uploaded off-host",
     "backup_verified": "Restore verified",
     "settings_tab_panel": "Notifications",
+    "settings_tab_integrations": "Integrations",
     "settings_tab_branding": "Branding",
     "settings_tab_admins": "Accounts",
     "settings_tab_backups": "Backups",

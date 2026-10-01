@@ -107,8 +107,10 @@ func (s *Server) settingsJSON(ctx context.Context) map[string]any {
 			Enabled: stored.Enabled, BotTokenSet: stored.BotTokenEnc != "", ChatID: stored.ChatID,
 			Language: string(alerttext.ParseLang(stored.Language)),
 		},
-		"backup_schedule":   s.backupSchedule(ctx),
-		"subscription_page": s.subscriptionSettings(ctx),
+		"backup_schedule":          s.backupSchedule(ctx),
+		"subscription_page":        s.subscriptionSettings(ctx),
+		"alert_webhook_configured": s.cfg.AlertWebhookURL != "",
+		"metrics_token_set":        s.cfg.MetricsToken != "",
 	}
 }
 
