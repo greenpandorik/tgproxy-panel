@@ -197,3 +197,32 @@ export const useApplyDirtyNodes = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: nodeKeys.all }),
   });
 };
+
+/** Puts the listed servers first in this order and keeps the rest after them as they were. */
+export function reorderedNodes(items: Node[], ids: string[]): Node[] {
+  const byId = new Map(items.map((n) => [n.id, n]));
+  const listed = ids.flatMap((id) => byId.get(id) ?? []);
+  const rest = items.filter((n) => !ids.includes(n.id));
+  return [...listed, ...rest];
+}
+
+/** Saves the one server order every list follows. The lists move at once and move back if saving fails. */
+export const useReorderNodes = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.put<{ ids: string[] }>('/api/v1/nodes/order', { ids }),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: nodeKeys.all, exact: true });
+      const previous = qc.getQueryData<Paginated<Node>>(nodeKeys.all);
+      if (previous) qc.setQueryData<Paginated<Node>>(nodeKeys.all, { ...previous, items: reorderedNodes(previous.items, ids) });
+      return { previous };
+    },
+    onError: (_error, _ids, context) => {
+      if (context?.previous) qc.setQueryData(nodeKeys.all, context.previous);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: nodeKeys.all, exact: true });
+      void qc.invalidateQueries({ queryKey: ['monitoring', 'overview'] });
+    },
+  });
+};
