@@ -261,6 +261,8 @@ export interface Node {
   ad_tag: string;
   telemt_version: string;
   telemt_build?: string;
+  /** The telemt build the panel pins when this node runs another; empty when it runs the pinned one. */
+  telemt_update_available?: string;
   /** What the panel worked out this node's telemt can do. Null: it has not determined them yet. */
   telemt_capabilities?: TelemtCapabilities | null;
   telemt_capabilities_checked_at?: string | null;

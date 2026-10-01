@@ -226,3 +226,23 @@ export const useReorderNodes = () => {
     },
   });
 };
+
+/** One staged telemt rollout across several servers. */
+export interface FleetRollout {
+  id: string;
+  status: string;
+  node_ids: string[];
+  cursor: number;
+  error: string;
+  created_at: string;
+}
+
+export const fleetKeys = { rollouts: ['fleet-updates'] as const };
+
+/** The recent telemt rollouts and the version a new one would install. */
+export const useFleetRollouts = () =>
+  useQuery({
+    queryKey: fleetKeys.rollouts,
+    queryFn: () => api.get<{ items: FleetRollout[]; version?: string }>('/api/v1/fleet/updates'),
+    refetchInterval: 10_000,
+  });

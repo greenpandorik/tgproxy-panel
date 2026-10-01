@@ -1,18 +1,18 @@
-import { Activity, Plug, Server } from 'lucide-react';
+import { Server } from 'lucide-react';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useBrandingIdentity } from '@/theme/ThemeProvider';
 import { MONITORING_RANGES, useMonitoringOverview } from '@/api/monitoring';
-import { useNodes } from '@/api/nodes';
-import { CopyButton } from '@/components/common/CopyButton';
+import { useFleetRollouts, useNodes } from '@/api/nodes';
+import { useAuth } from '@/auth/AuthProvider';
 import { EmptyState, PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionTabs, useSection } from '@/components/common/SectionNav';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
-import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
+import { Panel, PanelBody } from '@/components/common/Panel';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
@@ -22,28 +22,21 @@ import { ApiError } from '@/lib/api';
 import { seriesPalette } from '@/lib/chart';
 
 import { FleetCarriersCard } from './FleetCarriersCard';
+import { FleetSummary } from './FleetSummary';
+import { inServerOrder } from './fleetFacts';
+import { ServerStatusCards } from './ServerStatusCards';
 
 import type { ReactNode } from 'react';
 import type { MonitoringRange } from '@/api/monitoring';
-import type { Status } from '@/components/common/StatusBadge';
-import type { MonitoringNode, MonitoringOverview, MonitoringPoint, NodeEngine } from '@/api/types';
-import { isMetricPresent } from '@/components/common/metric';
-import { formatBytes, formatNumber } from '@/lib/format';
+import type { MonitoringNode, MonitoringPoint, NodeEngine } from '@/api/types';
 
 // recharts stays out of the shell bundle - only NodeSeriesChart.tsx imports it.
 const NodeSeriesChart = lazy(() => import('./NodeSeriesChart').then((m) => ({ default: m.NodeSeriesChart })));
 
-const VIEWS = ['overview', 'nodes', 'web', 'integrations'] as const;
+const VIEWS = ['overview', 'nodes', 'web'] as const;
 
 const DEFAULT_BRAND_PRIMARY = '#0b7285';
 const DEFAULT_BRAND_ACCENT = '#099268';
-
-const METRICS_SNIPPET = `scrape_configs:
-  - job_name: tgwp-panel
-    scheme: https
-    scrape_interval: 60s
-    authorization: { credentials_file: /etc/prometheus/tgwp-token }
-    static_configs: [{ targets: ['<panel host>'] }]`;
 
 function Arriving({ index, children }: { index: number; children: ReactNode }) {
   return (
@@ -82,11 +75,9 @@ function NodeCard({
 
   return (
     <Panel>
-      {/* Same head as every PanelHeader in the panel, with the node's state dot
-          and hostname taking the place of the mono note. */}
       <div className="flex min-h-16 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline px-5 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <StatusBadge status={node.status as Status} hideLabel />
+          <StatusBadge status={node.status} hideLabel />
           <h2 className="truncate text-title text-foreground">{node.node_name}</h2>
           <span className="mono truncate text-mono text-mute">{node.hostname}</span>
         </div>
@@ -128,79 +119,25 @@ function NodeCardSkeleton() {
   );
 }
 
-function FleetOverview({
-  nodes,
-  series,
-  fleet,
-}: {
-  nodes: MonitoringNode[];
-  series: Record<string, MonitoringPoint[]>;
-  fleet?: MonitoringOverview['fleet'];
-}) {
-  const { t, i18n } = useTranslation();
-  const num = (value: number) => formatNumber(value, i18n.language);
-  const online = nodes.filter((node) => node.status === 'online' || node.status === 'degraded').length;
-  const healthy = nodes.filter((node) => node.status === 'online').length;
-  const degraded = nodes.filter((node) => node.status === 'degraded').length;
-  let sessions = 0;
-  let throughput = 0;
-  // A node whose counters were not read contributes nothing rather than a zero, and if none of
-  // them were read the total is not zero traffic but an unknown, which the tile says outright.
-  let measuredThroughput = false;
-  for (const points of Object.values(series)) {
-    const last = points.at(-1);
-    if (!last) continue;
-    sessions += last.sessions_live;
-    if (isMetricPresent(last.bytes_up_rate) && isMetricPresent(last.bytes_down_rate)) {
-      throughput += last.bytes_up_rate + last.bytes_down_rate;
-      measuredThroughput = true;
-    }
-  }
-  const people = fleet?.people_online;
-  const connections = fleet?.connections ?? sessions;
-  const items: { label: string; value: string; sub?: string }[] = [
-    { label: t('monitoring.fleet_online'), value: `${num(online)} / ${num(nodes.length)}` },
-    { label: t('monitoring.fleet_healthy'), value: num(healthy) },
-    { label: t('monitoring.fleet_degraded'), value: num(degraded) },
-    {
-      label: t('common.people_online'),
-      value: isMetricPresent(people) ? t('common.approx', { value: num(people) }) : t('common.not_available'),
-      sub: t('common.connections_count', { value: num(connections) }),
-    },
-    {
-      label: t('monitoring.fleet_traffic'),
-      value: measuredThroughput ? t('common.per_second', { value: formatBytes(throughput) }) : t('common.not_available'),
-    },
-  ];
-  return (
-    <Panel>
-      <PanelHeader icon={Activity} title={t('monitoring.fleet_title')} />
-      <div className="grid grid-cols-2 gap-px bg-hairline md:grid-cols-5">
-        {items.map(({ label, value, sub }) => (
-          <div key={label} className="bg-card px-5 py-4 last:col-span-2 md:last:col-span-1">
-            <p className="text-label text-mute">{label}</p>
-            <p className="mt-1 text-title text-foreground tabular">{value}</p>
-            {sub && <p className="mono text-micro text-mute">{sub}</p>}
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-export function MonitoringPage() {
+function MonitoringView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { isWriter } = useAuth();
   const [range, setRange] = useState<MonitoringRange>('24h');
   const [view, setView] = useSection(VIEWS, 'overview');
   const overviewQuery = useMonitoringOverview(range);
-  const { branding } = useBrandingIdentity();
   const nodesQuery = useNodes();
-  const engineById = new Map((nodesQuery.data?.items ?? []).map((n) => [n.id, n.engine]));
+  const rollouts = useFleetRollouts();
+  const { branding } = useBrandingIdentity();
 
-  const nodes = overviewQuery.data?.nodes ?? [];
+  const servers = useMemo(() => nodesQuery.data?.items ?? [], [nodesQuery.data]);
+  const engineById = new Map(servers.map((n) => [n.id, n.engine]));
   const series = overviewQuery.data?.series ?? {};
-  const loading = overviewQuery.isLoading;
+  const entries = inServerOrder(overviewQuery.data?.nodes ?? [], servers);
+  const certs = new Map((overviewQuery.data?.nodes ?? []).map((n) => [n.node_id, n.cert_expires_at]));
+  const loading = overviewQuery.isLoading || nodesQuery.isLoading;
+  const failed = overviewQuery.isError || nodesQuery.isError;
+  const error = overviewQuery.error ?? nodesQuery.error;
 
   const colors = useMemo((): [string, string, string] => {
     const [first, second, third] = seriesPalette(
@@ -210,6 +147,74 @@ export function MonitoringPage() {
     );
     return [first, second, third];
   }, [branding?.primary_color, branding?.accent_color]);
+
+  const body = () => {
+    if (loading && view === 'overview') return <FleetSummary nodes={[]} loading />;
+    if (loading) {
+      return (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <NodeCardSkeleton />
+          <NodeCardSkeleton />
+        </div>
+      );
+    }
+    if (failed) {
+      return (
+        <ErrorState
+          message={error instanceof ApiError ? error.message : t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => {
+            void overviewQuery.refetch();
+            void nodesQuery.refetch();
+          }}
+        />
+      );
+    }
+    if (servers.length === 0) {
+      return (
+        <EmptyState
+          icon={Server}
+          title={t('monitoring.empty_no_nodes')}
+          action={
+            <Button type="button" onClick={() => navigate('/nodes')}>
+              {t('nodes.add')}
+            </Button>
+          }
+        />
+      );
+    }
+    if (view === 'nodes') {
+      return (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {entries.map((node, i) => (
+            <Arriving key={node.node_id} index={i}>
+              <NodeCard
+                node={node}
+                points={series[node.node_id] ?? []}
+                colors={colors}
+                engine={engineById.get(node.node_id) ?? 'tproxy'}
+              />
+            </Arriving>
+          ))}
+        </div>
+      );
+    }
+    if (view === 'web') return <FleetCarriersCard nodes={servers} />;
+    return (
+      <div className="space-y-6">
+        <FleetSummary nodes={servers} overview={overviewQuery.data} />
+        <section aria-labelledby="monitoring-servers" className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="monitoring-servers" className="text-title text-foreground">
+              {t('nodes.title')}
+            </h2>
+            {isWriter && servers.length > 1 && <p className="text-label text-mute">{t('nodes.reorder_hint_cards')}</p>}
+          </div>
+          <ServerStatusCards nodes={servers} certs={certs} pinned={rollouts.data?.version} writer={isWriter} />
+        </section>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -238,65 +243,16 @@ export function MonitoringPage() {
         items={VIEWS.map((value) => ({ value, label: t(`monitoring.view_${value}`) }))}
       />
 
-      {loading && view !== 'integrations' ? (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <NodeCardSkeleton />
-          <NodeCardSkeleton />
-        </div>
-      ) : overviewQuery.isError && view !== 'integrations' ? (
-        /* The readings failed to arrive, which is not the same as a network with
-           no nodes in it - so it says so, and offers the one useful move. */
-        <ErrorState
-          message={overviewQuery.error instanceof ApiError ? overviewQuery.error.message : t('common.error_generic')}
-          retryLabel={t('common.refresh')}
-          onRetry={() => void overviewQuery.refetch()}
-        />
-      ) : view !== 'integrations' && nodes.length === 0 ? (
-        <EmptyState
-          icon={Server}
-          title={t('monitoring.empty_no_nodes')}
-          action={
-            <Button type="button" onClick={() => navigate('/nodes')}>
-              {t('nodes.add')}
-            </Button>
-          }
-        />
-      ) : view === 'overview' ? (
-        <FleetOverview nodes={nodes} series={series} fleet={overviewQuery.data?.fleet} />
-      ) : view === 'nodes' ? (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {nodes.map((node, i) => (
-            <Arriving key={node.node_id} index={i}>
-              <NodeCard
-                node={node}
-                points={series[node.node_id] ?? []}
-                colors={colors}
-                engine={engineById.get(node.node_id) ?? 'tproxy'}
-              />
-            </Arriving>
-          ))}
-        </div>
-      ) : view === 'web' ? (
-        <FleetCarriersCard nodes={nodesQuery.data?.items ?? []} />
-      ) : null}
-
-      {view === 'integrations' && (
-        <Arriving index={nodes.length + 1}>
-          <Panel>
-            <PanelHeader icon={Plug} title={t('monitoring.prometheus_title')} actions={<CopyButton value={METRICS_SNIPPET} />} />
-            <PanelBody className="space-y-4">
-              <p className="max-w-[72ch] text-body text-mute">{t('monitoring.prometheus_description')}</p>
-              <pre className="mono overflow-x-auto rounded-control border border-hairline bg-background px-3 py-2.5 text-mono text-foreground">
-                {METRICS_SNIPPET}
-              </pre>
-              <p className="max-w-[72ch] text-label text-mute">{t('monitoring.prometheus_node_note')}</p>
-              <p className="text-label text-mute">
-                {t('monitoring.docs_link_prefix')} <span className="mono text-mono">docs/monitoring.md</span>
-              </p>
-            </PanelBody>
-          </Panel>
-        </Arriving>
-      )}
+      {body()}
     </>
   );
+}
+
+/** Fleet health and per-server charts. The metrics export that used to live here is in Settings now. */
+export function MonitoringPage() {
+  const [params] = useSearchParams();
+  if (params.get('section') === 'integrations' || params.get('view') === 'integrations') {
+    return <Navigate to="/settings?section=integrations" replace />;
+  }
+  return <MonitoringView />;
 }

@@ -72,3 +72,20 @@ export function nodeLoad(node: Pick<Node, 'status' | 'health'>): { cpu: number |
   const cpu = isMetricPresent(node.health.cpu_utilisation_percent) ? clamp(node.health.cpu_utilisation_percent) : undefined;
   return { cpu, mem: clamp(node.health.mem_used_percent) };
 }
+
+/** Whether two telemt versions name the same build, ignoring a leading "v". */
+export function sameTelemtVersion(a: string, b: string): boolean {
+  const normalize = (v: string) => v.trim().replace(/^v/, '');
+  return normalize(a) !== '' && normalize(a) === normalize(b);
+}
+
+/** The pinned telemt build when this node runs another one, or "" when it is current or unknown. */
+export function telemtUpdateTarget(
+  node: Pick<Node, 'engine' | 'telemt_version' | 'tproxy_version' | 'telemt_update_available'>,
+  pinned?: string,
+): string {
+  if (node.engine !== 'telemt') return '';
+  const current = telemtVersion(node);
+  if (pinned && current) return sameTelemtVersion(current, pinned) ? '' : pinned;
+  return node.telemt_update_available ?? '';
+}
