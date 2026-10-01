@@ -57,7 +57,7 @@ function renderSidebar(collapsed = false) {
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/']}>
         <AuthProvider>
-          <Sidebar collapsed={collapsed} />
+          <Sidebar collapsed={collapsed} onToggleCollapsed={() => {}} />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -85,10 +85,15 @@ describe('Sidebar navigation', () => {
     expect(screen.queryByText('1/2')).toBeNull();
   });
 
-  it('names the subscription items with their group on the icon rail', async () => {
+  it('keeps one subscription item and offers to expand the rail under the logo', async () => {
     renderSidebar(true);
-    expect(await screen.findByRole('link', { name: 'Подписка · Страница' })).toHaveAttribute('href', '/subscription');
-    expect(screen.getByRole('link', { name: 'Подписка · Сервис' })).toHaveAttribute('href', '/subscription/service');
+    expect(await screen.findByRole('link', { name: 'Страница подписки' })).toHaveAttribute('href', '/subscription');
     expect(screen.getByRole('link', { name: 'Серверы' })).toHaveAttribute('href', '/nodes');
+    expect(screen.getByRole('button', { name: 'Развернуть меню' })).toBeInTheDocument();
+  });
+
+  it('puts the collapse button next to the panel name', async () => {
+    renderSidebar();
+    expect(await screen.findByRole('button', { name: 'Свернуть меню' })).toBeInTheDocument();
   });
 });

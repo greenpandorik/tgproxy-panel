@@ -12,7 +12,6 @@ import { useAuth } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CopyButton } from '@/components/common/CopyButton';
 import { ErrorState } from '@/components/common/ErrorState';
-import { PageHeader } from '@/components/common/PageHeader';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
-import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 
@@ -52,7 +50,7 @@ function CommandBox({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function SubscriptionServicePage() {
+export function SubscriptionServiceSection() {
   const { t } = useTranslation();
   const query = useSubscriptionService();
   const svc = query.data;
@@ -108,12 +106,6 @@ function ServiceForm({ svc }: { svc: SubscriptionService }) {
 
   return (
     <>
-      <PageHeader
-        title={t('service.title')}
-        description={t('service.hint')}
-        actions={<HelpButton topic="subscription.service" />}
-      />
-
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel>
           <PanelHeader icon={Globe} title={t('service.where_title')} />

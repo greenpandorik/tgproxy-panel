@@ -1,3 +1,4 @@
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
@@ -19,6 +20,7 @@ interface SidebarProps {
   /** Mobile Sheet: its close button floats in the header corner. */
   inDrawer?: boolean;
   onNavigate?: () => void;
+  onToggleCollapsed?: () => void;
 }
 
 /** `HH:MM`, re-rendered once a minute - the footer's "as of" stamp. */
@@ -67,9 +69,26 @@ function NavRow({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boo
   );
 }
 
-export function Sidebar({ collapsed = false, inDrawer = false, onNavigate }: SidebarProps) {
+export function Sidebar({ collapsed = false, inDrawer = false, onNavigate, onToggleCollapsed }: SidebarProps) {
   const { t } = useTranslation();
   const { branding, theme } = useBrandingIdentity();
+  const toggle = inDrawer || !onToggleCollapsed ? null : (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label={t(collapsed ? 'shell.expand_sidebar' : 'shell.collapse_sidebar')}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-control border border-hairline-strong bg-elevated text-muted-foreground transition-colors hover:border-mute/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          />
+        }
+      >
+        {collapsed ? <PanelLeftOpen className="size-4" aria-hidden="true" /> : <PanelLeftClose className="size-4" aria-hidden="true" />}
+      </TooltipTrigger>
+      <TooltipContent side="right">{t(collapsed ? 'shell.expand_sidebar' : 'shell.collapse_sidebar')}</TooltipContent>
+    </Tooltip>
+  );
   const healthQuery = usePanelHealth();
   const clock = useClock();
   const apiOk = healthQuery.data === true && !healthQuery.isError;
@@ -82,7 +101,7 @@ export function Sidebar({ collapsed = false, inDrawer = false, onNavigate }: Sid
       <div
         className={cn(
           'flex items-center gap-3 border-b border-hairline px-2 pt-1 pb-4',
-          collapsed && 'justify-center px-0',
+          collapsed && 'flex-col justify-center gap-3 px-0',
           inDrawer && 'pr-7',
         )}
       >
@@ -96,12 +115,14 @@ export function Sidebar({ collapsed = false, inDrawer = false, onNavigate }: Sid
           <Logo size={24} />
         )}
         {!collapsed && (
-          <>
-            <span className="truncate text-title font-semibold tracking-tight" title={branding?.panel_name || DEFAULT_PANEL_NAME}>
-              {branding?.panel_name || DEFAULT_PANEL_NAME}
-            </span>
-          </>
+          <span
+            className="min-w-0 flex-1 truncate text-title font-semibold tracking-tight"
+            title={branding?.panel_name || DEFAULT_PANEL_NAME}
+          >
+            {branding?.panel_name || DEFAULT_PANEL_NAME}
+          </span>
         )}
+        {toggle}
       </div>
 
       <div className="flex-1 overflow-x-hidden overflow-y-auto">

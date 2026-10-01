@@ -18,7 +18,7 @@ export function AppShell() {
   useEffect(() => {
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [pathname]);
-  const { collapsed } = useTheme();
+  const { collapsed, setCollapsed } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
 
@@ -45,7 +45,7 @@ export function AppShell() {
             (collapsed ? 'w-[84px]' : 'w-[276px]')
           }
         >
-          <Sidebar collapsed={collapsed} />
+          <Sidebar collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} />
         </aside>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

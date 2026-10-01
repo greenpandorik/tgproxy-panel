@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Activity, FileText, Globe, LayoutDashboard, LayoutTemplate, ScrollText, Server, Settings2, Users } from 'lucide-react';
+import { Activity, FileText, LayoutDashboard, LayoutTemplate, ScrollText, Server, Settings2, Users } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -33,14 +33,9 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     labelKey: 'nav.group_access',
-    items: [{ to: '/users', icon: Users, labelKey: 'nav.users' }],
-  },
-  {
-    labelKey: 'nav.group_subscription',
-    qualified: true,
     items: [
-      { to: '/subscription', icon: FileText, labelKey: 'nav.subscription_page', end: true },
-      { to: '/subscription/service', icon: Globe, labelKey: 'nav.subscription_service' },
+      { to: '/users', icon: Users, labelKey: 'nav.users' },
+      { to: '/subscription', icon: FileText, labelKey: 'nav.subscription_page' },
     ],
   },
   {

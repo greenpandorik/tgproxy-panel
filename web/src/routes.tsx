@@ -1,3 +1,5 @@
+import { Navigate } from 'react-router-dom';
+
 import type { RouteObject } from 'react-router-dom';
 
 import { RequireAuth } from '@/auth/RequireAuth';
@@ -10,7 +12,6 @@ import { NodeDetailPage } from '@/pages/nodes/NodeDetailPage';
 import { NodesPage } from '@/pages/nodes/NodesPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { SiteTemplatesPage } from '@/pages/sites/SiteTemplatesPage';
-import { SubscriptionServicePage } from '@/pages/subscription/SubscriptionServicePage';
 import { SubscriptionSettingsPage } from '@/pages/subscription/SubscriptionSettingsPage';
 import { UsersPage } from '@/pages/users/UsersPage';
 import { KeysRedirect } from '@/pages/users/KeysRedirect';
@@ -32,7 +33,7 @@ export const routes: RouteObject[] = [
       { path: 'users', element: <UsersPage /> },
       { path: 'keys', element: <KeysRedirect /> },
       { path: 'subscription', element: <SubscriptionSettingsPage /> },
-      { path: 'subscription/service', element: <SubscriptionServicePage /> },
+      { path: 'subscription/service', element: <Navigate to="/subscription?section=service" replace /> },
       { path: 'sites', element: <SiteTemplatesPage /> },
       { path: 'sites/new', element: <TemplateEditorPage /> },
       { path: 'sites/:id', element: <TemplateEditorPage /> },

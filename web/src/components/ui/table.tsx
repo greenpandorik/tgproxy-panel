@@ -28,12 +28,14 @@ function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>) {
   );
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
+function TableRow({ className, interactive, ...props }: React.ComponentProps<'tr'> & { interactive?: boolean }) {
   return (
     <tr
       data-slot="table-row"
       className={cn(
         'border-b border-hairline transition-colors hover:bg-elevated has-aria-expanded:bg-elevated data-[state=selected]:bg-elevated',
+        interactive &&
+          'group/row cursor-pointer hover:shadow-[inset_3px_0_0_var(--color-primary)] focus-within:bg-elevated focus-within:shadow-[inset_3px_0_0_var(--color-primary)]',
         className,
       )}
       {...props}

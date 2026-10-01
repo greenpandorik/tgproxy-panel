@@ -13,9 +13,7 @@
     "group_access": "Access",
     "group_system": "System",
     "users": "Users",
-    "group_subscription": "Subscription",
-    "subscription_page": "Page",
-    "subscription_service": "Service"
+    "subscription_page": "Subscription page"
   },
   "common": {
     "copy": "Copy",
@@ -446,7 +444,8 @@
     "restart_confirm_title_service": "Restart {{service}} on \"{{name}}\"?",
     "detail_not_found_title": "Server not found",
     "detail_not_found_description": "It may have been deleted, or the link is wrong.",
-    "detail_back_to_list": "Back to servers"
+    "detail_back_to_list": "Back to servers",
+    "back_all": "All servers"
   },
   "keys": {
     "title": "Keys",
@@ -2562,7 +2561,10 @@
     "description_stats_tproxy": "Server load over time and the proxy's counters.",
     "tab_blocklist": "Blocklist",
     "section_blocklist": "Blocked addresses",
-    "description_blocklist": "Addresses and networks the server refuses connections from. The panel keeps the list and puts it back on the server after a reboot or a reinstall."
+    "description_blocklist": "Addresses and networks the server refuses connections from. The panel keeps the list and puts it back on the server after a reboot or a reinstall.",
+    "subscription_tab_look": "Look and texts",
+    "subscription_tab_service": "Domain and service",
+    "subscription_navigation": "Subscription page sections"
   },
   "reliability": {
     "routing_toggle": "Route through SOCKS5 or WARP",

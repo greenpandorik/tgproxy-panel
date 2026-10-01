@@ -10,9 +10,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary/15 text-brand-ink hover:bg-primary/25 aria-expanded:bg-primary/25',
+        default:
+          'bg-primary font-semibold text-primary-foreground hover:bg-primary/88 aria-expanded:bg-primary/88 data-popup-open:bg-primary/88',
         outline:
-          'border-hairline-strong bg-surface text-foreground hover:bg-elevated aria-expanded:bg-elevated data-popup-open:bg-elevated',
+          'border-hairline-strong bg-elevated text-foreground hover:border-mute/55 hover:bg-elevated/70 aria-expanded:border-mute/55 data-popup-open:border-mute/55',
         secondary: 'bg-elevated text-foreground hover:bg-elevated/70 aria-expanded:bg-elevated',
         ghost:
           'text-muted-foreground hover:bg-elevated hover:text-foreground aria-expanded:bg-elevated aria-expanded:text-foreground',

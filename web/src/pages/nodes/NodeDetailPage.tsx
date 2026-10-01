@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw, Server, Wrench } from 'lucide-react';
+import { RefreshCw, Server, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TelemtUpdateCard } from '@/components/web/TelemtUpdateCard';
+import { BackButton } from '@/components/common/BackButton';
 import { SectionTabs, useSection } from '@/components/common/SectionNav';
 import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
 import { NodeListenersCard } from './NodeListenersCard';
@@ -50,12 +51,7 @@ function MetaTag({ label, value }: { label: string; value: string }) {
 
 function BackLink() {
   const { t } = useTranslation();
-  return (
-    <Link to="/nodes" className="inline-flex w-fit items-center gap-1 text-label text-mute hover:text-foreground">
-      <ArrowLeft className="size-3" />
-      {t('nodes.title')}
-    </Link>
-  );
+  return <BackButton to="/nodes" label={t('nodes.back_all')} />;
 }
 
 export function NodeDetailPage() {

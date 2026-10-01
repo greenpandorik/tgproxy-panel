@@ -13,9 +13,7 @@
     "group_access": "Доступ",
     "group_system": "Система",
     "users": "Пользователи",
-    "group_subscription": "Подписка",
-    "subscription_page": "Страница",
-    "subscription_service": "Сервис"
+    "subscription_page": "Страница подписки"
   },
   "common": {
     "copy": "Копировать",
@@ -446,7 +444,8 @@
     "restart_confirm_title_service": "Перезапустить {{service}} на «{{name}}»?",
     "detail_not_found_title": "Сервер не найден",
     "detail_not_found_description": "Возможно, его удалили или ссылка неверна.",
-    "detail_back_to_list": "К списку серверов"
+    "detail_back_to_list": "К списку серверов",
+    "back_all": "Все серверы"
   },
   "keys": {
     "title": "Ключи",
@@ -2570,7 +2569,10 @@
     "description_stats_tproxy": "Нагрузка сервера во времени и счётчики прокси.",
     "tab_blocklist": "Блокировки",
     "section_blocklist": "Блокировка адресов",
-    "description_blocklist": "Адреса и подсети, с которых сервер не принимает подключения. Список хранится в панели и возвращается на сервер после перезагрузки или переустановки."
+    "description_blocklist": "Адреса и подсети, с которых сервер не принимает подключения. Список хранится в панели и возвращается на сервер после перезагрузки или переустановки.",
+    "subscription_tab_look": "Вид и тексты",
+    "subscription_tab_service": "Домен и сервис",
+    "subscription_navigation": "Разделы страницы подписки"
   },
   "reliability": {
     "routing_toggle": "Маршрут через SOCKS5 или WARP",

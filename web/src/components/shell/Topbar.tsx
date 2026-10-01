@@ -1,4 +1,4 @@
-import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, SlidersHorizontal, Sun } from 'lucide-react';
+import { LogOut, Menu, Moon, Search, ShieldCheck, SlidersHorizontal, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -71,7 +71,7 @@ interface TopbarProps {
 
 export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
   const { t, i18n } = useTranslation();
-  const { theme, toggleTheme, collapsed, setCollapsed } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
@@ -89,14 +89,6 @@ export function Topbar({ onOpenMenu, onOpenCommand }: TopbarProps) {
       >
         <Menu />
       </Button>
-
-      <HeaderButton
-        label={t(collapsed ? 'shell.expand_sidebar' : 'shell.collapse_sidebar')}
-        onClick={() => setCollapsed(!collapsed)}
-        className="hidden lg:inline-flex"
-      >
-        {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
-      </HeaderButton>
 
       <div className="min-w-0 flex-1" />
 

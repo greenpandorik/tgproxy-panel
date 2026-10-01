@@ -117,14 +117,13 @@ describe('CommandPalette', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it('finds the subscription sections by their group and names them with it', async () => {
+  it('finds the subscription page by its name', async () => {
     const user = userEvent.setup();
     renderPalette();
 
     await user.type(await screen.findByPlaceholderText('Поиск, команды…'), 'подписк');
 
-    expect(await screen.findByText('Подписка · Страница')).toBeInTheDocument();
-    expect(screen.getByText('Подписка · Сервис')).toBeInTheDocument();
+    expect(await screen.findByText('Страница подписки')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText('Новый пользователь')).not.toBeInTheDocument());
     expect(screen.queryByText('Действия')).not.toBeInTheDocument();
   });
