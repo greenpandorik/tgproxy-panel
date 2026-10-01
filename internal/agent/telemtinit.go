@@ -300,6 +300,9 @@ func InitTelemtNode(ctx context.Context, ex Exec, p TelemtInitParams) (string, e
 	if err := writeAtomic(p.UnitPath, []byte(unit.String()), 0o644); err != nil {
 		return "", err
 	}
+	if _, err := writeTelemtConntrackDropin(p.UnitPath); err != nil {
+		return "", err
+	}
 	if err := installTelemtSite(p.SiteSrc, p.SiteDir); err != nil {
 		return "", err
 	}

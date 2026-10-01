@@ -101,6 +101,10 @@ func TestInitTelemtNodeRendersConfigTokenUnitAndSite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if dropin, err := os.ReadFile(filepath.Join(p.UnitPath+".d", "10-tgwp-conntrack.conf")); err != nil ||
+		!strings.Contains(string(dropin), "ExecStartPre=-+/bin/sh -c") || !strings.Contains(string(dropin), "iptables -w -t raw -N TELEMT_NOTRACK") {
+		t.Fatalf("telemt needs the conntrack drop-in from its first start: %s %v", dropin, err)
+	}
 	for _, want := range []string{
 		"ExecStart=/usr/local/bin/telemt " + p.ConfigPath,
 		"Restart=on-failure",

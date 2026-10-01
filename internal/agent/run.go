@@ -37,6 +37,9 @@ func Run(ctx context.Context, cfg Config, h *Handler, log *slog.Logger) error {
 	if err := h.restoreFirewall(ctx); err != nil {
 		log.Error("blocklist not restored", "err", err)
 	}
+	if err := h.ensureTelemtConntrackFix(ctx, DefaultTelemtUnitPath); err != nil {
+		log.Warn("telemt conntrack drop-in not written", "err", err)
+	}
 	go h.runRecovery(ctx)
 	u, err := url.Parse(cfg.PanelURL)
 	if err != nil {
