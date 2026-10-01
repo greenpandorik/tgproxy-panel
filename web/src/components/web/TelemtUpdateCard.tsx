@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Download, Check, Loader2, CircleAlert } from 'lucide-react';
+import { Check, Loader2, CircleAlert } from 'lucide-react';
 import { api } from '@/lib/api';
 import { nodeKeys } from '@/api/nodes';
 import type { Node } from '@/api/types';
 import { useAuth } from '@/auth/AuthProvider';
-import { Panel, PanelHeader, PanelBody } from '@/components/common/Panel';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { ErrorState } from '@/components/common/ErrorState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -32,6 +31,7 @@ interface UpdateHistory {
   pinned_version: string;
   update_available: string;
 }
+/** The telemt build on a server against the one the panel recommends, and the update that brings it there. */
 export function TelemtUpdateCard({ node }: { node: Node }) {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
@@ -56,108 +56,103 @@ export function TelemtUpdateCard({ node }: { node: Node }) {
   const normalizedPinned = query.data?.pinned_version?.replace(/^v/, '');
   const upToDate = !!normalizedInstalled && normalizedInstalled === normalizedPinned;
   return (
-    <Panel>
-      <PanelHeader icon={Download} title={t('web.update_title')} />
-      <PanelBody className="space-y-4">
-        {query.isLoading ? (
-          <Skeleton className="h-28" />
-        ) : query.isError ? (
-          <ErrorState inset message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap gap-6">
-                <div>
-                  <p className="text-label text-mute">{t('web.update_installed')}</p>
-                  <p className="mono text-lg">{query.data?.installed_version || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-label text-mute">{t('web.update_recommended')}</p>
-                  <p className="mono text-lg">{query.data?.pinned_version || '—'}</p>
-                </div>
+    <div className="space-y-4">
+      {query.isLoading ? (
+        <Skeleton className="h-28" />
+      ) : query.isError ? (
+        <ErrorState inset message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap gap-6">
+              <div>
+                <p className="text-label text-mute">{t('web.update_installed')}</p>
+                <p className="mono text-mono text-foreground">telemt {query.data?.installed_version || '—'}</p>
               </div>
-              {upToDate ? (
-                <span className="inline-flex items-center gap-1.5 text-label text-ok">
-                  <Check size={16} />
-                  {t('web.update_up_to_date')}
-                </span>
-              ) : (
-                isWriter && (
-                  <Button disabled={!node.online || running || start.isPending} onClick={() => setConfirm(true)}>
-                    {t(running ? 'web.update_running' : 'web.update_action')}
-                  </Button>
-                )
+              <div>
+                <p className="text-label text-mute">{t('web.update_recommended')}</p>
+                <p className="mono text-mono text-foreground">{query.data?.pinned_version || '—'}</p>
+              </div>
+            </div>
+            {upToDate ? (
+              <span className="inline-flex items-center gap-1.5 text-label text-ok">
+                <Check size={16} />
+                {t('web.update_up_to_date')}
+              </span>
+            ) : (
+              isWriter && (
+                <Button size="sm" disabled={!node.online || running || start.isPending} onClick={() => setConfirm(true)}>
+                  {t(running ? 'web.update_running' : 'web.update_action')}
+                </Button>
+              )
+            )}
+          </div>
+          {isWriter && !upToDate && !node.online && <p className="text-label text-mute">{t('web.update_offline')}</p>}
+          {latest && (
+            <div className="space-y-3 border-t border-hairline pt-4" role="status" aria-live="polite">
+              <p className="font-medium">
+                {t(`web.update_status_${latest.status}`, latest.status)}{' '}
+                <span className="ml-2 text-label font-normal text-mute">{formatDateTime(latest.started_at, i18n.language)}</span>
+              </p>
+              <ol className="space-y-2">
+                {latest.steps.map((step, i) => (
+                  <li key={`${step.key}-${i}`} className="flex items-start gap-2 text-label">
+                    {step.state === 'running' ? (
+                      <Loader2 size={16} className="mt-0.5 animate-spin motion-reduce:animate-none" />
+                    ) : step.state === 'ok' ? (
+                      <Check size={16} className="mt-0.5 text-ok" />
+                    ) : (
+                      <CircleAlert size={16} className="mt-0.5 text-mute" />
+                    )}
+                    <div>
+                      <span>{t(`web.update_step_${step.key}`, step.key)}</span>
+                      {step.key === 'drain' && step.state === 'running' && (
+                        <span className="ml-2 text-mute">
+                          {t('web.update_remaining', { sessions: step.remaining_sessions, streams: step.remaining_streams })}
+                        </span>
+                      )}
+                      <details className="text-mute">
+                        <summary className="cursor-pointer">{t('web.update_details')}</summary>
+                        <p className="mt-1 break-words">{step.message}</p>
+                      </details>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              {latest.error && (
+                <p className="text-body text-destructive" role="alert">
+                  {latest.error}
+                </p>
               )}
             </div>
-            {isWriter && !upToDate && !node.online && <p className="text-label text-mute">{t('web.update_offline')}</p>}
-            {latest && (
-              <div className="space-y-3 border-t border-hairline pt-4" role="status" aria-live="polite">
-                <p className="font-medium">
-                  {t(`web.update_status_${latest.status}`, latest.status)}{' '}
-                  <span className="ml-2 text-label font-normal text-mute">
-                    {formatDateTime(latest.started_at, i18n.language)}
-                  </span>
-                </p>
-                <ol className="space-y-2">
-                  {latest.steps.map((step, i) => (
-                    <li key={`${step.key}-${i}`} className="flex items-start gap-2 text-label">
-                      {step.state === 'running' ? (
-                        <Loader2 size={16} className="mt-0.5 animate-spin motion-reduce:animate-none" />
-                      ) : step.state === 'ok' ? (
-                        <Check size={16} className="mt-0.5 text-ok" />
-                      ) : (
-                        <CircleAlert size={16} className="mt-0.5 text-mute" />
-                      )}
-                      <div>
-                        <span>{t(`web.update_step_${step.key}`, step.key)}</span>
-                        {step.key === 'drain' && step.state === 'running' && (
-                          <span className="ml-2 text-mute">
-                            {t('web.update_remaining', { sessions: step.remaining_sessions, streams: step.remaining_streams })}
-                          </span>
-                        )}
-                        <details className="text-mute">
-                          <summary className="cursor-pointer">{t('web.update_details')}</summary>
-                          <p className="mt-1 break-words">{step.message}</p>
-                        </details>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                {latest.error && (
-                  <p className="text-body text-destructive" role="alert">
-                    {latest.error}
-                  </p>
-                )}
-              </div>
-            )}
-            {(query.data?.items.length ?? 0) > 1 && (
-              <AdvancedSettings label={t('web.update_history')}>
-                <ul className="space-y-2">
-                  {query.data?.items.slice(1).map((job) => (
-                    <li key={job.id} className="text-label">
-                      {formatDateTime(job.started_at, i18n.language)} · {job.from_version} → {job.to_version} ·{' '}
-                      {t(`web.update_status_${job.status}`, job.status)}
-                    </li>
-                  ))}
-                </ul>
-              </AdvancedSettings>
-            )}
-          </>
-        )}
-        {start.isError && (
-          <p role="alert" className="text-body text-destructive">
-            {start.error.message}
-          </p>
-        )}
-        <ConfirmDialog
-          open={confirm}
-          onOpenChange={setConfirm}
-          title={t('web.update_confirm_title')}
-          description={t('web.update_confirm_hint')}
-          confirmLabel={t('web.update_action')}
-          onConfirm={() => start.mutateAsync().then(() => undefined)}
-        />
-      </PanelBody>
-    </Panel>
+          )}
+          {(query.data?.items.length ?? 0) > 1 && (
+            <AdvancedSettings label={t('web.update_history')}>
+              <ul className="space-y-2">
+                {query.data?.items.slice(1).map((job) => (
+                  <li key={job.id} className="text-label">
+                    {formatDateTime(job.started_at, i18n.language)} · {job.from_version} → {job.to_version} ·{' '}
+                    {t(`web.update_status_${job.status}`, job.status)}
+                  </li>
+                ))}
+              </ul>
+            </AdvancedSettings>
+          )}
+        </>
+      )}
+      {start.isError && (
+        <p role="alert" className="text-body text-destructive">
+          {start.error.message}
+        </p>
+      )}
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title={t('web.update_confirm_title')}
+        description={t('web.update_confirm_hint')}
+        confirmLabel={t('web.update_action')}
+        onConfirm={() => start.mutateAsync().then(() => undefined)}
+      />
+    </div>
   );
 }

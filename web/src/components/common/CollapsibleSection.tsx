@@ -1,5 +1,6 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -37,7 +38,10 @@ interface CollapsibleSectionProps {
   children: ReactNode;
 }
 
-/** A row that opens to show more: a chevron, a title and a one-line summary, with a hairline above it. */
+/**
+ * A row that opens to show more: a chevron, a title and a one-line summary, with a hairline above it.
+ * Left to itself, a section whose summary is a warning or an error stays open until it is closed by hand.
+ */
 export function CollapsibleSection({
   title,
   summary,
@@ -53,12 +57,16 @@ export function CollapsibleSection({
   children,
 }: CollapsibleSectionProps) {
   const dot = SUMMARY_DOT[tone];
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const problem = tone === 'warn' || tone === 'err';
   return (
     <Collapsible.Root
       id={id}
-      open={open}
-      defaultOpen={defaultOpen}
-      onOpenChange={onOpenChange ? (next) => onOpenChange(next) : undefined}
+      open={open ?? chosen ?? (!!defaultOpen || problem)}
+      onOpenChange={(next) => {
+        setChosen(next);
+        onOpenChange?.(next);
+      }}
       data-slot="collapsible-section"
       data-tone={tone}
       className={cn('border-t border-hairline first:border-t-0', className)}

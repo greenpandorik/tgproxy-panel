@@ -1,43 +1,34 @@
-import { RefreshCw, Server, Wrench } from 'lucide-react';
-import { useState } from 'react';
+import { RefreshCw, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { useApplyNode, useDeleteNode, useInstallCommand, useNode, useRestartNode } from '@/api/nodes';
+import { useApplyNode, useNode } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { BackButton } from '@/components/common/BackButton';
 import { CopyButton } from '@/components/common/CopyButton';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { SectionTabs, useSection } from '@/components/common/SectionNav';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TelemtUpdateCard } from '@/components/web/TelemtUpdateCard';
-import { BackButton } from '@/components/common/BackButton';
-import { SectionTabs, useSection } from '@/components/common/SectionNav';
-import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
-import { NodeListenersCard } from './NodeListenersCard';
-import { NodeCheckCard } from './NodeCheckCard';
-import { WebDiagnosticsCard } from '@/components/web/WebDiagnosticsCard';
-import { WebPolicyCard } from '@/components/web/WebPolicyCard';
-import { CAP_CARRIER_NEGOTIATION, nodeCapability } from '@/components/web/capability';
 import { toast } from '@/components/ui/toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 
-import { InstallCommandDialog } from './InstallCommandDialog';
-import { NodeProbes } from './NodeProbes';
-import { NodeReliability } from './NodeReliability';
-import { NodeLogs } from './NodeLogs';
 import { NodeBlocklist } from './NodeBlocklist';
+import { NodeMaintenanceTab } from './NodeMaintenanceTab';
 import { NodeOverviewTab } from './NodeOverviewTab';
-import { NodeProfilesTab } from './NodeProfilesTab';
+import { NodeProxyTab } from './NodeProxyTab';
 import { NodeSiteTab } from './NodeSiteTab';
-import { NodeStatsTab } from './NodeStatsTab';
-import { NodeWebTab } from './NodeWebTab';
-import { DASH, fakeTlsEndpoint, nodeStatus, shortVersion, telemtVersion } from './nodeDisplay';
+import { DASH, nodeStatus, shortVersion, telemtVersion } from './nodeDisplay';
+
+import type { Node } from '@/api/types';
+
+/** Old section names, from links made before their tabs moved into Состояние. */
+const OLD_SECTIONS = { stats: 'overview', web: 'overview', diagnostics: 'overview', logs: 'overview', profiles: 'overview' };
 
 /** One machine fact about the node, as a hairline tag beside the hostname. */
 function MetaTag({ label, value }: { label: string; value: string }) {
@@ -49,34 +40,56 @@ function MetaTag({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** The Fake-TLS listener as a tag: just the port when it masks behind the server's own hostname. */
+function tlsTag(node: Node): string {
+  if (node.engine !== 'telemt' || !node.tls_domain) return '';
+  return node.tls_domain === node.hostname ? `:${node.classic_port}` : `${node.tls_domain}:${node.classic_port}`;
+}
+
 function BackLink() {
   const { t } = useTranslation();
   return <BackButton to="/nodes" label={t('nodes.back_all')} />;
+}
+
+function ApplyButton({ node }: { node: Node }) {
+  const { t } = useTranslation();
+  const applyNode = useApplyNode(node.id);
+  const handleApply = async () => {
+    try {
+      await applyNode.mutateAsync();
+      toast.add({ description: t('nodes.apply_queued'), type: 'success' });
+    } catch (err) {
+      toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
+    }
+  };
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="inline-flex" />}>
+        <Button type="button" onClick={() => void handleApply()} disabled={applyNode.isPending || !node.dirty}>
+          <RefreshCw className={applyNode.isPending ? 'animate-spin' : undefined} />
+          {t('nodes.detail_apply_now')}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{t(node.dirty ? 'nodes.detail_apply_hint' : 'nodes.detail_apply_up_to_date')}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function NodeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const { isWriter } = useAuth();
-  const navigate = useNavigate();
-
+  const [params] = useSearchParams();
   const nodeQuery = useNode(id ?? '');
-  const applyNode = useApplyNode(id ?? '');
-  const restartNode = useRestartNode(id ?? '');
-  const deleteNode = useDeleteNode();
-  const installCommand = useInstallCommand(id ?? '');
-
+  const telemt = nodeQuery.data?.engine === 'telemt';
   const [section, setSection] = useSection(
-    nodeQuery.data?.engine === 'tproxy'
-      ? ['overview', 'stats', 'diagnostics', 'logs', 'profiles', 'site', 'blocklist', 'settings']
-      : ['overview', 'stats', 'diagnostics', 'logs', 'proxy', 'profiles', 'site', 'blocklist', 'settings'],
+    telemt ? ['overview', 'proxy', 'site', 'blocklist', 'settings'] : ['overview', 'site', 'blocklist', 'settings'],
     'overview',
     'section',
-    { web: 'stats' },
+    OLD_SECTIONS,
   );
-  const [restartOpen, setRestartOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [installResult, setInstallResult] = useState<{ command: string; expires_at: string } | null>(null);
+  const asked = params.get('section');
+  const focus = asked === 'diagnostics' ? 'checks' : asked === 'web' ? 'web' : null;
 
   if (!id) return <Navigate to="/nodes" replace />;
 
@@ -122,221 +135,57 @@ export function NodeDetailPage() {
   }
 
   const node = nodeQuery.data;
-  const restartLabel = t(node.engine === 'telemt' ? 'nodes.detail_restart_telemt' : 'nodes.detail_restart_relay');
-
-  const handleApply = async () => {
-    try {
-      await applyNode.mutateAsync();
-      toast.add({ description: t('nodes.apply_queued'), type: 'success' });
-    } catch (err) {
-      toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
-    }
-  };
-
-  const handleRestart = async () => {
-    try {
-      await restartNode.mutateAsync();
-      toast.add({ description: t('nodes.restart_success'), type: 'success' });
-    } catch (err) {
-      toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
-    }
-  };
-
-  const handleDelete = async () => {
-    try {
-      await deleteNode.mutateAsync(node.id);
-      toast.add({ description: t('nodes.delete_success'), type: 'success' });
-      navigate('/nodes', { replace: true });
-    } catch (err) {
-      toast.add({ description: err instanceof ApiError ? err.message : t('common.error_generic'), type: 'error' });
-    }
-  };
-
-  const handleShowInstall = async () => {
-    try {
-      const result = await installCommand.mutateAsync();
-      setInstallResult(result);
-    } catch {
-      toast.add({ description: t('common.error_generic'), type: 'error' });
-    }
-  };
+  const tls = tlsTag(node);
+  const tabs = [
+    { value: 'overview', label: t('workspace.tab_overview') },
+    ...(telemt ? [{ value: 'proxy', label: t('workspace.tab_proxy') }] : []),
+    { value: 'site', label: t('workspace.tab_site') },
+    { value: 'blocklist', label: t('workspace.tab_blocklist') },
+    { value: 'settings', label: t('workspace.tab_settings') },
+  ];
+  const current = tabs.find((tab) => tab.value === section);
 
   return (
-    <>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
-          <BackLink />
-
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h1 className="flex min-w-0 items-center gap-2.5 text-display text-foreground">
-                  <StatusBadge status={nodeStatus(node)} hideLabel />
-                  <span className="truncate">{node.name}</span>
-                </h1>
-                <HelpButton topic="nodes.detail" />
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                <span className="mono inline-flex items-center gap-0.5 text-mono text-mute">
-                  {node.hostname}
-                  <CopyButton value={node.hostname} className="size-5 [&_svg]:size-3" />
-                </span>
-                {node.engine === 'telemt' ? (
-                  <>
-                    <MetaTag label="telemt" value={telemtVersion(node) || DASH} />
-                    {fakeTlsEndpoint(node) && <MetaTag label="tls" value={fakeTlsEndpoint(node)} />}
-                  </>
-                ) : (
-                  <MetaTag label="relay" value={shortVersion(node.tproxy_version)} />
-                )}
-                <MetaTag label="agent" value={node.agent_version || DASH} />
-              </div>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
+        <BackLink />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h1 className="flex min-w-0 items-center gap-2.5 text-display text-foreground">
+                <StatusBadge status={nodeStatus(node)} hideLabel />
+                <span className="truncate">{node.name}</span>
+              </h1>
+              <HelpButton topic="nodes.detail" />
             </div>
-
-            {isWriter && (
-              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <Tooltip>
-                  <TooltipTrigger render={<span className="inline-flex" />}>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void handleApply()}
-                      disabled={applyNode.isPending || !node.dirty}
-                    >
-                      <RefreshCw className={applyNode.isPending ? 'animate-spin' : undefined} />
-                      {t('nodes.detail_apply_now')}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t(node.dirty ? 'nodes.detail_apply_hint' : 'nodes.detail_apply_up_to_date')}</TooltipContent>
-                </Tooltip>
-              </div>
-            )}
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              <span className="mono inline-flex min-w-0 items-center gap-0.5 text-mono text-mute">
+                <span className="truncate">{node.hostname}</span>
+                <CopyButton value={node.hostname} className="size-5 [&_svg]:size-3" />
+              </span>
+              {telemt ? (
+                <>
+                  <MetaTag label="telemt" value={telemtVersion(node) || DASH} />
+                  {tls && <MetaTag label="tls" value={tls} />}
+                </>
+              ) : (
+                <MetaTag label="relay" value={shortVersion(node.tproxy_version)} />
+              )}
+              <MetaTag label={t('nodes.detail_tag_agent')} value={node.agent_version || DASH} />
+            </div>
           </div>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-6">
-          <SectionTabs
-            label={t('workspace.node_navigation')}
-            value={section}
-            onChange={setSection}
-            items={[
-              { value: 'overview', label: t('workspace.tab_overview'), group: t('workspace.observe') },
-              { value: 'stats', label: t('workspace.tab_stats'), group: t('workspace.observe') },
-              { value: 'diagnostics', label: t('workspace.tab_diagnostics'), group: t('workspace.observe') },
-              { value: 'logs', label: t('workspace.tab_logs'), group: t('workspace.observe') },
-              ...(node.engine === 'telemt'
-                ? [{ value: 'proxy', label: t('workspace.tab_proxy'), group: t('workspace.configure') }]
-                : []),
-              { value: 'profiles', label: t('workspace.tab_profiles'), group: t('workspace.configure') },
-              { value: 'site', label: t('workspace.tab_site'), group: t('workspace.configure') },
-              { value: 'blocklist', label: t('workspace.tab_blocklist'), group: t('workspace.configure') },
-              { value: 'settings', label: t('workspace.tab_settings'), group: t('workspace.service') },
-            ]}
-          />
-          <section className="min-w-0 space-y-5" aria-label={t(`workspace.section_${section}`)}>
-            <div className="space-y-1">
-              <h2 className="text-title">{t(`workspace.section_${section}`)}</h2>
-              <p className="max-w-[72ch] text-body text-mute">
-                {t(
-                  node.engine === 'tproxy' && (section === 'overview' || section === 'stats')
-                    ? `workspace.description_${section}_tproxy`
-                    : `workspace.description_${section}`,
-                )}
-              </p>
-            </div>
-            {section === 'overview' && <NodeOverviewTab node={node} />}
-            {section === 'stats' && (
-              <>
-                <NodeStatsTab nodeId={node.id} online={node.online} engine={node.engine} />
-                {node.engine === 'telemt' && <NodeWebTab node={node} />}
-              </>
-            )}
-            {section === 'diagnostics' && (
-              <>
-                {node.engine === 'telemt' && <WebDiagnosticsCard nodeId={node.id} />}
-                <NodeCheckCard node={node} />
-                <NodeProbes id={node.id} />
-              </>
-            )}
-            {section === 'logs' && <NodeLogs nodeId={node.id} online={node.online} engine={node.engine} />}
-            {section === 'proxy' && node.engine === 'telemt' && (
-              <>
-                <NodeListenersCard node={node} canEdit={isWriter} />
-                <WebPolicyCard nodeId={node.id} capability={nodeCapability(node, CAP_CARRIER_NEGOTIATION)} />
-                <NodeReliability node={node} />
-              </>
-            )}
-            {section === 'profiles' && <NodeProfilesTab nodeId={node.id} online={node.online} engine={node.engine} />}
-            {section === 'site' && <NodeSiteTab nodeId={node.id} />}
-            {section === 'blocklist' && <NodeBlocklist node={node} />}
-            {section === 'settings' && (
-              <>
-                {node.engine === 'telemt' && <TelemtUpdateCard node={node} />}
-                <NodeOverviewTab node={node} maintenance />
-                {isWriter && (
-                  <Panel>
-                    <PanelHeader icon={Wrench} title={t('workspace.service_actions')} />
-                    <PanelBody className="space-y-4">
-                      <p className="max-w-[72ch] text-body text-mute">{t('workspace.service_warning')}</p>
-                      <div className="flex flex-wrap gap-3">
-                        <Button type="button" variant="outline" size="sm" onClick={() => setRestartOpen(true)}>
-                          {restartLabel}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void handleShowInstall()}
-                          disabled={installCommand.isPending}
-                        >
-                          {t('nodes.install_show')}
-                        </Button>
-                        <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
-                          {t('nodes.detail_delete')}
-                        </Button>
-                      </div>
-                    </PanelBody>
-                  </Panel>
-                )}
-              </>
-            )}
-          </section>
+          {isWriter && <ApplyButton node={node} />}
         </div>
       </div>
 
-      <ConfirmDialog
-        open={restartOpen}
-        onOpenChange={setRestartOpen}
-        title={t('nodes.restart_confirm_title_service', {
-          name: node.name,
-          service: node.engine === 'telemt' ? 'telemt' : 'relay',
-        })}
-        description={t('nodes.restart_confirm_description')}
-        destructive
-        confirmLabel={restartLabel}
-        onConfirm={handleRestart}
-      />
-
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={t('nodes.delete_confirm_title', { name: node.name })}
-        description={t('nodes.delete_confirm_description')}
-        destructive
-        confirmLabel={t('nodes.action_delete')}
-        onConfirm={handleDelete}
-      />
-
-      {installResult && (
-        <InstallCommandDialog
-          open={!!installResult}
-          onOpenChange={(open) => !open && setInstallResult(null)}
-          nodeId={node.id}
-          command={installResult.command}
-          expiresAt={installResult.expires_at}
-          regenerated
-        />
-      )}
-    </>
+      <SectionTabs label={t('workspace.node_navigation')} value={section} onChange={setSection} items={tabs} />
+      <section className="min-w-0" aria-label={current?.label}>
+        {section === 'overview' && <NodeOverviewTab node={node} focus={focus} />}
+        {section === 'proxy' && telemt && <NodeProxyTab node={node} canEdit={isWriter} />}
+        {section === 'site' && <NodeSiteTab nodeId={node.id} />}
+        {section === 'blocklist' && <NodeBlocklist node={node} />}
+        {section === 'settings' && <NodeMaintenanceTab node={node} />}
+      </section>
+    </div>
   );
 }

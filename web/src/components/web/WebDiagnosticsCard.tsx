@@ -8,6 +8,7 @@ import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Panel, PanelHeader } from '@/components/common/Panel';
+import { SubSection } from '@/components/common/SubSection';
 import { TONE_VAR } from '@/components/common/statTone';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -172,13 +173,25 @@ function RunReport({ run }: { run: DiagnosticsRun }) {
   );
 }
 
-/** The WEB diagnostics pass: run it, and read it back exactly as the API grouped it. */
-export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
+/**
+ * The WEB diagnostics pass: run it, and read it back exactly as the API grouped it.
+ * `embedded` draws it as part of a section that runs it from its own button, passed in as `runner`.
+ */
+export function WebDiagnosticsCard({
+  nodeId,
+  embedded = false,
+  runner,
+}: {
+  nodeId: string;
+  embedded?: boolean;
+  runner?: ReturnType<typeof useRunWebDiagnostics>;
+}) {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
   const stored = useNodeDiagnostics(nodeId, 20);
   const [selected, setSelected] = useState<number | null>(null);
-  const runDiagnostics = useRunWebDiagnostics(nodeId);
+  const own = useRunWebDiagnostics(nodeId);
+  const runDiagnostics = runner ?? own;
 
   const run =
     selected === null
@@ -206,93 +219,102 @@ export function WebDiagnosticsCard({ nodeId }: { nodeId: string }) {
     </Button>
   );
 
+  const meta = ranAt ? (age ? t('common.ago', { value: age }) : formatDateTime(ranAt, i18n.language)) : undefined;
+
+  const controls = run && (
+    <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-2', !embedded && 'border-b border-hairline px-4 py-3')}>
+      {stored.data && stored.data.items.length > 1 && (
+        <>
+          <label htmlFor={`diag-history-${nodeId}`} className="text-label text-mute">
+            {t('web.diagnostics_history')}
+          </label>
+          <Select
+            value={selected === null ? LATEST : String(selected)}
+            onValueChange={(v) => setSelected(v && v !== LATEST ? Number(v) : null)}
+          >
+            <SelectTrigger id={`diag-history-${nodeId}`} className="max-w-full min-w-0 text-label">
+              <SelectValue>
+                {(v: string) => {
+                  const item = stored.data?.items.find((i) => String(i.id) === v);
+                  return item ? historyLabel(item) : t('web.diagnostics_latest');
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={LATEST}>{t('web.diagnostics_latest')}</SelectItem>
+              {stored.data.items.map((item) => (
+                <SelectItem key={item.id} value={String(item.id)}>
+                  {historyLabel(item)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="ml-auto"
+        onClick={() => {
+          const blob = new Blob([JSON.stringify(run, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `diagnostics-${nodeId}-${run.id}.json`;
+          link.click();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }}
+      >
+        <Download />
+        {t('web.diagnostics_export')}
+      </Button>
+    </div>
+  );
+
+  const body = runDiagnostics.isPending ? (
+    <ul className="divide-y divide-hairline">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <li key={i} className="flex items-center justify-between gap-4 px-4 py-3">
+          <Skeleton className="h-3 w-44" />
+          <Skeleton className="h-3 w-20 shrink-0" />
+        </li>
+      ))}
+    </ul>
+  ) : runDiagnostics.isError ? (
+    <ErrorState
+      inset
+      message={runDiagnostics.error instanceof ApiError ? runDiagnostics.error.message : t('common.error_generic')}
+      retryLabel={t('web.diagnostics_run')}
+      onRetry={() => runDiagnostics.mutate()}
+    />
+  ) : stored.isError && !run ? (
+    <ErrorState inset message={stored.error.message} retryLabel={t('common.refresh')} onRetry={() => void stored.refetch()} />
+  ) : stored.isLoading ? (
+    <div className="space-y-3 p-4">
+      <Skeleton className="h-3 w-40" />
+      <Skeleton className="h-3 w-full" />
+      <Skeleton className="h-3 w-3/5" />
+    </div>
+  ) : run ? (
+    <RunReport run={run} />
+  ) : (
+    <PanelEmpty>{isWriter ? t('web.diagnostics_empty') : t('web.diagnostics_empty_viewer')}</PanelEmpty>
+  );
+
+  if (embedded) {
+    return (
+      <SubSection title={t('web.diagnostics_title')} meta={meta}>
+        {controls}
+        <div className="overflow-hidden rounded-control border border-hairline">{body}</div>
+      </SubSection>
+    );
+  }
+
   return (
     <Panel>
-      <PanelHeader
-        icon={Stethoscope}
-        title={t('web.diagnostics_title')}
-        meta={ranAt ? (age ? t('common.ago', { value: age }) : formatDateTime(ranAt, i18n.language)) : undefined}
-        actions={runButton}
-      />
-
-      {run && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-hairline px-4 py-3">
-          {stored.data && stored.data.items.length > 1 && (
-            <>
-              <label htmlFor={`diag-history-${nodeId}`} className="text-label text-mute">
-                {t('web.diagnostics_history')}
-              </label>
-              <Select
-                value={selected === null ? LATEST : String(selected)}
-                onValueChange={(v) => setSelected(v && v !== LATEST ? Number(v) : null)}
-              >
-                <SelectTrigger id={`diag-history-${nodeId}`} className="max-w-full min-w-0 text-label">
-                  <SelectValue>
-                    {(v: string) => {
-                      const item = stored.data?.items.find((i) => String(i.id) === v);
-                      return item ? historyLabel(item) : t('web.diagnostics_latest');
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={LATEST}>{t('web.diagnostics_latest')}</SelectItem>
-                  {stored.data.items.map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {historyLabel(item)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => {
-              const blob = new Blob([JSON.stringify(run, null, 2)], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `diagnostics-${nodeId}-${run.id}.json`;
-              link.click();
-              window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-            }}
-          >
-            <Download />
-            {t('web.diagnostics_export')}
-          </Button>
-        </div>
-      )}
-      {runDiagnostics.isPending ? (
-        <ul className="divide-y divide-hairline">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <li key={i} className="flex items-center justify-between gap-4 px-4 py-3">
-              <Skeleton className="h-3 w-44" />
-              <Skeleton className="h-3 w-20 shrink-0" />
-            </li>
-          ))}
-        </ul>
-      ) : runDiagnostics.isError ? (
-        <ErrorState
-          inset
-          message={runDiagnostics.error instanceof ApiError ? runDiagnostics.error.message : t('common.error_generic')}
-          retryLabel={t('web.diagnostics_run')}
-          onRetry={() => runDiagnostics.mutate()}
-        />
-      ) : stored.isError && !run ? (
-        <ErrorState inset message={stored.error.message} retryLabel={t('common.refresh')} onRetry={() => void stored.refetch()} />
-      ) : stored.isLoading ? (
-        <div className="space-y-3 p-4">
-          <Skeleton className="h-3 w-40" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-3/5" />
-        </div>
-      ) : run ? (
-        <RunReport run={run} />
-      ) : (
-        <PanelEmpty>{isWriter ? t('web.diagnostics_empty') : t('web.diagnostics_empty_viewer')}</PanelEmpty>
-      )}
+      <PanelHeader icon={Stethoscope} title={t('web.diagnostics_title')} meta={meta} actions={runButton} />
+      {controls}
+      {body}
     </Panel>
   );
 }

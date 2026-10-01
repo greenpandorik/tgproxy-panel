@@ -1,11 +1,10 @@
-import { ListChecks, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useRunNodeCheck } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
-import { PanelEmpty } from '@/components/common/EmptyState';
-import { Panel, PanelHeader } from '@/components/common/Panel';
+import { SubSection } from '@/components/common/SubSection';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toast';
@@ -57,10 +56,12 @@ function CheckRow({ result }: { result: NodeCheckResult }) {
   );
 }
 
-export function NodeCheckCard({ node }: { node: Node }) {
+/** The panel's own check of the server from outside. `runner` lets a parent share one run with it. */
+export function NodeCheckCard({ node, runner }: { node: Node; runner?: ReturnType<typeof useRunNodeCheck> }) {
   const { t, i18n } = useTranslation();
   const { isWriter } = useAuth();
-  const runCheck = useRunNodeCheck(node.id);
+  const own = useRunNodeCheck(node.id);
+  const runCheck = runner ?? own;
   const report = node.last_check;
 
   const handleRun = async () => {
@@ -77,26 +78,13 @@ export function NodeCheckCard({ node }: { node: Node }) {
   const age = ranAt ? formatCompactAge(ranAt, i18n.language) : null;
 
   return (
-    <Panel>
-      <PanelHeader
-        icon={ListChecks}
-        title={t('nodes.check_title')}
-        meta={ranAt ? (age ? t('common.ago', { value: age }) : formatDateTime(ranAt, i18n.language)) : undefined}
-        actions={
-          <>
-            {isWriter && (
-              <Button type="button" variant="outline" size="sm" onClick={() => void handleRun()} disabled={runCheck.isPending}>
-                <RefreshCw className={cn(runCheck.isPending && 'animate-spin')} />
-                {t('nodes.check_run')}
-              </Button>
-            )}
-            <HelpButton topic="nodes.check" />
-          </>
-        }
-      />
-
+    <SubSection
+      title={t('nodes.check_title')}
+      meta={ranAt ? (age ? t('common.ago', { value: age }) : formatDateTime(ranAt, i18n.language)) : undefined}
+      actions={<HelpButton topic="nodes.check" />}
+    >
       {!results && runCheck.isPending ? (
-        <ul className="divide-y divide-hairline">
+        <ul className="divide-y divide-hairline overflow-hidden rounded-control border border-hairline">
           {CHECK_NAMES.map((name) => (
             <li key={name} className="flex items-center justify-between gap-4 px-4 py-3">
               <span className="flex min-w-0 items-center gap-2">
@@ -108,7 +96,7 @@ export function NodeCheckCard({ node }: { node: Node }) {
           ))}
         </ul>
       ) : !results && runCheck.isError ? (
-        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+        <div className="flex flex-col items-start gap-3">
           <p className="flex items-start gap-2 text-body text-mute">
             <span className="mt-2 size-[7px] shrink-0 rounded-pill bg-err" aria-hidden="true" />
             {runCheck.error instanceof ApiError ? runCheck.error.message : t('nodes.check_request_failed')}
@@ -121,7 +109,7 @@ export function NodeCheckCard({ node }: { node: Node }) {
           )}
         </div>
       ) : !results ? (
-        <PanelEmpty>{t('nodes.check_empty')}</PanelEmpty>
+        <p className="text-body text-mute">{t('nodes.check_empty')}</p>
       ) : (
         (() => {
           const ordered = CHECK_NAMES.map((name) => results.find((r) => r.name === name)).filter((r): r is NodeCheckResult =>
@@ -132,35 +120,33 @@ export function NodeCheckCard({ node }: { node: Node }) {
           return (
             <>
               {allOk !== undefined && (
-                <p
-                  data-testid="node-check-summary"
-                  className={cn('border-b border-hairline px-4 py-3 text-body', allOk ? 'text-ok' : 'text-foreground')}
-                >
+                <p data-testid="node-check-summary" className={cn('text-body', allOk ? 'text-ok' : 'text-foreground')}>
                   {t(allOk ? 'nodes.check_status_ok' : 'nodes.check_status_failed')}
                 </p>
               )}
               {failing.length > 0 && (
-                <ul data-testid="node-check-failing" className="divide-y divide-hairline">
+                <ul
+                  data-testid="node-check-failing"
+                  className="divide-y divide-hairline overflow-hidden rounded-control border border-hairline"
+                >
                   {failing.map((result) => (
                     <CheckRow key={result.name} result={result} />
                   ))}
                 </ul>
               )}
               {passing.length > 0 && (
-                <div className={cn('px-4 py-3', failing.length > 0 && 'border-t border-hairline')}>
-                  <AdvancedSettings label={t('nodes.check_passed_toggle', { count: passing.length })}>
-                    <ul className="divide-y divide-hairline overflow-hidden rounded-control border border-hairline">
-                      {passing.map((result) => (
-                        <CheckRow key={result.name} result={result} />
-                      ))}
-                    </ul>
-                  </AdvancedSettings>
-                </div>
+                <AdvancedSettings label={t('nodes.check_passed_toggle', { count: passing.length })}>
+                  <ul className="divide-y divide-hairline overflow-hidden rounded-control border border-hairline">
+                    {passing.map((result) => (
+                      <CheckRow key={result.name} result={result} />
+                    ))}
+                  </ul>
+                </AdvancedSettings>
               )}
             </>
           );
         })()
       )}
-    </Panel>
+    </SubSection>
   );
 }

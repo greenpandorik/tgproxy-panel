@@ -1,65 +1,36 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { SlidersHorizontal } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/auth/AuthProvider';
 import { useApplyNode, nodeKeys } from '@/api/nodes';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
-import { Panel, PanelHeader, PanelBody } from '@/components/common/Panel';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 
-import type { CapabilityState } from './capability';
+import { useWebPolicy, webPolicyKey } from './webPolicy';
 
-interface WebPolicy {
-  preset: string;
-  carrier: string;
-  carriers: string[] | false;
-  carrier_learning: boolean;
-  carrier_negotiation_aggressiveness: string;
-  overload: { preset: 'balanced' | 'high_load' | 'custom'; connection_capacity_action: 'drop' | 'wait' | 'respond' };
-  timeouts: {
-    carrier_negotiation_deadlines_secs: number[];
-    carrier_health_secs: number;
-    carrier_learning_secs: number;
-    bridge_request_secs: number;
-    bridge_retry_secs: number;
-    carrier_probe_coalesce_ms: number;
-  };
-}
-interface PolicyResponse {
-  policy: WebPolicy;
-  default: WebPolicy;
-  overridden: boolean;
-}
+import type { CapabilityState } from './capability';
+import type { PolicyResponse, WebPolicy } from './webPolicy';
+
 const PRESETS = ['automatic', 'compatibility', 'prefer_websocket', 'https_only', 'custom'];
 
+/** How a telemt server picks the WEB transport for a new connection, and how it behaves when full. */
 export function WebPolicyCard({ nodeId, capability }: { nodeId: string; capability: CapabilityState }) {
-  const query = useQuery({
-    queryKey: ['web-policy', nodeId],
-    queryFn: () => api.get<PolicyResponse>(`/api/v1/nodes/${nodeId}/web-policy`),
-  });
+  const query = useWebPolicy(nodeId);
   const { t } = useTranslation();
-  return (
-    <Panel>
-      <PanelHeader icon={SlidersHorizontal} title={t('web.policy_title')} />
-      <PanelBody>
-        {query.isLoading ? (
-          <Skeleton className="h-44" />
-        ) : query.isError ? (
-          <ErrorState inset message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
-        ) : (
-          query.data && (
-            <PolicyForm key={JSON.stringify(query.data.policy)} nodeId={nodeId} data={query.data} capability={capability} />
-          )
-        )}
-      </PanelBody>
-    </Panel>
-  );
+  if (query.isLoading) return <Skeleton className="h-44" />;
+  if (query.isError) {
+    return (
+      <ErrorState inset message={query.error.message} onRetry={() => void query.refetch()} retryLabel={t('common.refresh')} />
+    );
+  }
+  return query.data ? (
+    <PolicyForm key={JSON.stringify(query.data.policy)} nodeId={nodeId} data={query.data} capability={capability} />
+  ) : null;
 }
 function PolicyForm({ nodeId, data, capability }: { nodeId: string; data: PolicyResponse; capability: CapabilityState }) {
   const enabled = capability === 'supported';
@@ -71,7 +42,7 @@ function PolicyForm({ nodeId, data, capability }: { nodeId: string; data: Policy
   const save = useMutation({
     mutationFn: () => api.put<PolicyResponse>(`/api/v1/nodes/${nodeId}/web-policy`, policy),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['web-policy', nodeId] });
+      void qc.invalidateQueries({ queryKey: webPolicyKey(nodeId) });
       void qc.invalidateQueries({ queryKey: nodeKeys.one(nodeId) });
       apply.mutate();
     },

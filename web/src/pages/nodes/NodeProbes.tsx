@@ -1,38 +1,23 @@
-import { useQuery } from '@tanstack/react-query';
-import { Earth } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
 import { ErrorState } from '@/components/common/ErrorState';
-import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
+import { SubSection } from '@/components/common/SubSection';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-interface Check {
-  status: 'ok' | 'failed' | 'not_run';
-  latency_ms: number;
-}
+import { PROBE_CHECKS, freshProbe, useNodeProbes } from './probes';
 
-interface Probe {
-  location: string;
-  at: string;
-  tls: Check;
-  http: Check;
-  faketls: Check;
-  web: Check;
-}
+import type { ProbeCheck } from './probes';
 
-const PROBE_CHECKS = ['tls', 'http', 'faketls', 'web'] as const;
-
-const STATUS_DOT: Record<Check['status'], string> = {
+const STATUS_DOT: Record<ProbeCheck['status'], string> = {
   ok: 'bg-ok',
   failed: 'bg-err',
   not_run: 'border border-hairline-strong',
 };
 
-function ProbeStatus({ check }: { check: Check }) {
+function ProbeStatus({ check }: { check: ProbeCheck }) {
   const { t } = useTranslation();
   return (
     <span className="inline-flex items-center gap-2">
@@ -49,52 +34,44 @@ function ProbeStatus({ check }: { check: Check }) {
   );
 }
 
+/** What the outside probes saw of the server, one location at a time. */
 export function NodeProbes({ id }: { id: string }) {
   const { t, i18n } = useTranslation();
-  const query = useQuery({
-    queryKey: ['probes', id],
-    queryFn: async () => ({
-      ...(await api.get<{ items: Probe[]; expected_locations: string[] | null }>(`/api/v1/nodes/${id}/probes`)),
-      observedAt: Date.now(),
-    }),
-    refetchInterval: 30000,
-  });
+  const query = useNodeProbes(id);
   const locations = query.data?.expected_locations ?? [];
   return (
-    <Panel>
-      <PanelHeader icon={Earth} title={t('probe.title')} />
-      <PanelBody className="space-y-4">
-        {locations.length > 0 && <p className="max-w-[72ch] text-body text-mute">{t('probe.hint')}</p>}
-        {query.isLoading ? (
-          <div role="status" aria-label={t('common.loading')} className="space-y-3">
-            <Skeleton className="h-3 w-40" />
-            <Skeleton className="h-3 w-full" />
-          </div>
-        ) : query.isError ? (
-          <ErrorState
-            inset
-            message={t('common.error_generic')}
-            retryLabel={t('common.refresh')}
-            onRetry={() => void query.refetch()}
-          />
-        ) : locations.length === 0 ? (
-          <>
-            <p className="text-body text-mute">{t('probe.none')}</p>
-            <AdvancedSettings label={t('probe.setup_toggle')}>
-              <p className="max-w-[72ch] text-label text-mute">{t('probe.hint')}</p>
-              <p className="max-w-[72ch] text-label text-mute">{t('probe.empty')}</p>
-            </AdvancedSettings>
-          </>
-        ) : (
-          locations.map((location) => {
-            const report = query.data?.items.find((p) => p.location === location);
-            const stale = !report || (query.data?.observedAt ?? 0) - Date.parse(report.at) > 180000;
+    <SubSection title={t('probe.title')}>
+      {query.isLoading ? (
+        <div role="status" aria-label={t('common.state.loading')} className="space-y-3">
+          <Skeleton className="h-3 w-40" />
+          <Skeleton className="h-3 w-full" />
+        </div>
+      ) : query.isError ? (
+        <ErrorState
+          inset
+          message={t('common.error_generic')}
+          retryLabel={t('common.refresh')}
+          onRetry={() => void query.refetch()}
+        />
+      ) : locations.length === 0 ? (
+        <>
+          <p className="max-w-[72ch] text-body text-mute">{t('probe.none')}</p>
+          <AdvancedSettings label={t('probe.setup_toggle')}>
+            <p className="max-w-[72ch] text-label text-mute">{t('probe.hint')}</p>
+            <p className="max-w-[72ch] text-label text-mute">{t('probe.empty')}</p>
+          </AdvancedSettings>
+        </>
+      ) : (
+        <>
+          <p className="max-w-[72ch] text-label text-mute">{t('probe.hint')}</p>
+          {locations.map((location) => {
+            const report = freshProbe(query.data, location);
             return (
-              <div className="border-t border-hairline pt-4" key={location}>
+              <div className="rounded-control border border-hairline px-4 py-3" key={location}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="mono text-mono text-foreground">{location}</span>
                   <span className="text-label text-mute">
-                    {stale ? t('probe.stale') : formatDateTime(report.at, i18n.language)}
+                    {report ? formatDateTime(report.at, i18n.language) : t('probe.stale')}
                   </span>
                 </div>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -102,16 +79,16 @@ export function NodeProbes({ id }: { id: string }) {
                     <div key={key}>
                       <dt className="text-label text-mute">{t(`probe.${key}`)}</dt>
                       <dd className="mt-1 text-body">
-                        <ProbeStatus check={stale ? { status: 'not_run', latency_ms: 0 } : report[key]} />
+                        <ProbeStatus check={report ? report[key] : { status: 'not_run', latency_ms: 0 }} />
                       </dd>
                     </div>
                   ))}
                 </dl>
               </div>
             );
-          })
-        )}
-      </PanelBody>
-    </Panel>
+          })}
+        </>
+      )}
+    </SubSection>
   );
 }

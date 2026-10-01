@@ -1,9 +1,7 @@
-import { Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
-import { Panel, PanelHeader } from '@/components/common/Panel';
+import { SubSection } from '@/components/common/SubSection';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { HelpButton } from '@/help';
@@ -71,7 +69,7 @@ function DcRow({ dc }: { dc: DcLatency }) {
 /** The table before it arrives: the route line and five rows, drawn empty. */
 function DcsSkeleton() {
   return (
-    <div className="divide-y divide-hairline">
+    <div className="divide-y divide-hairline overflow-hidden rounded-control border border-hairline">
       <div className="flex h-9 items-center px-4">
         <Skeleton className="h-3 w-56" />
       </div>
@@ -86,35 +84,33 @@ function DcsSkeleton() {
   );
 }
 
+function Note({ children }: { children: string }) {
+  return <p className="text-body text-mute">{children}</p>;
+}
+
+/** The route to Telegram and each datacenter's latency right now. */
 export function NodeDcsCard({ engine, offline, health, error, onRetry }: NodeDcsCardProps) {
   const { t } = useTranslation();
   const telemt = engine === 'telemt';
   const available = health ? (health.dc_data_available ?? Array.isArray(health.dcs)) : false;
   const dcs = [...(health?.dcs ?? [])].sort((a, b) => a.dc - b.dc);
-  const showing = telemt && !offline && !error && !!health && available && dcs.length > 0;
 
   return (
-    <Panel>
-      <PanelHeader
-        icon={Globe}
-        title={t('nodes.dcs_title')}
-        meta={showing ? String(dcs.length) : undefined}
-        actions={<HelpButton topic="nodes.dcs" />}
-      />
+    <SubSection title={t('nodes.dcs_now')} actions={<HelpButton topic="nodes.dcs" />}>
       {!telemt ? (
-        <PanelEmpty>{t('nodes.dcs_unavailable_engine')}</PanelEmpty>
+        <Note>{t('nodes.dcs_unavailable_engine')}</Note>
       ) : offline ? (
-        <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
+        <Note>{t('nodes.offline_message')}</Note>
       ) : error ? (
         <ErrorState inset message={t('common.error_generic')} retryLabel={t('common.refresh')} onRetry={onRetry} />
       ) : !health ? (
         <DcsSkeleton />
       ) : !available ? (
-        <PanelEmpty>{t('nodes.dcs_unavailable')}</PanelEmpty>
+        <Note>{t('nodes.dcs_unavailable')}</Note>
       ) : dcs.length === 0 ? (
-        <PanelEmpty>{t('nodes.dcs_empty')}</PanelEmpty>
+        <Note>{t('nodes.dcs_empty')}</Note>
       ) : (
-        <>
+        <div className="overflow-hidden rounded-control border border-hairline">
           <RouteLine health={health} />
           <Table>
             <TableHeader>
@@ -130,8 +126,8 @@ export function NodeDcsCard({ engine, offline, health, error, onRetry }: NodeDcs
               ))}
             </TableBody>
           </Table>
-        </>
+        </div>
       )}
-    </Panel>
+    </SubSection>
   );
 }

@@ -1,14 +1,12 @@
-import { Activity, LifeBuoy } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReliability, useSaveReliability } from '@/api/reliability';
 import type { RecoveryPolicy, RecoveryState, ReliabilityReport } from '@/api/reliability';
 import type { Node } from '@/api/types';
 import { useAuth } from '@/auth/AuthProvider';
-import { Panel, PanelBody, PanelHeader } from '@/components/common/Panel';
-import { PanelEmpty } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
+import { SubSection } from '@/components/common/SubSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -169,7 +167,7 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
               save.isPending
             }
           >
-            {t(save.isPending ? 'common.loading' : restorePrimary ? 'reliability.restore_primary' : 'common.save')}
+            {t(save.isPending ? 'common.state.loading' : restorePrimary ? 'reliability.restore_primary' : 'common.save')}
           </Button>
         )}
         {saved && (
@@ -181,33 +179,29 @@ function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
     </form>
   );
 }
+/** Self-healing and the route to Telegram for one server: when to restart, and which way to go out. */
 export function NodeReliability({ node }: { node: Node }) {
   const { t } = useTranslation();
   const query = useReliability(node.id, node.online);
-  return (
-    <Panel>
-      <PanelHeader icon={LifeBuoy} title={t('reliability.title')} />
-      {!node.online ? (
-        <PanelEmpty>{t('nodes.offline_message')}</PanelEmpty>
-      ) : query.isError ? (
-        <ErrorState
-          inset
-          message={query.error instanceof ApiError ? query.error.message : t('common.error_generic')}
-          retryLabel={t('common.refresh')}
-          onRetry={() => void query.refetch()}
-        />
-      ) : (
-        <PanelBody>
-          {query.isLoading ? <Skeleton className="h-48 w-full" /> : query.data && <PolicyForm node={node} state={query.data} />}
-        </PanelBody>
-      )}
-    </Panel>
-  );
+  if (!node.online) return <p className="text-body text-mute">{t('nodes.offline_message')}</p>;
+  if (query.isError) {
+    return (
+      <ErrorState
+        inset
+        message={query.error instanceof ApiError ? query.error.message : t('common.error_generic')}
+        retryLabel={t('common.refresh')}
+        onRetry={() => void query.refetch()}
+      />
+    );
+  }
+  if (query.isLoading) return <Skeleton className="h-48 w-full" />;
+  return query.data ? <PolicyForm node={node} state={query.data} /> : null;
 }
 
 const ROUTE_DOT = { healthy: 'bg-ok', failed: 'bg-err', stale: 'border border-hairline-strong' } as const;
 
-export function ReliabilityReadings({ report }: { report?: ReliabilityReport | null }) {
+/** The resource headroom the agent last reported, and its recent recovery actions. */
+export function ReliabilityResources({ report }: { report?: ReliabilityReport | null }) {
   const { t, i18n } = useTranslation();
   if (!report) return null;
   const resources = report.resources;
@@ -229,57 +223,59 @@ export function ReliabilityReadings({ report }: { report?: ReliabilityReport | n
     ['oom', value(resources.oom_kills_total)],
   ];
   return (
-    <Panel>
-      <PanelHeader icon={Activity} title={t('reliability.readings')} meta={formatDateTime(report.at, i18n.language)} />
-      <PanelBody className="space-y-4">
-        <p className="text-label text-mute">{t('reliability.counters_hint')}</p>
-        <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
-          {readings.map(([key, v]) => (
-            <div key={key} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-3">
-              <dt className="text-label text-mute">{t(`reliability.${key}`)}</dt>
-              <dd className="mono text-mono">{v}</dd>
-            </div>
-          ))}
-        </dl>
-        {report.routes.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-label text-mute">{t('reliability.routes')}</p>
-            <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
-              {report.routes.map((r, index) => {
-                const state = r.age_seconds > 120 ? 'stale' : r.healthy ? 'healthy' : 'failed';
-                return (
-                  <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-3">
-                    <dt className="text-label text-mute">{t(`reliability.${r.kind}`, r.kind)}</dt>
-                    <dd className="inline-flex items-center gap-2 text-label">
-                      <span className={cn('size-[7px] shrink-0 rounded-pill', ROUTE_DOT[state])} aria-hidden="true" />
-                      <span className={state === 'failed' ? 'text-err' : state === 'stale' ? 'text-mute' : 'text-foreground'}>
-                        {t(`reliability.${state}`)}
-                      </span>
-                    </dd>
-                  </div>
-                );
-              })}
-            </dl>
+    <SubSection title={t('reliability.readings')} meta={formatDateTime(report.at, i18n.language)}>
+      <p className="text-label text-mute">{t('reliability.counters_hint')}</p>
+      <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+        {readings.map(([key, v]) => (
+          <div key={key} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-2.5">
+            <dt className="text-label text-mute">{t(`reliability.${key}`)}</dt>
+            <dd className="mono text-mono">{v}</dd>
           </div>
-        )}
-        {report.events.length > 0 && (
-          <AdvancedSettings label={t('reliability.events')}>
-            <ul className="divide-y divide-hairline">
-              {report.events
-                .slice(-10)
-                .reverse()
-                .map((ev, i) => (
-                  <li key={i} className="py-3 text-label">
-                    <time className="text-mute">{formatDateTime(ev.at, i18n.language)}</time>
-                    <p>
-                      {ev.action}: {ev.result}
-                    </p>
-                  </li>
-                ))}
-            </ul>
-          </AdvancedSettings>
-        )}
-      </PanelBody>
-    </Panel>
+        ))}
+      </dl>
+      {report.events.length > 0 && (
+        <AdvancedSettings label={t('reliability.events')}>
+          <ul className="divide-y divide-hairline">
+            {report.events
+              .slice(-10)
+              .reverse()
+              .map((ev, i) => (
+                <li key={i} className="py-3 text-label">
+                  <time className="text-mute">{formatDateTime(ev.at, i18n.language)}</time>
+                  <p>
+                    {ev.action}: {ev.result}
+                  </p>
+                </li>
+              ))}
+          </ul>
+        </AdvancedSettings>
+      )}
+    </SubSection>
+  );
+}
+
+/** Whether each route to Telegram the agent watches is working. */
+export function ReliabilityRoutes({ report }: { report?: ReliabilityReport | null }) {
+  const { t } = useTranslation();
+  if (!report || report.routes.length === 0) return null;
+  return (
+    <SubSection title={t('reliability.routes')}>
+      <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+        {report.routes.map((r, index) => {
+          const state = r.age_seconds > 120 ? 'stale' : r.healthy ? 'healthy' : 'failed';
+          return (
+            <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-2.5">
+              <dt className="text-label text-mute">{t(`reliability.${r.kind}`, r.kind)}</dt>
+              <dd className="inline-flex items-center gap-2 text-label">
+                <span className={cn('size-[7px] shrink-0 rounded-pill', ROUTE_DOT[state])} aria-hidden="true" />
+                <span className={state === 'failed' ? 'text-err' : state === 'stale' ? 'text-mute' : 'text-foreground'}>
+                  {t(`reliability.${state}`)}
+                </span>
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </SubSection>
   );
 }
