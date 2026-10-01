@@ -209,7 +209,8 @@ export function NodesPage() {
 
   const nodes = data?.items ?? [];
   const telemt = nodes.some((n) => n.engine === 'telemt');
-  const running = rollouts.data?.items.find((r) => r.status === 'running');
+  const latest = rollouts.data?.items[0];
+  const shownRollout = latest && (latest.status === 'running' || latest.status === 'failed') ? latest : undefined;
 
   const handleCreated = (result: CreateNodeResult) => {
     setInstallResult({ command: result.install_command, expires_at: result.expires_at, nodeId: result.node.id });
@@ -242,7 +243,7 @@ export function NodesPage() {
           }
         />
 
-        {running && <FleetRolloutStatus rollout={running} nodes={nodes} writer={isWriter} />}
+        {shownRollout && <FleetRolloutStatus rollout={shownRollout} nodes={nodes} writer={isWriter} />}
         {isLoading ? (
           <DataTableSkeleton columns={isWriter ? 7 : 6} rows={4} />
         ) : nodes.length === 0 ? (

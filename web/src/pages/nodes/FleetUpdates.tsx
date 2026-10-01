@@ -30,7 +30,7 @@ function matches(node: Node, query: string): boolean {
   return !q || node.name.toLowerCase().includes(q) || node.hostname.toLowerCase().includes(q);
 }
 
-/** A running rollout's progress, with the button that stops the servers it has not started. */
+/** A rollout's progress or outcome, with the button that stops the servers a running one has not started. */
 export function FleetRolloutStatus({ rollout, nodes, writer }: { rollout: FleetRollout; nodes: Node[]; writer: boolean }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -132,7 +132,8 @@ export function FleetUpdateDialog({
   const qc = useQueryClient();
   const rollouts = useFleetRollouts();
   const pinned = rollouts.data?.version;
-  const running = rollouts.data?.items.find((r) => r.status === 'running');
+  const latest = rollouts.data?.items[0];
+  const running = latest?.status === 'running';
   const servers = nodes.filter((n) => n.engine === 'telemt');
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
@@ -166,7 +167,7 @@ export function FleetUpdateDialog({
           <DialogTitle>{pinned ? t('nodes.fleet_title_version', { version: pinned }) : t('fleet.title')}</DialogTitle>
           <DialogDescription>{t('nodes.fleet_how')}</DialogDescription>
         </DialogHeader>
-        {running && <FleetRolloutStatus rollout={running} nodes={nodes} writer />}
+        {latest && <FleetRolloutStatus rollout={latest} nodes={nodes} writer />}
         <div className="flex flex-wrap gap-2">
           <label className="relative min-w-48 flex-1">
             <span className="sr-only">{t('nodes.fleet_search')}</span>
@@ -206,7 +207,7 @@ export function FleetUpdateDialog({
           </Button>
           <Button
             type="button"
-            disabled={chosen.length === 0 || !!running || start.isPending}
+            disabled={chosen.length === 0 || running || start.isPending}
             onClick={() => start.mutate(chosen.map((n) => n.id))}
           >
             {t('nodes.fleet_start', { count: chosen.length })}
