@@ -114,6 +114,12 @@ func TestRenderTelemtBranch(t *testing.T) {
 		"TELEMT_VERSION='3.5.5'",
 		"TELEMT_SHA256='" + strings.Repeat("ab", 32) + "'",
 		`echo "$TELEMT_SHA256  $TELEMT_TGZ" | sha256sum -c --quiet -`,
+		"CADDY_VERSION='" + CaddyVersion + "'",
+		"CADDY_SHA256='" + CaddySHA256 + "'",
+		`echo "$CADDY_SHA256  $CADDY_TGZ" | sha256sum -c --quiet -`,
+		"releases/download/v$CADDY_VERSION/caddy_${CADDY_VERSION}_linux_amd64.tar.gz",
+		"rm -f /etc/apt/sources.list.d/caddy-stable.list",
+		"What happened:",
 		"install -o root -g root -m 0755 \"$TELEMT_SRC\" /usr/local/bin/telemt",
 		// init-node contract (Task 40): every value passed as one quoted word.
 		`init-node --engine telemt --hostname "$NODE_HOSTNAME" --public-ip "$PUBLIC_IP"`,

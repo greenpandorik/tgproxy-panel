@@ -18,6 +18,8 @@ TLS_DOMAIN={{sq .TLSDomain}}
 CLASSIC_PORT={{sq (printf "%d" .ClassicPort)}}
 TELEMT_VERSION={{sq .TelemtVersion}}
 TELEMT_SHA256={{sq .TelemtSHA256}}
+CADDY_VERSION={{sq .CaddyVersion}}
+CADDY_SHA256={{sq .CaddySHA256}}
 {{else}}TPROXY_COMMIT={{sq .TProxyCommit}}
 {{end}}AGENT_SHA256={{sq .AgentSHA256}}
 SITE_TAR_B64={{sq .SiteTarB64}}
@@ -76,14 +78,51 @@ banner() {
 banner_ok() { banner "$GREEN" "$@"; }
 banner_fail() { banner "$RED" "$@" >&2; }
 
-# quiet <cmd...>: runs cmd with its output captured; only on failure are the last 30 lines shown.
+# explain <log>: turns the usual apt and download failures into what happened and what to do.
+explain() {
+  local log=$1 what='' todo='' url host
+  url="$(grep -oE 'https?://[^ ]+' "$log" | head -n 1 || true)"
+  if grep -qE 'EXPKEYSIG|KEYEXPIRED|NO_PUBKEY|is not signed|signatures were invalid|signatures couldn.t be verified' "$log"; then
+    url="$(grep -E 'EXPKEYSIG|KEYEXPIRED|NO_PUBKEY|is not signed|signatures' "$log" | grep -oE 'https?://[^ ]+' | head -n 1 || true)"
+    host="$(printf '%s' "$url" | sed -E 's#https?://([^/]+).*#\1#')"
+    what="the package repository ${url:-added on this server} is signed with an expired or unknown key, so apt refuses to use it. The repository's owner has to fix this; nothing is wrong with this server."
+    todo="remove that repository and run the same command again. To find its file: grep -rl '${host:-the repository host}' /etc/apt/sources.list /etc/apt/sources.list.d/"
+  elif grep -qE 'Could not get lock|Unable to acquire the dpkg frontend lock|is held by process' "$log"; then
+    what="another apt or dpkg process is running, often the automatic updates a fresh server starts on its own."
+    todo="wait a few minutes and run the same command again."
+  elif grep -q 'dpkg was interrupted' "$log"; then
+    what="an earlier package installation on this server was interrupted."
+    todo="run dpkg --configure -a, then the same command again."
+  elif grep -qE 'Temporary failure resolving|Could not resolve' "$log"; then
+    what="this server cannot resolve domain names, so it cannot reach the package mirrors."
+    todo="check the DNS servers in /etc/resolv.conf (for example, try 1.1.1.1), then run the same command again."
+  elif grep -qE 'No space left on device' "$log"; then
+    what="the disk is full."
+    todo="free some space (df -h shows where it went), then run the same command again."
+  elif grep -qE 'is not valid yet|is no longer valid' "$log"; then
+    what="the server's clock is wrong, so the repository signatures look out of date."
+    todo="turn on time sync (timedatectl set-ntp true), check the time with date, then run the same command again."
+  elif grep -qE 'Failed to fetch|Connection timed out|Connection refused|Network is unreachable|Could not connect' "$log"; then
+    what="the server could not download from ${url:-a package mirror}."
+    todo="check the network and any firewall in front of this server, then run the same command again."
+  else
+    return 0
+  fi
+  printf '  %sWhat happened:%s %s\n' "$BOLD" "$RESET" "$what" >&2
+  printf '  %sWhat to do:%s %s\n' "$BOLD" "$RESET" "$todo" >&2
+}
+
+# quiet <cmd...>: runs cmd with its output captured; on failure it explains a known cause and
+# shows the end of the output.
 quiet() {
   local log st=0
   log="$(mktemp /tmp/tgwp-quiet.XXXXXX)"
   "$@" >"$log" 2>&1 || st=$?
   if [[ "$st" -ne 0 ]]; then
-    fail "$1 failed (exit $st); the last 30 lines of its output:"
-    tail -n 30 "$log" >&2
+    fail "$1 failed (exit $st)"
+    explain "$log"
+    info "The last 20 lines it printed:"
+    tail -n 20 "$log" | sed 's/^/      /' >&2
   fi
   rm -f "$log"
   return "$st"
@@ -349,10 +388,14 @@ STAGE=install
 step "Packages"
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a
 APT=(apt-get -qq -o Dpkg::Use-Pty=0)
-quiet "${APT[@]}" update || die "apt-get update failed; check the apt sources and the network"
-{{if .IsTelemt}}quiet "${APT[@]}" install -y --no-install-recommends ca-certificates curl nftables tar || die "apt-get install failed"
+if grep -qs 'dl.cloudsmith.io/public/caddy' /etc/apt/sources.list.d/caddy-stable.list; then
+  rm -f /etc/apt/sources.list.d/caddy-stable.list /usr/share/keyrings/caddy-stable.asc
+  info "removed the Caddy apt repository: since 2026-09-30 it is signed with an expired key and breaks apt-get update"
+fi
+quiet "${APT[@]}" update || die "apt-get update failed"
+{{if .IsTelemt}}quiet "${APT[@]}" install -y --no-install-recommends ca-certificates curl nftables tar || die "apt-get install of the base packages failed"
 ok "ca-certificates curl nftables tar"
-{{else}}quiet "${APT[@]}" install -y --no-install-recommends git ca-certificates curl tar || die "apt-get install failed"
+{{else}}quiet "${APT[@]}" install -y --no-install-recommends git ca-certificates curl tar || die "apt-get install of the base packages failed"
 ok "git ca-certificates curl tar"
 {{end}}{{if .SysctlTuning}}
 # Network tuning for a proxy node (adopted from MTPROTO_FIX_By_MEKO): BBR + fq, larger accept
@@ -381,17 +424,49 @@ else
 fi
 {{end}}
 {{if .IsTelemt}}# ---- Caddy -----------------------------------------------------------------------------
-# Caddy terminates TLS on 443 and forwards to telemt's loopback WEB listener. It comes from
-# the Caddy project's own apt repository, signed with its release key, so apt verifies the
-# package the same way it verifies the distribution's own.
+# Caddy terminates TLS on 443 and forwards to telemt's loopback WEB listener. It is the
+# release the panel pins, checked against the panel's sha256, with the unit Caddy's own
+# package ships. A caddy that dpkg already manages is kept as it is.
 step "Caddy"
-install -d -m 0755 /usr/share/keyrings
-curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key -o /usr/share/keyrings/caddy-stable.asc
-chmod 0644 /usr/share/keyrings/caddy-stable.asc
-echo 'deb [signed-by=/usr/share/keyrings/caddy-stable.asc] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main' > /etc/apt/sources.list.d/caddy-stable.list
-quiet "${APT[@]}" update || die "apt-get update failed after adding the Caddy repository"
-quiet "${APT[@]}" install -y --no-install-recommends caddy || die "apt-get install caddy failed"
-ok "caddy installed from the Caddy apt repository"
+if [[ "$(dpkg-query -W -f='${Status}' caddy 2>/dev/null || true)" == "install ok installed" ]]; then
+  ok "caddy $(caddy version 2>/dev/null | cut -d' ' -f1) is already installed as a package, keeping it"
+else
+  CADDY_TGZ="$(mktemp /tmp/caddy.XXXXXX.tar.gz)"
+  CADDY_UNPACK="$(mktemp -d /tmp/caddy-unpack.XXXXXX)"
+  quiet curl -fsSL -o "$CADDY_TGZ" "https://github.com/caddyserver/caddy/releases/download/v$CADDY_VERSION/caddy_${CADDY_VERSION}_linux_amd64.tar.gz" \
+    || die "could not download Caddy $CADDY_VERSION from github.com" "This server must reach github.com over HTTPS; check the network and any firewall in front of it."
+  echo "$CADDY_SHA256  $CADDY_TGZ" | sha256sum -c --quiet - \
+    || die "the Caddy $CADDY_VERSION download does not match the panel's sha256" "The file was damaged or replaced on the way. Run the same command again; if it repeats, something between this server and github.com changes downloads."
+  tar -xzf "$CADDY_TGZ" -C "$CADDY_UNPACK" caddy
+  install -o root -g root -m 0755 "$CADDY_UNPACK/caddy" /usr/bin/caddy
+  rm -rf "$CADDY_TGZ" "$CADDY_UNPACK"
+  getent group caddy >/dev/null || groupadd --system caddy
+  id -u caddy >/dev/null 2>&1 || useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin --comment "Caddy web server" caddy
+  cat > /etc/systemd/system/caddy.service <<'UNIT'
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
+ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+  systemctl daemon-reload
+  ok "caddy $CADDY_VERSION downloaded, sha256 verified, installed to /usr/bin/caddy"
+fi
 
 # Caddy serves nothing from disk on purpose: telemt answers the decoy site itself
 # (web.vhosts.decoy), so a request without a valid secret gets exactly the same reply, from

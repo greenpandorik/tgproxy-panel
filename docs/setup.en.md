@@ -37,9 +37,8 @@ The installers do not open firewall ports. If your provider has a network firewa
 - on the panel server: 22, 80 and 443;
 - on a proxy server: 22, 80, 443 and the Fake-TLS port, 8443 by default.
 
-A proxy server needs outbound internet access: to the panel, to `github.com` (telemt is
-downloaded from there), to the Caddy repository at `dl.cloudsmith.io` and to the Telegram
-datacenters.
+A proxy server needs outbound internet access: to the panel, to `github.com` (telemt and Caddy
+are downloaded from there) and to the Telegram datacenters.
 
 ## 2. Option A: a server with a domain (recommended)
 

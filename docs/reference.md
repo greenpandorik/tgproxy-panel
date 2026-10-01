@@ -107,7 +107,7 @@ can't be changed afterwards. telemt is the default and the one to pick for new s
 One telemt process serves the WEB proxy, Fake-TLS, the cover site and a control API that the
 agent uses. The server install script sets up:
 
-- Caddy from the Caddy project's signed apt repository. It holds the certificate on 443 and
+- Caddy from its GitHub release, version and sha256 pinned by the panel. It holds the certificate on 443 and
   passes requests to telemt's WEB listener on `127.0.0.1:18080`, adding `X-Forwarded-For`.
   Caddy serves no files itself. telemt answers the cover site, so a visitor without a valid key
   gets a reply from the same process as a proxy user.

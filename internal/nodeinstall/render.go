@@ -37,6 +37,16 @@ type Params struct {
 	NoSysctlTuning bool
 }
 
+// CaddyVersion and CaddySHA256 pin the Caddy release telemt nodes install, the linux_amd64 tarball.
+const (
+	CaddyVersion = "2.11.4"
+	CaddySHA256  = "527fbf917c39189a1e3b31d34fa955601680b2d5c8055d2a87b8b9588dec7bb9"
+)
+
+func (Params) CaddyVersion() string { return CaddyVersion }
+
+func (Params) CaddySHA256() string { return CaddySHA256 }
+
 // IsTelemt drives the engine branch in the template.
 func (p Params) IsTelemt() bool { return p.Engine == domain.EngineTelemt }
 
