@@ -8,6 +8,7 @@ import {
   History,
   MemoryStick,
   Package,
+  Radio,
   Timer,
 } from 'lucide-react';
 import { Fragment, useState } from 'react';
@@ -24,7 +25,7 @@ import { ENTER_CLASS } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiError } from '@/lib/api';
-import { formatCompactDuration, formatDateTime } from '@/lib/format';
+import { formatCompactDuration, formatDateTime, formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { ReliabilityReadings } from './NodeReliability';
@@ -66,13 +67,14 @@ function ServiceState({ active }: { active: boolean }) {
   );
 }
 
-const HEALTH_GRID = 'grid-cols-1 border-t border-hairline p-4 sm:grid-cols-2 lg:grid-cols-4';
+const HEALTH_GRID = 'grid-cols-1 border-t border-hairline p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
 
 const serviceGrid = (telemt: boolean) =>
   cn('grid grid-cols-1 gap-px bg-hairline sm:grid-cols-2', telemt ? '@min-[68rem]:grid-cols-4' : '@min-[52rem]:grid-cols-3');
 
-function healthTiles(health: NodeHealth | undefined, t: TFunction, language: string): StatGridTile[] {
+function healthTiles(node: Node, health: NodeHealth | undefined, t: TFunction, language: string): StatGridTile[] {
   const loading = !health;
+  const num = (value: number) => formatNumber(value, language);
   const usage = (percent: number | undefined) => Math.max(0, Math.min(100, percent ?? 0));
   const resource = (id: string, icon: LucideIcon, label: string, percent: number | undefined): StatGridTile => ({
     id,
@@ -89,6 +91,17 @@ function healthTiles(health: NodeHealth | undefined, t: TFunction, language: str
     : undefined;
 
   return [
+    {
+      id: 'people',
+      icon: Radio,
+      tone: statTone({ kind: 'stateless' }),
+      label: t('common.people_online'),
+      value: isMetricPresent(node.people_online)
+        ? t('common.approx', { value: num(node.people_online) })
+        : t('common.not_available'),
+      context: isMetricPresent(node.connections) ? t('common.connections_count', { value: num(node.connections) }) : undefined,
+      loading,
+    },
     {
       id: 'uptime',
       icon: Timer,
@@ -121,7 +134,7 @@ function ServiceGridFiller({ telemt }: { telemt: boolean }) {
   return <div className="hidden bg-card sm:block" aria-hidden="true" />;
 }
 
-function HealthSkeleton({ telemt }: { telemt: boolean }) {
+function HealthSkeleton({ node, telemt }: { node: Node; telemt: boolean }) {
   const { t, i18n } = useTranslation();
   return (
     <>
@@ -134,7 +147,7 @@ function HealthSkeleton({ telemt }: { telemt: boolean }) {
         ))}
         <ServiceGridFiller telemt={telemt} />
       </div>
-      <StatGrid tiles={healthTiles(undefined, t, i18n.language)} className={HEALTH_GRID} />
+      <StatGrid tiles={healthTiles(node, undefined, t, i18n.language)} className={HEALTH_GRID} />
     </>
   );
 }
@@ -223,7 +236,7 @@ export function NodeOverviewTab({ node, maintenance = false }: { node: Node; mai
             ) : healthQuery.isError ? (
               <PanelError onRetry={() => void healthQuery.refetch()} />
             ) : !health ? (
-              <HealthSkeleton telemt={telemt} />
+              <HealthSkeleton node={node} telemt={telemt} />
             ) : (
               <>
                 <div className={serviceGrid(telemt)}>
@@ -249,10 +262,10 @@ export function NodeOverviewTab({ node, maintenance = false }: { node: Node; mai
                   <ServiceGridFiller telemt={telemt} />
                 </div>
 
-                {/* Uptime leaves the service grid and joins the three resource
-                figures: the four of them are the numbers on this page, and a
+                {/* Uptime leaves the service grid and joins the people count and
+                the three resource figures: they are the numbers on this page, and a
                 number belongs in a tile rather than in a row of yes/no states. */}
-                <StatGrid tiles={healthTiles(health, t, i18n.language)} className={HEALTH_GRID} />
+                <StatGrid tiles={healthTiles(node, health, t, i18n.language)} className={HEALTH_GRID} />
               </>
             )}
           </Panel>

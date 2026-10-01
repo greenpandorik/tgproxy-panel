@@ -26,7 +26,7 @@ import { FleetCarriersCard } from './FleetCarriersCard';
 import type { ReactNode } from 'react';
 import type { MonitoringRange } from '@/api/monitoring';
 import type { Status } from '@/components/common/StatusBadge';
-import type { MonitoringNode, MonitoringPoint, NodeEngine } from '@/api/types';
+import type { MonitoringNode, MonitoringOverview, MonitoringPoint, NodeEngine } from '@/api/types';
 import { isMetricPresent } from '@/components/common/metric';
 import { formatBytes, formatNumber } from '@/lib/format';
 
@@ -128,8 +128,17 @@ function NodeCardSkeleton() {
   );
 }
 
-function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Record<string, MonitoringPoint[]> }) {
+function FleetOverview({
+  nodes,
+  series,
+  fleet,
+}: {
+  nodes: MonitoringNode[];
+  series: Record<string, MonitoringPoint[]>;
+  fleet?: MonitoringOverview['fleet'];
+}) {
   const { t, i18n } = useTranslation();
+  const num = (value: number) => formatNumber(value, i18n.language);
   const online = nodes.filter((node) => node.status === 'online' || node.status === 'degraded').length;
   const healthy = nodes.filter((node) => node.status === 'online').length;
   const degraded = nodes.filter((node) => node.status === 'degraded').length;
@@ -147,21 +156,31 @@ function FleetOverview({ nodes, series }: { nodes: MonitoringNode[]; series: Rec
       measuredThroughput = true;
     }
   }
-  const items = [
-    [t('monitoring.fleet_online'), `${formatNumber(online, i18n.language)} / ${formatNumber(nodes.length, i18n.language)}`],
-    [t('monitoring.fleet_healthy'), formatNumber(healthy, i18n.language)],
-    [t('monitoring.fleet_degraded'), formatNumber(degraded, i18n.language)],
-    [t('monitoring.fleet_sessions'), formatNumber(sessions, i18n.language)],
-    [t('monitoring.fleet_traffic'), measuredThroughput ? t('common.per_second', { value: formatBytes(throughput) }) : t('common.not_available')],
+  const people = fleet?.people_online;
+  const connections = fleet?.connections ?? sessions;
+  const items: { label: string; value: string; sub?: string }[] = [
+    { label: t('monitoring.fleet_online'), value: `${num(online)} / ${num(nodes.length)}` },
+    { label: t('monitoring.fleet_healthy'), value: num(healthy) },
+    { label: t('monitoring.fleet_degraded'), value: num(degraded) },
+    {
+      label: t('common.people_online'),
+      value: isMetricPresent(people) ? t('common.approx', { value: num(people) }) : t('common.not_available'),
+      sub: t('common.connections_count', { value: num(connections) }),
+    },
+    {
+      label: t('monitoring.fleet_traffic'),
+      value: measuredThroughput ? t('common.per_second', { value: formatBytes(throughput) }) : t('common.not_available'),
+    },
   ];
   return (
     <Panel>
       <PanelHeader icon={Activity} title={t('monitoring.fleet_title')} />
       <div className="grid grid-cols-2 gap-px bg-hairline md:grid-cols-5">
-        {items.map(([label, value]) => (
+        {items.map(({ label, value, sub }) => (
           <div key={label} className="bg-card px-5 py-4 last:col-span-2 md:last:col-span-1">
             <p className="text-label text-mute">{label}</p>
             <p className="mt-1 text-title text-foreground tabular">{value}</p>
+            {sub && <p className="mono text-micro text-mute">{sub}</p>}
           </div>
         ))}
       </div>
@@ -243,7 +262,7 @@ export function MonitoringPage() {
           }
         />
       ) : view === 'overview' ? (
-        <FleetOverview nodes={nodes} series={series} />
+        <FleetOverview nodes={nodes} series={series} fleet={overviewQuery.data?.fleet} />
       ) : view === 'nodes' ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {nodes.map((node, i) => (

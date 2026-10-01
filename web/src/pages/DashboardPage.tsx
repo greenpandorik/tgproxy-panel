@@ -21,6 +21,7 @@ import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
 import { formatCompactAge, formatCompactDuration } from '@/lib/format';
 
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
+import { peopleOrConnections } from './nodes/nodeDisplay';
 import { AttentionSection } from './dashboard/AttentionSection';
 import { DashboardMetrics } from './dashboard/DashboardMetrics';
 import { NodesTable, NodesTableSkeleton } from './dashboard/NodesTable';
@@ -40,10 +41,6 @@ const RECENT_JOBS_LIMIT = 6;
 
 /** The chart's bucket for every node past the palette. Not a node id. */
 const OTHER_SERIES_KEY = '__other';
-
-function lastPoint(points: SeriesPoint[]): SeriesPoint | undefined {
-  return points.length > 0 ? points[points.length - 1] : undefined;
-}
 
 /** Total bytes moved across the whole window, as the difference between its ends. */
 function trafficDeltas(points: SeriesPoint[]): { up: number; down: number } {
@@ -79,14 +76,14 @@ function buildChartData(
   for (const n of main) {
     for (const p of seriesByNode[n.id] ?? []) {
       const row = rows.get(p.t) ?? { t: p.t };
-      row[n.id] = p.sessions_live;
+      row[n.id] = peopleOrConnections(p);
       rows.set(p.t, row);
     }
   }
   for (const n of rest) {
     for (const p of seriesByNode[n.id] ?? []) {
       const row = rows.get(p.t) ?? { t: p.t };
-      row[OTHER_SERIES_KEY] = (Number(row[OTHER_SERIES_KEY]) || 0) + p.sessions_live;
+      row[OTHER_SERIES_KEY] = (Number(row[OTHER_SERIES_KEY]) || 0) + peopleOrConnections(p);
       rows.set(p.t, row);
     }
   }
@@ -155,15 +152,6 @@ export function DashboardPage() {
     () => buildChartData(nodes, seriesByNode, palette, t('dashboard.sessions_chart_other')),
     [nodes, seriesByNode, palette, t],
   );
-
-  // Sessions per node for the table: the freshest sample, but only from a node that is still reporting.
-  const sessionsByNode = useMemo(() => {
-    const out: Record<string, number | undefined> = {};
-    for (const n of nodes) {
-      out[n.id] = n.status === 'offline' ? undefined : lastPoint(seriesByNode[n.id] ?? [])?.sessions_live;
-    }
-    return out;
-  }, [nodes, seriesByNode]);
 
   const chartStep = useMemo(() => {
     if (chart.data.length < 2) return null;
@@ -261,7 +249,9 @@ export function DashboardPage() {
         nodesOnline={summary?.nodes.online}
         nodesTotal={summary?.nodes.total}
         keysActive={summary?.keys.active}
-        sessions={summary?.sessions_live}
+        people={summary?.people_online}
+        people15m={summary?.people_online_15m}
+        connections={summary?.sessions_live}
         traffic={seriesLoading ? undefined : traffic}
       />
 
@@ -279,11 +269,7 @@ export function DashboardPage() {
               </Button>
             }
           />
-          {loading ? (
-            <NodesTableSkeleton />
-          ) : (
-            <NodesTable nodes={nodes} sessionsByNode={sessionsByNode} seriesByNode={seriesByNode} colorByNode={colorByNode} />
-          )}
+          {loading ? <NodesTableSkeleton /> : <NodesTable nodes={nodes} seriesByNode={seriesByNode} colorByNode={colorByNode} />}
         </Panel>
       </div>
 

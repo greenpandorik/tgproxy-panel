@@ -28,6 +28,7 @@ import { CreateNodeDialog } from './CreateNodeDialog';
 import { DC_TONE_TEXT, dcTone, nodeDcLatency } from './dcDisplay';
 import { EngineTag } from './EngineTag';
 import { InstallCommandDialog } from './InstallCommandDialog';
+import { NodePeople } from './NodePeople';
 import { capacityText, DASH, engineVersion, LOAD_TONE_CLASS, loadTone, nodeLoad, nodeStatus, shortVersion } from './nodeDisplay';
 
 import type { MouseEvent, ReactNode } from 'react';
@@ -228,6 +229,9 @@ function NodeCard({ node, actions }: { node: Node; actions: ReactNode }) {
         <Field label={t('nodes.column_profiles')}>
           <CapacityBar count={node.profile_count} max={node.max_profiles} />
         </Field>
+        <Field label={t('nodes.column_online')}>
+          <NodePeople node={node} />
+        </Field>
         <Field label={t('nodes.load_cpu')}>
           <LoadText percent={row.load?.cpu} />
         </Field>
@@ -271,6 +275,9 @@ function NodeTableRow({ node, actions }: { node: Node; actions: ReactNode }) {
       </TableCell>
       <TableCell>
         <CapacityBar count={node.profile_count} max={node.max_profiles} />
+      </TableCell>
+      <TableCell>
+        <NodePeople node={node} />
       </TableCell>
       <TableCell>
         <LoadBar percent={row.load?.cpu} />
@@ -347,7 +354,7 @@ export function NodesPage() {
 
         {nodes.some((n) => n.engine === 'telemt') && <FleetUpdates nodes={nodes} />}
         {isLoading ? (
-          <DataTableSkeleton columns={isWriter ? 9 : 8} rows={4} />
+          <DataTableSkeleton columns={isWriter ? 10 : 9} rows={4} />
         ) : nodes.length === 0 ? (
           <EmptyState
             icon={Server}
@@ -371,6 +378,7 @@ export function NodesPage() {
                     <TableHead>{t('nodes.column_name')}</TableHead>
                     <TableHead>{t('nodes.column_relay')}</TableHead>
                     <TableHead>{t('nodes.column_profiles')}</TableHead>
+                    <TableHead>{t('nodes.column_online')}</TableHead>
                     <TableHead>{t('nodes.load_cpu')}</TableHead>
                     <TableHead>{t('nodes.load_ram')}</TableHead>
                     {/* Wide layout only: the card list below md carries the

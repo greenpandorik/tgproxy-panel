@@ -114,18 +114,22 @@ function ExpiresCell({ iso }: { iso: string | null }) {
 
 function OnlineCell({ user }: { user: AccessKey }) {
   const { t, i18n } = useTranslation();
-  if (user.live.connections > 0) {
+  if (user.live.online) {
     return (
-      <span className="inline-flex items-center gap-2 text-label text-ok" title={t('users.online_ips', { count: user.live.ips })}>
-        <span className="size-[7px] rounded-pill bg-online" aria-hidden="true" />
-        {t('users.online_now', { count: user.live.connections })}
+      <span className="inline-flex flex-col" title={t('users.devices_15m', { count: user.live.devices_15m })}>
+        <span className="inline-flex items-center gap-2 text-label text-ok">
+          <span className="size-[7px] rounded-pill bg-online" aria-hidden="true" />
+          {t('users.online_devices', { count: user.live.devices })}
+        </span>
+        <span className="pl-[15px] text-micro text-mute">{t('users.online_now', { count: user.live.connections })}</span>
       </span>
     );
   }
   if (!user.last_seen_at) return <span className="mono text-mono text-dim">—</span>;
   return (
-    <span className="text-label text-mute" title={formatDateTime(user.last_seen_at, i18n.language)}>
-      {formatRelativeTime(user.last_seen_at, i18n.language)}
+    <span className="inline-flex flex-col" title={formatDateTime(user.last_seen_at, i18n.language)}>
+      <span className="text-label text-mute">{t('common.offline')}</span>
+      <span className="text-micro text-mute">{formatRelativeTime(user.last_seen_at, i18n.language)}</span>
     </span>
   );
 }
@@ -678,7 +682,7 @@ export function UsersPage() {
                     <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                       <StateBadge state={u.state} />
                       <ExpiresCell iso={u.expires_at} />
-                      {u.live.connections > 0 && <OnlineCell user={u} />}
+                      {u.live.online && <OnlineCell user={u} />}
                     </span>
                     <ServerChips nodes={u.nodes} />
                   </button>

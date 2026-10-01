@@ -37,7 +37,7 @@ function user(id: string, label: string): AccessKey {
     subscription_url: null,
     subscription_short_url: null,
     subscription_legacy: false,
-    live: { connections: 0, ips: 0 },
+    live: { online: false, connections: 0, devices: 0, devices_15m: 0, ips: 0 },
   } as AccessKey;
 }
 
@@ -105,5 +105,25 @@ describe('UsersPage pagination', () => {
     expect(await screen.findByText('Страница 1 из 3 · найдено: 120')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Вперёд/ })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Назад/ })).toBeDisabled();
+  });
+});
+
+describe('UsersPage activity', () => {
+  beforeEach(() => {
+    setLang('ru');
+    window.localStorage.clear();
+  });
+
+  it('counts devices for someone online and keeps the connections as a detail', async () => {
+    const online = user('u-1', 'Ольга К.');
+    online.live = { online: true, connections: 6, devices: 2, devices_15m: 3, ips: 2 };
+    const away = user('u-2', 'Мария С.');
+    away.last_seen_at = '2026-09-30T10:00:00Z';
+    mockApi([online, away]);
+    renderPage();
+
+    expect((await screen.findAllByText('В сети, ≈ 2 устр.')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('6 соединений').length).toBeGreaterThan(0);
+    expect(screen.getByText('Не в сети')).toBeInTheDocument();
   });
 });

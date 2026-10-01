@@ -123,12 +123,15 @@ function OverviewCard({
   const link = user.subscription_short_url ?? user.subscription_url;
   const tone = expiryTone(user.expires_at);
 
-  const online =
-    user.live.connections > 0
-      ? { value: t('users.online_now', { count: user.live.connections }), sub: t('users.online_ips', { count: user.live.ips }), tone: 'text-ok' }
-      : user.last_seen_at
-        ? { value: formatRelativeTime(user.last_seen_at, lang), sub: formatDateTime(user.last_seen_at, lang) }
-        : { value: t('users.never_seen'), sub: undefined };
+  const online = user.live.online
+    ? {
+        value: t('users.online_devices', { count: user.live.devices }),
+        sub: `${t('users.online_now', { count: user.live.connections })} · ${t('users.devices_15m', { count: user.live.devices_15m })}`,
+        tone: 'text-ok',
+      }
+    : user.last_seen_at
+      ? { value: t('common.offline'), sub: t('users.last_online', { value: formatRelativeTime(user.last_seen_at, lang) }) }
+      : { value: t('users.never_seen'), sub: undefined };
 
   return (
     <UserCard icon={Activity} title={t('users.card_overview')}>

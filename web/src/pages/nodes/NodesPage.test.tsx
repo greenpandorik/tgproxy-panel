@@ -225,9 +225,40 @@ describe('NodesPage Telegram column', () => {
     expect(screen.queryByText(/42 ms/)).toBeNull();
     for (const name of ['n4', 'n5', 'n6']) {
       const cells = within(rowOf(name)).getAllByRole('cell');
-      // Server, engine, users, CPU, RAM, Telegram, heartbeat, changes.
-      expect(cells[5]).toHaveTextContent('—');
+      // Server, engine, users, online, CPU, RAM, Telegram, heartbeat, changes.
+      expect(cells[6]).toHaveTextContent('—');
     }
+  });
+});
+
+describe('NodesPage online column', () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({ isWriter: false } as unknown as ReturnType<typeof useAuth>);
+    setLang('en');
+  });
+
+  it('shows people online with the connections under them, and a dash without a fresh count', () => {
+    vi.mocked(useNodes).mockReturnValue({
+      data: {
+        items: [
+          { ...node('n1', 'online', health(1, 1)), people_online: 3, connections: 17 },
+          { ...node('n2', 'online', health(1, 1)), people_online: null, connections: 4 },
+          node('n3', 'offline', health(1, 1)),
+        ],
+        total: 3,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+
+    render(wrap(<NodesPage />));
+
+    expect(screen.getByRole('columnheader', { name: 'Online' })).toBeInTheDocument();
+    const online = (name: string) => within(rowOf(name)).getAllByRole('cell')[3];
+    expect(online('n1')).toHaveTextContent('≈ 3');
+    expect(online('n1')).toHaveTextContent('connections: 17');
+    expect(online('n2')).toHaveTextContent('—');
+    expect(online('n2')).toHaveTextContent('connections: 4');
+    expect(online('n3')).toHaveTextContent(/^—$/);
   });
 });
 

@@ -66,7 +66,10 @@
     },
     "advanced_show": "Show advanced settings",
     "advanced_hide": "Hide advanced settings",
-    "per_second": "{{value}}/s"
+    "per_second": "{{value}}/s",
+    "approx": "≈ {{value}}",
+    "people_online": "People online",
+    "connections_count": "connections: {{value}}"
   },
   "auth": {
     "login_title": "Sign in",
@@ -106,7 +109,8 @@
     "title": "Overview",
     "nodes_online": "Servers online",
     "keys_active": "Active users",
-    "sessions_live": "Sessions",
+    "people_hint": "An estimate of how many people are connected right now. A personal user with at least one connection is one person; a shared user counts as many people as it has distinct IP addresses. So for a shared user, several people behind one router count as one, while one person's phone on mobile data and computer on Wi-Fi count as two. Updated every minute.",
+    "people_15m": "In the last 15 minutes: ≈ {{value}}",
     "empty_no_nodes": "Add your first server",
     "nodes_offline_suffix": "{{count}} offline",
     "traffic_title": "Traffic today",
@@ -114,7 +118,7 @@
     "alerts_empty": "No open notifications",
     "alert_resolve": "Mark resolved",
     "alert_resolved": "Marked as resolved",
-    "sessions_chart_title": "Connections over 24 hours",
+    "sessions_chart_title": "People online over 24 hours",
     "sessions_chart_empty": "No monitoring data yet",
     "sessions_chart_other": "Other",
     "jobs_title": "Recent changes",
@@ -128,7 +132,7 @@
     "sessions_chart_meta": "24h · {{step}} step",
     "col_node": "Server",
     "col_relay": "Engine",
-    "col_sessions": "Sessions",
+    "col_sessions": "Online",
     "col_heartbeat": "Last response",
     "alert_panel_scope": "Panel",
     "tile_nodes_online_context": "by last heartbeat",
@@ -384,6 +388,7 @@
     "check_pq_kex_hint": "Caddy on the server negotiates X25519MLKEM768 with modern clients. Informational.",
     "header_online": "{{online}} / {{total}} online",
     "column_relay": "Engine",
+    "column_online": "Online",
     "column_heartbeat": "Last seen",
     "column_changes": "Changes",
     "dirty_tag": "pending",
@@ -760,7 +765,6 @@
     "fleet_online": "Servers online",
     "fleet_healthy": "Healthy",
     "fleet_degraded": "With errors",
-    "fleet_sessions": "Sessions",
     "fleet_traffic": "Traffic now",
     "range_label": "Range",
     "range_1h": "1h",
@@ -1384,17 +1388,22 @@
             "what": "Keys with Active status. The total number of keys appears below. Open the card to manage keys and inspect pending changes.",
             "tip": "If the pending count never shrinks, an apply is failing on some server: open the server → Maintenance → Apply history."
           },
-          "sessions": {
+          "people": {
+            "name": "People online",
+            "what": "An estimate of how many people are connected right now. A personal user with at least one connection counts as one person; a shared user counts as many as the distinct IP addresses connected to it. So for a shared user, several people behind one router count as one, while one person's phone on mobile data and computer on Wi-Fi count as two. Someone connected to two servers counts once. tproxy servers count their WEB sessions instead. Updated every minute.",
+            "tip": "The tile's tooltip also shows how many people were online over the last 15 minutes."
+          },
+          "connections": {
             "name": "Connections",
-            "what": "How many client sessions are open on all servers right now. One session is roughly one connected device. The delta is the change over the last hour."
+            "what": "The line under the head count: TCP connections open on all servers that answered in the last three minutes. One Telegram app holds several connections at once, usually 2 to 15, so there are always more connections than people."
           },
           "traffic": {
             "name": "Traffic, 24 h",
             "what": "Inbound plus outbound traffic of every server over the last 24 hours. Computed from stats snapshots, so it can lag a few minutes."
           },
           "chart": {
-            "name": "Connections over 24 hours",
-            "what": "Connection history per server over the last 24 hours. Each server has its own line; larger fleets group additional servers as Other. Offline servers appear gray. Open Monitoring for detailed charts."
+            "name": "People online over 24 hours",
+            "what": "How many people were online on each server over the last 24 hours. Each server has its own line; larger fleets group additional servers as Other. Offline servers appear gray. Where the history predates this panel version, the line shows connections. Open Monitoring for detailed charts."
           },
           "alerts": {
             "name": "Needs attention",
@@ -1431,6 +1440,10 @@
             "name": "Profiles",
             "what": "Used / maximum. A profile is one key on this server. A server has 128 slots by default; once they run out, new keys cannot be bound to it.",
             "example": "37 / 128"
+          },
+          "online": {
+            "name": "Online",
+            "what": "An estimate of the people on the server right now, with its connections under it. A personal user with at least one connection is one person, a shared user counts as many as its distinct IP addresses; tproxy servers count WEB sessions. A dash means the server has not answered in the last three minutes."
           },
           "load": {
             "name": "CPU and RAM",
@@ -1596,7 +1609,7 @@
           },
           "tab_overview": {
             "name": "Health",
-            "what": "A one-line verdict, services, uptime, CPU, memory, disk and the connection to the Telegram datacenters. Look here first."
+            "what": "A one-line verdict, services, people online with their connections, uptime, CPU, memory, disk and the connection to the Telegram datacenters. Look here first."
           },
           "tab_stats": {
             "name": "Statistics",
@@ -1722,8 +1735,8 @@
           },
           "columns": {
             "name": "Columns",
-            "what": "The Columns button hides and shows columns: type, servers, traffic for 30 days, connections, expiry, creation date. The choice is remembered in this browser.",
-            "tip": "The Connections column shows how many connections the person has right now, or when they last connected. Only telemt servers count this."
+            "what": "The Columns button hides and shows columns: type, servers, traffic for 30 days, activity, expiry, creation date. The choice is remembered in this browser.",
+            "tip": "The Activity column shows whether the person is online and from about how many devices (distinct IP addresses), with their connections below; when offline, when they last connected. Only telemt servers count this."
           },
           "search": {
             "name": "Search and filters",
@@ -1957,7 +1970,7 @@
           },
           "overview": {
             "name": "Subscription and activity",
-            "what": "Access expiry (red once it has passed, amber with less than a week left), traffic for 30 days, connections right now or when the person last connected, and the servers."
+            "what": "Access expiry (red once it has passed, amber with less than a week left), traffic for 30 days, whether the person is online and from about how many devices (or when they last connected), and the servers."
           },
           "subscription": {
             "name": "Subscription link",
@@ -1991,7 +2004,7 @@
           }
         },
         "notes": {
-          "1": "Traffic and connections are counted only by telemt servers; on tproxy these tiles stay empty.",
+          "1": "Traffic and activity are counted only by telemt servers; on tproxy these tiles stay empty.",
           "2": "While the state is Waiting to apply, the link is already shown but starts working after the server applies it, usually within a minute."
         }
       },
@@ -2130,9 +2143,13 @@
             "name": "Range",
             "what": "1 hour, 6 hours, 24 hours or 7 days. The longer the range, the coarser the averaging step."
           },
+          "people": {
+            "name": "People online",
+            "what": "In the summary, how many people are online across all servers at once: someone connected to two servers counts once. On a telemt server's chart, how many people were on that server. A personal user with at least one connection is one person; a shared user counts as many as its distinct IP addresses. History recorded before this panel version has no such line."
+          },
           "sessions": {
             "name": "Live sessions",
-            "what": "How many client WEB sessions were open on the server at each moment. Roughly the number of connected devices."
+            "what": "tproxy only. How many client WEB sessions were open on the server at each moment. This is not an exact head count: depending on the client, one device may hold more than one session. tproxy reports nothing finer, so the panel counts people on such a server by its sessions."
           },
           "streams": {
             "name": "Live streams",
@@ -2144,7 +2161,7 @@
           },
           "connections": {
             "name": "Connections (telemt)",
-            "what": "On telemt servers, connections are shown instead of sessions and streams - what telemt itself counts."
+            "what": "On telemt servers, the TCP connections telemt itself counts are shown instead of sessions and streams. One Telegram app holds several connections at once, usually 2 to 15, so there are more of them than people."
           },
           "prometheus": {
             "name": "Prometheus",
@@ -2540,7 +2557,7 @@
     "monitoring_hint": "Inspect availability, failures and load. Configure servers under Servers.",
     "fleet_hint": "Add servers and configure their proxies. Open a server to change addresses, transports, access or its website.",
     "home_hint": "Fleet health and problems requiring action.",
-    "history_details": "Connection chart and recent operations",
+    "history_details": "People online chart and recent operations",
     "backup_protection": "Latest backup protection",
     "backup_protection_hint": "Encryption, off-host storage and restore verification are configured by the panel host administrator. Not run does not mean passed.",
     "backup_encrypted": "Encrypted",
@@ -2761,7 +2778,11 @@
     "column_created": "Created",
     "online_now_one": "{{count}} connection",
     "online_now_other": "{{count}} connections",
-    "online_ips": "IP addresses: {{count}}",
+    "online_devices_one": "Online, ≈ {{count}} device",
+    "online_devices_other": "Online, ≈ {{count}} devices",
+    "devices_15m_one": "≈ {{count}} device in the last 15 minutes",
+    "devices_15m_other": "≈ {{count}} devices in the last 15 minutes",
+    "last_online": "Last online {{value}}",
     "never_seen": "Not connected yet",
     "traffic_unmeasured": "tproxy servers do not count traffic",
     "empty_title": "No users yet",

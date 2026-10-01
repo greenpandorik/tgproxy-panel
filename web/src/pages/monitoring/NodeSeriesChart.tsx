@@ -25,12 +25,13 @@ export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSerie
   const locale = i18n.language;
   const [first, second] = colors;
 
-  // telemt counts one thing where tproxy counts two.
+  // telemt reports people and connections, tproxy sessions and streams.
   const telemt = engine === 'telemt';
   const countName = telemt ? t('monitoring.connections_live') : t('monitoring.sessions_live');
   const trafficName = telemt ? t('monitoring.traffic_total') : t('monitoring.traffic_down');
 
   const countLegend = [
+    ...(telemt ? [{ key: 'people_online', name: t('common.people_online'), color: second }] : []),
     { key: 'sessions_live', name: countName, color: first },
     ...(telemt ? [] : [{ key: 'streams_live', name: t('monitoring.streams_live'), color: second }]),
   ];
@@ -53,6 +54,19 @@ export function NodeSeriesChart({ points, colors, engine = 'tproxy' }: NodeSerie
                 cursor={{ stroke: 'var(--line-2)', strokeWidth: 1 }}
                 isAnimationActive={false}
               />
+              {telemt && (
+                <Line
+                  type="monotone"
+                  dataKey="people_online"
+                  name={t('common.people_online')}
+                  stroke={second}
+                  strokeWidth={1.6}
+                  dot={false}
+                  activeDot={{ r: 3, strokeWidth: 0 }}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              )}
               <Line
                 type="monotone"
                 dataKey="sessions_live"

@@ -49,4 +49,31 @@ describe('MonitoringPage', () => {
     expect(await screen.findByText('ams1.example.net')).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Range' })).toBeInTheDocument();
   });
+
+  it('puts people online in the summary, connections under them', async () => {
+    globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = new URL(String(input), 'http://panel.test');
+      if (url.pathname === '/api/v1/monitoring/overview') {
+        return json({
+          nodes: [NODE],
+          series: { n1: [] },
+          fleet: { people_online: 7, people_online_15m: 9, connections: 33 },
+        });
+      }
+      return json({ items: [] });
+    }) as typeof fetch;
+    renderPage('/monitoring');
+
+    expect(await screen.findByText('≈ 7')).toBeInTheDocument();
+    expect(screen.getByText('People online')).toBeInTheDocument();
+    expect(screen.getByText('connections: 33')).toBeInTheDocument();
+  });
+
+  it('says the head count is missing rather than zero', async () => {
+    renderPage('/monitoring');
+
+    expect(await screen.findByText('People online')).toBeInTheDocument();
+    expect(screen.queryByText('≈ 0')).toBeNull();
+    expect(screen.getAllByText('Not available').length).toBeGreaterThan(0);
+  });
 });

@@ -12,6 +12,11 @@ export function nodeStatus(node: Node): Status {
   return node.status;
 }
 
+/** People online at a sample, or its connections for history recorded before people were counted. */
+export function peopleOrConnections(point: { people_online?: number | null; sessions_live: number }): number {
+  return point.people_online ?? point.sessions_live;
+}
+
 // Profile capacity as text.
 export function capacityText(count: number, max: number): string {
   return `${count} / ${max > 0 ? max : INFINITY}`;

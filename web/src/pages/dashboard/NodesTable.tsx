@@ -6,9 +6,10 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatCompactAge, formatNumber } from '@/lib/format';
+import { formatCompactAge } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { capacityText, LOAD_TONE_CLASS, loadTone, nodeLoad } from '@/pages/nodes/nodeDisplay';
+import { NodePeople } from '@/pages/nodes/NodePeople';
+import { capacityText, LOAD_TONE_CLASS, loadTone, nodeLoad, peopleOrConnections } from '@/pages/nodes/nodeDisplay';
 
 import type { ReactNode } from 'react';
 import type { Status } from '@/components/common/StatusBadge';
@@ -20,8 +21,6 @@ const WIDE_ONLY = 'hidden @min-[66rem]:table-cell';
 
 interface NodesTableProps {
   nodes: Node[];
-  /** Live sessions per node id, taken from the newest monitoring sample. */
-  sessionsByNode: Record<string, number | undefined>;
   /** The last 24h of samples per node id, already fetched for the chart above. */
   seriesByNode: Record<string, SeriesPoint[]>;
   /** The colour each node has in that chart, so a row and a line match. */
@@ -36,12 +35,10 @@ interface NodeRow {
   profiles: string;
   cpu: string;
   cpuTone: string;
-  sessions: string;
-  sessionsTone: string;
   heartbeat: string;
 }
 
-function useNodeRow(node: Node, sessions: number | undefined): NodeRow {
+function useNodeRow(node: Node): NodeRow {
   const { t, i18n } = useTranslation();
   const age = formatCompactAge(node.last_seen_at, i18n.language);
   const load = nodeLoad(node);
@@ -52,8 +49,6 @@ function useNodeRow(node: Node, sessions: number | undefined): NodeRow {
     profiles: capacityText(node.profile_count, node.max_profiles),
     cpu: load?.cpu === undefined ? DASH : `${Math.round(load.cpu)}%`,
     cpuTone: load?.cpu === undefined ? 'text-dim' : LOAD_TONE_CLASS[loadTone(load.cpu)].text,
-    sessions: sessions === undefined ? DASH : formatNumber(sessions, i18n.language),
-    sessionsTone: sessions === undefined ? 'text-dim' : 'text-foreground',
     heartbeat: age ? t('common.ago', { value: age }) : t('nodes.last_seen_never'),
   };
 }
@@ -68,9 +63,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function NodeCard({ node, sessions }: { node: Node; sessions: number | undefined }) {
+function NodeCard({ node }: { node: Node }) {
   const { t } = useTranslation();
-  const row = useNodeRow(node, sessions);
+  const row = useNodeRow(node);
 
   return (
     <li className="px-4 py-3">
@@ -98,7 +93,7 @@ function NodeCard({ node, sessions }: { node: Node; sessions: number | undefined
           <span className={row.cpuTone}>{row.cpu}</span>
         </Field>
         <Field label={t('dashboard.col_sessions')}>
-          <span className={row.sessionsTone}>{row.sessions}</span>
+          <NodePeople node={node} />
         </Field>
         <Field label={t('dashboard.col_heartbeat')}>
           <span className={row.offline ? 'text-err' : 'text-mute'}>{row.heartbeat}</span>
@@ -108,19 +103,9 @@ function NodeCard({ node, sessions }: { node: Node; sessions: number | undefined
   );
 }
 
-function NodeTableRow({
-  node,
-  sessions,
-  points,
-  color,
-}: {
-  node: Node;
-  sessions: number | undefined;
-  points: SeriesPoint[];
-  color: string;
-}) {
+function NodeTableRow({ node, points, color }: { node: Node; points: SeriesPoint[]; color: string }) {
   const { t } = useTranslation();
-  const row = useNodeRow(node, sessions);
+  const row = useNodeRow(node);
 
   return (
     <TableRow>
@@ -134,9 +119,11 @@ function NodeTableRow({
       <TableCell className={cn('mono text-mono', row.relayTone)}>{row.relay}</TableCell>
       <TableCell className="mono text-mono text-mute">{row.profiles}</TableCell>
       <TableCell className={cn('mono text-right text-mono', row.cpuTone)}>{row.cpu}</TableCell>
-      <TableCell className={cn('mono text-right text-mono', row.sessionsTone)}>{row.sessions}</TableCell>
+      <TableCell className="text-right">
+        <NodePeople node={node} />
+      </TableCell>
       <TableCell>
-        <Sparkline points={points.map((p) => p.sessions_live)} color={color} offline={row.offline} />
+        <Sparkline points={points.map(peopleOrConnections)} color={color} offline={row.offline} />
       </TableCell>
       <TableCell className={cn('mono text-right text-mono', row.offline ? 'text-err' : 'text-mute')}>{row.heartbeat}</TableCell>
       <TableCell className="text-right">
@@ -222,7 +209,7 @@ export function NodesTableSkeleton({ rows = 3 }: { rows?: number }) {
 }
 
 // The fleet, in two shapes for two widths.
-export function NodesTable({ nodes, sessionsByNode, seriesByNode, colorByNode }: NodesTableProps) {
+export function NodesTable({ nodes, seriesByNode, colorByNode }: NodesTableProps) {
   return (
     <>
       <div className="@container hidden md:block">
@@ -233,7 +220,6 @@ export function NodesTable({ nodes, sessionsByNode, seriesByNode, colorByNode }:
               <NodeTableRow
                 key={node.id}
                 node={node}
-                sessions={sessionsByNode[node.id]}
                 points={seriesByNode[node.id] ?? []}
                 color={colorByNode[node.id] ?? 'var(--series-other)'}
               />
@@ -244,7 +230,7 @@ export function NodesTable({ nodes, sessionsByNode, seriesByNode, colorByNode }:
 
       <ul className="divide-y divide-hairline md:hidden">
         {nodes.map((node) => (
-          <NodeCard key={node.id} node={node} sessions={sessionsByNode[node.id]} />
+          <NodeCard key={node.id} node={node} />
         ))}
       </ul>
     </>

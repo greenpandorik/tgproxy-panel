@@ -274,6 +274,10 @@ export interface Node {
   created_at: string;
   health?: NodeHealth;
   last_check: NodeCheckReport | null;
+  /** People online from the node's latest fresh snapshot; null without one. Absent on an older panel. */
+  people_online?: number | null;
+  /** Connections from the same snapshot. */
+  connections?: number | null;
 }
 
 export interface CreateNodeInput {
@@ -467,7 +471,18 @@ export interface AccessKey {
   subscription_short_url: string | null;
   /** The link was made before links were kept, so it works but cannot be shown. */
   subscription_legacy: boolean;
-  live: { connections: number; ips: number };
+  live: KeyLive;
+}
+
+/** One user across all servers right now. `ips` repeats `devices` for older screens. */
+export interface KeyLive {
+  online: boolean;
+  connections: number;
+  /** Distinct addresses the user is connected from. */
+  devices: number;
+  /** The same over the last 15 minutes. */
+  devices_15m: number;
+  ips: number;
 }
 
 /** What the users list shows: status, the off switch and the expiry folded together. */
@@ -678,9 +693,16 @@ export interface Alert {
   created_at: string;
 }
 
-export interface DashboardSummary {
+/** The newest fleet head count; null until the panel has a fresh one. */
+export interface FleetPeople {
+  people_online: number | null;
+  people_online_15m: number | null;
+}
+
+export interface DashboardSummary extends Partial<FleetPeople> {
   nodes: NodeCounts;
   keys: KeyCounts;
+  /** Connections on all servers that reported in the last few minutes. */
   sessions_live: number;
   streams_live: number;
   bytes_up: number;
@@ -703,6 +725,8 @@ export interface LoadPoint {
 export interface SeriesPoint extends LoadPoint {
   sessions_live: number;
   streams_live: number;
+  /** People online at this sample; null for history recorded before the panel counted them. */
+  people_online?: number | null;
   bytes_up: number;
   bytes_down: number;
   /** Latency to each Telegram DC at this sample, keyed by DC number ("1": 197.9). Absent on an older panel. */
@@ -721,6 +745,8 @@ export interface MonitoringNode {
 export interface MonitoringPoint extends LoadPoint {
   sessions_live: number;
   streams_live: number;
+  /** People online over the bucket; null for history recorded before the panel counted them. */
+  people_online?: number | null;
   /** Null where a rate could not be worked out: a rate between a reading and a gap is unknown. */
   bytes_up_rate: Metric<number>;
   bytes_down_rate: Metric<number>;
@@ -731,6 +757,8 @@ export interface MonitoringPoint extends LoadPoint {
 export interface MonitoringOverview {
   nodes: MonitoringNode[];
   series: Record<string, MonitoringPoint[]>;
+  /** Absent on an older panel. */
+  fleet?: FleetPeople & { connections: number | null };
 }
 
 // --- settings ---------------------------------------------------------
