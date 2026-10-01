@@ -1,96 +1,27 @@
-import { Activity, Server, UserPlus } from 'lucide-react';
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Server, UserPlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { useBrandingIdentity } from '@/theme/ThemeProvider';
-import { useAlerts, useDashboardSummary, useNodesSeries24h } from '@/api/dashboard';
+import { useDashboardSummary, useDashboardTrends } from '@/api/dashboard';
 import { useNodes } from '@/api/nodes';
 import { useAuth } from '@/auth/AuthProvider';
-import { ChartLegend } from '@/components/common/ChartLegend';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
-import { Panel, PanelHeader } from '@/components/common/Panel';
 import { Button } from '@/components/ui/button';
 import { ENTER_CLASS, enterDelay } from '@/components/ui/motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
-import { OFFLINE_SERIES_COLOR, seriesPalette } from '@/lib/chart';
-import { formatCompactAge, formatCompactDuration } from '@/lib/format';
+import { formatCompactAge } from '@/lib/format';
 
-import { AdvancedSettings } from '@/components/common/AdvancedSettings';
-import { peopleOrConnections } from './nodes/nodeDisplay';
-import { AttentionSection } from './dashboard/AttentionSection';
+import { AttentionInbox } from './dashboard/AttentionInbox';
 import { DashboardMetrics } from './dashboard/DashboardMetrics';
-import { NodesTable, NodesTableSkeleton } from './dashboard/NodesTable';
-import { RecentJobsSection } from './dashboard/RecentJobsSection';
-import { VerdictLine } from './dashboard/VerdictLine';
-
-import type { SessionsSeriesConfig } from './dashboard/SessionsChart';
-import type { Node, SeriesPoint } from '@/api/types';
-
-// recharts stays out of the shell bundle - only SessionsChart.tsx imports it.
-const SessionsChart = lazy(() => import('./dashboard/SessionsChart').then((m) => ({ default: m.SessionsChart })));
-
-const DEFAULT_BRAND_PRIMARY = '#0b7285';
-const DEFAULT_BRAND_ACCENT = '#099268';
+import { HistorySection } from './dashboard/HistorySection';
+import { ServerCards } from './dashboard/ServerCards';
 
 const RECENT_JOBS_LIMIT = 6;
-
-/** The chart's bucket for every node past the palette. Not a node id. */
-const OTHER_SERIES_KEY = '__other';
-
-/** Total bytes moved across the whole window, as the difference between its ends. */
-function trafficDeltas(points: SeriesPoint[]): { up: number; down: number } {
-  if (points.length < 2) return { up: 0, down: 0 };
-  const first = points[0];
-  const last = points[points.length - 1];
-  return {
-    up: Math.max(0, last.bytes_up - first.bytes_up),
-    down: Math.max(0, last.bytes_down - first.bytes_down),
-  };
-}
-
-function buildChartData(
-  nodes: Node[],
-  seriesByNode: Record<string, SeriesPoint[]>,
-  palette: string[],
-  otherLabel: string,
-): { data: Array<Record<string, number | string>>; series: SessionsSeriesConfig[] } {
-  const main = nodes.slice(0, palette.length);
-  const rest = nodes.slice(palette.length);
-
-  const series: SessionsSeriesConfig[] = main.map((n, i) => ({
-    key: n.id,
-    name: n.name,
-    // A node that stopped reporting is not one more category on the chart.
-    color: n.status === 'offline' ? OFFLINE_SERIES_COLOR : palette[i],
-  }));
-  if (rest.length > 0) {
-    series.push({ key: OTHER_SERIES_KEY, name: otherLabel, color: 'var(--series-other)' });
-  }
-
-  const rows = new Map<string, Record<string, number | string>>();
-  for (const n of main) {
-    for (const p of seriesByNode[n.id] ?? []) {
-      const row = rows.get(p.t) ?? { t: p.t };
-      row[n.id] = peopleOrConnections(p);
-      rows.set(p.t, row);
-    }
-  }
-  for (const n of rest) {
-    for (const p of seriesByNode[n.id] ?? []) {
-      const row = rows.get(p.t) ?? { t: p.t };
-      row[OTHER_SERIES_KEY] = (Number(row[OTHER_SERIES_KEY]) || 0) + peopleOrConnections(p);
-      rows.set(p.t, row);
-    }
-  }
-
-  const data = [...rows.values()].sort((a, b) => String(a.t).localeCompare(String(b.t)));
-  return { data, series };
-}
 
 function UpdatedAgo({ at }: { at: number }) {
   const { t, i18n } = useTranslation();
@@ -106,82 +37,39 @@ function UpdatedAgo({ at }: { at: number }) {
   return age ? <>{t('dashboard.updated_ago', { value: age })}</> : null;
 }
 
-export function DashboardPage() {
-  const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
+function CardsSkeleton() {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] gap-3" aria-hidden="true">
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} className="h-36 w-full" />
+      ))}
+    </div>
+  );
+}
 
+export function DashboardPage() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isWriter } = useAuth();
 
   const summaryQuery = useDashboardSummary();
   const nodesQuery = useNodes();
-  const alertsQuery = useAlerts();
-  const { branding } = useBrandingIdentity();
-  const nodes = useMemo(() => nodesQuery.data?.items ?? [], [nodesQuery.data]);
-  const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
-  const seriesResults = useNodesSeries24h(nodeIds);
+  const trendsQuery = useDashboardTrends();
 
   const summary = summaryQuery.data;
-
-  const seriesByNode = useMemo(() => {
-    const out: Record<string, SeriesPoint[]> = {};
-    nodes.forEach((n, i) => {
-      out[n.id] = seriesResults[i]?.data?.points ?? [];
-    });
-    return out;
-  }, [nodes, seriesResults]);
-
-  const seriesLoading = nodes.length > 0 && seriesResults.some((r) => r.isLoading);
-
-  const palette = useMemo(
-    () => seriesPalette(branding?.primary_color || DEFAULT_BRAND_PRIMARY, branding?.accent_color || DEFAULT_BRAND_ACCENT, 6),
-    [branding?.primary_color, branding?.accent_color],
-  );
-
-  // Absent, not zero, while no node has two samples to subtract.
-  const traffic = useMemo((): number | undefined => {
-    let total: number | undefined;
-    for (const points of Object.values(seriesByNode)) {
-      if (points.length < 2) continue;
-      const d = trafficDeltas(points);
-      total = (total ?? 0) + d.up + d.down;
-    }
-    return total;
-  }, [seriesByNode]);
-
-  const chart = useMemo(
-    () => buildChartData(nodes, seriesByNode, palette, t('dashboard.sessions_chart_other')),
-    [nodes, seriesByNode, palette, t],
-  );
-
-  const chartStep = useMemo(() => {
-    if (chart.data.length < 2) return null;
-    const ms = new Date(String(chart.data[1].t)).getTime() - new Date(String(chart.data[0].t)).getTime();
-    return Number.isFinite(ms) && ms > 0 ? formatCompactDuration(ms / 1000, i18n.language) : null;
-  }, [chart.data, i18n.language]);
-
-  const colorByNode = useMemo(() => {
-    const out: Record<string, string> = {};
-    for (const s of chart.series) if (s.key !== OTHER_SERIES_KEY) out[s.key] = s.color;
-    return out;
-  }, [chart.series]);
-
-  const recentJobs = (summary?.recent_jobs ?? []).slice(0, RECENT_JOBS_LIMIT);
+  const trends = trendsQuery.data;
+  const nodes = nodesQuery.data?.items ?? [];
   const loading = summaryQuery.isLoading || nodesQuery.isLoading;
   const failed = summaryQuery.isError || nodesQuery.isError;
+  const header = <PageHeader title={t('dashboard.title')} actions={<HelpButton topic="dashboard" />} />;
 
-  // The error branch comes before the empty one on purpose.
   if (!loading && failed) {
+    const error = summaryQuery.error ?? nodesQuery.error;
     return (
       <>
-        <PageHeader title={t('dashboard.title')} actions={<HelpButton topic="dashboard" />} />
+        {header}
         <ErrorState
-          message={
-            summaryQuery.error instanceof ApiError
-              ? summaryQuery.error.message
-              : nodesQuery.error instanceof ApiError
-                ? nodesQuery.error.message
-                : t('common.error_generic')
-          }
+          message={error instanceof ApiError ? error.message : t('common.error_generic')}
           retryLabel={t('common.refresh')}
           onRetry={() => {
             void summaryQuery.refetch();
@@ -195,7 +83,7 @@ export function DashboardPage() {
   if (!loading && nodes.length === 0) {
     return (
       <>
-        <PageHeader title={t('dashboard.title')} actions={<HelpButton topic="dashboard" />} />
+        {header}
         <EmptyState
           icon={Server}
           title={t('dashboard.empty_no_nodes')}
@@ -231,90 +119,35 @@ export function DashboardPage() {
         }
       />
 
-      <VerdictLine
-        loading={loading}
-        facts={{
-          online: summary?.nodes.online,
-          total: summary?.nodes.total,
-          offline: summary?.nodes.offline,
-          degraded: summary?.nodes.degraded,
-          attention: alertsQuery.isError ? undefined : alertsQuery.data?.items.length,
-        }}
-      />
-
-      <AttentionSection />
-
-      <DashboardMetrics
-        loading={loading}
-        nodesOnline={summary?.nodes.online}
-        nodesTotal={summary?.nodes.total}
-        keysActive={summary?.keys.active}
-        people={summary?.people_online}
-        people15m={summary?.people_online_15m}
-        connections={summary?.sessions_live}
-        traffic={seriesLoading ? undefined : traffic}
-      />
-
-      {/* Wrapped rather than classed directly: Panel takes a className but no
-          style, and the entrance needs its index on the element. */}
-      <div className={ENTER_CLASS} style={enterDelay(1)}>
-        <Panel>
-          <PanelHeader
-            icon={Server}
-            title={t('nodes.title')}
-            meta={loading ? undefined : String(nodes.length)}
-            actions={
-              <Button type="button" variant="outline" size="sm" nativeButton={false} render={<Link to="/nodes" />}>
-                {t('dashboard.all_servers')}
-              </Button>
-            }
-          />
-          {loading ? <NodesTableSkeleton /> : <NodesTable nodes={nodes} seriesByNode={seriesByNode} colorByNode={colorByNode} />}
-        </Panel>
+      <div className={`${ENTER_CLASS} grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]`} style={enterDelay(0)}>
+        <AttentionInbox />
+        <DashboardMetrics
+          loading={loading}
+          nodesOnline={summary?.nodes.online}
+          nodesTotal={summary?.nodes.total}
+          nodesDown={nodes.filter((n) => n.status === 'offline').map((n) => n.name)}
+          keysActive={summary?.keys.active}
+          keysTotal={summary?.keys.total}
+          people={summary?.people_online}
+          people15m={summary?.people_online_15m}
+          peopleSeries={(trends?.people ?? []).map((p) => p.people_online)}
+          connections={summary?.sessions_live}
+          traffic={trends?.traffic_24h}
+          trafficBefore={trends?.traffic_prev_24h}
+        />
       </div>
 
-      <AdvancedSettings label={t('workspace.history_details')}>
-        <div className={ENTER_CLASS} style={enterDelay(2)}>
-          <Panel className="flex flex-col">
-            {/* No range control and no expand button here, unlike the mockup:
-              the series behind this chart is a fixed 24h fetch and there is
-              no full-screen view to open, so either affordance would be a
-              control that does nothing. */}
-            <PanelHeader
-              icon={Activity}
-              title={t('dashboard.sessions_chart_title')}
-              actions={
-                <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/monitoring" />}>
-                  {t('nav.monitoring')}
-                </Button>
-              }
-              meta={chartStep ? t('dashboard.sessions_chart_meta', { step: chartStep }) : undefined}
-            />
-            <div className="flex-1 px-2 py-3">
-              {seriesLoading ? (
-                <Skeleton className="h-[220px] w-full" />
-              ) : chart.data.length === 0 ? (
-                <div className="flex h-[220px] items-center justify-center">
-                  <p className="text-body text-mute">{t('dashboard.sessions_chart_empty')}</p>
-                </div>
-              ) : (
-                <Suspense fallback={<Skeleton className="h-[220px] w-full" />}>
-                  <SessionsChart data={chart.data} series={chart.series} />
-                </Suspense>
-              )}
-            </div>
-            {!seriesLoading && chart.data.length > 0 && (
-              <ChartLegend items={chart.series} className="border-t border-hairline px-4 py-3" />
-            )}
-          </Panel>
+      <section aria-labelledby="servers-title" className={`${ENTER_CLASS} space-y-3`} style={enterDelay(1)}>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 id="servers-title" className="text-title text-foreground">
+            {t('nodes.title')}
+          </h2>
+          {isWriter && nodes.length > 1 && <p className="text-label text-mute">{t('nodes.reorder_hint_cards')}</p>}
         </div>
+        {loading ? <CardsSkeleton /> : <ServerCards nodes={nodes} writer={isWriter} />}
+      </section>
 
-        <div className={ENTER_CLASS} style={enterDelay(3)}>
-          <Panel>
-            <RecentJobsSection jobs={recentJobs} />
-          </Panel>
-        </div>
-      </AdvancedSettings>
+      <HistorySection nodes={nodes} jobs={(summary?.recent_jobs ?? []).slice(0, RECENT_JOBS_LIMIT)} />
     </>
   );
 }

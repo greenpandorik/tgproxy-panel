@@ -269,6 +269,8 @@ export interface Node {
   max_profiles: number;
   profile_count: number;
   dirty: boolean;
+  /** When the changes still waiting for the node were first made; null when none wait or it is not known. */
+  dirty_since?: string | null;
   last_seen_at: string | null;
   last_apply_at: string | null;
   created_at: string;
@@ -711,6 +713,15 @@ export interface DashboardSummary extends Partial<FleetPeople> {
   recent_jobs: ApplyJob[];
 }
 
+/** The last day: people online over it, and the traffic moved in it and in the day before. */
+export interface DashboardTrends {
+  people: { t: string; people_online: number }[];
+  /** Null until two readings of some server's counters exist. */
+  traffic_24h: number | null;
+  /** Null unless the stored history covers the whole day before. */
+  traffic_prev_24h: number | null;
+}
+
 /** Server load at one sample. Null where the node did not report that reading. */
 export interface LoadPoint {
   t: string;
@@ -740,6 +751,8 @@ export interface MonitoringNode {
   node_name: string;
   hostname: string;
   status: NodeStatus;
+  /** When the TLS certificate on port 443 expires, as the newest diagnostics pass read it. */
+  cert_expires_at?: string | null;
 }
 
 export interface MonitoringPoint extends LoadPoint {

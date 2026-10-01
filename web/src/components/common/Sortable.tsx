@@ -78,7 +78,7 @@ export function SortableList({ items, onReorder, layout = 'list', nameOf, messag
 
 /** The grip an item is dragged by. It takes focus, so Space picks the item up from the keyboard. */
 export function DragHandle({
-  activatorRef,
+  activator,
   attributes,
   listeners,
   label,
@@ -87,7 +87,7 @@ export function DragHandle({
   return (
     <button
       type="button"
-      ref={activatorRef}
+      ref={activator}
       {...attributes}
       {...listeners}
       aria-label={label}

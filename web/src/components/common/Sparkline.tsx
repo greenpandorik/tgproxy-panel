@@ -1,4 +1,5 @@
 import { OFFLINE_SERIES_COLOR } from '@/lib/chart';
+import { cn } from '@/lib/utils';
 
 /** The mark's own coordinate space. Width matches the column the mockup gives it. */
 const W = 76;
@@ -13,6 +14,8 @@ export interface SparklineProps {
   color: string;
   /** A node that stopped reporting: flat, dashed, --dim. Not a line at zero. */
   offline?: boolean;
+  /** Sizes the mark, e.g. `w-full` to stretch it across its box. */
+  className?: string;
 }
 
 /** `points` mapped into the box, with a flat series pinned to the middle. */
@@ -30,7 +33,7 @@ function path(points: number[]): string {
     .join(' ');
 }
 
-export function Sparkline({ points, color, offline }: SparklineProps) {
+export function Sparkline({ points, color, offline, className }: SparklineProps) {
   const flat = offline || points.length < 2;
 
   return (
@@ -41,7 +44,7 @@ export function Sparkline({ points, color, offline }: SparklineProps) {
       fill="none"
       preserveAspectRatio="none"
       aria-hidden="true"
-      className="block overflow-visible"
+      className={cn('block overflow-visible', className)}
     >
       <path
         d={flat ? `M0 ${H / 2} L${W} ${H / 2}` : path(points)}

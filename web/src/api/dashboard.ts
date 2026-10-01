@@ -2,13 +2,14 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 
 import { api } from '@/lib/api';
 
-import type { Alert, DashboardSummary, SeriesPoint } from './types';
+import type { Alert, DashboardSummary, DashboardTrends, SeriesPoint } from './types';
 import type { UseQueryResult } from '@tanstack/react-query';
 
 export const dashboardKeys = {
   summary: ['dashboard', 'summary'] as const,
   series: (nodeId: string) => ['dashboard', 'series', nodeId] as const,
   alerts: ['dashboard', 'alerts'] as const,
+  trends: ['dashboard', 'trends'] as const,
 };
 
 export const useDashboardSummary = () =>
@@ -48,11 +49,34 @@ export const useAlerts = () =>
     refetchInterval: 15_000,
   });
 
-export const useResolveAlert = () => {
+/** People online over the last day and the traffic moved in it, for the overview's tiles. */
+export const useDashboardTrends = () =>
+  useQuery({
+    queryKey: dashboardKeys.trends,
+    queryFn: () => api.get<DashboardTrends>('/api/v1/dashboard/trends'),
+    refetchInterval: 120_000,
+  });
+
+/** Marks alerts read. They leave the list at once and come back if the panel refuses. */
+export const useReadAlerts = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => api.post<{ resolved: boolean }>(`/api/v1/alerts/${id}/resolve`),
-    onSuccess: () => {
+    mutationFn: (ids: number[]) => api.post<{ resolved: number }>('/api/v1/alerts/resolve', { ids }),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: dashboardKeys.alerts });
+      const previous = qc.getQueryData<{ items: Alert[] }>(dashboardKeys.alerts);
+      if (previous) {
+        qc.setQueryData<{ items: Alert[] }>(dashboardKeys.alerts, {
+          ...previous,
+          items: previous.items.filter((a) => !ids.includes(a.id)),
+        });
+      }
+      return { previous };
+    },
+    onError: (_error, _ids, context) => {
+      if (context?.previous) qc.setQueryData(dashboardKeys.alerts, context.previous);
+    },
+    onSettled: () => {
       void qc.invalidateQueries({ queryKey: dashboardKeys.alerts });
       void qc.invalidateQueries({ queryKey: dashboardKeys.summary });
     },

@@ -5,12 +5,12 @@ import type { CSSProperties } from 'react';
 
 /** What a DragHandle needs from its item. */
 export interface SortableHandle {
-  activatorRef: ReturnType<typeof useSortable>['setActivatorNodeRef'];
+  activator: ReturnType<typeof useSortable>['setActivatorNodeRef'];
   attributes: ReturnType<typeof useSortable>['attributes'];
   listeners: ReturnType<typeof useSortable>['listeners'];
 }
 
-/** One item of a SortableList: the ref and style for its box, and the props for its handle. */
+/** One item of a SortableList: the ref setter and style for its box, and the props for its handle. */
 export function useSortableItem(id: string, disabled = false) {
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id,
@@ -23,9 +23,9 @@ export function useSortableItem(id: string, disabled = false) {
     zIndex: isDragging ? 20 : undefined,
   };
   return {
-    ref: setNodeRef,
+    setNode: setNodeRef,
     style,
     dragging: isDragging,
-    handle: { activatorRef: setActivatorNodeRef, attributes, listeners } satisfies SortableHandle,
+    handle: { activator: setActivatorNodeRef, attributes, listeners } satisfies SortableHandle,
   };
 }
