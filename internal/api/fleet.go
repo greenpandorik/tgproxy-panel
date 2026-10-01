@@ -65,7 +65,7 @@ func (s *Server) handleFleetList(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items})
+	writeJSON(w, 200, map[string]any{"items": items, "version": s.cfg.TelemtVersion})
 }
 
 func (s *Server) handleFleetStart(w http.ResponseWriter, r *http.Request) {

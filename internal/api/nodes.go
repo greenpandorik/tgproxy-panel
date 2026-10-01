@@ -54,6 +54,7 @@ type nodeJSON struct {
 	MaxProfiles                 int             `json:"max_profiles"`
 	ProfileCount                int             `json:"profile_count"`
 	Dirty                       bool            `json:"dirty"`
+	DirtySince                  *time.Time      `json:"dirty_since"`
 	LastSeenAt                  *time.Time      `json:"last_seen_at"`
 	LastApplyAt                 *time.Time      `json:"last_apply_at"`
 	CreatedAt                   time.Time       `json:"created_at"`
@@ -89,7 +90,7 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 		TelemtCapabilities:          json.RawMessage(n.TelemtCapabilities),
 		TelemtCapabilitiesCheckedAt: n.TelemtCapabilitiesCheckedAt,
 		TProxyVersion:               n.TproxyVersion, AgentVersion: n.AgentVersion,
-		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,
+		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, DirtySince: n.DirtySince, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,
 		CreatedAt: n.CreatedAt,
 	}
 	if len(n.LastHealth) > 0 {

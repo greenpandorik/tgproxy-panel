@@ -49,6 +49,46 @@ func (q *Queries) InsertNodeDiagnostics(ctx context.Context, arg InsertNodeDiagn
 	return i, err
 }
 
+const latestCertChecks = `-- name: LatestCertChecks :many
+SELECT n.id AS node_id, d.started_at, d.cert::jsonb AS cert
+FROM nodes n
+JOIN LATERAL (
+  SELECT started_at, jsonb_path_query_first(checks, '$[*].checks[*] ? (@.key == "certificate_expiry" && @.value != null)') AS cert
+  FROM node_diagnostics
+  WHERE node_id = n.id
+    AND jsonb_path_exists(checks, '$[*].checks[*] ? (@.key == "certificate_expiry" && @.value != null)')
+  ORDER BY started_at DESC LIMIT 1
+) d ON true
+`
+
+type LatestCertChecksRow struct {
+	NodeID    uuid.UUID `json:"node_id"`
+	StartedAt time.Time `json:"started_at"`
+	Cert      []byte    `json:"cert"`
+}
+
+// LatestCertChecks is, per node, the certificate_expiry check of its newest diagnostics pass that
+// measured one.
+func (q *Queries) LatestCertChecks(ctx context.Context) ([]LatestCertChecksRow, error) {
+	rows, err := q.db.Query(ctx, latestCertChecks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LatestCertChecksRow{}
+	for rows.Next() {
+		var i LatestCertChecksRow
+		if err := rows.Scan(&i.NodeID, &i.StartedAt, &i.Cert); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNodeDiagnostics = `-- name: ListNodeDiagnostics :many
 SELECT id, node_id, started_at, finished_at, overall_status, trigger, checks FROM node_diagnostics WHERE node_id = $1 ORDER BY started_at DESC LIMIT $2
 `

@@ -12,6 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/nodediag"
 	"tgwebproxy/internal/store/db"
 )
 
@@ -113,6 +115,28 @@ type monitoringNodeJSON struct {
 	NodeName string    `json:"node_name"`
 	Hostname string    `json:"hostname"`
 	Status   string    `json:"status"`
+	// CertExpiresAt is when the TLS certificate on port 443 expires, from the newest diagnostics
+	// pass that read it; null when none has.
+	CertExpiresAt *time.Time `json:"cert_expires_at"`
+}
+
+// certExpiries is each node's certificate expiry as its newest diagnostics pass read it.
+func (s *Server) certExpiries(r *http.Request) (map[uuid.UUID]time.Time, error) {
+	rows, err := s.store.Q.LatestCertChecks(r.Context())
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]time.Time, len(rows))
+	for _, row := range rows {
+		var check domain.DiagnosticCheck
+		if json.Unmarshal(row.Cert, &check) != nil {
+			continue
+		}
+		if at, ok := nodediag.CertNotAfter(check); ok {
+			out[row.NodeID] = at
+		}
+	}
+	return out, nil
 }
 
 type monitoringPointJSON struct {
@@ -243,9 +267,18 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 		internal(w)
 		return
 	}
+	certs, err := s.certExpiries(r)
+	if err != nil {
+		internal(w)
+		return
+	}
 	nodes := make([]monitoringNodeJSON, 0, len(nodeRows))
 	for _, n := range nodeRows {
-		nodes = append(nodes, monitoringNodeJSON{NodeID: n.ID, NodeName: n.Name, Hostname: n.Hostname, Status: string(n.Status)})
+		item := monitoringNodeJSON{NodeID: n.ID, NodeName: n.Name, Hostname: n.Hostname, Status: string(n.Status)}
+		if at, ok := certs[n.ID]; ok {
+			item.CertExpiresAt = &at
+		}
+		nodes = append(nodes, item)
 	}
 
 	snapRows, err := s.overviewSamples(r, from, to, stepSeconds)

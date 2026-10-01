@@ -572,6 +572,7 @@ type Node struct {
 	TelemtWebPolicy             []byte     `json:"telemt_web_policy"`
 	TlsDomains                  []string   `json:"tls_domains"`
 	SortOrder                   int32      `json:"sort_order"`
+	DirtySince                  *time.Time `json:"dirty_since"`
 }
 
 type NodeBlocklist struct {

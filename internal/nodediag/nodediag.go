@@ -335,6 +335,19 @@ func certExpiry(notAfter time.Time) domain.DiagnosticCheck {
 	}
 }
 
+// CertNotAfter reads the expiry date back out of a certificate_expiry check.
+func CertNotAfter(c domain.DiagnosticCheck) (time.Time, bool) {
+	if c.Key != "certificate_expiry" || c.Value == nil || c.Detail == nil {
+		return time.Time{}, false
+	}
+	fields := strings.Fields(*c.Detail)
+	if len(fields) == 0 {
+		return time.Time{}, false
+	}
+	at, err := time.Parse(time.RFC3339, fields[len(fields)-1])
+	return at, err == nil
+}
+
 func fakeTLS(t Target, p publicFacts) domain.DiagnosticCheck {
 	port := strconv.Itoa(t.ClassicPort)
 	switch {

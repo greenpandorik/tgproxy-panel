@@ -100,11 +100,12 @@ UPDATE nodes SET status = 'offline' WHERE status IN ('online','degraded') AND la
 -- SetNodeApplied a no-op and the node stays dirty for the next sweep.
 -- name: SetNodeDirty :exec
 UPDATE nodes SET dirty = sqlc.arg('dirty'),
-  dirty_seq = CASE WHEN sqlc.arg('dirty')::boolean THEN dirty_seq + 1 ELSE dirty_seq END
+  dirty_seq = CASE WHEN sqlc.arg('dirty')::boolean THEN dirty_seq + 1 ELSE dirty_seq END,
+  dirty_since = CASE WHEN sqlc.arg('dirty')::boolean THEN COALESCE(dirty_since, now()) ELSE NULL END
 WHERE id = sqlc.arg('id');
 
 -- name: SetNodeApplied :exec
-UPDATE nodes SET dirty = false, last_apply_at = now()
+UPDATE nodes SET dirty = false, dirty_since = NULL, last_apply_at = now()
 WHERE id = sqlc.arg('id') AND dirty_seq = sqlc.arg('dirty_seq');
 
 -- name: DeleteNode :exec
