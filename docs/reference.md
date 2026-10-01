@@ -1062,6 +1062,7 @@ header equal to the `tgwp_csrf` cookie. Some routes are useful on their own:
 | `POST /api/v1/keys`, `PATCH /api/v1/keys/{id}` | Owner, admin | Create or change a user |
 | `POST /api/v1/keys/{id}/disable`, `POST /api/v1/keys/{id}/enable` | Owner, admin | Turn access off or on |
 | `POST /api/v1/keys/bulk` | Owner, admin | One action on several users: `extend`, `disable`, `enable`, `revoke` or `delete` |
+| `POST /api/v1/keys/import` | Owner, admin | Users from another proxy with their own secrets, all or none |
 | `POST /api/v1/keys/{id}/subscription` | Owner, admin | A new subscription link in place of the old one, answers `{url, qr_data_uri}` |
 | `GET /api/v1/keys/{id}/subscription/qr` | Owner, admin | A PNG with the QR code of the current subscription link |
 | `GET /api/v1/keys/{id}/links` | Owner, admin | The user's direct links, grouped by server |
@@ -1093,6 +1094,10 @@ within the next 7 days), `expired`, `disabled` and `revoked`. `POST /api/v1/keys
 `PATCH /api/v1/keys/{id}` take `sub_slug`, for shared access only; an address that is taken
 answers 422 with `sub_slug: "taken"` in `error.fields`. `POST /api/v1/keys/bulk` takes
 `{action, ids, expires_at}` with 1 to 500 ids, and `expires_at` is needed only for `extend`.
+`POST /api/v1/keys/import` takes the fields of `POST /api/v1/keys` plus
+`items: [{label, owner_label, secret}]`, 1 to 500 of them, each secret 32 hex characters. A bad
+line answers 422 with `items.<index>` in `error.fields`, including a secret another user already
+has; nothing is created then.
 `GET /api/v1/keys/{id}/subscription/qr` takes `size` from 128 to 1024 (256 by default), and with
 `short=1` it draws the short address.
 

@@ -2,9 +2,10 @@ import { z } from 'zod';
 
 import { EMPTY_TELEMT_LIMITS_FORM, telemtLimitsFromForm, telemtLimitsToForm, validateTelemtLimitsForm } from '@/lib/units';
 
+import { MAX_IMPORT, parseImport } from './importList';
 import { ZERO_LIMITS } from './LimitsFields';
 
-import type { AccessKey, KeyInput, PatchKeyInput } from '@/api/types';
+import type { AccessKey, ImportKeysInput, KeyInput, PatchKeyInput } from '@/api/types';
 import type { TelemtLimitsForm } from '@/lib/units';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/;
@@ -24,13 +25,14 @@ const limitsShape = {
 export const userSchema = z
   .object({
     creating: z.boolean(),
-    mode: z.enum(['personal', 'shared', 'batch']),
+    mode: z.enum(['personal', 'shared', 'batch', 'import']),
     label: z.string(),
     owner_label: z.string(),
     note: z.string(),
     sub_slug: z.string(),
     prefix: z.string(),
     count: z.coerce.number().int(),
+    import_text: z.string(),
     carrier_mode: z.enum(['https', 'https-lanes', 'websocket', 'websocket-lanes']),
     node_ids: z.array(z.string()),
     no_expiry: z.boolean(),
@@ -45,7 +47,7 @@ export const userSchema = z
     }),
   })
   .superRefine((val, ctx) => {
-    if (val.mode !== 'batch' && val.label.trim() === '') {
+    if ((val.mode === 'personal' || val.mode === 'shared') && val.label.trim() === '') {
       ctx.addIssue({ code: 'custom', path: ['label'], message: 'required' });
     }
     if (val.mode === 'batch') {
@@ -53,6 +55,12 @@ export const userSchema = z
       if (!Number.isFinite(val.count) || val.count < 1 || val.count > 100) {
         ctx.addIssue({ code: 'custom', path: ['count'], message: 'range' });
       }
+    }
+    if (val.mode === 'import') {
+      const parsed = parseImport(val.import_text);
+      const message =
+        parsed.lines.length === 0 ? 'empty' : parsed.ready.length < parsed.lines.length ? 'lines' : parsed.ready.length > MAX_IMPORT ? 'too_many' : '';
+      if (message) ctx.addIssue({ code: 'custom', path: ['import_text'], message });
     }
     if (val.mode === 'shared' && val.sub_slug.trim() !== '' && !SLUG_RE.test(val.sub_slug.trim())) {
       ctx.addIssue({ code: 'custom', path: ['sub_slug'], message: 'slug' });
@@ -91,6 +99,7 @@ export const NEW_USER: UserFormValues = {
   sub_slug: '',
   prefix: '',
   count: 5,
+  import_text: '',
   carrier_mode: 'https',
   node_ids: [],
   no_expiry: true,
@@ -132,6 +141,7 @@ export function valuesFromUser(key: AccessKey): UserFormValues {
     sub_slug: key.sub_slug ?? '',
     prefix: '',
     count: 1,
+    import_text: '',
     carrier_mode: key.carrier_mode,
     node_ids: key.nodes.map((n) => n.node_id),
     no_expiry: !key.expires_at,
@@ -163,6 +173,17 @@ export function createPayload(v: UserFormValues, telemtOnly: boolean): KeyInput 
   }
   if (v.mode === 'shared' && v.sub_slug.trim()) payload.sub_slug = v.sub_slug.trim();
   return payload;
+}
+
+export function importPayload(v: UserFormValues, telemtOnly: boolean): ImportKeysInput {
+  return {
+    ...createPayload({ ...v, mode: 'personal', owner_label: '' }, telemtOnly),
+    items: parseImport(v.import_text).ready.map((l) => ({
+      label: l.label,
+      owner_label: l.owner_label || undefined,
+      secret: l.secret,
+    })),
+  };
 }
 
 export function patchPayload(v: UserFormValues): PatchKeyInput {

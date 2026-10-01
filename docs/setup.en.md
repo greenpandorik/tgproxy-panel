@@ -557,7 +557,7 @@ In the panel, access to the proxy is given to users. A user can be one person or
 people sharing one link. This section used to be called Access keys, and old `/keys` addresses
 still open it.
 
-Open Users and press "New user". There are three tabs at the top:
+Open Users and press "New user". There are four tabs at the top:
 
 - "One person": personal access. You can turn it off or revoke it without touching anyone else.
 - "Shared access": one link for a group of people. It can be turned off or revoked only for
@@ -565,6 +565,8 @@ Open Users and press "New user". There are three tabs at the top:
 - "Several": several personal users at once, all with the same settings. The dialog is then
   called "Several users", and a "Names" card takes the place of "About the user". Set a "Prefix"
   and a "Count" (1 to 100), and they are named `prefix-1`, `prefix-2` and so on.
+- "Move in": people from another panel or proxy, together with their secrets. See "Moving from
+  another panel" below.
 
 The fields are grouped into cards. In "About the user" only "Name" is required; it is how you find
 the person in the list later. "Contact" (a Telegram username, phone or e-mail) and "Note" are
@@ -585,6 +587,43 @@ the servers list shows how full it is.
 
 A new user starts as "Setting up": the panel is setting up the servers, which usually takes under
 a minute, and there is nothing to press. The state then changes to "Active".
+
+### Moving from another panel
+
+The "Move in" tab creates users with the secrets people already have in Telegram. Once the old
+proxy address leads to your server, their old links keep working and you do not need to send new
+ones.
+
+Paste one person per line into "List". The panel understands lines like these:
+
+```text
+ivan: 0123456789abcdef0123456789abcdef
+Anna Petrova 0123456789abcdef0123456789abcdee @anna
+oleg = "0123456789abcdef0123456789abcded"
+tg://proxy?server=old.example.com&port=443&secret=ee0123456789abcdef0123456789abcdec…
+```
+
+Whatever comes before the secret becomes the name, and whatever follows it the contact. A
+`name = "secret"` line can come straight from the `[access.users]` section of a telemt config.
+From `tg://proxy` and `t.me/proxy` links the panel takes the secret out itself, ee and dd secrets
+included. A link without a name gives a user named after the start of the secret; you can rename
+them later. Empty lines and lines starting with `#` or `[` are skipped.
+
+Below the box you see what the panel made of each line. A line without a secret, with a secret of
+the wrong length, or with a secret that already appeared above is highlighted, and the move does
+not start until you fix or remove it. A secret that a user of this panel already has is refused
+too. The rest works like "Several": the same servers, expiry and limits for everyone, up to 500
+people at a time, and either everyone is created or nobody is. Afterwards the panel shows the same
+list of links.
+
+For the old links to work:
+
+1. Point the old proxy address (the domain or IP in the links) at the new server and keep the
+   port. If the links said `old.example.com:443`, the server's Fake-TLS port must be 443 too.
+2. If the old links were Fake-TLS, meaning the secret started with `ee`, they carry a masking
+   domain. The panel shows it below the list. Make it the server's main domain or add it to
+   "Backup masking domains".
+3. Moved users get new links and a subscription link as usual.
 
 ### The users list
 

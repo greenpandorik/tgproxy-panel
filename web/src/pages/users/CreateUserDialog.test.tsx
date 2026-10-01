@@ -271,3 +271,96 @@ describe('CreateUserDialog sending', () => {
     expect(await screen.findByText(/3–32 символа/)).toBeInTheDocument();
   });
 });
+
+describe('CreateUserDialog moving users in', () => {
+  const A = '0123456789abcdef0123456789abcdef';
+  const B = 'fedcba9876543210fedcba9876543210';
+
+  beforeEach(() => {
+    setLang('ru');
+    window.localStorage.clear();
+  });
+
+  function stubImport(answer: (body: unknown) => Promise<Response>) {
+    const sent: unknown[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.includes('/api/v1/nodes')) return json({ items: [AMS], total: 1 });
+        if (path.endsWith('/api/v1/keys/import') && init?.method === 'POST') {
+          const body: unknown = JSON.parse(String(init.body));
+          sent.push(body);
+          return answer(body);
+        }
+        return json({ items: [], total: 0 });
+      }),
+    );
+    return sent;
+  }
+
+  it('sends each pasted person with their own secret and keeps secrets out of the draft', async () => {
+    const user = userEvent.setup();
+    const sent = stubImport(() => json({ items: [{ id: 'k-1' }, { id: 'k-2' }], total: 2 }));
+    const moved = vi.fn();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <CreateUserDialog open onOpenChange={() => {}} onCreated={() => {}} onBatchCreated={moved} />
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole('tab', { name: 'Перенос' }));
+    await user.click(screen.getByLabelText('Список'));
+    await user.paste(`ivan: ${A} : @ivan\nanna = "${B}"`);
+    expect(screen.getByText('Готово к переносу: 2')).toBeInTheDocument();
+    await user.click(await screen.findByText('Amsterdam'));
+    await waitFor(() => expect(readDraft<{ import_text: string }>(DRAFT_KEY)?.value.import_text).toBe(''));
+
+    await user.click(screen.getByRole('button', { name: 'Перенести (2)' }));
+    await waitFor(() => expect(moved).toHaveBeenCalled());
+    const body = sent[0] as { type: string; items: { label: string; owner_label?: string; secret: string }[] };
+    expect(body.type).toBe('PERSONAL');
+    expect(body.items).toEqual([
+      { label: 'ivan', owner_label: '@ivan', secret: A },
+      { label: 'anna', secret: B },
+    ]);
+  });
+
+  it('puts the panel’s complaint next to the line it is about', async () => {
+    const user = userEvent.setup();
+    stubImport(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ error: { code: 'validation', message: 'invalid', fields: { 'items.1': 'secret already belongs to another user' } } }),
+          { status: 422, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    );
+    renderDialog();
+
+    await user.click(await screen.findByRole('tab', { name: 'Перенос' }));
+    await user.click(screen.getByLabelText('Список'));
+    await user.paste(`# old panel\nivan ${A}\nanna ${B}`);
+    await user.click(await screen.findByText('Amsterdam'));
+    await user.click(screen.getByRole('button', { name: 'Перенести (2)' }));
+
+    expect(await screen.findByText('Этот секрет уже есть у другого пользователя панели')).toBeInTheDocument();
+    expect(screen.getByText(/Исправьте или удалите строки с ошибками/)).toBeInTheDocument();
+  });
+
+  it('will not send a list with broken lines', async () => {
+    const user = userEvent.setup();
+    const sent = stubImport(() => json({ items: [], total: 0 }));
+    renderDialog();
+
+    await user.click(await screen.findByRole('tab', { name: 'Перенос' }));
+    await user.click(screen.getByLabelText('Список'));
+    await user.paste(`ivan ${A}\nanna ${A}\noleg`);
+    expect(screen.getByText('Тот же секрет, что в строке 1')).toBeInTheDocument();
+    expect(screen.getByText(/Не нашли секрет/)).toBeInTheDocument();
+    await user.click(await screen.findByText('Amsterdam'));
+    await user.click(screen.getByRole('button', { name: 'Перенести (1)' }));
+    expect(sent).toHaveLength(0);
+  });
+});

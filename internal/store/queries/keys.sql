@@ -77,6 +77,11 @@ SELECT count(*) AS total,
   count(*) FILTER (WHERE status = 'revoked') AS revoked
 FROM access_keys;
 
+-- name: ListSecretsInUse :many
+SELECT secret_enc FROM access_keys WHERE status <> 'revoked'
+UNION ALL
+SELECT secret_enc FROM profiles WHERE access_key_id IS NULL;
+
 -- name: DeleteKey :exec
 DELETE FROM access_keys WHERE id = $1;
 

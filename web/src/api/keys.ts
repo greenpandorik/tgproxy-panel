@@ -6,6 +6,7 @@ import type {
   AccessKey,
   BulkKeysInput,
   BulkKeysResult,
+  ImportKeysInput,
   KeyFilters,
   KeyInput,
   KeyLinksResult,
@@ -99,6 +100,14 @@ export const useBatchKeys = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (b: KeyInput) => api.post<Paginated<AccessKey>>('/api/v1/keys/batch', b),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keyKeys.all }),
+  });
+};
+
+export const useImportKeys = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: ImportKeysInput) => api.post<Paginated<AccessKey>>('/api/v1/keys/import', b),
     onSuccess: () => qc.invalidateQueries({ queryKey: keyKeys.all }),
   });
 };

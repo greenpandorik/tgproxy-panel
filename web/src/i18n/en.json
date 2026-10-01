@@ -1738,7 +1738,7 @@
         "fields": {
           "tabs": {
             "name": "Tabs",
-            "what": "One person: personal access. Shared access: one link for a group; only shared access has a short address. Several: a series of personal users named prefix-1, prefix-2 and so on."
+            "what": "One person: personal access. Shared access: one link for a group; only shared access has a short address. Several: a series of personal users named prefix-1, prefix-2 and so on. Move in: people from another panel with their own secrets."
           },
           "label": {
             "name": "Name",
@@ -1831,6 +1831,34 @@
         "notes": {
           "1": "If a server has fewer places than users in the series, the panel refuses the whole series and names the server. Lower the count or drop the server.",
           "2": "Users from a series are ordinary users: you can rename, turn off or extend them one by one later."
+        }
+      },
+      "keys.import": {
+        "title": "Move users in",
+        "intro": "Brings people over from another panel or proxy together with their secrets, so the links they have in Telegram stay the same. Everyone gets the same settings: servers, expiry, limits. The panel checks every line and the room on each server and creates either all of them or none.",
+        "fields": {
+          "list": {
+            "name": "List",
+            "what": "Paste an export from the old panel, the [access.users] section of a telemt config, or plain links. Empty lines and lines starting with # or [ are skipped. Below the box you see what the panel made of each line.",
+            "example": "ivan: 0123456789abcdef0123456789abcdef"
+          },
+          "name": {
+            "name": "Name",
+            "what": "Whatever comes before the secret. Without a name, as with a bare link, the panel names the user after the start of the secret; you can rename later. Text after the secret becomes the contact.",
+            "example": "Anna: <secret> : @anna"
+          },
+          "secret": {
+            "name": "Secret",
+            "what": "32 hex characters. From links prefixed with ee or dd the panel takes the secret out itself, and from ee links the masking domain too. A secret another panel user already has, or one repeated in the list, is refused."
+          },
+          "move": {
+            "name": "Moving",
+            "what": "Old links point at the old address and port. Point that address at the new server, keep the port, and make the masking domain of the old Fake-TLS links the server's main or backup domain."
+          }
+        },
+        "notes": {
+          "1": "Up to 500 people at a time. Each takes a place on every chosen server.",
+          "2": "Once moved they are ordinary users: you can rename, turn off or extend them, or give them a new secret."
         }
       },
       "keys.limits": {
@@ -2821,7 +2849,29 @@
     "extend_month": "Extend by a month",
     "extended": "Extended until {{date}}",
     "column_link": "Link",
-    "found": "Found: {{count}}"
+    "found": "Found: {{count}}",
+    "tab_import": "Move in",
+    "create_title_import": "Move users in",
+    "create_hint_import": "From another panel or proxy, secrets included. People's old links keep working once their address points at this server.",
+    "card_import": "Who moves in",
+    "import_list": "List",
+    "import_list_hint": "One per line: a name and a secret separated by a colon or a space, a telemt config line, or a tg:// or t.me link. A contact may follow the secret.",
+    "import_empty": "Paste at least one line",
+    "import_too_many": "At most {{max}} at a time",
+    "import_found": "Ready to move: {{count}}",
+    "import_broken": "with errors: {{count}}",
+    "import_no_secret": "No secret found: expected 32 hex characters, a config line or a link",
+    "import_bad_secret": "This secret will not do: it needs 32 hex characters, optionally prefixed with ee or dd",
+    "import_duplicate": "Same secret as line {{line}}",
+    "import_taken": "Another user of this panel already has this secret",
+    "import_fix_lines": "Fix or remove the lines with errors",
+    "import_submit": "Move in ({{count}})",
+    "import_move_title": "For the old links to work",
+    "import_move_address": "Point {{servers}} at this server: change the DNS record or move the IP. Keep the same port.",
+    "import_move_address_any": "Point the old proxy address at this server: change the DNS record or move the IP. Keep the same port.",
+    "import_move_domains": "The old links mask as {{domains}}. Make it the main domain or add it to the server's backup masking domains, or Fake-TLS links will not connect.",
+    "import_move_domains_any": "If the old links were Fake-TLS (the secret starts with ee), add their masking domain to the server's backup masking domains.",
+    "import_move_links": "Every user also gets new links and a subscription link as usual; you can send them right away."
   },
   "service": {
     "title": "Subscription page service",

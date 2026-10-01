@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarClock, Gauge, UserRound } from 'lucide-react';
+import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { useBatchKeys, useCreateKey } from '@/api/keys';
+import { useBatchKeys, useCreateKey, useImportKeys } from '@/api/keys';
 import { useNodes } from '@/api/nodes';
 import { subscriptionBase, useSubscriptionService } from '@/api/subscriptionService';
 import { DraftBanner } from '@/components/common/DraftBanner';
@@ -14,14 +15,34 @@ import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { useDraft } from '@/lib/drafts';
 
+import { ImportFields } from './ImportFields';
+import { parseImport } from './importList';
 import { transportScope } from './transport';
 import { AboutFields, AccessFields, LimitsCardBody, UserCard } from './UserCards';
-import { NEW_USER, createPayload, userSchema } from './userForm';
+import { NEW_USER, createPayload, importPayload, userSchema } from './userForm';
 
 import type { UserFormValues } from './userForm';
 import type { AccessKey } from '@/api/types';
 
 const FORM_ID = 'create-user-form';
+
+type Mode = UserFormValues['mode'];
+
+const TITLES: Record<Mode, string> = {
+  personal: 'users.create_title',
+  shared: 'users.create_title',
+  batch: 'users.create_title_batch',
+  import: 'users.create_title_import',
+};
+
+const CARD_TITLES: Record<Mode, string> = {
+  personal: 'users.card_about',
+  shared: 'users.card_about',
+  batch: 'users.card_names',
+  import: 'users.card_import',
+};
+
+const HELP = { personal: 'keys.create', shared: 'keys.create', batch: 'keys.batch', import: 'keys.import' } as const;
 
 interface CreateUserDialogProps {
   open: boolean;
@@ -35,6 +56,8 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
   const nodesQuery = useNodes();
   const createKey = useCreateKey();
   const batchKeys = useBatchKeys();
+  const importKeys = useImportKeys();
+  const [lineErrors, setLineErrors] = useState<{ text: string; byLine: Record<number, string> } | null>(null);
   const serviceQuery = useSubscriptionService();
 
   const {
@@ -51,22 +74,33 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
   const values = watch();
   const nodes = nodesQuery.data?.items ?? [];
   const scope = transportScope(nodes, values.node_ids);
-  const draft = useDraft<UserFormValues>('user-create', values, { initial: NEW_USER, open });
+  const draft = useDraft<UserFormValues>('user-create', { ...values, import_text: '' }, { initial: NEW_USER, open });
+  const mode = values.mode;
+  const importCount = mode === 'import' ? parseImport(values.import_text).ready.length : 0;
+  const shownLineErrors = lineErrors && lineErrors.text === values.import_text ? lineErrors.byLine : {};
 
   const resumeDraft = () => {
     if (!draft.draft) return;
-    reset({ ...draft.draft.value, creating: true }, { keepDefaultValues: true });
+    reset({ ...NEW_USER, ...draft.draft.value, import_text: '', creating: true }, { keepDefaultValues: true });
     draft.dismiss();
   };
 
   const close = () => {
     reset(NEW_USER);
+    setLineErrors(null);
     onOpenChange(false);
   };
 
   const onSubmit = async (v: UserFormValues) => {
     const payload = createPayload(v, scope === 'telemt');
     try {
+      if (v.mode === 'import') {
+        const result = await importKeys.mutateAsync(importPayload(v, scope === 'telemt'));
+        draft.clear();
+        close();
+        onBatchCreated(result.items);
+        return;
+      }
       if (v.mode === 'batch') {
         const result = await batchKeys.mutateAsync(payload);
         draft.clear();
@@ -82,13 +116,23 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
       if (err instanceof ApiError && Object.keys(err.fields).length > 0) {
         const known = ['label', 'owner_label', 'carrier_mode', 'node_ids', 'expires_at', 'prefix', 'count', 'sub_slug'] as const;
         const unmatched: string[] = [];
+        const ready = v.mode === 'import' ? parseImport(v.import_text).ready : [];
+        const byLine: Record<number, string> = {};
         for (const field of Object.keys(err.fields)) {
-          if ((known as readonly string[]).includes(field)) {
+          const item = /^items\.(\d+)$/.exec(field);
+          if (item && ready[Number(item[1])]) {
+            const msg = err.fields[field];
+            byLine[ready[Number(item[1])].line] = msg.includes('another user') ? t('users.import_taken') : msg;
+          } else if ((known as readonly string[]).includes(field)) {
             const msg = field === 'sub_slug' ? t(err.fields[field] === 'taken' ? 'users.validation_slug_taken' : 'users.validation_slug') : err.fields[field];
             setError(field as (typeof known)[number], { message: msg });
           } else {
             unmatched.push(`${field}: ${err.fields[field]}`);
           }
+        }
+        if (Object.keys(byLine).length > 0) {
+          setLineErrors({ text: v.import_text, byLine });
+          unmatched.unshift(t('users.import_fix_lines'));
         }
         if (unmatched.length > 0) setError('root', { message: unmatched.join('; ') });
         return;
@@ -96,8 +140,6 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
       setError('root', { message: err instanceof ApiError ? err.message : t('users.create_error') });
     }
   };
-
-  const mode = values.mode;
 
   return (
     <Dialog
@@ -110,24 +152,27 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
       <DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <div className="flex items-center gap-2 pr-8">
-            <DialogTitle>{t(mode === 'batch' ? 'users.create_title_batch' : 'users.create_title')}</DialogTitle>
-            <HelpButton topic={mode === 'batch' ? 'keys.batch' : 'keys.create'} className="-my-1" />
+            <DialogTitle>{t(TITLES[mode])}</DialogTitle>
+            <HelpButton topic={HELP[mode]} className="-my-1" />
           </div>
         </DialogHeader>
 
         {draft.draft && <DraftBanner savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />}
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <Controller
             control={control}
             name="mode"
             render={({ field }) => (
               <Tabs value={field.value} onValueChange={(v) => field.onChange(v as UserFormValues['mode'])}>
-                <TabsList>
-                  <TabsTrigger value="personal">{t('users.tab_personal')}</TabsTrigger>
-                  <TabsTrigger value="shared">{t('users.tab_shared')}</TabsTrigger>
-                  <TabsTrigger value="batch">{t('users.tab_batch')}</TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto [scrollbar-width:none]">
+                  <TabsList className="w-max min-w-full">
+                    <TabsTrigger value="personal">{t('users.tab_personal')}</TabsTrigger>
+                    <TabsTrigger value="shared">{t('users.tab_shared')}</TabsTrigger>
+                    <TabsTrigger value="batch">{t('users.tab_batch')}</TabsTrigger>
+                    <TabsTrigger value="import">{t('users.tab_import')}</TabsTrigger>
+                  </TabsList>
+                </div>
               </Tabs>
             )}
           />
@@ -141,14 +186,18 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
           noValidate
         >
           <div className="flex min-w-0 flex-col gap-4">
-            <UserCard icon={UserRound} title={t(mode === 'batch' ? 'users.card_names' : 'users.card_about')}>
-              <AboutFields
-                control={control}
-                register={register}
-                errors={errors}
-                values={values}
-                subscriptionBase={subscriptionBase(serviceQuery.data)}
-              />
+            <UserCard icon={UserRound} title={t(CARD_TITLES[mode])}>
+              {mode === 'import' ? (
+                <ImportFields register={register} errors={errors} text={values.import_text} lineErrors={shownLineErrors} />
+              ) : (
+                <AboutFields
+                  control={control}
+                  register={register}
+                  errors={errors}
+                  values={values}
+                  subscriptionBase={subscriptionBase(serviceQuery.data)}
+                />
+              )}
             </UserCard>
           </div>
           <div className="flex min-w-0 flex-col gap-4">
@@ -181,7 +230,11 @@ export function CreateUserDialog({ open, onOpenChange, onCreated, onBatchCreated
             {t('common.cancel')}
           </Button>
           <Button type="submit" form={FORM_ID} disabled={isSubmitting}>
-            {mode === 'batch' ? t('users.create_batch_submit', { count: values.count }) : t('users.create_submit')}
+            {mode === 'batch'
+              ? t('users.create_batch_submit', { count: values.count })
+              : mode === 'import'
+                ? t('users.import_submit', { count: importCount })
+                : t('users.create_submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

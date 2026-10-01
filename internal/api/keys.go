@@ -26,6 +26,7 @@ func (s *Server) mountKeys(r chi.Router) {
 	r.Get("/keys/summary", s.handleKeySummary)
 	r.With(RequireRole(writers...)).Post("/keys", s.handleCreateKey)
 	r.With(RequireRole(writers...)).Post("/keys/batch", s.handleBatchKeys)
+	r.With(RequireRole(writers...)).Post("/keys/import", s.handleImportKeys)
 	r.With(RequireRole(writers...)).Post("/keys/bulk", s.handleBulkKeys)
 	r.Route("/keys/{id}", func(r chi.Router) {
 		r.Get("/", s.handleGetKey)
@@ -337,6 +338,38 @@ func (s *Server) handleBatchKeys(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Audit(r.Context(), "key.batch_create", "key", "", map[string]any{"prefix": in.Prefix, "count": len(ks)})
 	writeJSON(w, 201, map[string]any{"items": items, "total": len(items)})
+}
+
+func (s *Server) handleImportKeys(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		keyInput
+		Items []struct {
+			Label      string `json:"label"`
+			OwnerLabel string `json:"owner_label"`
+			Secret     string `json:"secret"`
+		} `json:"items"`
+	}
+	if err := decodeJSON(r, &in); err != nil {
+		badRequest(w, err.Error())
+		return
+	}
+	items := make([]keys.ImportItem, 0, len(in.Items))
+	for _, it := range in.Items {
+		items = append(items, keys.ImportItem{Label: it.Label, OwnerLabel: it.OwnerLabel, Secret: it.Secret})
+	}
+	p, _ := PrincipalFrom(r.Context())
+	ks, err := s.keys.Import(r.Context(), in.toCreate(p.UserID), items)
+	if err != nil {
+		s.keysErr(w, err)
+		return
+	}
+	extras := s.extrasFor(r.Context(), ks)
+	out := make([]keyJSON, 0, len(ks))
+	for _, k := range ks {
+		out = append(out, s.keyJSONWith(r, k, true, extras[k.ID]))
+	}
+	s.Audit(r.Context(), "key.import", "key", "", map[string]any{"count": len(ks)})
+	writeJSON(w, 201, map[string]any{"items": out, "total": len(out)})
 }
 
 func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {

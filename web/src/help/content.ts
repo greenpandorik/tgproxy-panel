@@ -85,6 +85,10 @@ export const HELP_TOPICS = {
     fields: ['prefix', 'count', 'result'],
     docs: 'keys',
   },
+  'keys.import': {
+    fields: ['list', 'name', 'secret', 'move'],
+    docs: 'keys',
+  },
   'keys.limits': {
     fields: [
       'quota_gb',

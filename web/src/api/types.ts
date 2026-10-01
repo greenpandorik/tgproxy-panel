@@ -502,6 +502,16 @@ export interface KeyInput {
   sub_slug?: string;
 }
 
+export interface ImportKeyItem {
+  label: string;
+  owner_label?: string;
+  secret: string;
+}
+
+export interface ImportKeysInput extends KeyInput {
+  items: ImportKeyItem[];
+}
+
 export interface PatchKeyInput {
   label?: string;
   owner_label?: string;

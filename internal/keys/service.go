@@ -47,6 +47,8 @@ type CreateInput struct {
 	NodeIDs                 []uuid.UUID
 	CreatedBy               uuid.UUID
 	SubSlug                 string
+	// Secret keeps a secret the person already has; empty means a new one.
+	Secret string
 }
 
 func (in CreateInput) validate(requireLabel bool) error {
@@ -83,9 +85,12 @@ func (in CreateInput) validate(requireLabel bool) error {
 
 // createTx creates one key and its per-node profiles inside an existing transaction.
 func (s *Service) createTx(ctx context.Context, q *db.Queries, in CreateInput) (db.AccessKey, error) {
-	secret, err := crypto.NewSecretHex()
-	if err != nil {
-		return db.AccessKey{}, err
+	secret := in.Secret
+	if secret == "" {
+		var err error
+		if secret, err = crypto.NewSecretHex(); err != nil {
+			return db.AccessKey{}, err
+		}
 	}
 	enc, err := s.box.EncryptString(secret)
 	if err != nil {
@@ -149,19 +154,8 @@ func (s *Service) CreateBatch(ctx context.Context, in CreateInput, prefix string
 	var out []db.AccessKey
 	err := s.st.Tx(ctx, func(q *db.Queries) error {
 		out = make([]db.AccessKey, 0, count)
-		for _, nodeID := range in.NodeIDs {
-			node, err := q.GetNode(ctx, nodeID)
-			if err != nil {
-				return ValidationError{"node_ids": "unknown node " + nodeID.String()}
-			}
-			used, err := q.CountNodeProfiles(ctx, nodeID)
-			if err != nil {
-				return err
-			}
-			if used+int64(count) > int64(node.MaxProfiles) {
-				return fmt.Errorf("%w: %s has %d/%d profiles, only %d free but %d requested",
-					ErrCapacity, node.Hostname, used, node.MaxProfiles, int64(node.MaxProfiles)-used, count)
-			}
+		if err := s.checkCapacity(ctx, q, in.NodeIDs, count); err != nil {
+			return err
 		}
 		for i := 1; i <= count; i++ {
 			item := in
@@ -181,6 +175,25 @@ func (s *Service) CreateBatch(ctx context.Context, in CreateInput, prefix string
 		return nil, err
 	}
 	return out, nil
+}
+
+// checkCapacity refuses before anything is written when a node has fewer free places than count.
+func (s *Service) checkCapacity(ctx context.Context, q *db.Queries, nodeIDs []uuid.UUID, count int) error {
+	for _, nodeID := range nodeIDs {
+		node, err := q.GetNode(ctx, nodeID)
+		if err != nil {
+			return ValidationError{"node_ids": "unknown node " + nodeID.String()}
+		}
+		used, err := q.CountNodeProfiles(ctx, nodeID)
+		if err != nil {
+			return err
+		}
+		if used+int64(count) > int64(node.MaxProfiles) {
+			return fmt.Errorf("%w: %s has %d/%d profiles, only %d free but %d requested",
+				ErrCapacity, node.Hostname, used, node.MaxProfiles, int64(node.MaxProfiles)-used, count)
+		}
+	}
+	return nil
 }
 
 // bindTx creates the node profile for the key and the binding, checking capacity.

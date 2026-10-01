@@ -626,6 +626,32 @@ func (q *Queries) ListNodeKeyBindings(ctx context.Context, nodeID uuid.UUID) ([]
 	return items, nil
 }
 
+const listSecretsInUse = `-- name: ListSecretsInUse :many
+SELECT secret_enc FROM access_keys WHERE status <> 'revoked'
+UNION ALL
+SELECT secret_enc FROM profiles WHERE access_key_id IS NULL
+`
+
+func (q *Queries) ListSecretsInUse(ctx context.Context) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listSecretsInUse)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var secret_enc []byte
+		if err := rows.Scan(&secret_enc); err != nil {
+			return nil, err
+		}
+		items = append(items, secret_enc)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeSubscriptionTokensForKey = `-- name: RevokeSubscriptionTokensForKey :exec
 UPDATE subscription_tokens SET revoked_at = now() WHERE access_key_id = $1 AND revoked_at IS NULL
 `
