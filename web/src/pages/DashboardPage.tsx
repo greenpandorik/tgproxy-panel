@@ -1,4 +1,4 @@
-import { Activity, KeyRound, Server } from 'lucide-react';
+import { Activity, Server, UserPlus } from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -235,7 +235,7 @@ export function DashboardPage() {
             <HelpButton topic="dashboard" />
             {isWriter && (
               <Button nativeButton={false} render={<Link to="/users?create=1" />}>
-                <KeyRound />
+                <UserPlus />
                 {t('dashboard.manage_access')}
               </Button>
             )}

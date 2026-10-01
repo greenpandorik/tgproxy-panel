@@ -33,18 +33,16 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 	}
 	nodes["total"] = nodeTotal
 
-	keyRows, err := s.store.Q.CountKeysByStatus(ctx)
+	sum, err := s.store.Q.KeySummary(ctx)
 	if err != nil {
 		internal(w)
 		return
 	}
-	keys := map[string]int{"pending": 0, "active": 0, "revoked": 0}
-	keyTotal := 0
-	for _, c := range keyRows {
-		keys[string(c.Status)] = int(c.N)
-		keyTotal += int(c.N)
+	keys := map[string]int{
+		"total": int(sum.Total), "active": int(sum.Active), "expiring": int(sum.Expiring), "expired": int(sum.Expired),
+		"disabled": int(sum.Disabled), "revoked": int(sum.Revoked),
+		"pending": int(sum.Total - sum.Revoked - sum.Active - sum.Expired - sum.Disabled),
 	}
-	keys["total"] = keyTotal
 
 	snaps, err := s.store.Q.LatestSnapshots(ctx)
 	if err != nil {

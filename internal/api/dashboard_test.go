@@ -13,6 +13,11 @@ import (
 func TestDashboardSummaryAndMetrics(t *testing.T) {
 	h, c, n := ownerWithNode(t)
 	c.Post("/api/v1/keys", map[string]any{"label": "k", "type": "SHARED", "carrier_mode": "https", "node_ids": []string{n.ID.String()}})
+	var off struct {
+		ID string `json:"id"`
+	}
+	c.JSON(c.Post("/api/v1/keys", map[string]any{"label": "off", "type": "PERSONAL", "carrier_mode": "https", "node_ids": []string{n.ID.String()}}), &off)
+	c.Post("/api/v1/keys/"+off.ID+"/disable", nil)
 	_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{NodeID: n.ID, SessionsLive: 3, StreamsLive: 9, BytesUp: pgtype.Int8{Int64: 10, Valid: true}, BytesDown: pgtype.Int8{Int64: 20, Valid: true}, MtproxyRaw: []byte("{}")})
 	var sum struct {
 		Nodes        map[string]int `json:"nodes"`
@@ -21,7 +26,7 @@ func TestDashboardSummaryAndMetrics(t *testing.T) {
 		StreamsLive  int            `json:"streams_live"`
 	}
 	c.JSON(c.Get("/api/v1/dashboard/summary"), &sum)
-	if sum.Nodes["total"] != 1 || sum.Nodes["pending"] != 1 || sum.Keys["pending"] != 1 || sum.SessionsLive != 3 || sum.StreamsLive != 9 {
+	if sum.Nodes["total"] != 1 || sum.Nodes["pending"] != 1 || sum.Keys["pending"] != 1 || sum.Keys["disabled"] != 1 || sum.Keys["active"] != 0 || sum.SessionsLive != 3 || sum.StreamsLive != 9 {
 		t.Fatalf("summary %+v", sum)
 	}
 	resp := h.Anonymous().Get("/metrics")
