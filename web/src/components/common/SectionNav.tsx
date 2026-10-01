@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react';
-import { Fragment } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -103,11 +103,16 @@ export function SectionNav({ label, items, value, onChange }: SectionProps) {
  * stays at every width and scrolls sideways inside itself.
  */
 export function SectionTabs({ label, items, value, onChange, scroll = false }: SectionProps & { scroll?: boolean }) {
+  const row = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!scroll) return;
+    row.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [scroll, value]);
   return (
     <nav aria-label={label} className="@container min-w-0">
       {!scroll && <SectionSelect label={label} items={items} value={value} onChange={onChange} className="@min-[52rem]:hidden" />}
       <div className={cn('border-b border-hairline', !scroll && 'hidden @min-[52rem]:block')}>
-        <div className="-mb-px flex items-center gap-4 overflow-x-auto [scrollbar-width:thin]">
+        <div ref={row} className="-mb-px flex items-center gap-4 overflow-x-auto [scrollbar-width:thin]">
           {items.map((item, index) => (
             <Fragment key={item.value}>
               {index > 0 && startsGroup(items, index) && (
