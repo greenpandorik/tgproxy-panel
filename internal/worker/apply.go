@@ -185,7 +185,7 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 			if err := q.SetProfilesSyncByIDs(ctx, db.SetProfilesSyncByIDsParams{Ids: unchanged, SyncState: db.SyncStateFailed}); err != nil {
 				return err
 			}
-			_, err = q.InsertAlert(ctx, db.InsertAlertParams{NodeID: nullUUID(nodeID), Kind: "apply_failed", Message: firstLine})
+			_, err = q.InsertAlertOnce(ctx, db.InsertAlertOnceParams{NodeID: nodeID, Kind: "apply_failed", Message: firstLine})
 			return err
 		}); txErr != nil {
 			a.log.Error("record apply failure", "node", nodeID, "err", txErr)

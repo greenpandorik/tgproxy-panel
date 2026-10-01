@@ -14,6 +14,7 @@ const recentJobsLimit = 20
 func (s *Server) mountDashboard(r chi.Router) {
 	r.Get("/dashboard/summary", s.handleDashboardSummary)
 	r.Get("/alerts", s.handleListAlerts)
+	r.With(RequireRole(writers...)).Post("/alerts/resolve", s.handleResolveAlerts)
 	r.With(RequireRole(writers...)).Post("/alerts/{id}/resolve", s.handleResolveAlert)
 }
 
@@ -69,7 +70,7 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	openAlerts, err := s.store.Q.ListOpenAlerts(ctx)
+	openAlerts, err := s.store.Q.ListUnreadAlerts(ctx)
 	if err != nil {
 		internal(w)
 		return
@@ -116,7 +117,7 @@ type alertJSON struct {
 }
 
 func (s *Server) handleListAlerts(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.store.Q.ListOpenAlerts(r.Context())
+	rows, err := s.store.Q.ListUnreadAlerts(r.Context())
 	if err != nil {
 		internal(w)
 		return
@@ -143,10 +144,36 @@ func (s *Server) handleResolveAlert(w http.ResponseWriter, r *http.Request) {
 		notFound(w)
 		return
 	}
-	if err := s.store.Q.ResolveAlert(r.Context(), id); err != nil {
+	if _, err := s.store.Q.MarkAlertsRead(r.Context(), []int64{id}); err != nil {
 		internal(w)
 		return
 	}
 	s.Audit(r.Context(), "alert.resolve", "alert", idStr, nil)
 	writeJSON(w, 200, map[string]any{"resolved": true})
+}
+
+// maxResolveAlerts bounds one bulk read.
+const maxResolveAlerts = 500
+
+// handleResolveAlerts marks the listed open alerts read; an alert raised since the list was
+// loaded is not in it and stays.
+func (s *Server) handleResolveAlerts(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		badRequest(w, err.Error())
+		return
+	}
+	if len(req.IDs) == 0 || len(req.IDs) > maxResolveAlerts {
+		badRequest(w, "ids: list 1 to 500 alerts")
+		return
+	}
+	n, err := s.store.Q.MarkAlertsRead(r.Context(), req.IDs)
+	if err != nil {
+		internal(w)
+		return
+	}
+	s.Audit(r.Context(), "alert.resolve_bulk", "alert", "", map[string]any{"ids": req.IDs, "count": n})
+	writeJSON(w, 200, map[string]any{"resolved": n})
 }

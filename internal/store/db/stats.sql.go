@@ -69,7 +69,7 @@ func (q *Queries) DeleteOldSnapshots(ctx context.Context, takenAt time.Time) err
 }
 
 const insertAlert = `-- name: InsertAlert :one
-INSERT INTO alerts (node_id, kind, message) VALUES ($1, $2, $3) RETURNING id, node_id, kind, message, created_at, resolved_at
+INSERT INTO alerts (node_id, kind, message) VALUES ($1, $2, $3) RETURNING id, node_id, kind, message, created_at, resolved_at, read_at
 `
 
 type InsertAlertParams struct {
@@ -88,8 +88,32 @@ func (q *Queries) InsertAlert(ctx context.Context, arg InsertAlertParams) (Alert
 		&i.Message,
 		&i.CreatedAt,
 		&i.ResolvedAt,
+		&i.ReadAt,
 	)
 	return i, err
+}
+
+const insertAlertOnce = `-- name: InsertAlertOnce :execrows
+INSERT INTO alerts (node_id, kind, message)
+SELECT $1::uuid, $2::text, $3::text
+WHERE NOT EXISTS (
+  SELECT 1 FROM alerts WHERE node_id = $1::uuid AND kind = $2::text AND resolved_at IS NULL
+)
+`
+
+type InsertAlertOnceParams struct {
+	NodeID  uuid.UUID `json:"node_id"`
+	Kind    string    `json:"kind"`
+	Message string    `json:"message"`
+}
+
+// InsertAlertOnce raises an alert unless the node already has an open one of that kind.
+func (q *Queries) InsertAlertOnce(ctx context.Context, arg InsertAlertOnceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertAlertOnce, arg.NodeID, arg.Kind, arg.Message)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertFleetSnapshot = `-- name: InsertFleetSnapshot :exec
@@ -550,7 +574,7 @@ func (q *Queries) ListKeyStatsSnapshotsBucketed(ctx context.Context, arg ListKey
 }
 
 const listOpenAlerts = `-- name: ListOpenAlerts :many
-SELECT a.id, a.node_id, a.kind, a.message, a.created_at, a.resolved_at, n.name AS node_name FROM alerts a LEFT JOIN nodes n ON n.id = a.node_id WHERE a.resolved_at IS NULL ORDER BY a.created_at DESC
+SELECT a.id, a.node_id, a.kind, a.message, a.created_at, a.resolved_at, a.read_at, n.name AS node_name FROM alerts a LEFT JOIN nodes n ON n.id = a.node_id WHERE a.resolved_at IS NULL ORDER BY a.created_at DESC
 `
 
 type ListOpenAlertsRow struct {
@@ -560,6 +584,7 @@ type ListOpenAlertsRow struct {
 	Message    string        `json:"message"`
 	CreatedAt  time.Time     `json:"created_at"`
 	ResolvedAt *time.Time    `json:"resolved_at"`
+	ReadAt     *time.Time    `json:"read_at"`
 	NodeName   *string       `json:"node_name"`
 }
 
@@ -579,6 +604,7 @@ func (q *Queries) ListOpenAlerts(ctx context.Context) ([]ListOpenAlertsRow, erro
 			&i.Message,
 			&i.CreatedAt,
 			&i.ResolvedAt,
+			&i.ReadAt,
 			&i.NodeName,
 		); err != nil {
 			return nil, err
@@ -846,6 +872,52 @@ func (q *Queries) ListSnapshotsAllNodesBucketed(ctx context.Context, arg ListSna
 	return items, nil
 }
 
+const listUnreadAlerts = `-- name: ListUnreadAlerts :many
+SELECT a.id, a.node_id, a.kind, a.message, a.created_at, a.resolved_at, a.read_at, n.name AS node_name FROM alerts a LEFT JOIN nodes n ON n.id = a.node_id
+WHERE a.resolved_at IS NULL AND a.read_at IS NULL ORDER BY a.created_at DESC
+`
+
+type ListUnreadAlertsRow struct {
+	ID         int64         `json:"id"`
+	NodeID     uuid.NullUUID `json:"node_id"`
+	Kind       string        `json:"kind"`
+	Message    string        `json:"message"`
+	CreatedAt  time.Time     `json:"created_at"`
+	ResolvedAt *time.Time    `json:"resolved_at"`
+	ReadAt     *time.Time    `json:"read_at"`
+	NodeName   *string       `json:"node_name"`
+}
+
+// ListUnreadAlerts is ListOpenAlerts without the alerts an operator has marked read.
+func (q *Queries) ListUnreadAlerts(ctx context.Context) ([]ListUnreadAlertsRow, error) {
+	rows, err := q.db.Query(ctx, listUnreadAlerts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnreadAlertsRow{}
+	for rows.Next() {
+		var i ListUnreadAlertsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.Kind,
+			&i.Message,
+			&i.CreatedAt,
+			&i.ResolvedAt,
+			&i.ReadAt,
+			&i.NodeName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const liveSnapshots = `-- name: LiveSnapshots :many
 SELECT DISTINCT ON (s.node_id) s.node_id, s.taken_at, s.sessions_live, s.streams_live, s.bytes_up, s.bytes_down, s.people_online
 FROM node_stats_snapshots s JOIN nodes n ON n.id = s.node_id
@@ -892,6 +964,20 @@ func (q *Queries) LiveSnapshots(ctx context.Context, since time.Time) ([]LiveSna
 	return items, nil
 }
 
+const markAlertsRead = `-- name: MarkAlertsRead :execrows
+UPDATE alerts SET read_at = now()
+WHERE id = ANY($1::bigint[]) AND resolved_at IS NULL AND read_at IS NULL
+`
+
+// MarkAlertsRead hides open alerts from the inbox. They stay open until their problem clears.
+func (q *Queries) MarkAlertsRead(ctx context.Context, ids []int64) (int64, error) {
+	result, err := q.db.Exec(ctx, markAlertsRead, ids)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const nodeLiveSnapshot = `-- name: NodeLiveSnapshot :one
 SELECT s.node_id, s.taken_at, s.sessions_live, s.streams_live, s.bytes_up, s.bytes_down, s.people_online
 FROM node_stats_snapshots s JOIN nodes n ON n.id = s.node_id
@@ -927,15 +1013,6 @@ func (q *Queries) NodeLiveSnapshot(ctx context.Context, arg NodeLiveSnapshotPara
 		&i.PeopleOnline,
 	)
 	return i, err
-}
-
-const resolveAlert = `-- name: ResolveAlert :exec
-UPDATE alerts SET resolved_at = now() WHERE id = $1
-`
-
-func (q *Queries) ResolveAlert(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, resolveAlert, id)
-	return err
 }
 
 const resolveNodeAlerts = `-- name: ResolveNodeAlerts :execrows

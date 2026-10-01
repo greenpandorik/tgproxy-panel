@@ -155,8 +155,23 @@ UPDATE alerts SET resolved_at = now() WHERE node_id = $1 AND kind = $2 AND resol
 -- name: ListOpenAlerts :many
 SELECT a.*, n.name AS node_name FROM alerts a LEFT JOIN nodes n ON n.id = a.node_id WHERE a.resolved_at IS NULL ORDER BY a.created_at DESC;
 
--- name: ResolveAlert :exec
-UPDATE alerts SET resolved_at = now() WHERE id = $1;
+-- ListUnreadAlerts is ListOpenAlerts without the alerts an operator has marked read.
+-- name: ListUnreadAlerts :many
+SELECT a.*, n.name AS node_name FROM alerts a LEFT JOIN nodes n ON n.id = a.node_id
+WHERE a.resolved_at IS NULL AND a.read_at IS NULL ORDER BY a.created_at DESC;
+
+-- MarkAlertsRead hides open alerts from the inbox. They stay open until their problem clears.
+-- name: MarkAlertsRead :execrows
+UPDATE alerts SET read_at = now()
+WHERE id = ANY(sqlc.arg('ids')::bigint[]) AND resolved_at IS NULL AND read_at IS NULL;
+
+-- InsertAlertOnce raises an alert unless the node already has an open one of that kind.
+-- name: InsertAlertOnce :execrows
+INSERT INTO alerts (node_id, kind, message)
+SELECT sqlc.arg('node_id')::uuid, sqlc.arg('kind')::text, sqlc.arg('message')::text
+WHERE NOT EXISTS (
+  SELECT 1 FROM alerts WHERE node_id = sqlc.arg('node_id')::uuid AND kind = sqlc.arg('kind')::text AND resolved_at IS NULL
+);
 
 -- key_stats_snapshots hold per-key traffic/connection counters read from telemt
 -- nodes. They are written by the stats worker and read by the key drawer.
