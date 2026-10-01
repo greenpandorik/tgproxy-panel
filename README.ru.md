@@ -49,7 +49,7 @@ QR-коды, прячет каждый прокси за обычным на в�
   ежедневные резервные копии базы по расписанию.
 
 <p align="center">
-  <img src="docs/screenshots/ru/dashboard.png" width="49%" alt="Обзор: вердикт по серверам, что требует внимания и все серверы разом">
+  <img src="docs/screenshots/ru/dashboard.png" width="49%" alt="Обзор: что требует внимания, люди онлайн и все серверы разом">
   <img src="docs/screenshots/ru/websites.png" width="49%" alt="Сайты-прикрытия: пятнадцать готовых сайтов">
 </p>
 

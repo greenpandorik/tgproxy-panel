@@ -51,7 +51,7 @@ and Russian.
   database backups.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="49%" alt="Overview: the verdict for all servers, what needs attention and every server at a glance">
+  <img src="docs/screenshots/dashboard.png" width="49%" alt="Overview: what needs attention, people online and every server at a glance">
   <img src="docs/screenshots/websites.png" width="49%" alt="Cover websites: fifteen ready-made sites">
 </p>
 
