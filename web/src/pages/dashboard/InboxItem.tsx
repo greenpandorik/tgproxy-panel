@@ -134,7 +134,7 @@ export function InboxItem({ alert, writer, selected, onSelect, onRead, reading }
       <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:justify-end">
         <FixAction alert={alert} nodeId={nodeId} writer={writer} />
         {writer && (
-          <Button type="button" size="sm" variant="ghost" disabled={reading} onClick={onRead}>
+          <Button type="button" size="sm" variant="outline" disabled={reading} onClick={onRead}>
             {t('dashboard.inbox_read')}
           </Button>
         )}

@@ -59,13 +59,13 @@ function TileLink({
       to={tile.to}
       className="flex min-w-0 flex-col gap-0.5 rounded-surface border border-hairline-strong bg-card px-4 py-3 transition-[background-color,border-color,scale] hover:border-brand-primary/40 hover:bg-elevated/40 focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.985] sm:px-5 sm:py-4"
     >
-      <span className="truncate text-label text-mute">{tile.label}</span>
+      <span className="text-label text-mute sm:truncate">{tile.label}</span>
       <span className={cn('mono block text-[19px] leading-7 font-semibold tabular', ABSENT_VALUE)}>
         {loading ? <Skeleton className="h-6 w-16" /> : tile.value}
       </span>
       {tile.chart && !loading && <span className="mt-1 block h-[22px]">{tile.chart}</span>}
       {!loading && (
-        <span className={cn('mono mt-auto block truncate pt-1 text-micro', tile.subTone ?? 'text-mute')}>{tile.sub ?? ' '}</span>
+        <span className={cn('mono block pt-1 text-micro', tile.subTone ?? 'text-mute')}>{tile.sub ?? ' '}</span>
       )}
     </Link>
   );
@@ -148,7 +148,7 @@ export function DashboardMetrics(props: DashboardMetricsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-3 self-start">
       {tiles.map((tile) =>
         tile.hint ? (
           <Tooltip key={tile.id}>
