@@ -723,9 +723,13 @@ image_ref() {
 # fetch_deploy_files: docker-compose.yml (from docker-compose.release.yml),
 # docker-compose.local.yml, Caddyfile and .env.example into $DIR. A release tag that
 # predates a file falls back to main, which carries the current copy.
+file_sum() { if [[ -f "$1" ]]; then cksum <"$1"; fi; }
+
 fetch_deploy_files() {
 	step "Deploy files"
 	mkdir -p "$DIR"
+	local caddy_before
+	caddy_before="$(file_sum "$DIR/Caddyfile")"
 	local -a pairs=(
 		"deploy/docker-compose.release.yml:docker-compose.yml"
 		"deploy/docker-compose.local.yml:docker-compose.local.yml"
@@ -766,6 +770,9 @@ fetch_deploy_files() {
 		chmod 0755 "$DIR/install.sh"
 	fi
 	chmod 0644 "$DIR/docker-compose.yml" "$DIR/docker-compose.local.yml" "$DIR/Caddyfile" "$DIR/.env.example"
+	if [[ -n "$caddy_before" && "$caddy_before" != "$(file_sum "$DIR/Caddyfile")" ]]; then
+		CADDY_CHANGED=1
+	fi
 }
 
 # write_env: a fresh .env from .env.example with generated secrets. Built in a temp file
@@ -1255,7 +1262,7 @@ do_install_or_update() {
 	quietly "docker compose up" compose up -d --remove-orphans --quiet-pull ||
 		die "could not start the stack (output above); check: cd $DIR && docker compose ps && docker compose logs --tail 50"
 	ok "containers started"
-	if [[ "$SUB_DOMAIN_CHANGED" -eq 1 ]]; then
+	if [[ "$SUB_DOMAIN_CHANGED" -eq 1 || "$CADDY_CHANGED" -eq 1 ]]; then
 		quietly "docker compose restart caddy" compose restart caddy || warn "could not restart caddy; run: cd $DIR && docker compose restart caddy"
 	fi
 	wait_for "panel healthy" "$HEALTH_BUDGET" healthz_ok || health_failed
@@ -1271,6 +1278,7 @@ do_install_or_update() {
 # A second domain for subscription pages on the panel's own server
 # ---------------------------------------------------------------------------------------
 SUB_DOMAIN_CHANGED=0
+CADDY_CHANGED=0
 configure_sub_domain() {
 	local file="$DIR/sites/subpage.caddy" current
 	mkdir -p "$DIR/sites"
@@ -1389,7 +1397,8 @@ subpage_preflight() {
 subpage_fetch_files() {
 	step "Deploy files"
 	mkdir -p "$DIR"
-	local pair src dest
+	local pair src dest caddy_before
+	caddy_before="$(file_sum "$DIR/Caddyfile")"
 	for pair in "deploy/subpage/docker-compose.yml:docker-compose.yml" "deploy/subpage/Caddyfile:Caddyfile" "install.sh:install.sh"; do
 		src="${pair%%:*}"
 		dest="${pair#*:}"
@@ -1402,6 +1411,9 @@ subpage_fetch_files() {
 	done
 	chmod 0644 "$DIR/docker-compose.yml" "$DIR/Caddyfile"
 	chmod 0755 "$DIR/install.sh"
+	if [[ -n "$caddy_before" && "$caddy_before" != "$(file_sum "$DIR/Caddyfile")" ]]; then
+		CADDY_CHANGED=1
+	fi
 }
 
 subpage_uninstall() {
@@ -1489,6 +1501,9 @@ do_subpage() {
 	quietly "docker compose up" compose up -d --remove-orphans --quiet-pull ||
 		die "could not start the service (output above); check: cd $DIR && docker compose ps && docker compose logs --tail 50"
 	ok "containers started"
+	if [[ "$CADDY_CHANGED" -eq 1 ]]; then
+		quietly "docker compose restart caddy" compose restart caddy || warn "could not restart caddy; run: cd $DIR && docker compose restart caddy"
+	fi
 	if ! wait_for "page service healthy" "$HEALTH_BUDGET" subpage_healthz_ok; then
 		compose ps >&2 || true
 		compose logs --tail 50 subpage >&2 || true
