@@ -146,7 +146,7 @@ func (q *Queries) ListNodeProfiles(ctx context.Context, nodeID uuid.UUID) ([]Pro
 
 const listNodeProfilesWithKey = `-- name: ListNodeProfilesWithKey :many
 SELECT p.id, p.node_id, p.access_key_id, p.name, p.secret_enc, p.backend, p.carrier_mode, p.limits, p.sync_state, p.created_at, k.telemt_limits AS key_telemt_limits, k.expires_at AS key_expires_at,
-       k.status AS key_status, k.label AS key_label, k.disabled_at AS key_disabled_at
+       k.status AS key_status, k.label AS key_label, k.disabled_at AS key_disabled_at, k.type AS key_type
 FROM profiles p LEFT JOIN access_keys k ON k.id = p.access_key_id
 WHERE p.node_id = $1 ORDER BY p.created_at
 `
@@ -167,6 +167,7 @@ type ListNodeProfilesWithKeyRow struct {
 	KeyStatus       NullKeyStatus `json:"key_status"`
 	KeyLabel        *string       `json:"key_label"`
 	KeyDisabledAt   *time.Time    `json:"key_disabled_at"`
+	KeyType         NullKeyType   `json:"key_type"`
 }
 
 // ListNodeProfilesWithKey is ListNodeProfiles plus the columns of the bound access key that
@@ -200,6 +201,7 @@ func (q *Queries) ListNodeProfilesWithKey(ctx context.Context, nodeID uuid.UUID)
 			&i.KeyStatus,
 			&i.KeyLabel,
 			&i.KeyDisabledAt,
+			&i.KeyType,
 		); err != nil {
 			return nil, err
 		}

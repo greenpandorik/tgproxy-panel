@@ -174,6 +174,8 @@ type Stats struct {
 	lastKeyStatsSweep time.Time
 	lastHistorySweep  time.Time
 	now               func() time.Time
+
+	presence presenceRing
 }
 
 // maxInFlightNotifications bounds the goroutines RunOnce may have out sending Telegram messages.
@@ -244,6 +246,8 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	var polled, failed atomic.Int64
 	sem := make(chan struct{}, statsWorkers)
 	var wg sync.WaitGroup
+	var mu sync.Mutex
+	readings := make([]nodeReading, 0, len(nodes))
 	for _, n := range nodes {
 		s.collectProbes(ctx, n)
 		if n.Status == db.NodeStatusOffline || n.Status == db.NodeStatusPending {
@@ -258,25 +262,64 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 			nodeCtx, cancel := context.WithTimeout(ctx, nodeStatsBudget)
 			defer cancel()
 			polled.Add(1)
-			if !s.collectNode(nodeCtx, n) {
+			reading, ok := s.collectNode(nodeCtx, n)
+			if !ok {
 				failed.Add(1)
+			}
+			if reading != nil {
+				mu.Lock()
+				readings = append(readings, *reading)
+				mu.Unlock()
 			}
 		}(n)
 	}
 	wg.Wait()
 	s.log.Debug("stats sweep", "nodes", polled.Load(), "incomplete", failed.Load(), "took", time.Since(started))
+	s.recordPresence(ctx, readings)
 
 	if err := s.st.Q.DeleteExpiredSessions(ctx); err != nil {
 		s.log.Error("delete expired sessions", "err", err)
 	}
 	s.sweepKeyStats(ctx)
 	s.sweepHistory(ctx)
+	if err := s.st.Q.DeleteOldFleetSnapshots(ctx, time.Now().Add(-retention)); err != nil {
+		s.log.Error("delete old fleet snapshots", "err", err)
+	}
 	return s.st.Q.DeleteOldSnapshots(ctx, time.Now().Add(-retention))
 }
 
-// collectNode gathers one node's snapshot. It reports whether the node was read in full; a node
-// that could not be read is logged and left out, never allowed to fail the sweep for the others.
-func (s *Stats) collectNode(ctx context.Context, n db.Node) bool {
+// recordPresence stores the head count of a sweep: counts only, the addresses stay in memory.
+func (s *Stats) recordPresence(ctx context.Context, readings []nodeReading) {
+	p := computePresence(s.presence.add(s.clock(), readings))
+	if err := s.st.Q.InsertFleetSnapshot(ctx, db.InsertFleetSnapshotParams{
+		PeopleOnline: int32(p.People), People15m: int32(p.People15m), Connections: int32(p.Connections),
+	}); err != nil {
+		s.log.Error("fleet snapshot", "err", err)
+	}
+	ids := make([]uuid.UUID, 0, len(p.Keys))
+	params := db.UpsertKeyPresenceParams{
+		Connections: make([]int32, 0, len(p.Keys)), Devices: make([]int32, 0, len(p.Keys)), Devices15m: make([]int32, 0, len(p.Keys)),
+	}
+	for id, k := range p.Keys {
+		ids = append(ids, id)
+		params.Connections = append(params.Connections, int32(k.Connections))
+		params.Devices = append(params.Devices, int32(k.Devices))
+		params.Devices15m = append(params.Devices15m, int32(k.Devices15m))
+	}
+	params.KeyIds = ids
+	if len(ids) > 0 {
+		if err := s.st.Q.UpsertKeyPresence(ctx, params); err != nil {
+			s.log.Error("key presence", "err", err)
+		}
+	}
+	if err := s.st.Q.ClearKeyPresence(ctx, ids); err != nil {
+		s.log.Error("clear key presence", "err", err)
+	}
+}
+
+// collectNode gathers one node's snapshot and its reading for the head count, nil when there was
+// nothing to read. ok is false when the node could not be read; it never fails the sweep for others.
+func (s *Stats) collectNode(ctx context.Context, n db.Node) (*nodeReading, bool) {
 	s.collectIncidents(ctx, n)
 	if rows, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && rows > 0 {
 		// Not on this node's polling budget: sending an alert is not part of reading a node, and
@@ -284,26 +327,38 @@ func (s *Stats) collectNode(ctx context.Context, n db.Node) bool {
 		s.notify(context.WithoutCancel(ctx), func(ctx context.Context) { s.alerts.NodeOnline(ctx, n) })
 	}
 	if !s.driver.Online(n.ID) {
-		return true // not connected right now: nothing to read, and nothing wrong either
+		return nil, true // not connected right now: nothing to read, and nothing wrong either
 	}
 	text, err := s.driver.Metrics(ctx, n.ID)
 	if err != nil {
 		s.log.Warn("metrics", "node", n.ID, "err", err)
-		return false
+		return nil, false
 	}
 	stats, statsErr := s.driver.Stats(ctx, n.ID)
 	if statsErr != nil {
 		s.log.Warn("stats", "node", n.ID, "err", statsErr)
 	}
+	stats, ipLists := nodedriver.SplitIPLists(stats)
 	// On telemt the byte counters come only from that endpoint. Elsewhere they are parsed out of
 	// the metrics text, which was read above or this function has already returned.
 	trafficKnown := statsErr == nil || n.Engine != db.NodeEngineTelemt
 	m := ParseRelayMetrics(text)
+	reading := nodeReading{NodeID: n.ID}
+	peopleKnown := true
 	var telemtM TelemtMetrics
+	var profiles []db.ListNodeProfilesWithKeyRow
 	if n.Engine == db.NodeEngineTelemt {
 		telemtM = ParseTelemtMetrics(text)
 		m = telemtRelayMetrics(telemtM, stats)
+		if profiles, err = s.st.Q.ListNodeProfilesWithKey(ctx, n.ID); err != nil {
+			s.log.Error("node profiles", "node", n.ID, "err", err)
+			peopleKnown = false
+		}
+		reading.Keys = keyReadings(profiles, telemtM, stats, ipLists)
+	} else {
+		reading.Sessions = m.SessionsLive
 	}
+	reading.Connections = m.SessionsLive
 	raw, _ := json.Marshal(stats)
 	if raw == nil {
 		raw = []byte("{}")
@@ -326,15 +381,39 @@ func (s *Stats) collectNode(ctx context.Context, n db.Node) bool {
 		WebEvictedSessions:                 load.WebEvictedSessions,
 		WebBridgeRecoveries:                load.WebBridgeRecoveries,
 		WebLearningEntries:                 load.WebLearningEntries,
+		PeopleOnline:                       pgtype.Int4{Int32: int32(nodePeople(reading)), Valid: peopleKnown},
 	}); err != nil {
 		s.log.Error("snapshot", "err", err)
 	}
-	if n.Engine == db.NodeEngineTelemt {
-		if err := s.keySnapshots(ctx, n.ID, telemtM, stats); err != nil {
+	if n.Engine == db.NodeEngineTelemt && peopleKnown {
+		if err := s.keySnapshots(ctx, n.ID, profiles, telemtM, stats); err != nil {
 			s.log.Error("key snapshot", "node", n.ID, "err", err)
 		}
 	}
-	return true
+	return &reading, true
+}
+
+// keyReadings is what a telemt node reported about each of its keys that has a connection.
+func keyReadings(profiles []db.ListNodeProfilesWithKeyRow, m TelemtMetrics, stats map[string]string, ipLists map[string][]string) []keyReading {
+	var out []keyReading
+	for _, p := range profiles {
+		if !p.AccessKeyID.Valid {
+			continue
+		}
+		user := m.Users[p.Name]
+		conns := int(parseIntOr(stats["user."+p.Name+".connections"], int64(user.Connections)))
+		if conns <= 0 {
+			continue
+		}
+		out = append(out, keyReading{
+			KeyID:       p.AccessKeyID.UUID,
+			Shared:      p.KeyType.Valid && p.KeyType.KeyType == db.KeyTypeSHARED,
+			Connections: conns,
+			IPCount:     int(parseIntOr(stats["user."+p.Name+".active_ips"], int64(user.UniqueIPs))),
+			IPs:         ipLists[p.Name],
+		})
+	}
+	return out
 }
 
 const (
@@ -454,7 +533,7 @@ func (s *Stats) sweepKeyStats(ctx context.Context) {
 	s.log.Warn("key stats retention sweep hit its batch limit; the rest is taken by the next sweep")
 }
 
-// retention is how long both snapshot tables are kept.
+// retention is how long the snapshot tables are kept.
 const retention = 30 * 24 * time.Hour
 
 const (
@@ -497,11 +576,7 @@ func measuredBytes(v int64, known bool) pgtype.Int8 {
 	return pgtype.Int8{Int64: v, Valid: true}
 }
 
-func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, m TelemtMetrics, stats map[string]string) error {
-	profiles, err := s.st.Q.ListNodeProfilesWithKey(ctx, nodeID)
-	if err != nil {
-		return err
-	}
+func (s *Stats) keySnapshots(ctx context.Context, nodeID uuid.UUID, profiles []db.ListNodeProfilesWithKeyRow, m TelemtMetrics, stats map[string]string) error {
 	for _, p := range profiles {
 		if !p.AccessKeyID.Valid {
 			continue // the node's own service user has no key to attribute traffic to

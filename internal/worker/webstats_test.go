@@ -33,7 +33,7 @@ func webSnapshot(t *testing.T, report nodedriver.HealthReport) db.NodeStatsSnaps
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snaps, err := f.st.Q.LatestSnapshots(ctx)
+	snaps, err := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if err != nil || len(snaps) != 1 {
 		t.Fatalf("snapshots %+v: %v", snaps, err)
 	}

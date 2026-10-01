@@ -20,6 +20,10 @@ var (
 	descSessions = prometheus.NewDesc("tgwp_node_sessions_live", "live relay sessions", []string{"node"}, nil)
 	descStreams  = prometheus.NewDesc("tgwp_node_streams_live", "live relay streams", []string{"node"}, nil)
 
+	descPeople     = prometheus.NewDesc("tgwp_people_online", "people online across all nodes", nil, nil)
+	descPeople15m  = prometheus.NewDesc("tgwp_people_online_15m", "people online at some point in the last 15 minutes", nil, nil)
+	descNodePeople = prometheus.NewDesc("tgwp_node_people_online", "people online on the node", []string{"node"}, nil)
+
 	nodeStatuses = []string{"pending", "online", "offline", "degraded"}
 	keyStatuses  = []string{"pending", "active", "revoked"}
 )
@@ -32,6 +36,9 @@ func (c dbCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- descKeys
 	ch <- descSessions
 	ch <- descStreams
+	ch <- descPeople
+	ch <- descPeople15m
+	ch <- descNodePeople
 }
 
 func (c dbCollector) Collect(ch chan<- prometheus.Metric) {
@@ -64,12 +71,20 @@ func (c dbCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(descKeys, prometheus.GaugeValue, float64(keyCounts[status]), status)
 	}
 
-	if snaps, err := c.st.Q.LatestSnapshots(ctx); err == nil {
+	if snaps, err := c.st.Q.LatestSnapshots(ctx, liveSince()); err == nil {
 		for _, snap := range snaps {
 			node := snap.NodeID.String()
 			ch <- prometheus.MustNewConstMetric(descSessions, prometheus.GaugeValue, float64(snap.SessionsLive), node)
 			ch <- prometheus.MustNewConstMetric(descStreams, prometheus.GaugeValue, float64(snap.StreamsLive), node)
+			if snap.PeopleOnline.Valid {
+				ch <- prometheus.MustNewConstMetric(descNodePeople, prometheus.GaugeValue, float64(snap.PeopleOnline.Int32), node)
+			}
 		}
+	}
+
+	if fleet, err := c.st.Q.LatestFleetSnapshot(ctx, liveSince()); err == nil {
+		ch <- prometheus.MustNewConstMetric(descPeople, prometheus.GaugeValue, float64(fleet.PeopleOnline))
+		ch <- prometheus.MustNewConstMetric(descPeople15m, prometheus.GaugeValue, float64(fleet.People15m))
 	}
 }
 

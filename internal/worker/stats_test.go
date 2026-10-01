@@ -40,7 +40,7 @@ func TestStatsSnapshotAndOffline(t *testing.T) {
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 || snaps[0].SessionsLive != 2 || snaps[0].StreamsLive != 5 {
 		t.Fatalf("snapshots %+v", snaps)
 	}
@@ -223,7 +223,7 @@ func TestStatsTelemtNodeWritesNodeAndKeySnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 {
 		t.Fatalf("snapshots: %+v", snaps)
 	}
@@ -268,7 +268,7 @@ func TestStatsTelemtKeySnapshotWithoutQuota(t *testing.T) {
 		t.Fatalf("key snapshot: %+v", rows)
 	}
 	// With no per-user gauge in the metrics the live count falls back to the agent's summary.
-	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 || snaps[0].SessionsLive != 5 {
 		t.Fatalf("fallback live connections: %+v", snaps)
 	}
@@ -288,7 +288,7 @@ func TestStatsTproxyNodeWritesNoKeyStats(t *testing.T) {
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 || snaps[0].SessionsLive != 2 || snaps[0].BytesUp.Int64 != 10 || snaps[0].BytesDown.Int64 != 20 {
 		t.Fatalf("tproxy snapshot: %+v", snaps)
 	}
@@ -332,7 +332,7 @@ func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 {
 		t.Fatalf("snapshots %+v", snaps)
 	}
@@ -345,7 +345,7 @@ func TestStatsSnapshotCarriesNodeLoad(t *testing.T) {
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snaps, _ = f.st.Q.LatestSnapshots(ctx)
+	snaps, _ = f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 || snaps[0].CpuPercent.Float32 != 0 {
 		t.Fatalf("snapshot without health: %+v", snaps)
 	}
@@ -373,7 +373,7 @@ func TestStatsSnapshotCarriesDcLatency(t *testing.T) {
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 {
 		t.Fatalf("snapshots %+v", snaps)
 	}
@@ -395,7 +395,7 @@ func TestStatsSnapshotCarriesDcLatency(t *testing.T) {
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	snaps, _ = f.st.Q.LatestSnapshots(ctx)
+	snaps, _ = f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 || string(snaps[0].DcLatency) != "{}" {
 		t.Fatalf("snapshot without DC data: %+v", snaps)
 	}
@@ -433,7 +433,7 @@ func TestStatsRecordsTrafficThatCouldNotBeReadAsNotMeasured(t *testing.T) {
 		t.Fatalf("a node that cannot report traffic must not fail the sweep: %v", err)
 	}
 
-	snaps, _ := f.st.Q.LatestSnapshots(ctx)
+	snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 	if len(snaps) != 1 {
 		t.Fatalf("snapshots: %+v", snaps)
 	}
@@ -519,7 +519,7 @@ func TestStatsPollsNodesTogether(t *testing.T) {
 	// The healthy node's snapshot must land while the other two are still hanging.
 	deadline := time.After(5 * time.Second)
 	for {
-		snaps, _ := f.st.Q.LatestSnapshots(ctx)
+		snaps, _ := f.st.Q.LatestSnapshots(ctx, time.Now().Add(-time.Hour))
 		if len(snaps) > 0 {
 			break
 		}

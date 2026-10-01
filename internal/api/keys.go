@@ -79,9 +79,13 @@ type keyJSON struct {
 	Live                 keyLiveJSON `json:"live"`
 }
 
+// keyLiveJSON is the key's presence across the fleet. IPs repeats Devices for older clients.
 type keyLiveJSON struct {
-	Connections int64 `json:"connections"`
-	IPs         int64 `json:"ips"`
+	Online      bool  `json:"online"`
+	Connections int32 `json:"connections"`
+	Devices     int32 `json:"devices"`
+	Devices15m  int32 `json:"devices_15m"`
+	IPs         int32 `json:"ips"`
 }
 
 type keyExtras struct {
@@ -102,9 +106,6 @@ func keyState(k db.AccessKey, now time.Time) string {
 	}
 	return string(k.Status)
 }
-
-// keyLiveWindow is how old a stats row may be and still count as "online now".
-const keyLiveWindow = 3 * time.Minute
 
 func telemtLimitsJSON(raw []byte) json.RawMessage {
 	if len(raw) == 0 {
@@ -222,13 +223,15 @@ func (s *Server) subscriptionsByKey(ctx context.Context, ks []db.AccessKey) map[
 
 func (s *Server) liveByKey(ctx context.Context, ks []db.AccessKey) map[uuid.UUID]keyLiveJSON {
 	out := make(map[uuid.UUID]keyLiveJSON, len(ks))
-	rows, err := s.store.Q.KeyLiveForKeys(ctx, db.KeyLiveForKeysParams{KeyIds: keyIDs(ks), Since: time.Now().Add(-keyLiveWindow)})
+	rows, err := s.store.Q.KeyPresenceForKeys(ctx, db.KeyPresenceForKeysParams{KeyIds: keyIDs(ks), Since: liveSince()})
 	if err != nil {
-		s.log.Error("key live counters", "err", err)
+		s.log.Error("key presence", "err", err)
 		return out
 	}
 	for _, r := range rows {
-		out[r.AccessKeyID] = keyLiveJSON{Connections: r.Connections, IPs: r.ActiveIps}
+		out[r.AccessKeyID] = keyLiveJSON{
+			Online: r.Connections > 0, Connections: r.Connections, Devices: r.Devices, Devices15m: r.Devices15m, IPs: r.Devices,
+		}
 	}
 	return out
 }

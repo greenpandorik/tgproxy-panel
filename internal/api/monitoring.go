@@ -91,7 +91,7 @@ func (s *Server) handleMonitoringSeries(w http.ResponseWriter, r *http.Request) 
 	for _, snap := range rows {
 		points = append(points, map[string]any{
 			"t": snap.TakenAt, "sessions_live": snap.SessionsLive, "streams_live": snap.StreamsLive,
-			"bytes_up": snap.BytesUp, "bytes_down": snap.BytesDown,
+			"people_online": int4Ptr(snap.PeopleOnline), "bytes_up": snap.BytesUp, "bytes_down": snap.BytesDown,
 			"cpu_percent": snap.CpuPercent, "mem_used_percent": snap.MemUsedPercent, "disk_used_percent": snap.DiskUsedPercent,
 			"dc_latency": dcLatencyRaw(snap.DcLatency),
 		})
@@ -118,6 +118,8 @@ type monitoringPointJSON struct {
 	T            time.Time `json:"t"`
 	SessionsLive int32     `json:"sessions_live"`
 	StreamsLive  int32     `json:"streams_live"`
+	// PeopleOnline is null for history recorded before the panel counted people.
+	PeopleOnline *int32 `json:"people_online"`
 	// Null where a rate could not be worked out: the counters are nullable now, and a rate
 	// between a reading and a gap is not zero traffic, it is an unknown.
 	BytesUpRate   *float64 `json:"bytes_up_rate"`
@@ -153,6 +155,7 @@ type overviewSample struct {
 	T            time.Time
 	SessionsLive int32
 	StreamsLive  int32
+	PeopleOnline *int32
 	// Nil where the node did not report the counter. A rate is the difference between two
 	// samples, so a zero standing in for a missing reading is charged back by the next one.
 	BytesUp   *int64
@@ -193,6 +196,10 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 				util := row.CpuUtilisationPercent
 				sample.CPUUtilisationPercent = &util
 			}
+			if row.PeopleReadings > 0 {
+				people := row.PeopleOnline
+				sample.PeopleOnline = &people
+			}
 			out = append(out, sample)
 		}
 		return out, nil
@@ -205,7 +212,8 @@ func (s *Server) overviewSamples(r *http.Request, from, to time.Time, stepSecond
 	for _, row := range rows {
 		out = append(out, overviewSample{
 			NodeID: row.NodeID, T: row.TakenAt, SessionsLive: row.SessionsLive,
-			StreamsLive: row.StreamsLive, BytesUp: int8Ptr(row.BytesUp), BytesDown: int8Ptr(row.BytesDown),
+			StreamsLive: row.StreamsLive, PeopleOnline: int4Ptr(row.PeopleOnline),
+			BytesUp: int8Ptr(row.BytesUp), BytesDown: int8Ptr(row.BytesDown),
 			CPUPercent: float4Ptr(row.CpuPercent), CPUUtilisationPercent: float4Ptr(row.CpuUtilisationPercent),
 			MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
 			DcLatency: row.DcLatency,
@@ -260,7 +268,7 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 		points := make([]monitoringPointJSON, 0, len(rows))
 		for i, row := range rows {
 			p := monitoringPointJSON{
-				T: row.T, SessionsLive: row.SessionsLive, StreamsLive: row.StreamsLive,
+				T: row.T, SessionsLive: row.SessionsLive, StreamsLive: row.StreamsLive, PeopleOnline: row.PeopleOnline,
 				CPUPercent: row.CPUPercent, CPUUtilisationPercent: row.CPUUtilisationPercent,
 				MemUsedPercent: row.MemUsedPercent, DiskUsedPercent: row.DiskUsedPercent,
 				DcLatency: dcLatencyRaw(row.DcLatency),
@@ -278,7 +286,12 @@ func (s *Server) handleMonitoringOverview(w http.ResponseWriter, r *http.Request
 		series[nodeID.String()] = sampleOverviewPoints(points, stepSeconds, maxOverviewPoints)
 	}
 
-	writeJSON(w, 200, map[string]any{"nodes": nodes, "series": series})
+	fleet, err := s.fleetPeople(r.Context())
+	if err != nil {
+		internal(w)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"nodes": nodes, "series": series, "fleet": fleet})
 }
 
 // rate is the traffic between two readings. Either one missing means there is no rate to state:

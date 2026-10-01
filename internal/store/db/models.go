@@ -506,10 +506,26 @@ type FleetRollout struct {
 	UpdatedAt  time.Time     `json:"updated_at"`
 }
 
+type FleetStatsSnapshot struct {
+	ID           int64     `json:"id"`
+	TakenAt      time.Time `json:"taken_at"`
+	PeopleOnline int32     `json:"people_online"`
+	People15m    int32     `json:"people_15m"`
+	Connections  int32     `json:"connections"`
+}
+
 type KeyBinding struct {
 	AccessKeyID uuid.UUID `json:"access_key_id"`
 	NodeID      uuid.UUID `json:"node_id"`
 	ProfileID   uuid.UUID `json:"profile_id"`
+}
+
+type KeyPresence struct {
+	AccessKeyID uuid.UUID `json:"access_key_id"`
+	Connections int32     `json:"connections"`
+	Devices     int32     `json:"devices"`
+	Devices15m  int32     `json:"devices_15m"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type KeyStatsSnapshot struct {
@@ -609,6 +625,7 @@ type NodeStatsSnapshot struct {
 	WebLearningEntries                 pgtype.Int4   `json:"web_learning_entries"`
 	CpuUtilisationPercent              pgtype.Float4 `json:"cpu_utilisation_percent"`
 	LoadAverage1                       pgtype.Float4 `json:"load_average_1"`
+	PeopleOnline                       pgtype.Int4   `json:"people_online"`
 }
 
 type ProbeReport struct {

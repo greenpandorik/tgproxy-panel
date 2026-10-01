@@ -161,7 +161,7 @@ func TestNodeHealthStatsMetricsRestart(t *testing.T) {
 	}
 	h.Mock.SetOnline(n.ID, true)
 	h.Mock.SetHealth(n.ID, nodedriver.HealthReport{RelayActive: true, Healthz: true, TProxyVersion: "52a5feb"})
-	h.Mock.SetStats(n.ID, map[string]string{"active_connections": "7"})
+	h.Mock.SetStats(n.ID, map[string]string{"active_connections": "7", "user.k1.ip_list": "203.0.113.7"})
 	var health struct {
 		RelayActive   bool   `json:"relay_active"`
 		TProxyVersion string `json:"tproxy_version"`
@@ -174,6 +174,9 @@ func TestNodeHealthStatsMetricsRestart(t *testing.T) {
 	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()+"/stats"), &stats)
 	if stats["active_connections"] != "7" {
 		t.Fatalf("stats %+v", stats)
+	}
+	if _, leaked := stats["user.k1.ip_list"]; leaked {
+		t.Fatalf("stats show the addresses users connect from: %+v", stats)
 	}
 	resp := c.Get("/api/v1/nodes/" + n.ID.String() + "/metrics")
 	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/plain") {

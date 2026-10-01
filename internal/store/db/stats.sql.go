@@ -13,6 +13,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearKeyPresence = `-- name: ClearKeyPresence :exec
+UPDATE key_presence SET connections = 0, devices = 0, devices_15m = 0, updated_at = now()
+WHERE NOT (access_key_id = ANY($1::uuid[]))
+  AND (connections <> 0 OR devices <> 0 OR devices_15m <> 0)
+`
+
+func (q *Queries) ClearKeyPresence(ctx context.Context, keep []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearKeyPresence, keep)
+	return err
+}
+
+const deleteOldFleetSnapshots = `-- name: DeleteOldFleetSnapshots :exec
+DELETE FROM fleet_stats_snapshots WHERE taken_at < $1
+`
+
+func (q *Queries) DeleteOldFleetSnapshots(ctx context.Context, takenAt time.Time) error {
+	_, err := q.db.Exec(ctx, deleteOldFleetSnapshots, takenAt)
+	return err
+}
+
 const deleteOldKeyStatsSnapshots = `-- name: DeleteOldKeyStatsSnapshots :execrows
 DELETE FROM key_stats_snapshots s
 WHERE s.id IN (
@@ -72,6 +92,21 @@ func (q *Queries) InsertAlert(ctx context.Context, arg InsertAlertParams) (Alert
 	return i, err
 }
 
+const insertFleetSnapshot = `-- name: InsertFleetSnapshot :exec
+INSERT INTO fleet_stats_snapshots (people_online, people_15m, connections) VALUES ($1, $2, $3)
+`
+
+type InsertFleetSnapshotParams struct {
+	PeopleOnline int32 `json:"people_online"`
+	People15m    int32 `json:"people_15m"`
+	Connections  int32 `json:"connections"`
+}
+
+func (q *Queries) InsertFleetSnapshot(ctx context.Context, arg InsertFleetSnapshotParams) error {
+	_, err := q.db.Exec(ctx, insertFleetSnapshot, arg.PeopleOnline, arg.People15m, arg.Connections)
+	return err
+}
+
 const insertKeyStatsSnapshot = `-- name: InsertKeyStatsSnapshot :exec
 INSERT INTO key_stats_snapshots (access_key_id, node_id, connections, total_octets, quota_used_bytes, active_ips)
 VALUES ($1, $2, $3,
@@ -110,7 +145,7 @@ INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up
   web_carrier_selections_https, web_carrier_selections_https_lanes,
   web_carrier_selections_websocket, web_carrier_selections_websocket_lanes,
   web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries,
-  web_learning_entries)
+  web_learning_entries, people_online)
 VALUES ($1, $2, $3,
   $4::bigint, $5::bigint,
   $6, $7, $8, $9,
@@ -125,7 +160,8 @@ VALUES ($1, $2, $3,
   $21::bigint,
   $22::bigint,
   $23::bigint,
-  $24::int)
+  $24::int,
+  $25::int)
 `
 
 type InsertSnapshotParams struct {
@@ -153,6 +189,7 @@ type InsertSnapshotParams struct {
 	WebEvictedSessions                 pgtype.Int8   `json:"web_evicted_sessions"`
 	WebBridgeRecoveries                pgtype.Int8   `json:"web_bridge_recoveries"`
 	WebLearningEntries                 pgtype.Int4   `json:"web_learning_entries"`
+	PeopleOnline                       pgtype.Int4   `json:"people_online"`
 }
 
 // InsertSnapshot's dc_latency is coalesced so a caller with no DC data (a tproxy node, or a
@@ -188,40 +225,43 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 		arg.WebEvictedSessions,
 		arg.WebBridgeRecoveries,
 		arg.WebLearningEntries,
+		arg.PeopleOnline,
 	)
 	return err
 }
 
-const keyLiveForKeys = `-- name: KeyLiveForKeys :many
-SELECT access_key_id, COALESCE(sum(connections), 0)::bigint AS connections, COALESCE(sum(active_ips), 0)::bigint AS active_ips
-FROM (
-  SELECT DISTINCT ON (access_key_id, node_id) access_key_id, connections, active_ips FROM key_stats_snapshots
-  WHERE access_key_id = ANY($1::uuid[]) AND taken_at > $2
-  ORDER BY access_key_id, node_id, taken_at DESC
-) latest GROUP BY access_key_id
+const keyPresenceForKeys = `-- name: KeyPresenceForKeys :many
+SELECT access_key_id, connections, devices, devices_15m FROM key_presence
+WHERE access_key_id = ANY($1::uuid[]) AND updated_at > $2
 `
 
-type KeyLiveForKeysParams struct {
+type KeyPresenceForKeysParams struct {
 	KeyIds []uuid.UUID `json:"key_ids"`
 	Since  time.Time   `json:"since"`
 }
 
-type KeyLiveForKeysRow struct {
+type KeyPresenceForKeysRow struct {
 	AccessKeyID uuid.UUID `json:"access_key_id"`
-	Connections int64     `json:"connections"`
-	ActiveIps   int64     `json:"active_ips"`
+	Connections int32     `json:"connections"`
+	Devices     int32     `json:"devices"`
+	Devices15m  int32     `json:"devices_15m"`
 }
 
-func (q *Queries) KeyLiveForKeys(ctx context.Context, arg KeyLiveForKeysParams) ([]KeyLiveForKeysRow, error) {
-	rows, err := q.db.Query(ctx, keyLiveForKeys, arg.KeyIds, arg.Since)
+func (q *Queries) KeyPresenceForKeys(ctx context.Context, arg KeyPresenceForKeysParams) ([]KeyPresenceForKeysRow, error) {
+	rows, err := q.db.Query(ctx, keyPresenceForKeys, arg.KeyIds, arg.Since)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []KeyLiveForKeysRow{}
+	items := []KeyPresenceForKeysRow{}
 	for rows.Next() {
-		var i KeyLiveForKeysRow
-		if err := rows.Scan(&i.AccessKeyID, &i.Connections, &i.ActiveIps); err != nil {
+		var i KeyPresenceForKeysRow
+		if err := rows.Scan(
+			&i.AccessKeyID,
+			&i.Connections,
+			&i.Devices,
+			&i.Devices15m,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -284,6 +324,23 @@ func (q *Queries) KeyTrafficLast30d(ctx context.Context, arg KeyTrafficLast30dPa
 	return items, nil
 }
 
+const latestFleetSnapshot = `-- name: LatestFleetSnapshot :one
+SELECT id, taken_at, people_online, people_15m, connections FROM fleet_stats_snapshots WHERE taken_at > $1 ORDER BY taken_at DESC LIMIT 1
+`
+
+func (q *Queries) LatestFleetSnapshot(ctx context.Context, since time.Time) (FleetStatsSnapshot, error) {
+	row := q.db.QueryRow(ctx, latestFleetSnapshot, since)
+	var i FleetStatsSnapshot
+	err := row.Scan(
+		&i.ID,
+		&i.TakenAt,
+		&i.PeopleOnline,
+		&i.People15m,
+		&i.Connections,
+	)
+	return i, err
+}
+
 const latestKeyStatsSnapshots = `-- name: LatestKeyStatsSnapshots :many
 SELECT DISTINCT ON (node_id) id, access_key_id, node_id, taken_at, connections, total_octets, quota_used_bytes, active_ips FROM key_stats_snapshots WHERE access_key_id = $1 ORDER BY node_id, taken_at DESC
 `
@@ -317,12 +374,58 @@ func (q *Queries) LatestKeyStatsSnapshots(ctx context.Context, accessKeyID uuid.
 	return items, nil
 }
 
-const latestSnapshots = `-- name: LatestSnapshots :many
-SELECT DISTINCT ON (node_id) id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1 FROM node_stats_snapshots ORDER BY node_id, taken_at DESC
+const latestNodeSnapshot = `-- name: LatestNodeSnapshot :one
+SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1, people_online FROM node_stats_snapshots WHERE node_id = $1 AND taken_at > $2
+ORDER BY taken_at DESC LIMIT 1
 `
 
-func (q *Queries) LatestSnapshots(ctx context.Context) ([]NodeStatsSnapshot, error) {
-	rows, err := q.db.Query(ctx, latestSnapshots)
+type LatestNodeSnapshotParams struct {
+	NodeID uuid.UUID `json:"node_id"`
+	Since  time.Time `json:"since"`
+}
+
+func (q *Queries) LatestNodeSnapshot(ctx context.Context, arg LatestNodeSnapshotParams) (NodeStatsSnapshot, error) {
+	row := q.db.QueryRow(ctx, latestNodeSnapshot, arg.NodeID, arg.Since)
+	var i NodeStatsSnapshot
+	err := row.Scan(
+		&i.ID,
+		&i.NodeID,
+		&i.TakenAt,
+		&i.SessionsLive,
+		&i.StreamsLive,
+		&i.BytesUp,
+		&i.BytesDown,
+		&i.SessionsCreated,
+		&i.LimitHits,
+		&i.MtproxyRaw,
+		&i.RelayRaw,
+		&i.CpuPercent,
+		&i.MemUsedPercent,
+		&i.DiskUsedPercent,
+		&i.DcLatency,
+		&i.WebCarrierSelectionsHttps,
+		&i.WebCarrierSelectionsHttpsLanes,
+		&i.WebCarrierSelectionsWebsocket,
+		&i.WebCarrierSelectionsWebsocketLanes,
+		&i.WebCarrierFailures,
+		&i.WebRejectedAttempts,
+		&i.WebEvictedSessions,
+		&i.WebBridgeRecoveries,
+		&i.WebLearningEntries,
+		&i.CpuUtilisationPercent,
+		&i.LoadAverage1,
+		&i.PeopleOnline,
+	)
+	return i, err
+}
+
+const latestSnapshots = `-- name: LatestSnapshots :many
+SELECT DISTINCT ON (node_id) id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1, people_online FROM node_stats_snapshots WHERE taken_at > $1 ORDER BY node_id, taken_at DESC
+`
+
+// LatestSnapshots is each node's newest snapshot taken after since; a node with none counts for nothing.
+func (q *Queries) LatestSnapshots(ctx context.Context, since time.Time) ([]NodeStatsSnapshot, error) {
+	rows, err := q.db.Query(ctx, latestSnapshots, since)
 	if err != nil {
 		return nil, err
 	}
@@ -357,6 +460,7 @@ func (q *Queries) LatestSnapshots(ctx context.Context) ([]NodeStatsSnapshot, err
 			&i.WebLearningEntries,
 			&i.CpuUtilisationPercent,
 			&i.LoadAverage1,
+			&i.PeopleOnline,
 		); err != nil {
 			return nil, err
 		}
@@ -533,7 +637,7 @@ func (q *Queries) ListOpenAlerts(ctx context.Context) ([]ListOpenAlertsRow, erro
 }
 
 const listSnapshots = `-- name: ListSnapshots :many
-SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1 FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at
+SELECT id, node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, sessions_created, limit_hits, mtproxy_raw, relay_raw, cpu_percent, mem_used_percent, disk_used_percent, dc_latency, web_carrier_selections_https, web_carrier_selections_https_lanes, web_carrier_selections_websocket, web_carrier_selections_websocket_lanes, web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries, web_learning_entries, cpu_utilisation_percent, load_average_1, people_online FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at
 `
 
 type ListSnapshotsParams struct {
@@ -578,6 +682,7 @@ func (q *Queries) ListSnapshots(ctx context.Context, arg ListSnapshotsParams) ([
 			&i.WebLearningEntries,
 			&i.CpuUtilisationPercent,
 			&i.LoadAverage1,
+			&i.PeopleOnline,
 		); err != nil {
 			return nil, err
 		}
@@ -591,7 +696,7 @@ func (q *Queries) ListSnapshots(ctx context.Context, arg ListSnapshotsParams) ([
 
 const listSnapshotsAllNodes = `-- name: ListSnapshotsAllNodes :many
 SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent,
-       cpu_utilisation_percent, mem_used_percent, disk_used_percent, dc_latency
+       cpu_utilisation_percent, mem_used_percent, disk_used_percent, dc_latency, people_online
 FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_id, taken_at
 `
 
@@ -612,6 +717,7 @@ type ListSnapshotsAllNodesRow struct {
 	MemUsedPercent        float32       `json:"mem_used_percent"`
 	DiskUsedPercent       float32       `json:"disk_used_percent"`
 	DcLatency             []byte        `json:"dc_latency"`
+	PeopleOnline          pgtype.Int4   `json:"people_online"`
 }
 
 func (q *Queries) ListSnapshotsAllNodes(ctx context.Context, arg ListSnapshotsAllNodesParams) ([]ListSnapshotsAllNodesRow, error) {
@@ -635,6 +741,7 @@ func (q *Queries) ListSnapshotsAllNodes(ctx context.Context, arg ListSnapshotsAl
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
 			&i.DcLatency,
+			&i.PeopleOnline,
 		); err != nil {
 			return nil, err
 		}
@@ -660,7 +767,9 @@ WITH scalars AS (
          coalesce(avg(r.cpu_utilisation_percent), 0)::real AS cpu_utilisation_percent,
          count(r.cpu_utilisation_percent)::bigint AS cpu_utilisation_readings,
          avg(r.mem_used_percent)::real AS mem_used_percent,
-         avg(r.disk_used_percent)::real AS disk_used_percent
+         avg(r.disk_used_percent)::real AS disk_used_percent,
+         coalesce(round(avg(r.people_online)), 0)::int AS people_online,
+         count(r.people_online)::bigint AS people_readings
   FROM node_stats_snapshots r
   WHERE r.taken_at >= $2 AND r.taken_at <= $3
   GROUP BY r.node_id, 2
@@ -688,6 +797,8 @@ SELECT scalars.node_id,
        scalars.cpu_utilisation_readings,
        scalars.mem_used_percent,
        scalars.disk_used_percent,
+       scalars.people_online,
+       scalars.people_readings,
        coalesce(dc.dc_latency, '{}'::jsonb)::jsonb AS dc_latency
 FROM scalars
 LEFT JOIN dc ON dc.node_id = scalars.node_id AND dc.bucket = scalars.bucket
@@ -713,6 +824,8 @@ type ListSnapshotsAllNodesBucketedRow struct {
 	CpuUtilisationReadings int64     `json:"cpu_utilisation_readings"`
 	MemUsedPercent         float32   `json:"mem_used_percent"`
 	DiskUsedPercent        float32   `json:"disk_used_percent"`
+	PeopleOnline           int32     `json:"people_online"`
+	PeopleReadings         int64     `json:"people_readings"`
 	DcLatency              []byte    `json:"dc_latency"`
 }
 
@@ -764,6 +877,8 @@ func (q *Queries) ListSnapshotsAllNodesBucketed(ctx context.Context, arg ListSna
 			&i.CpuUtilisationReadings,
 			&i.MemUsedPercent,
 			&i.DiskUsedPercent,
+			&i.PeopleOnline,
+			&i.PeopleReadings,
 			&i.DcLatency,
 		); err != nil {
 			return nil, err
@@ -803,4 +918,35 @@ func (q *Queries) ResolveNodeAlerts(ctx context.Context, arg ResolveNodeAlertsPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertKeyPresence = `-- name: UpsertKeyPresence :exec
+INSERT INTO key_presence (access_key_id, connections, devices, devices_15m, updated_at)
+SELECT u.access_key_id, u.connections, u.devices, u.devices_15m, now()
+FROM (
+  SELECT unnest($1::uuid[]) AS access_key_id,
+         unnest($2::int[]) AS connections,
+         unnest($3::int[]) AS devices,
+         unnest($4::int[]) AS devices_15m
+) u
+WHERE EXISTS (SELECT 1 FROM access_keys k WHERE k.id = u.access_key_id)
+ON CONFLICT (access_key_id) DO UPDATE SET connections = EXCLUDED.connections, devices = EXCLUDED.devices,
+  devices_15m = EXCLUDED.devices_15m, updated_at = EXCLUDED.updated_at
+`
+
+type UpsertKeyPresenceParams struct {
+	KeyIds      []uuid.UUID `json:"key_ids"`
+	Connections []int32     `json:"connections"`
+	Devices     []int32     `json:"devices"`
+	Devices15m  []int32     `json:"devices_15m"`
+}
+
+func (q *Queries) UpsertKeyPresence(ctx context.Context, arg UpsertKeyPresenceParams) error {
+	_, err := q.db.Exec(ctx, upsertKeyPresence,
+		arg.KeyIds,
+		arg.Connections,
+		arg.Devices,
+		arg.Devices15m,
+	)
+	return err
 }

@@ -59,11 +59,23 @@ type nodeJSON struct {
 	CreatedAt                   time.Time       `json:"created_at"`
 	Health                      map[string]any  `json:"health,omitempty"`
 	LastCheck                   json.RawMessage `json:"last_check"`
+	// PeopleOnline and Connections come from the node's latest fresh snapshot, null without one.
+	PeopleOnline *int32 `json:"people_online"`
+	Connections  *int32 `json:"connections"`
 }
 
 func (s *Server) nodeJSON(r *http.Request, n db.Node) nodeJSON {
 	count, _ := s.store.Q.CountNodeProfiles(r.Context(), n.ID)
-	return s.nodeJSONWithCount(r, n, count)
+	out := s.nodeJSONWithCount(r, n, count)
+	if snap, err := s.store.Q.LatestNodeSnapshot(r.Context(), db.LatestNodeSnapshotParams{NodeID: n.ID, Since: liveSince()}); err == nil {
+		out.setLive(snap)
+	}
+	return out
+}
+
+func (o *nodeJSON) setLive(snap db.NodeStatsSnapshot) {
+	o.PeopleOnline = int4Ptr(snap.PeopleOnline)
+	o.Connections = &snap.SessionsLive
 }
 
 // nodeJSONWithCount is the single-node projection with the profile count already known.
@@ -129,9 +141,18 @@ func (s *Server) handleListNodes(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
+	live, err := s.freshSnapshots(r.Context())
+	if err != nil {
+		internal(w)
+		return
+	}
 	items := make([]nodeJSON, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, s.nodeJSONWithCount(r, row.Node, row.ProfileCount))
+		item := s.nodeJSONWithCount(r, row.Node, row.ProfileCount)
+		if snap, ok := live[row.Node.ID]; ok {
+			item.setLive(snap)
+		}
+		items = append(items, item)
 	}
 	writeJSON(w, 200, map[string]any{"items": items, "total": len(items)})
 }
@@ -590,7 +611,8 @@ func (s *Server) handleNodeStats(w http.ResponseWriter, r *http.Request) {
 		s.driverErr(w, err)
 		return
 	}
-	writeJSON(w, 200, st)
+	counters, _ := nodedriver.SplitIPLists(st)
+	writeJSON(w, 200, counters)
 }
 
 func (s *Server) handleNodeMetrics(w http.ResponseWriter, r *http.Request) {

@@ -44,7 +44,12 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 		"pending": int(sum.Total - sum.Revoked - sum.Active - sum.Expired - sum.Disabled),
 	}
 
-	snaps, err := s.store.Q.LatestSnapshots(ctx)
+	snaps, err := s.store.Q.LatestSnapshots(ctx, liveSince())
+	if err != nil {
+		internal(w)
+		return
+	}
+	people, err := s.fleetPeople(ctx)
 	if err != nil {
 		internal(w)
 		return
@@ -96,6 +101,7 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 
 	writeJSON(w, 200, map[string]any{
 		"nodes": nodes, "keys": keys, "sessions_live": sessionsLive, "streams_live": streamsLive,
+		"people_online": people.PeopleOnline, "people_online_15m": people.PeopleOnline15m,
 		"bytes_up": bytesUp, "bytes_down": bytesDown, "alerts": alerts, "recent_jobs": jobs,
 	})
 }

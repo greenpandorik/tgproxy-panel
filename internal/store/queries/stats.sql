@@ -11,7 +11,7 @@ INSERT INTO node_stats_snapshots (node_id, sessions_live, streams_live, bytes_up
   web_carrier_selections_https, web_carrier_selections_https_lanes,
   web_carrier_selections_websocket, web_carrier_selections_websocket_lanes,
   web_carrier_failures, web_rejected_attempts, web_evicted_sessions, web_bridge_recoveries,
-  web_learning_entries)
+  web_learning_entries, people_online)
 VALUES (sqlc.arg('node_id'), sqlc.arg('sessions_live'), sqlc.arg('streams_live'),
   sqlc.narg('bytes_up')::bigint, sqlc.narg('bytes_down')::bigint,
   sqlc.arg('sessions_created'), sqlc.arg('limit_hits'), sqlc.arg('mtproxy_raw'), sqlc.arg('relay_raw'),
@@ -26,14 +26,15 @@ VALUES (sqlc.arg('node_id'), sqlc.arg('sessions_live'), sqlc.arg('streams_live')
   sqlc.narg('web_rejected_attempts')::bigint,
   sqlc.narg('web_evicted_sessions')::bigint,
   sqlc.narg('web_bridge_recoveries')::bigint,
-  sqlc.narg('web_learning_entries')::int);
+  sqlc.narg('web_learning_entries')::int,
+  sqlc.narg('people_online')::int);
 
 -- name: ListSnapshots :many
 SELECT * FROM node_stats_snapshots WHERE node_id = $1 AND taken_at >= $2 AND taken_at <= $3 ORDER BY taken_at;
 
 -- name: ListSnapshotsAllNodes :many
 SELECT node_id, taken_at, sessions_live, streams_live, bytes_up, bytes_down, cpu_percent,
-       cpu_utilisation_percent, mem_used_percent, disk_used_percent, dc_latency
+       cpu_utilisation_percent, mem_used_percent, disk_used_percent, dc_latency, people_online
 FROM node_stats_snapshots WHERE taken_at >= $1 AND taken_at <= $2 ORDER BY node_id, taken_at;
 
 -- ListSnapshotsAllNodesBucketed collapses snapshots into fixed-width time buckets in the
@@ -76,7 +77,9 @@ WITH scalars AS (
          coalesce(avg(r.cpu_utilisation_percent), 0)::real AS cpu_utilisation_percent,
          count(r.cpu_utilisation_percent)::bigint AS cpu_utilisation_readings,
          avg(r.mem_used_percent)::real AS mem_used_percent,
-         avg(r.disk_used_percent)::real AS disk_used_percent
+         avg(r.disk_used_percent)::real AS disk_used_percent,
+         coalesce(round(avg(r.people_online)), 0)::int AS people_online,
+         count(r.people_online)::bigint AS people_readings
   FROM node_stats_snapshots r
   WHERE r.taken_at >= sqlc.arg('from_at') AND r.taken_at <= sqlc.arg('to_at')
   GROUP BY r.node_id, 2
@@ -104,16 +107,32 @@ SELECT scalars.node_id,
        scalars.cpu_utilisation_readings,
        scalars.mem_used_percent,
        scalars.disk_used_percent,
+       scalars.people_online,
+       scalars.people_readings,
        coalesce(dc.dc_latency, '{}'::jsonb)::jsonb AS dc_latency
 FROM scalars
 LEFT JOIN dc ON dc.node_id = scalars.node_id AND dc.bucket = scalars.bucket
 ORDER BY scalars.node_id, scalars.taken_at;
 
+-- LatestSnapshots is each node's newest snapshot taken after since; a node with none counts for nothing.
 -- name: LatestSnapshots :many
-SELECT DISTINCT ON (node_id) * FROM node_stats_snapshots ORDER BY node_id, taken_at DESC;
+SELECT DISTINCT ON (node_id) * FROM node_stats_snapshots WHERE taken_at > sqlc.arg('since') ORDER BY node_id, taken_at DESC;
+
+-- name: LatestNodeSnapshot :one
+SELECT * FROM node_stats_snapshots WHERE node_id = sqlc.arg('node_id') AND taken_at > sqlc.arg('since')
+ORDER BY taken_at DESC LIMIT 1;
 
 -- name: DeleteOldSnapshots :exec
 DELETE FROM node_stats_snapshots WHERE taken_at < $1;
+
+-- name: InsertFleetSnapshot :exec
+INSERT INTO fleet_stats_snapshots (people_online, people_15m, connections) VALUES ($1, $2, $3);
+
+-- name: LatestFleetSnapshot :one
+SELECT * FROM fleet_stats_snapshots WHERE taken_at > sqlc.arg('since') ORDER BY taken_at DESC LIMIT 1;
+
+-- name: DeleteOldFleetSnapshots :exec
+DELETE FROM fleet_stats_snapshots WHERE taken_at < $1;
 
 -- name: InsertAlert :one
 INSERT INTO alerts (node_id, kind, message) VALUES ($1, $2, $3) RETURNING *;
@@ -187,13 +206,27 @@ WITH deltas AS (
 )
 SELECT access_key_id, coalesce(sum(octets), 0)::bigint AS traffic FROM deltas GROUP BY access_key_id;
 
--- name: KeyLiveForKeys :many
-SELECT access_key_id, COALESCE(sum(connections), 0)::bigint AS connections, COALESCE(sum(active_ips), 0)::bigint AS active_ips
+-- name: UpsertKeyPresence :exec
+INSERT INTO key_presence (access_key_id, connections, devices, devices_15m, updated_at)
+SELECT u.access_key_id, u.connections, u.devices, u.devices_15m, now()
 FROM (
-  SELECT DISTINCT ON (access_key_id, node_id) access_key_id, connections, active_ips FROM key_stats_snapshots
-  WHERE access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) AND taken_at > sqlc.arg('since')
-  ORDER BY access_key_id, node_id, taken_at DESC
-) latest GROUP BY access_key_id;
+  SELECT unnest(sqlc.arg('key_ids')::uuid[]) AS access_key_id,
+         unnest(sqlc.arg('connections')::int[]) AS connections,
+         unnest(sqlc.arg('devices')::int[]) AS devices,
+         unnest(sqlc.arg('devices_15m')::int[]) AS devices_15m
+) u
+WHERE EXISTS (SELECT 1 FROM access_keys k WHERE k.id = u.access_key_id)
+ON CONFLICT (access_key_id) DO UPDATE SET connections = EXCLUDED.connections, devices = EXCLUDED.devices,
+  devices_15m = EXCLUDED.devices_15m, updated_at = EXCLUDED.updated_at;
+
+-- name: ClearKeyPresence :exec
+UPDATE key_presence SET connections = 0, devices = 0, devices_15m = 0, updated_at = now()
+WHERE NOT (access_key_id = ANY(sqlc.arg('keep')::uuid[]))
+  AND (connections <> 0 OR devices <> 0 OR devices_15m <> 0);
+
+-- name: KeyPresenceForKeys :many
+SELECT access_key_id, connections, devices, devices_15m FROM key_presence
+WHERE access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) AND updated_at > sqlc.arg('since');
 
 -- name: LatestKeyStatsSnapshots :many
 SELECT DISTINCT ON (node_id) * FROM key_stats_snapshots WHERE access_key_id = $1 ORDER BY node_id, taken_at DESC;
