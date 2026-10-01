@@ -759,13 +759,29 @@ page suggests contacting whoever sent the link.
 
 ### Subscription pages on their own domain
 
-By default subscription pages open on the panel's domain, and people see it in the link. You can
-move them to a separate domain such as `sub.example.com`, on the same server or on another one.
+There is nothing extra to install: right after installation the panel itself serves subscription
+pages on its own domain, for example `https://panel.example.com/s/…`. The downside is that people
+see the panel's address in the link.
+
+A separate domain for the pages, such as `sub.example.com`, is **not installed** with the panel. You
+set it up separately when you need it, in one of two ways.
+
+| | On the panel's server | On a separate server |
+|---|---|---|
+| What you need | a second domain with an A record to the panel's IP | another VPS with ports 80 and 443 free, and a domain on it |
+| How to install | `install.sh --update --sub-domain …` on the panel's server | the command from the panel, with `--subpage`, on the new server |
+| What people see | only the second domain | only the second domain |
+| The panel's address | the same IP as the pages | the panel's IP is never shown |
+| If the panel is down | the pages are down too | links opened before are shown from a saved copy for up to 6 hours |
+| Who it suits | almost everyone, the simplest | when the panel's IP must stay hidden or pages are very busy |
+
 This is set up under Subscription → Service. An admin can look at it, only the owner can change
 it. First bring the domain up in one of two ways, then save it in the panel.
 
-On the panel server. Create an A record for the second domain pointing at the panel server's IP
-address and run on that server:
+#### Way 1: on the panel's server
+
+Create an A record for the second domain pointing at the panel server's IP address and run on that
+server:
 
 ```bash
 sudo /opt/tgproxy-panel/install.sh --update --sub-domain sub.example.com
@@ -777,7 +793,11 @@ answers 404 to everything else: there is no panel login and no API there, even w
 name put into the request. Links move to the domain once you save it in the panel (see
 below). The command with `--sub-domain off` removes the domain from Caddy.
 
-On another server. You need a separate VPS with ports 80 and 443 free. In Service, press "Get the
+#### Way 2: on a separate server
+
+You need a separate VPS with ports 80 and 443 free. Do not put the panel on it: the page service
+lives in its own directory, `/opt/tgproxy-subpage`, and installs with its own command. In Service,
+press "Get the
 install command": the panel issues a service token and shows a command that contains it. The
 command is shown only once, so copy it right away. Create an A record for the domain pointing at
 the new server's IP address and run the command there. It looks like this:

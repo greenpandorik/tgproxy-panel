@@ -103,6 +103,7 @@ type Page struct {
 	Trouble      string
 	SupportURL   string
 	SupportLabel string
+	Favicon      string
 	Preview      bool
 }
 
@@ -115,6 +116,8 @@ type Branding struct {
 	Theme        string `json:"theme"`
 	SupportLink  string `json:"support_link"`
 	FooterText   string `json:"footer_text"`
+	// FaviconDataURI is the branding favicon as a data: link, so pages on any domain can show it.
+	FaviconDataURI string `json:"favicon_data_uri,omitempty"`
 }
 
 type Input struct {
@@ -142,6 +145,7 @@ func Build(in Input) (Page, error) {
 		Lang: string(in.Lang), Title: or(tx.title, "subpage.title_default"), Intro: or(tx.intro, "subpage.intro_default"),
 		PrimaryColor: in.Branding.PrimaryColor, AccentColor: in.Branding.AccentColor, PrimaryInk: in.Branding.PrimaryInk,
 		Theme: in.Branding.Theme, FooterText: in.Branding.FooterText, ShowStatus: s.ShowStatus, ShowQR: s.ShowQR,
+		Favicon: faviconFor(in.Branding),
 	}
 	if in.ExpiresAt != nil {
 		page.StatusLabel = t("subpage.status_active", nil)
@@ -258,6 +262,7 @@ type ErrorPage struct {
 	Lang    string
 	Theme   string
 	Message string
+	Favicon string
 }
 
 func RenderError(w io.Writer, p ErrorPage) error {

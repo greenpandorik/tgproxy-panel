@@ -2,6 +2,7 @@ package subscription_test
 
 import (
 	"bytes"
+	"html"
 	"strings"
 	"testing"
 	"time"
@@ -280,5 +281,43 @@ func TestPreviewDoesNotTouchTheVisitorsMemory(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "var remember = false") {
 		t.Fatal("the preview must not read or save the language")
+	}
+}
+
+func TestPageCarriesAFavicon(t *testing.T) {
+	_, out := build(t, subscription.DefaultSettings(), alerttext.RU, nil)
+	out = html.UnescapeString(out)
+	if !strings.Contains(out, `<link rel="icon" href="data:image/svg+xml;base64,`) {
+		t.Fatal("the page needs a favicon of its own")
+	}
+
+	png := subscription.FaviconDataURI("image/png", []byte("\x89PNG\r\n\x1a\nfake"))
+	if !strings.HasPrefix(png, "data:image/png;base64,") {
+		t.Fatalf("png favicon: %q", png)
+	}
+	branded := subscription.Branding{PanelName: "Demo", Theme: "dark", PrimaryColor: "#c4ed79", FaviconDataURI: png}
+	_, out = buildWith(t, subscription.DefaultSettings(), alerttext.RU, nil, branded)
+	out = html.UnescapeString(out)
+	if !strings.Contains(out, `<link rel="icon" href="`+png+`">`) {
+		t.Fatal("the branding favicon should be used")
+	}
+
+	evil := subscription.Branding{PanelName: "Demo", Theme: "dark", FaviconDataURI: "javascript:alert(1)"}
+	_, out = buildWith(t, subscription.DefaultSettings(), alerttext.RU, nil, evil)
+	out = html.UnescapeString(out)
+	if strings.Contains(out, "javascript:") || !strings.Contains(out, `<link rel="icon" href="data:image/svg+xml;base64,`) {
+		t.Fatal("anything but an image falls back to the standard favicon")
+	}
+
+	if subscription.FaviconDataURI("text/html", []byte("<script>")) != "" || subscription.FaviconDataURI("image/png", make([]byte, subscription.MaxFaviconBytes+1)) != "" {
+		t.Fatal("only small images may be embedded")
+	}
+
+	var buf bytes.Buffer
+	if err := subscription.RenderError(&buf, subscription.ErrorPage{Lang: "ru", Theme: "dark", Message: "x", Favicon: png}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html.UnescapeString(buf.String()), `<link rel="icon" href="`+png+`">`) {
+		t.Fatal("the error page should carry the favicon too")
 	}
 }

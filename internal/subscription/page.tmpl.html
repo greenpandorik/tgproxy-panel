@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<title>{{.Title}}</title>
+{{if .Favicon}}<link rel="icon" href="{{safeURL .Favicon}}">
+{{end}}<title>{{.Title}}</title>
 <style>
   :root {
     --primary: {{.PrimaryColor}};

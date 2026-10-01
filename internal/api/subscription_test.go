@@ -1,8 +1,12 @@
 package api_test
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"html"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"testing"
@@ -491,5 +495,30 @@ func TestPageFollowsTheVisitorsLanguageByDefault(t *testing.T) {
 		if got := resp.Header.Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)
 		}
+	}
+}
+
+func TestPageShowsTheBrandingFavicon(t *testing.T) {
+	h, c, keyID := twoNodeKey(t)
+	var list struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/branding/profiles"), &list)
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("file", "favicon.svg")
+	_, _ = fw.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#ff0000"/></svg>`))
+	_ = mw.Close()
+	if resp := c.PostRaw("/api/v1/branding/profiles/"+list.Items[0].ID+"/upload?kind=favicon", mw.FormDataContentType(), body.Bytes()); resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("upload %d %s", resp.StatusCode, b)
+	}
+	token := tokenFromURL(t, createSubscription(t, c, keyID).URL)
+	page, _ := io.ReadAll(h.Anonymous().Get("/s/" + token).Body)
+	want := "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#ff0000"/></svg>`))
+	if !strings.Contains(html.UnescapeString(string(page)), `<link rel="icon" href="`+want+`">`) {
+		t.Fatal("the page should embed the favicon from Branding")
 	}
 }

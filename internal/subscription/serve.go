@@ -64,7 +64,7 @@ func ServePage(w http.ResponseWriter, r *http.Request, d PageData) error {
 		f := failureOf(d.State)
 		w.WriteHeader(f.status)
 		return RenderError(w, ErrorPage{
-			Lang: string(lang), Theme: d.Branding.Theme,
+			Lang: string(lang), Theme: d.Branding.Theme, Favicon: faviconFor(d.Branding),
 			Message: alerttext.Default().T(lang, f.message, nil),
 		})
 	}

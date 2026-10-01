@@ -6,6 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/branding"
@@ -40,6 +43,14 @@ func (s *Server) subscriptionBranding(ctx context.Context) subscription.Branding
 			b.Theme = p.ThemeDefault
 		}
 		b.SupportLink, b.FooterText = p.SupportLink, p.FooterText
+		if p.FaviconPath != "" {
+			file := filepath.Join(s.cfg.DataDir, "branding", p.ID.String(), filepath.Base(p.FaviconPath))
+			if st, err := os.Stat(file); err == nil && st.Size() <= subscription.MaxFaviconBytes {
+				if data, err := os.ReadFile(file); err == nil {
+					b.FaviconDataURI = subscription.FaviconDataURI(brandingAssetContentTypes[strings.ToLower(filepath.Ext(file))], data)
+				}
+			}
+		}
 	}
 	b.PrimaryColor, b.AccentColor = branding.ThemeColors(b.PrimaryColor, b.AccentColor, b.Theme)
 	b.PrimaryInk = branding.Foreground(b.PrimaryColor)
