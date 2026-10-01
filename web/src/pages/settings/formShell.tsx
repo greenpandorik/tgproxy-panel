@@ -18,7 +18,7 @@ export function Arriving({ index = 0, className, children }: { index?: number; c
 export function FormColumns({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div className="@container min-w-0">
-      <div className={cn('grid items-start gap-4 @min-[56rem]:grid-cols-2', className)}>{children}</div>
+      <div className={cn('grid grid-cols-1 items-start gap-4 @min-[56rem]:grid-cols-2', className)}>{children}</div>
     </div>
   );
 }
