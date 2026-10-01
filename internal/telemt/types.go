@@ -43,8 +43,10 @@ type User struct {
 	MaxTCPConns        uint64 `json:"max_tcp_conns,omitempty"`
 	CurrentConnections uint64 `json:"current_connections,omitempty"`
 	ActiveUniqueIPs    uint64 `json:"active_unique_ips,omitempty"`
-	TotalOctets        uint64 `json:"total_octets,omitempty"`
-	UserAdTag          string `json:"user_ad_tag,omitempty"`
+	// ActiveUniqueIPsList is nil when telemt did not send the list at all.
+	ActiveUniqueIPsList []string `json:"active_unique_ips_list,omitempty"`
+	TotalOctets         uint64   `json:"total_octets,omitempty"`
+	UserAdTag           string   `json:"user_ad_tag,omitempty"`
 }
 
 // CreateUserRequest is POST /v1/users.

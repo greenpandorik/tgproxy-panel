@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1176,6 +1177,9 @@ func (h *Handler) telemtStats(ctx context.Context) (map[string]string, error) {
 		out["user."+u.Username+".connections"] = strconv.FormatUint(u.CurrentConnections, 10)
 		out["user."+u.Username+".octets"] = strconv.FormatUint(u.TotalOctets, 10)
 		out["user."+u.Username+".active_ips"] = strconv.FormatUint(u.ActiveUniqueIPs, 10)
+		if u.ActiveUniqueIPsList != nil {
+			out["user."+u.Username+".ip_list"] = ipList(u.ActiveUniqueIPsList)
+		}
 	}
 	if sum, err := h.tm.ConnectionsSummary(ctx); err == nil && sum.Data != nil {
 		out["connections_total"] = strconv.FormatUint(sum.Data.Totals.CurrentConnections, 10)
@@ -1193,6 +1197,35 @@ func (h *Handler) telemtStats(ctx context.Context) (map[string]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// maxReportedIPs caps one user's address list in the stats sent to the panel.
+const maxReportedIPs = 256
+
+// ipList is a user's connected addresses in canonical form, without duplicates, sorted and capped.
+func ipList(raw []string) string {
+	seen := make(map[netip.Addr]bool, len(raw))
+	addrs := make([]netip.Addr, 0, len(raw))
+	for _, s := range raw {
+		a, err := netip.ParseAddr(strings.TrimSpace(s))
+		if err != nil {
+			continue
+		}
+		a = a.Unmap().WithZone("")
+		if !seen[a] {
+			seen[a] = true
+			addrs = append(addrs, a)
+		}
+	}
+	slices.SortFunc(addrs, func(a, b netip.Addr) int { return a.Compare(b) })
+	if len(addrs) > maxReportedIPs {
+		addrs = addrs[:maxReportedIPs]
+	}
+	parts := make([]string, len(addrs))
+	for i, a := range addrs {
+		parts[i] = a.String()
+	}
+	return strings.Join(parts, ",")
 }
 
 // webPolicyFromProto reads the panel's carrier policy off the apply request; nil means the

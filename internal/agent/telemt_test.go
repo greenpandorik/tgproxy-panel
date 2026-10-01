@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -901,6 +902,39 @@ func TestTelemtStatsAndMetrics(t *testing.T) {
 	m := h.Handle(context.Background(), &agentv1.Request{Body: &agentv1.Request_Metrics{Metrics: &agentv1.MetricsRequest{}}})
 	if m.Error != "" || !strings.Contains(m.GetMetrics().Text, "telemt_connections_total 5") {
 		t.Fatalf("metrics: %+v", m)
+	}
+}
+
+func TestTelemtStatsListUserAddresses(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	stats := func() map[string]string {
+		t.Helper()
+		resp := h.Handle(context.Background(), &agentv1.Request{Body: &agentv1.Request_Stats{Stats: &agentv1.StatsRequest{}}})
+		if resp.Error != "" {
+			t.Fatal(resp.Error)
+		}
+		return resp.GetStats().Values
+	}
+	if got, ok := stats()["user.node.ip_list"]; ok {
+		t.Fatalf("telemt sent no list, so none may be made up: %q", got)
+	}
+	ft.setAttrs("node", map[string]any{"active_unique_ips_list": []any{"203.0.113.9", "::ffff:198.51.100.4", "203.0.113.9", "2001:db8::7", "junk"}})
+	if got := stats()["user.node.ip_list"]; got != "198.51.100.4,203.0.113.9,2001:db8::7" {
+		t.Fatalf("ip_list = %q", got)
+	}
+	ft.setAttrs("node", map[string]any{"active_unique_ips_list": []any{}})
+	if got, ok := stats()["user.node.ip_list"]; !ok || got != "" {
+		t.Fatalf("nobody connected is an empty list, got %q (present %v)", got, ok)
+	}
+}
+
+func TestIPListIsCapped(t *testing.T) {
+	raw := make([]string, 0, maxReportedIPs+40)
+	for i := range maxReportedIPs + 40 {
+		raw = append(raw, fmt.Sprintf("10.1.%d.%d", i/256, i%256))
+	}
+	if got := strings.Count(ipList(raw), ",") + 1; got != maxReportedIPs {
+		t.Fatalf("%d addresses sent, want %d", got, maxReportedIPs)
 	}
 }
 

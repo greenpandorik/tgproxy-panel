@@ -54,6 +54,30 @@ func TestListUsersSendsAuthAndDecodesEnvelope(t *testing.T) {
 	}
 }
 
+func TestListUsersTellsAMissingAddressListFromAnEmptyOne(t *testing.T) {
+	c, _ := newServer(t, func(w http.ResponseWriter, r *http.Request) {
+		ok(w, `[{"username":"a","active_unique_ips":2,"active_unique_ips_list":["203.0.113.7","2001:db8::1"]},
+			{"username":"b","active_unique_ips":0,"active_unique_ips_list":[]},
+			{"username":"c","active_unique_ips":1}]`)
+	})
+	users, err := c.ListUsers(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(users) != 3 {
+		t.Fatalf("users: %+v", users)
+	}
+	if got := users[0].ActiveUniqueIPsList; len(got) != 2 || got[0] != "203.0.113.7" || got[1] != "2001:db8::1" {
+		t.Fatalf("a: %v", got)
+	}
+	if got := users[1].ActiveUniqueIPsList; got == nil || len(got) != 0 {
+		t.Fatalf("b: an empty list must stay a list, got %#v", got)
+	}
+	if got := users[2].ActiveUniqueIPsList; got != nil {
+		t.Fatalf("c: no list from telemt must stay nil, got %#v", got)
+	}
+}
+
 func TestCreateUserBodyAndSecret(t *testing.T) {
 	c, calls := newServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
