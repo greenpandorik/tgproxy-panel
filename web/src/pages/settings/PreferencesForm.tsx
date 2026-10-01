@@ -24,9 +24,9 @@ export function PreferencesForm() {
   const { t, i18n } = useTranslation();
   const { preference, setTheme, density, setDensity, collapsed, setCollapsed, resetPreferences } = useTheme();
   return (
-    <Panel className="max-w-3xl">
+    <Panel className="@container">
       <PanelHeader icon={SlidersHorizontal} title={t('preferences.title')} />
-      <PanelBody className="space-y-5">
+      <PanelBody className="grid gap-5 @min-[56rem]:grid-cols-2 @min-[56rem]:gap-x-10">
         <Choice label={t('preferences.theme')}>
           {(
             [
@@ -82,7 +82,7 @@ export function PreferencesForm() {
             </Button>
           ))}
         </Choice>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4 @min-[56rem]:col-span-2">
           <span role="status" className="text-label text-mute">
             {t('preferences.autosaved')}
           </span>

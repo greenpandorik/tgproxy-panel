@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Archive, CalendarClock, Download, Trash2 } from 'lucide-react';
+import { Archive, CalendarClock, Download, ShieldCheck, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +25,7 @@ import { ApiError } from '@/lib/api';
 import { formatBytes, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-import { Arriving, FormFooter } from './formShell';
+import { Arriving, FormColumns, FormFooter } from './formShell';
 
 import type { Backup, Settings } from '@/api/types';
 
@@ -115,7 +115,7 @@ export function BackupsForm() {
   };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <Arriving>
         <Panel>
           <PanelHeader
@@ -136,23 +136,6 @@ export function BackupsForm() {
             <p className="max-w-[72ch] text-label text-mute">{t('settings.backups_master_key_note')}</p>
           </PanelBody>
 
-          <PanelBody className="space-y-3 border-b border-hairline">
-            <h3 className="text-body font-medium">{t('workspace.backup_protection')}</h3>
-            <p className="max-w-[72ch] text-label text-mute">{t('workspace.backup_protection_hint')}</p>
-            <dl className="space-y-2">
-              {(['encrypted', 'uploaded', 'verified'] as const).map((key) => (
-                <div key={key} className="flex flex-wrap justify-between gap-2 text-body">
-                  <dt>{t(`workspace.backup_${key}`)}</dt>
-                  <dd>{t(protection?.[key] ? 'probe.ok' : 'probe.not_run')}</dd>
-                </div>
-              ))}
-            </dl>
-            {protection?.error && (
-              <p role="alert" className="text-body text-err">
-                {protection.error}
-              </p>
-            )}
-          </PanelBody>
           {backupsQuery.isLoading ? (
             // Three rows of the table that is coming, not a grey block.
             <PanelBody className="space-y-3">
@@ -257,83 +240,107 @@ export function BackupsForm() {
         </Panel>
       </Arriving>
 
-      <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSaveSchedule)(e)} noValidate>
-        <Arriving index={1}>
-          <Panel>
-            <PanelHeader
-              icon={CalendarClock}
-              title={t('settings.backups_schedule_title')}
-              actions={<HelpButton topic="settings.backups" />}
-            />
-            <PanelBody className="space-y-4">
-              <p className="max-w-[72ch] text-label text-mute">{t('settings.backups_schedule_hint')}</p>
+      <FormColumns>
+        <form className="flex min-w-0 flex-col gap-4" onSubmit={(e) => void handleSubmit(onSaveSchedule)(e)} noValidate>
+          <Arriving index={1}>
+            <Panel>
+              <PanelHeader
+                icon={CalendarClock}
+                title={t('settings.backups_schedule_title')}
+                actions={<HelpButton topic="settings.backups" />}
+              />
+              <PanelBody className="space-y-4">
+                <p className="max-w-[72ch] text-label text-mute">{t('settings.backups_schedule_hint')}</p>
 
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="backup-schedule-enabled">{t('settings.backups_schedule_enabled')}</Label>
-                <Controller
-                  control={control}
-                  name="enabled"
-                  render={({ field }) => (
-                    <Switch id="backup-schedule-enabled" checked={field.value} onCheckedChange={field.onChange} />
-                  )}
-                />
-              </div>
-
-              {scheduleEnabled && (
-                <div className="grid max-w-md grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="backup-schedule-hour">{t('settings.backups_schedule_hour')}</Label>
-                    <Controller
-                      control={control}
-                      name="hour"
-                      render={({ field }) => (
-                        <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v ?? 0))}>
-                          <SelectTrigger id="backup-schedule-hour" className="mono w-full text-mono">
-                            <SelectValue>{(v: string) => hourLabel(Number(v))}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {HOURS.map((h) => (
-                              <SelectItem key={h} value={String(h)} className="mono text-mono">
-                                {hourLabel(h)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="backup-schedule-keep">{t('settings.backups_schedule_keep')}</Label>
-                    <Input
-                      id="backup-schedule-keep"
-                      type="number"
-                      min={1}
-                      max={60}
-                      className="mono text-mono"
-                      {...register('keep')}
-                      aria-invalid={!!errors.keep}
-                      aria-describedby="backup-schedule-keep-hint"
-                    />
-                    <p
-                      id="backup-schedule-keep-hint"
-                      className={cn('text-label', errors.keep ? 'text-destructive' : 'text-mute')}
-                    >
-                      {t('settings.backups_schedule_keep_hint')}
-                    </p>
-                  </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="backup-schedule-enabled">{t('settings.backups_schedule_enabled')}</Label>
+                  <Controller
+                    control={control}
+                    name="enabled"
+                    render={({ field }) => (
+                      <Switch id="backup-schedule-enabled" checked={field.value} onCheckedChange={field.onChange} />
+                    )}
+                  />
                 </div>
+
+                {scheduleEnabled && (
+                  <div className="grid max-w-md grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="backup-schedule-hour">{t('settings.backups_schedule_hour')}</Label>
+                      <Controller
+                        control={control}
+                        name="hour"
+                        render={({ field }) => (
+                          <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v ?? 0))}>
+                            <SelectTrigger id="backup-schedule-hour" className="mono w-full text-mono">
+                              <SelectValue>{(v: string) => hourLabel(Number(v))}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {HOURS.map((h) => (
+                                <SelectItem key={h} value={String(h)} className="mono text-mono">
+                                  {hourLabel(h)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="backup-schedule-keep">{t('settings.backups_schedule_keep')}</Label>
+                      <Input
+                        id="backup-schedule-keep"
+                        type="number"
+                        min={1}
+                        max={60}
+                        className="mono text-mono"
+                        {...register('keep')}
+                        aria-invalid={!!errors.keep}
+                        aria-describedby="backup-schedule-keep-hint"
+                      />
+                      <p
+                        id="backup-schedule-keep-hint"
+                        className={cn('text-label', errors.keep ? 'text-destructive' : 'text-mute')}
+                      >
+                        {t('settings.backups_schedule_keep_hint')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </PanelBody>
+            </Panel>
+          </Arriving>
+
+          <FormFooter>
+            <Button type="submit" disabled={isSubmitting || !isDirty}>
+              {t('common.save')}
+            </Button>
+          </FormFooter>
+        </form>
+
+        <Arriving index={2}>
+          <Panel>
+            <PanelHeader icon={ShieldCheck} title={t('workspace.backup_protection')} />
+            <PanelBody className="space-y-3">
+              <p className="max-w-[72ch] text-label text-mute">{t('workspace.backup_protection_hint')}</p>
+              <dl className="space-y-2">
+                {(['encrypted', 'uploaded', 'verified'] as const).map((key) => (
+                  <div key={key} className="flex flex-wrap justify-between gap-2 text-body">
+                    <dt>{t(`workspace.backup_${key}`)}</dt>
+                    <dd>{t(protection?.[key] ? 'probe.ok' : 'probe.not_run')}</dd>
+                  </div>
+                ))}
+              </dl>
+              {protection?.error && (
+                <p role="alert" className="text-body text-err">
+                  {protection.error}
+                </p>
               )}
             </PanelBody>
           </Panel>
         </Arriving>
-
-        <FormFooter>
-          <Button type="submit" disabled={isSubmitting || !isDirty}>
-            {t('common.save')}
-          </Button>
-        </FormFooter>
-      </form>
+      </FormColumns>
 
       <ConfirmDialog
         open={!!deleteTarget}

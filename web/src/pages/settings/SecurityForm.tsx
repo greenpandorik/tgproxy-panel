@@ -15,7 +15,7 @@ import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-import { Arriving, FormFooter } from './formShell';
+import { Arriving, FormColumns, FormFooter } from './formShell';
 
 import { TotpSection } from './TotpSection';
 
@@ -64,8 +64,8 @@ export function SecurityForm() {
   };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
-      <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
+    <FormColumns>
+      <form className="flex min-w-0 flex-col gap-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
         <Arriving>
           <Panel>
             <PanelHeader
@@ -143,7 +143,11 @@ export function SecurityForm() {
       </form>
 
       {/* Second factor only when the panel was started with FEATURE_TOTP. */}
-      {user?.features.totp && <TotpSection />}
-    </div>
+      {user?.features.totp && (
+        <div className="flex min-w-0 flex-col gap-4">
+          <TotpSection />
+        </div>
+      )}
+    </FormColumns>
   );
 }

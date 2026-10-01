@@ -220,7 +220,7 @@ export function AdminsForm() {
   if (adminsQuery.isLoading) {
     // The table that is coming, in silhouette, rather than a grey slab.
     return (
-      <div className="max-w-3xl">
+      <div>
         <DataTableSkeleton columns={4} rows={3} />
       </div>
     );
@@ -228,7 +228,7 @@ export function AdminsForm() {
 
   if (adminsQuery.isError) {
     return (
-      <div className="max-w-3xl">
+      <div>
         <ErrorState
           message={adminsQuery.error instanceof ApiError ? adminsQuery.error.message : t('common.error_generic')}
           retryLabel={t('common.refresh')}
@@ -239,7 +239,7 @@ export function AdminsForm() {
   }
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <Arriving>
         <Panel>
           <PanelHeader
