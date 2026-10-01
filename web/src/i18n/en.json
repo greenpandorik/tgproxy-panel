@@ -348,7 +348,6 @@
     "job_column_created": "When",
     "job_column_duration": "Duration",
     "job_column_status": "Result",
-    "field_public_ip_hint": "The public IP is the address the A record points at. Behind NAT, the interface address and the external one can differ.",
     "validation_ipv4": "IPv4 address, e.g. 203.0.113.10",
     "public_ip_confirm_title": "Change the public IP?",
     "public_ip_confirm_description": "The next apply pushes this to the server: the agent rewrites the WEB vhost's address in telemt's config and restarts telemt, dropping live connections. Links are unaffected — they carry the domain, not the address.",

@@ -176,8 +176,6 @@ export function NodeListenersCard({ node, canEdit }: { node: Node; canEdit: bool
             </div>
           </div>
 
-          <p className="max-w-[72ch] text-label text-mute">{t('nodes.field_public_ip_hint')}</p>
-
           <AdvancedSettings
             label={t('nodes.field_extra_domains')}
             defaultOpen={savedExtra.length > 0}
