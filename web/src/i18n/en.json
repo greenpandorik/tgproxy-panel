@@ -76,6 +76,7 @@
     "advanced_hide": "Hide advanced settings",
     "per_second": "{{value}}/s",
     "approx": "≈ {{value}}",
+    "approx_zero": "{{value}}",
     "people_online": "People online",
     "connections_count": "connections: {{value}}"
   },

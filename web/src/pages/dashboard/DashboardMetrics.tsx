@@ -64,9 +64,7 @@ function TileLink({
         {loading ? <Skeleton className="h-6 w-16" /> : tile.value}
       </span>
       {tile.chart && !loading && <span className="mt-1 block h-[22px]">{tile.chart}</span>}
-      {!loading && (
-        <span className={cn('mono block pt-1 text-micro', tile.subTone ?? 'text-mute')}>{tile.sub ?? ' '}</span>
-      )}
+      {!loading && <span className={cn('mono block pt-1 text-micro', tile.subTone ?? 'text-mute')}>{tile.sub ?? ' '}</span>}
     </Link>
   );
 }
@@ -99,7 +97,12 @@ export function DashboardMetrics(props: DashboardMetricsProps) {
       id: 'people',
       label: t('common.people_online'),
       to: '/monitoring',
-      value: <MetricValue value={people} format={(v) => t('common.approx', { value: num(v) })} />,
+      value: (
+        <MetricValue
+          value={people}
+          format={(v) => t('common.approx', { value: num(v), context: v === 0 ? 'zero' : undefined })}
+        />
+      ),
       chart:
         props.peopleSeries.length > 1 ? (
           <Sparkline points={props.peopleSeries} color="var(--brand-primary)" className="h-[22px] w-full" />

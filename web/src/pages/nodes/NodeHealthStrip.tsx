@@ -72,7 +72,10 @@ export function NodeHealthStrip({
       value: (
         <span className="inline-flex items-center gap-1">
           {isMetricPresent(node.people_online) ? (
-            t('common.approx', { value: formatNumber(node.people_online, lang) })
+            t('common.approx', {
+              value: formatNumber(node.people_online, lang),
+              context: node.people_online === 0 ? 'zero' : undefined,
+            })
           ) : (
             <MetricValue value={null} compact />
           )}

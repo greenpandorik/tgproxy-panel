@@ -76,6 +76,7 @@
     "advanced_hide": "Скрыть расширенные настройки",
     "per_second": "{{value}}/с",
     "approx": "≈ {{value}}",
+    "approx_zero": "{{value}}",
     "people_online": "Люди онлайн",
     "connections_count": "соединений: {{value}}"
   },

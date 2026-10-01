@@ -91,14 +91,14 @@ describe('DashboardMetrics', () => {
   it('keeps a real zero a zero', () => {
     renderMetrics({ people: 0 });
 
-    expect(screen.getByText('≈ 0')).toHaveAttribute('data-metric', 'present');
+    expect(screen.getByText('0')).toHaveAttribute('data-metric', 'present');
   });
 
   it('says a figure is missing instead of showing it as zero', () => {
     renderMetrics({ people: undefined, connections: undefined, traffic: undefined, keysActive: null });
 
     expect(screen.getAllByText('Not available')).toHaveLength(3);
-    expect(screen.queryByText('≈ 0')).toBeNull();
+    expect(screen.queryByText('0')).toBeNull();
     expect(screen.queryByText(/^connections:/)).toBeNull();
     expect(screen.queryByText('MB')).toBeNull();
   });

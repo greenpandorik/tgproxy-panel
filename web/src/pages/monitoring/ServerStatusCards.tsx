@@ -56,7 +56,9 @@ function LiveRows({ node, certExpiresAt }: { node: Node; certExpiresAt?: string 
   return (
     <>
       <Row label={t('common.people_online')}>
-        {isMetricPresent(node.people_online) ? t('common.approx', { value: num(node.people_online) }) : DASH}
+        {isMetricPresent(node.people_online)
+          ? t('common.approx', { value: num(node.people_online), context: node.people_online === 0 ? 'zero' : undefined })
+          : DASH}
       </Row>
       {load?.cpu !== undefined ? (
         <Row label={t('monitoring.card_cpu')} bar={{ percent: load.cpu }}>

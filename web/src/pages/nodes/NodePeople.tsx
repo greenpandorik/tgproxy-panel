@@ -18,7 +18,9 @@ export function NodePeople({ node, className }: { node: Pick<Node, 'people_onlin
   return (
     <span className={cn('block', className)}>
       <span className={cn('mono block text-mono', isMetricPresent(node.people_online) ? 'text-foreground' : 'text-dim')}>
-        {isMetricPresent(node.people_online) ? t('common.approx', { value: num(node.people_online) }) : DASH}
+        {isMetricPresent(node.people_online)
+          ? t('common.approx', { value: num(node.people_online), context: node.people_online === 0 ? 'zero' : undefined })
+          : DASH}
       </span>
       {isMetricPresent(node.connections) && (
         <span className="mono block text-micro text-mute">{t('common.connections_count', { value: num(node.connections) })}</span>

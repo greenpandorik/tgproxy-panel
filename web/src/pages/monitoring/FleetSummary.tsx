@@ -43,7 +43,9 @@ export function FleetSummary({ nodes, overview, loading }: { nodes: Node[]; over
     {
       id: 'people',
       label: t('common.people_online'),
-      value: isMetricPresent(people) ? t('common.approx', { value: num(people) }) : none,
+      value: isMetricPresent(people)
+        ? t('common.approx', { value: num(people), context: people === 0 ? 'zero' : undefined })
+        : none,
       sub: isMetricPresent(connections) ? t('common.connections_count', { value: num(connections) }) : undefined,
     },
     {
