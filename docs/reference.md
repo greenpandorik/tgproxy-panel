@@ -246,9 +246,16 @@ then Activity log and Settings.
 The home page shows whether everything works and what needs your attention. The top line gives
 the verdict for the whole fleet. Below it, "Needs attention" lists open problems,
 each with an action such as "Open server", "Apply again" or "Restart the proxy", and "Mark
-resolved". Then come four numbers (servers online, active users, connections, traffic over 24
-hours), the table of all servers with their CPU load, and a folded block "Connection chart and
-recent operations". The "New user" button opens user creation.
+resolved". Then come four numbers (servers online, active users, people online with the
+connections under it, traffic over 24 hours), the table of all servers with their CPU load and
+people online, and a folded block "People online chart and recent operations". The "New user"
+button opens user creation.
+
+People online is an estimate refreshed every minute. A personal user with at least one
+connection is one person, a shared user counts as many as its distinct IP addresses, and on
+tproxy servers WEB sessions stand in for people. One Telegram app holds several connections, so
+the connections are always the bigger number. The [monitoring guide](monitoring.md) has the
+details.
 
 ### Monitoring
 
@@ -256,8 +263,8 @@ The Monitoring page holds charts and history. Its views:
 
 | View | What it shows |
 |---|---|
-| All servers | Fleet totals: servers online, healthy and degraded, live sessions, current traffic |
-| Servers | For each server: sessions and streams, upload and download rate, and CPU, RAM and disk. A telemt server has one line for connections and one for traffic |
+| All servers | Fleet totals: servers online, healthy and degraded, people online with the connections under it, current traffic |
+| Servers | For each server: sessions and streams, upload and download rate, and CPU, RAM and disk. A telemt server has lines for people online and connections instead, and one for traffic |
 | WEB transport | WEB carriers across all telemt servers |
 | Metrics export | How to collect the panel's metrics with Prometheus |
 
@@ -268,7 +275,8 @@ server, and keeps these records for 30 days.
 
 For Prometheus the panel serves `/metrics` in Prometheus text format. The endpoint needs the
 header `Authorization: Bearer <METRICS_TOKEN>`. It exports `tgwp_nodes` and `tgwp_keys` (counts
-by status) and `tgwp_node_sessions_live` and `tgwp_node_streams_live` (per server UUID), plus the
+by status), `tgwp_node_sessions_live`, `tgwp_node_streams_live` and `tgwp_node_people_online` (per
+server UUID), `tgwp_people_online` and `tgwp_people_online_15m` (the whole fleet), plus the
 standard `go_*` and `process_*` metrics. A scrape job:
 
 ```yaml
@@ -349,10 +357,10 @@ and clicking a tile filters the list. Below is the list with search by name, con
 short address, filters by state, type and server, and bulk actions: extend, turn off, turn on,
 revoke access, delete. When nobody matches the filters, there is a "Reset filters" button.
 "Columns" hides and shows the link (with a copy button), type, servers, traffic over 30 days,
-connections, expiry and creation date, and the choice is remembered in the browser. The "⋯" menu of
+activity, expiry and creation date, and the choice is remembered in the browser. The "⋯" menu of
 a row has "Copy link", "Extend by a month", "Turn off" or "Turn on", and "Delete". Clicking a row
 opens the user's window: the "Access is on" switch, the subscription link, expiry, traffic and
-connections on the left, access and limits on the right. The section used to be called Access keys;
+activity on the left, access and limits on the right. The section used to be called Access keys;
 `/keys` and `/keys?key=<id>` lead to `/users` and `/users?user=<id>`. Everything about users is in
 [Users and links](#users-and-links).
 
@@ -467,8 +475,9 @@ user also has a carrier mode: HTTPS (the default), HTTPS lanes, WebSocket or Web
 telemt the WEB carrier is chosen automatically for each connection.
 
 On telemt servers the panel also counts traffic per user. The user window shows the traffic
-over 30 days and the connections right now or the time of the last one, and "Traffic and
-connections" draws a chart over 24 hours or 7 days.
+over 30 days and whether the person is online, from about how many devices (distinct IP
+addresses across all servers) and over how many connections, or when they last connected.
+"Traffic and connections" draws a chart over 24 hours or 7 days.
 
 ### Subscription page
 
@@ -1089,7 +1098,7 @@ In API answers a user is a key object. Besides the fields it always had (`id`, `
 | `sub_slug` | The short address of shared access, or `null` |
 | `subscription_url`, `subscription_short_url` | The subscription link and the short link, or `null`. Sent only to the owner and admins |
 | `subscription_legacy` | `true` when the link was issued by an earlier version of the panel and cannot be shown. Also only for the owner and admins |
-| `live` | `{connections, ips}`: connections and IP addresses right now, from telemt servers |
+| `live` | `{online, connections, devices, devices_15m, ips}` across all telemt servers: `online` when there is at least one connection, `devices` the distinct IP addresses right now, `devices_15m` over the last 15 minutes; `ips` repeats `devices` |
 
 The `state` filter of `GET /api/v1/keys` takes `active`, `pending`, `expiring` (the end date is
 within the next 7 days), `expired`, `disabled` and `revoked`. `POST /api/v1/keys` and
@@ -1104,12 +1113,18 @@ has; nothing is created then.
 `short=1` it draws the short address.
 
 `GET /api/v1/monitoring/overview` returns
-`{nodes: [{node_id, node_name, hostname, status}], series: {<node_id>: [{t, sessions_live, streams_live, bytes_up_rate, bytes_down_rate}]}}`.
+`{nodes: [{node_id, node_name, hostname, status}], series: {<node_id>: [{t, sessions_live, streams_live, people_online, bytes_up_rate, bytes_down_rate}]}, fleet: {people_online, people_online_15m, connections}}`.
 `from` and `to` are RFC 3339 times, the last 24 hours by default. The span is at most 31 days,
 since snapshots are kept for 30; a wider span answers 400. Rates are bytes per second, computed
 from neighbouring snapshots, and a counter reset (a relay restart) gives 0. A `step` above 60
 seconds makes the database group the data into buckets of that size. Each server gets at most
-600 points. The same span limit applies to `GET /api/v1/monitoring/nodes/{id}/series`.
+600 points. The same span limit applies to `GET /api/v1/monitoring/nodes/{id}/series`, whose
+points carry `people_online` too. `people_online` is `null` for snapshots taken before the panel
+counted people, and the `fleet` numbers are `null` when the newest count is older than three
+minutes. `GET /api/v1/dashboard/summary` has the same `people_online` and `people_online_15m`
+next to `sessions_live`, and every server in `GET /api/v1/nodes` and `GET /api/v1/nodes/{id}`
+has `people_online` and `connections` from its latest snapshot of the last three minutes, or
+`null`.
 
 `GET /api/v1/audit` takes these parameters:
 

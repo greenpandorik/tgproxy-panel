@@ -17,18 +17,19 @@ You don't need them if this panel is all you watch. Set them up if you already r
 and Grafana for other systems and want the panel on the same screen, or if you want your own
 alert rules.
 
-The panel exports only a few numbers: servers and users by status, and live sessions per
-server. Traffic, per-user statistics and WEB transport data stay in the panel.
+The panel exports only a few numbers: servers and users by status, live sessions per server,
+and people online per server and in total. Traffic, per-user statistics and WEB transport data
+stay in the panel.
 
 ## What the panel shows without them
 
 The Monitoring page has four tabs and a period switch (1h, 6h, 24h, 7d):
 
-- "All servers" shows totals: servers online, healthy, running with errors, live sessions and
-  current traffic.
+- "All servers" shows totals: servers online, healthy, running with errors, people online (with
+  the number of connections under it) and current traffic.
 - "Servers" shows a card of charts for each server: live sessions and streams, upload and
-  download speed. A telemt server counts one thing where tproxy counts two, so its card has one
-  "Connections" line and one "Traffic" line.
+  download speed. A telemt server has two lines instead of sessions and streams, "People online"
+  and "Connections", and one "Traffic" line.
 - "WEB transport" shows which WEB carriers clients chose on all telemt servers over the last
   24 hours, plus counters of failures, rejected attempts, evicted sessions and bridge recoveries.
 - "Metrics export" has a short Prometheus snippet and points to this document.
@@ -39,6 +40,21 @@ server are on its page: the "Stats" tab has the same charts, and on a telemt ser
 WEB carriers of that server. Telegram alerts are set up in "Settings" → "Notifications". The
 panel sends a message when a server goes offline or comes back, when changes fail to apply,
 and about other problems it finds on servers.
+
+How the panel counts people online:
+
+- One Telegram app holds several connections at once, usually 2 to 15, so there are always
+  more connections than people. The panel counts people once a minute from what telemt reports.
+- A personal user with at least one connection counts as one person. A shared user counts as
+  many people as the distinct IP addresses connected to it.
+- For a shared user, several people behind one router count as one, while one person's phone on
+  mobile data and computer on Wi-Fi count as two. The users list and the user window call the
+  same number devices.
+- Someone connected to two servers counts once in the total, and on each server in that
+  server's own number.
+- tproxy servers do not report who is connected, so they count WEB sessions instead.
+- The panel keeps addresses only in memory, to count people over the last 15 minutes. Only the
+  counts reach the database.
 
 How to read the WEB transport numbers:
 
@@ -155,6 +171,9 @@ Everything below comes from the panel's `/metrics`. Prometheus adds its own `job
 | `tgwp_keys` | gauge | `status`: `pending`, `active`, `revoked` | Number of users in each status. All three series are always present, even at 0. |
 | `tgwp_node_sessions_live` | gauge | `node`: server UUID | Live sessions on the server, from its latest snapshot. On telemt, the current connections of all its users added up. |
 | `tgwp_node_streams_live` | gauge | `node`: server UUID | Live relay streams on the server, from its latest snapshot. On telemt, the same number as `tgwp_node_sessions_live`. |
+| `tgwp_node_people_online` | gauge | `node`: server UUID | People online on the server, from its latest snapshot. Someone connected to two servers is in both series. Snapshots taken before the version that counts people have no series. |
+| `tgwp_people_online` | gauge | | People online across all servers, each person once even when connected to several servers. How people are counted is described under "What the panel shows without them". |
+| `tgwp_people_online_15m` | gauge | | People who were online at least once in the last 15 minutes. |
 | `go_*`, `process_*` | various | | Standard Go runtime and process metrics of the panel itself: goroutines, memory, garbage collection, open files, CPU. |
 
 What the statuses mean:
@@ -178,9 +197,10 @@ Things to know about the per-server metrics:
 - The `node` label holds the server's UUID. The same UUID is in the address of the
   server's page in the panel: `https://panel.example.com/nodes/<uuid>`.
 - A new server has no series until the panel takes its first snapshot.
-- The value is the server's latest snapshot, whatever its age. A server that went offline keeps
-  showing its last numbers until its snapshots age out after 30 days. Check `tgwp_nodes` for
-  offline servers before trusting these numbers.
+- The value is the server's latest snapshot, as long as it is no more than three minutes old.
+  A server that stopped answering loses its series until it comes back.
+- `tgwp_people_online` and `tgwp_people_online_15m` disappear too when the panel has not counted
+  people in the last three minutes.
 - When a server is deleted, its series disappear.
 
 A few queries to start with:
@@ -188,6 +208,7 @@ A few queries to start with:
 ```
 tgwp_nodes{status="offline"} > 0      # some server is offline
 tgwp_nodes{status="degraded"} > 0     # some server has a broken service
+tgwp_people_online                    # people online across all servers
 sum(tgwp_node_sessions_live)          # live sessions on all servers
 up{job="tgwp-panel"} == 0             # Prometheus cannot reach the panel
 ```
@@ -224,9 +245,9 @@ draw these numbers.
 
 There is no `tgwp_key_*` metric. On telemt servers the panel records traffic, connections and
 unique IP addresses for each user, and shows them in Users: the "Traffic, 30 days" and
-"Connections" columns in the list, and the same numbers plus the "Traffic and connections" chart
-in the user window. tproxy servers do not measure traffic per user: `tproxy-server` counts only
-per server.
+"Activity" columns in the list ("Online, ≈ 2 devices" with the connections under it), and the
+same numbers plus the "Traffic and connections" chart in the user window. tproxy servers do not
+measure traffic per user: `tproxy-server` counts only per server.
 
 How the panel is built is described in the [reference](reference.md), installation in the
 [setup guide](setup.en.md). What to do when something breaks is in the [runbook](runbook.md).

@@ -652,10 +652,11 @@ the filter. The search looks at the name, contact, note and short address, and t
 the list by state, type and server. When nobody matches, "Reset filters" brings the whole list
 back.
 
-"Columns" hides and shows the link, type, servers, traffic over 30 days, connections, expiry and
+"Columns" hides and shows the link, type, servers, traffic over 30 days, activity, expiry and
 creation date. The choice is remembered in this browser. The button in the Link column copies the
-subscription link. The Connections column shows how many connections the person has right now, or
-when they last connected. Only telemt servers count traffic and connections.
+subscription link. The Activity column shows whether the person is online and from about how many
+devices, with the number of connections under it, or when they last connected. Only telemt servers
+count traffic and activity.
 
 ![Users](screenshots/keys.png)
 
