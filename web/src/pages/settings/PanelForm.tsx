@@ -192,9 +192,11 @@ export function PanelForm() {
               title={t('settings.panel_section_intervals')}
               actions={<HelpButton topic="settings.panel" />}
             />
-            <PanelBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="panel-apply-interval">{t('settings.panel_apply_interval')}</Label>
+            <PanelBody className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 sm:grid-rows-[auto_auto_auto] sm:gap-y-2">
+              <div className="grid gap-2 sm:row-span-3 sm:grid-rows-subgrid">
+                <Label htmlFor="panel-apply-interval" className="self-end">
+                  {t('settings.panel_apply_interval')}
+                </Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="panel-apply-interval"
@@ -217,8 +219,10 @@ export function PanelForm() {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="panel-offline-after">{t('settings.panel_offline_after')}</Label>
+              <div className="grid gap-2 sm:row-span-3 sm:grid-rows-subgrid">
+                <Label htmlFor="panel-offline-after" className="self-end">
+                  {t('settings.panel_offline_after')}
+                </Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="panel-offline-after"

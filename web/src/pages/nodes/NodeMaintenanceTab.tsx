@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 import { InstallCommandDialog } from './InstallCommandDialog';
 import { NodeApplyHistory } from './NodeApplyHistory';
+import { NodeProfilesSection } from './NodeProfilesSection';
 import { DASH } from './nodeDisplay';
 import { applyFailed } from './nodeHealth';
 
@@ -171,6 +172,7 @@ export function NodeMaintenanceTab({ node }: { node: Node }) {
       </Panel>
 
       <History nodeId={node.id} />
+      <NodeProfilesSection nodeId={node.id} online={node.online} engine={node.engine} />
 
       {isWriter && (
         <Panel className="border-destructive/40">

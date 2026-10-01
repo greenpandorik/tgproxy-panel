@@ -177,15 +177,6 @@ export const useAssignUpstreamSite = (id: string) => {
   });
 };
 
-/** Builds the SSE URL for `NodeLogs` - opened directly via `EventSource`, not through the fetch-based `api` client. */
-export function nodeLogsUrl(id: string, services: string[], lines: number, follow: boolean): string {
-  const q = new URLSearchParams();
-  q.set('services', services.join(','));
-  q.set('lines', String(lines));
-  q.set('follow', follow ? '1' : '0');
-  return `/api/v1/nodes/${id}/logs?${q.toString()}`;
-}
-
 // Queues an apply on every node that has unapplied changes, for the command palette's "Apply everywhere".
 export const useApplyDirtyNodes = () => {
   const qc = useQueryClient();

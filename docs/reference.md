@@ -335,7 +335,7 @@ tabs:
 | Settings | telemt only: "Addresses and Fake-TLS" (public IP, Fake-TLS domain and port, backup masking domains, sponsor channel tag), then the folded "Transport strategy" with overload protection and "Recovery and egress" |
 | Cover site | The current template, choosing another one, and an existing HTTP website on telemt servers that support it |
 | Blocklist | Addresses and subnets the server refuses connections from |
-| Maintenance | The telemt and agent versions with the telemt update, the actions (restart telemt or the relay, show the install command), apply history with logs and, set apart, deleting the server |
+| Maintenance | The telemt and agent versions with the telemt update, the actions (restart telemt or the relay, show the install command), apply history with logs, the users on the server with "Compare with the server" and, set apart, deleting the server |
 
 The panel shows no service logs: they are read on the server itself, and the commands are in the
 operations guide, under [Server logs](runbook.md#server-logs).

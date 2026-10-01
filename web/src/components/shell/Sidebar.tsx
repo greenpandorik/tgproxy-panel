@@ -72,23 +72,28 @@ function NavRow({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boo
 export function Sidebar({ collapsed = false, inDrawer = false, onNavigate, onToggleCollapsed }: SidebarProps) {
   const { t } = useTranslation();
   const { branding, theme } = useBrandingIdentity();
-  const toggle = inDrawer || !onToggleCollapsed ? null : (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-label={t(collapsed ? 'shell.expand_sidebar' : 'shell.collapse_sidebar')}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-control border border-hairline-strong bg-elevated text-muted-foreground transition-colors hover:border-mute/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          />
-        }
-      >
-        {collapsed ? <PanelLeftOpen className="size-4" aria-hidden="true" /> : <PanelLeftClose className="size-4" aria-hidden="true" />}
-      </TooltipTrigger>
-      <TooltipContent side="right">{t(collapsed ? 'shell.expand_sidebar' : 'shell.collapse_sidebar')}</TooltipContent>
-    </Tooltip>
-  );
+  const toggle =
+    inDrawer || !onToggleCollapsed ? null : (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-label={t(collapsed ? 'shell.expand_sidebar' : 'shell.collapse_sidebar')}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-control border border-hairline-strong bg-elevated text-muted-foreground transition-colors hover:border-mute/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            />
+          }
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-4" aria-hidden="true" />
+          ) : (
+            <PanelLeftClose className="size-4" aria-hidden="true" />
+          )}
+        </TooltipTrigger>
+        <TooltipContent side="right">{t(collapsed ? 'shell.expand_sidebar' : 'shell.collapse_sidebar')}</TooltipContent>
+      </Tooltip>
+    );
   const healthQuery = usePanelHealth();
   const clock = useClock();
   const apiOk = healthQuery.data === true && !healthQuery.isError;
@@ -153,7 +158,11 @@ export function Sidebar({ collapsed = false, inDrawer = false, onNavigate, onTog
           ) : (
             <>
               <p className="truncate pt-1">
-                {healthQuery.isLoading ? t('common.loading') : apiOk ? t('shell.panel_available') : t('shell.panel_unavailable')}{' '}
+                {healthQuery.isLoading
+                  ? t('common.state.loading')
+                  : apiOk
+                    ? t('shell.panel_available')
+                    : t('shell.panel_unavailable')}{' '}
                 · {clock}
               </p>
             </>

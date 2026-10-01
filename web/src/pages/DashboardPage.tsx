@@ -127,7 +127,7 @@ export function DashboardPage() {
           nodesTotal={summary?.nodes.total}
           nodesDown={nodes.filter((n) => n.status === 'offline').map((n) => n.name)}
           keysActive={summary?.keys.active}
-          keysTotal={summary?.keys.total}
+          keysTotal={summary ? summary.keys.total - summary.keys.revoked : undefined}
           people={summary?.people_online}
           people15m={summary?.people_online_15m}
           peopleSeries={(trends?.people ?? []).map((p) => p.people_online)}
