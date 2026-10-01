@@ -143,6 +143,33 @@ SELECT * FROM fleet_stats_snapshots WHERE taken_at > sqlc.arg('since') ORDER BY 
 -- name: DeleteOldFleetSnapshots :exec
 DELETE FROM fleet_stats_snapshots WHERE taken_at < $1;
 
+-- FleetPeopleSeries is the fleet head count averaged over buckets of step seconds.
+-- name: FleetPeopleSeries :many
+SELECT max(taken_at)::timestamptz AS t, round(avg(people_online))::int AS people_online
+FROM fleet_stats_snapshots
+WHERE taken_at >= sqlc.arg('since')
+GROUP BY floor(extract(epoch FROM taken_at) / sqlc.arg('step')::bigint)
+ORDER BY 1;
+
+-- FleetTraffic sums every node's counter steps in two windows, since..mid and mid onwards. A step
+-- across a counter restart counts as nothing.
+-- name: FleetTraffic :one
+WITH steps AS (
+  SELECT taken_at,
+         bytes_up - lag(bytes_up) OVER w AS up,
+         bytes_down - lag(bytes_down) OVER w AS down
+  FROM node_stats_snapshots
+  WHERE taken_at >= sqlc.arg('since')
+  WINDOW w AS (PARTITION BY node_id ORDER BY taken_at)
+)
+SELECT
+  coalesce(sum(GREATEST(up, 0) + GREATEST(down, 0)) FILTER (WHERE taken_at >= sqlc.arg('mid')), 0)::bigint AS current,
+  count(*) FILTER (WHERE taken_at >= sqlc.arg('mid') AND (up IS NOT NULL OR down IS NOT NULL)) AS current_steps,
+  coalesce(sum(GREATEST(up, 0) + GREATEST(down, 0)) FILTER (WHERE taken_at < sqlc.arg('mid')), 0)::bigint AS previous,
+  count(*) FILTER (WHERE taken_at < sqlc.arg('mid') AND (up IS NOT NULL OR down IS NOT NULL)) AS previous_steps,
+  coalesce(min(taken_at), now())::timestamptz AS earliest
+FROM steps;
+
 -- name: InsertAlert :one
 INSERT INTO alerts (node_id, kind, message) VALUES ($1, $2, $3) RETURNING *;
 

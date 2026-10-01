@@ -68,6 +68,91 @@ func (q *Queries) DeleteOldSnapshots(ctx context.Context, takenAt time.Time) err
 	return err
 }
 
+const fleetPeopleSeries = `-- name: FleetPeopleSeries :many
+SELECT max(taken_at)::timestamptz AS t, round(avg(people_online))::int AS people_online
+FROM fleet_stats_snapshots
+WHERE taken_at >= $1
+GROUP BY floor(extract(epoch FROM taken_at) / $2::bigint)
+ORDER BY 1
+`
+
+type FleetPeopleSeriesParams struct {
+	Since time.Time `json:"since"`
+	Step  int64     `json:"step"`
+}
+
+type FleetPeopleSeriesRow struct {
+	T            time.Time `json:"t"`
+	PeopleOnline int32     `json:"people_online"`
+}
+
+// FleetPeopleSeries is the fleet head count averaged over buckets of step seconds.
+func (q *Queries) FleetPeopleSeries(ctx context.Context, arg FleetPeopleSeriesParams) ([]FleetPeopleSeriesRow, error) {
+	rows, err := q.db.Query(ctx, fleetPeopleSeries, arg.Since, arg.Step)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FleetPeopleSeriesRow{}
+	for rows.Next() {
+		var i FleetPeopleSeriesRow
+		if err := rows.Scan(&i.T, &i.PeopleOnline); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fleetTraffic = `-- name: FleetTraffic :one
+WITH steps AS (
+  SELECT taken_at,
+         bytes_up - lag(bytes_up) OVER w AS up,
+         bytes_down - lag(bytes_down) OVER w AS down
+  FROM node_stats_snapshots
+  WHERE taken_at >= $2
+  WINDOW w AS (PARTITION BY node_id ORDER BY taken_at)
+)
+SELECT
+  coalesce(sum(GREATEST(up, 0) + GREATEST(down, 0)) FILTER (WHERE taken_at >= $1), 0)::bigint AS current,
+  count(*) FILTER (WHERE taken_at >= $1 AND (up IS NOT NULL OR down IS NOT NULL)) AS current_steps,
+  coalesce(sum(GREATEST(up, 0) + GREATEST(down, 0)) FILTER (WHERE taken_at < $1), 0)::bigint AS previous,
+  count(*) FILTER (WHERE taken_at < $1 AND (up IS NOT NULL OR down IS NOT NULL)) AS previous_steps,
+  coalesce(min(taken_at), now())::timestamptz AS earliest
+FROM steps
+`
+
+type FleetTrafficParams struct {
+	Mid   time.Time `json:"mid"`
+	Since time.Time `json:"since"`
+}
+
+type FleetTrafficRow struct {
+	Current       int64     `json:"current"`
+	CurrentSteps  int64     `json:"current_steps"`
+	Previous      int64     `json:"previous"`
+	PreviousSteps int64     `json:"previous_steps"`
+	Earliest      time.Time `json:"earliest"`
+}
+
+// FleetTraffic sums every node's counter steps in two windows, since..mid and mid onwards. A step
+// across a counter restart counts as nothing.
+func (q *Queries) FleetTraffic(ctx context.Context, arg FleetTrafficParams) (FleetTrafficRow, error) {
+	row := q.db.QueryRow(ctx, fleetTraffic, arg.Mid, arg.Since)
+	var i FleetTrafficRow
+	err := row.Scan(
+		&i.Current,
+		&i.CurrentSteps,
+		&i.Previous,
+		&i.PreviousSteps,
+		&i.Earliest,
+	)
+	return i, err
+}
+
 const insertAlert = `-- name: InsertAlert :one
 INSERT INTO alerts (node_id, kind, message) VALUES ($1, $2, $3) RETURNING id, node_id, kind, message, created_at, resolved_at, read_at
 `

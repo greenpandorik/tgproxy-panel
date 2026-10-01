@@ -13,6 +13,7 @@ const recentJobsLimit = 20
 
 func (s *Server) mountDashboard(r chi.Router) {
 	r.Get("/dashboard/summary", s.handleDashboardSummary)
+	r.Get("/dashboard/trends", s.handleDashboardTrends)
 	r.Get("/alerts", s.handleListAlerts)
 	r.With(RequireRole(writers...)).Post("/alerts/resolve", s.handleResolveAlerts)
 	r.With(RequireRole(writers...)).Post("/alerts/{id}/resolve", s.handleResolveAlert)
