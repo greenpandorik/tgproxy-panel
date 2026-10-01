@@ -74,7 +74,7 @@ export function CollapsibleSection({
       <div className={cn('flex items-center gap-3', action && 'pr-(--panel-x)')}>
         <Collapsible.Trigger
           className={cn(
-            'group/section flex min-h-13 min-w-0 flex-1 cursor-pointer items-center gap-3 py-3 pl-(--panel-x) text-left transition-colors outline-none hover:bg-elevated/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+            'group/section flex min-h-13 min-w-0 flex-1 cursor-pointer items-center gap-3 py-3 pl-(--panel-x) text-left transition-colors hover:bg-elevated/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
             !action && 'pr-(--panel-x)',
           )}
         >
