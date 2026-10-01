@@ -167,8 +167,9 @@ It needs Grafana 10 or newer.
 4. Press "Import".
 
 The dashboard shows the last 24 hours and refreshes every minute; both can be changed in Grafana. It
-has tiles for servers and users by status (the dashboard labels them `Keys`), charts of live
-sessions and streams per server, and the `Sessions live by node` table. Its uid is `tgwp-panel`, so
+has tiles for servers and users by status (the dashboard labels them `Keys`), people online now
+and over the last 15 minutes with a chart per server, charts of live sessions and streams per
+server, and the `Sessions live by node` table. Its uid is `tgwp-panel`, so
 importing the file again updates the dashboard in place.
 
 ## 4. Metric reference

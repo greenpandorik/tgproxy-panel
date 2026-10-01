@@ -293,11 +293,130 @@
       "pluginVersion": "10.0.0"
     },
     {
+      "id": 12,
+      "type": "stat",
+      "title": "People online",
+      "description": "tgwp_people_online",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "tgwp_people_online",
+          "legendFormat": "People",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "People in the last 15 minutes",
+      "description": "tgwp_people_online_15m",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "tgwp_people_online_15m",
+          "legendFormat": "People, 15 min",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "People online by node",
+      "description": "sum by (node) (tgwp_node_people_online)",
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum by (node) (tgwp_node_people_online)",
+          "legendFormat": "{{node}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "pointSize": 5,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "people",
+            "stacking": { "mode": "none", "group": "A" }
+          },
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
       "id": 8,
       "type": "timeseries",
       "title": "Live sessions by node",
       "description": "sum by (node) (tgwp_node_sessions_live)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "targets": [
         {
@@ -342,7 +461,7 @@
       "type": "timeseries",
       "title": "Live streams by node",
       "description": "sum by (node) (tgwp_node_streams_live)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "targets": [
         {
@@ -387,7 +506,7 @@
       "type": "table",
       "title": "Sessions live by node",
       "description": "tgwp_node_sessions_live, instant",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "targets": [
         {
@@ -429,7 +548,7 @@
       "id": 11,
       "type": "text",
       "title": "Documentation",
-      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 24 },
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 32 },
       "options": {
         "mode": "markdown",
         "content": "**tgwp-panel monitoring** — see `docs/monitoring.md` in the panel repository for the metric reference, per-node relay metrics (read through the panel UI, not scraped here — cookie-authenticated), and a note that per-key statistics are not available (relay limitation: no per-profile label)."
