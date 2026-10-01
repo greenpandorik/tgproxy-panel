@@ -226,10 +226,12 @@ version and readiness, and opens WEB sessions again. The result is one of `ok`, 
 `failed`, `rolled_back`, `rollback_failed` or `needs_attention`. Only `ok` means the update
 finished.
 
-In the panel, for several servers: Servers → "Update telemt on servers". You pick online telemt
-servers and their order. The servers are updated one by one, so the first one works as a test.
-After each update the panel checks the server and watches it for a minute before moving on. An
-error stops the queue, and "Stop subsequent updates" lets the update in progress finish.
+In the panel, for several servers: Servers → "Update telemt…". The window names the version it
+installs and lists every telemt server with the version it would move from and to. Search finds
+a server by name or host, and "Select outdated" ticks every online server on an older version.
+The servers are updated one by one in list order, so the first one works as a test. After each
+update the panel checks the server and watches it for a minute before moving on. An error stops
+the queue, and "Stop subsequent updates" lets the update in progress finish.
 
 Restarting telemt drops the server's live sessions, so go one server at a time. The runbook
 covers the details and the outcomes: [Upgrading servers](runbook.md#upgrading-servers) and
@@ -243,13 +245,16 @@ then Activity log and Settings.
 
 ### Overview
 
-The home page shows whether everything works and what needs your attention. The top line gives
-the verdict for the whole fleet. Below it, "Needs attention" lists open problems,
-each with an action such as "Open server", "Apply again" or "Restart the proxy", and "Mark
-resolved". Then come four numbers (servers online, active users, people online with the
-connections under it, traffic over 24 hours), the table of all servers with their CPU load and
-people online, and a folded block "People online chart and recent operations". The "New user"
-button opens user creation.
+The home page shows whether everything works and what needs your attention. "Needs attention"
+lists open problems: which server, what happened and how long ago, with the action that fixes
+it ("Open", "Apply" or "Restart") and "Mark read". Owners and admins can tick several problems
+and mark them read together, or mark all read; a read problem leaves the list until it clears
+and happens again. When nothing is wrong the box says so. Beside it are four numbers: people
+online with a 24-hour line and the connections under it, servers online naming the one that is
+down, active users out of all, and the traffic of the last 24 hours with the change against the
+day before when the panel holds that whole day. Below are cards for all servers in the shared
+order, and a folded block "People online chart and recent operations". The "New user" button
+opens user creation.
 
 People online is an estimate refreshed every minute. A personal user with at least one
 connection is one person, a shared user counts as many as its distinct IP addresses, and on
@@ -263,14 +268,16 @@ The Monitoring page holds charts and history. Its views:
 
 | View | What it shows |
 |---|---|
-| All servers | Fleet totals: servers online, healthy and degraded, people online with the connections under it, current traffic |
-| Servers | For each server: sessions and streams, upload and download rate, and CPU, RAM and disk. A telemt server has lines for people online and connections instead, and one for traffic |
+| Overview | Servers online, people online with the connections under it, the slowest route to Telegram, the certificate that expires first, current traffic, and a card for each server: people online, processor, memory, latency to Telegram, days left on the certificate, time since the last reboot, how long unapplied changes have waited, an available telemt update |
+| By server | For each server: sessions and streams, upload and download rate, and CPU, RAM and disk. A telemt server has lines for people online and connections instead, and one for traffic |
 | WEB transport | WEB carriers across all telemt servers |
 
 How to collect the panel's metrics with Prometheus is shown in Settings → Integrations; it used to
 be a Metrics export view here.
 
-The period switch offers 1, 6 and 24 hours and 7 days. Problems are listed on Overview only.
+The period switch on "By server" offers 1, 6 and 24 hours and 7 days. Problems are listed on
+Overview only. Collecting the panel's metrics with Prometheus is described in Settings →
+Integrations; old links to the metrics export open that tab.
 
 The charts come from snapshots: once a minute the panel records the state of every online
 server, and keeps these records for 30 days.
@@ -299,9 +306,13 @@ and a scrape example in [`deploy/prometheus.example.yml`](../deploy/prometheus.e
 
 ### Servers
 
-The list shows each server's name, domain, engine, number of users, CPU and RAM, the time of its
-last response, whether it has unapplied changes, and its latency to Telegram. "Add server"
-opens a three-step wizard:
+The list shows each server's name and domain, people online with the connections under them,
+CPU and RAM, and the time of its last response. A click anywhere in a row opens the server;
+applying changes, the install command and deleting are on the server's page. Servers follow one
+order across the panel: Overview, Monitoring, the server choice for a user and the subscription
+page use it too. Owners and admins drag a row by its handle to change it, or from the keyboard
+press Space on the handle, move with the arrows and press Space again. A new server goes last.
+"Add server" opens a three-step wizard:
 
 1. Server: a name, the domain, an e-mail for the Let's Encrypt certificate and, if needed, the
    public IP. "Check DNS" shows where the domain points right now.
@@ -309,7 +320,7 @@ opens a three-step wizard:
    domain by default) and the Fake-TLS port (8443 by default; 1024 to 65535, except 80 and 443).
 3. Install: the one-time install command. The window follows the agent until it connects.
 
-"Update telemt on servers" on the same page updates several servers in a row (see
+"Update telemt…" on the same page updates several servers in a row (see
 [Updating servers](#updating-servers)).
 
 ### Server page
@@ -653,8 +664,10 @@ service and timer are in `deploy/probe`, and the runbook describes the setup in
 ### Incidents
 
 An incident is a problem the panel found by itself. It appears in "Needs attention" on Overview.
-Most incidents close by themselves when the problem goes away, and "Mark resolved" closes one by
-hand. Incidents come from:
+Most incidents close by themselves when the problem goes away. "Mark read" takes one off the
+list without closing it: it stays hidden while the problem lasts, and the check that found it
+does not raise it again, so it shows up only when the problem clears and comes back. A failing
+apply that keeps retrying is one incident until an apply succeeds. Incidents come from:
 
 - a server going offline, and an apply that failed;
 - the agent's reports: disk at least 90% full, memory at least 95% full, the engine not ready,
@@ -1084,6 +1097,10 @@ header equal to the `tgwp_csrf` cookie. Some routes are useful on their own:
 | `GET /api/v1/keys/{id}/subscription/qr` | Owner, admin | A PNG with the QR code of the current subscription link |
 | `GET /api/v1/keys/{id}/links` | Owner, admin | The user's direct links, grouped by server |
 | `GET /api/v1/monitoring/overview?from&to&step` | Any role | Series for the Monitoring charts |
+| `GET /api/v1/dashboard/trends` | Any role | The last day for Overview: `{people: [{t, people_online}], traffic_24h, traffic_prev_24h}` |
+| `PUT /api/v1/nodes/order` | Owner, admin | Set the server order: `{ids: [...]}` |
+| `GET /api/v1/alerts` | Any role | Open problems nobody has marked read |
+| `POST /api/v1/alerts/resolve` | Owner, admin | Mark problems read: `{ids: [...]}`, answers `{resolved}` |
 | `GET /api/v1/audit` | Any role | The activity log |
 | `GET /api/v1/nodes/{id}/metrics` | Any role | The server's own proxy metrics in Prometheus format |
 | `GET /api/v1/nodes/{id}/blocklist` | Any role | The server's blocklist, its state on the server and dropped-packet counters |
@@ -1121,7 +1138,7 @@ has; nothing is created then.
 `short=1` it draws the short address.
 
 `GET /api/v1/monitoring/overview` returns
-`{nodes: [{node_id, node_name, hostname, status}], series: {<node_id>: [{t, sessions_live, streams_live, people_online, bytes_up_rate, bytes_down_rate}]}, fleet: {people_online, people_online_15m, connections}}`.
+`{nodes: [{node_id, node_name, hostname, status, cert_expires_at}], series: {<node_id>: [{t, sessions_live, streams_live, people_online, bytes_up_rate, bytes_down_rate}]}, fleet: {people_online, people_online_15m, connections}}`.
 `from` and `to` are RFC 3339 times, the last 24 hours by default. The span is at most 31 days,
 since snapshots are kept for 30; a wider span answers 400. Rates are bytes per second, computed
 from neighbouring snapshots, and a counter reset (a relay restart) gives 0. A `step` above 60
@@ -1133,7 +1150,26 @@ minutes. `GET /api/v1/dashboard/summary` has the same `people_online` and `peopl
 next to `sessions_live`, and every server in `GET /api/v1/nodes` and `GET /api/v1/nodes/{id}`
 has `people_online` and `connections` from its latest snapshot of the last three minutes, or
 `null`. Servers marked offline have none, and the summary's `sessions_live`, `streams_live`,
-`bytes_up` and `bytes_down` add up only the servers that do.
+`bytes_up` and `bytes_down` add up only the servers that do. `cert_expires_at` is when the TLS
+certificate on port 443 expires, from the newest diagnostics pass that read it, or `null`. A
+server in `GET /api/v1/nodes` also has `dirty_since`, when its unapplied changes were first made,
+or `null` when none wait or the time is not known.
+
+`PUT /api/v1/nodes/order` puts the listed servers first, in the order given, and keeps the rest
+after them in their order; ids that name no server are skipped. An empty list, more than 1000
+ids or the same id twice answers 400. It answers `{ids}` with every server in the new order.
+
+`GET /api/v1/dashboard/trends` gives people online over the last 24 hours in 20-minute steps,
+and the traffic of all servers over the last 24 hours as the sum of their counter steps, so a
+restart does not lose it. `traffic_prev_24h` is the same sum for the 24 hours before and is
+`null` unless the stored history covers that whole day; `traffic_24h` is `null` until a server
+has two readings.
+
+`POST /api/v1/alerts/resolve` takes 1 to 500 ids and marks those that are still open and unread;
+it answers how many it marked. A problem raised after the list was loaded is not in it and stays.
+A read problem leaves `GET /api/v1/alerts` and the summary but stays open until it clears.
+`POST /api/v1/alerts/{id}/resolve` does the same for one id. `GET /api/v1/fleet/updates` also
+gives `version`, the telemt build a rollout installs.
 
 `GET /api/v1/audit` takes these parameters:
 

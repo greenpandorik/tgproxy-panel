@@ -886,13 +886,15 @@ included.
 
 ## 10. Monitoring, alerts and audit
 
-The Overview shows an overall verdict on the servers, a "Needs attention" list and every server at
-a glance.
+The Overview shows a "Needs attention" list, where a problem can be marked read until it comes
+back, four key numbers and a card for every server.
 
-Monitoring has three views: "All servers", "Servers" (connections, traffic and load per server)
-and "WEB transport". The range is picked at the top: 1h, 6h, 24h or 7d. The panel's own metrics
-are served on `/metrics` with `Authorization: Bearer <METRICS_TOKEN>`; Settings → Integrations has
-a Prometheus example and shows whether the token is set. A ready
+Monitoring has three views: "Overview" (key fleet numbers and a card per server with its load,
+latency to Telegram, certificate and unapplied changes), "By server" (connections, traffic and
+load per server over 1h, 6h, 24h or 7d) and "WEB transport". Servers appear in the same order
+everywhere; owners and admins drag a card or a row by its handle to change it. The panel's own
+metrics are served on `/metrics` with `Authorization: Bearer <METRICS_TOKEN>`, and Settings →
+Integrations shows how to collect them and whether the token is set. A ready
 Grafana dashboard is in `deploy/grafana/tgwp-panel.json`, and setting up Prometheus and Grafana is
 covered in [monitoring.md](monitoring.md).
 

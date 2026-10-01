@@ -22,12 +22,12 @@ export interface HelpTopicDef {
 
 export const HELP_TOPICS = {
   dashboard: {
-    fields: ['nodes_online', 'keys_active', 'people', 'connections', 'traffic', 'chart', 'alerts', 'jobs'],
+    fields: ['alerts', 'people', 'connections', 'nodes_online', 'keys_active', 'traffic', 'servers', 'chart', 'jobs'],
     docs: 'monitoring',
   },
 
   'nodes.list': {
-    fields: ['status', 'engine', 'relay', 'profiles', 'online', 'load', 'telegram', 'heartbeat', 'changes', 'actions'],
+    fields: ['status', 'online', 'load', 'heartbeat', 'order', 'telemt_update'],
     docs: 'install',
   },
   'nodes.create': {
@@ -133,7 +133,7 @@ export const HELP_TOPICS = {
   },
 
   monitoring: {
-    fields: ['range', 'people', 'sessions', 'streams', 'traffic', 'connections'],
+    fields: ['people', 'worst_route', 'certs', 'cards', 'range', 'sessions', 'streams', 'traffic', 'connections'],
     docs: 'monitoring',
   },
   audit: {

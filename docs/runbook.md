@@ -50,13 +50,13 @@ When something is wrong:
 
 ### In the panel
 
-The first page is Overview. The line at the top says whether everything works, and the "Needs
-attention" block below lists problems across all servers. Some problems come with a button that
-fixes them or opens the server in question.
+The first page is Overview. The "Needs attention" block lists problems across all servers, or
+says that all is well. Each problem comes with a button that fixes it or opens the server in
+question, and "Mark read" hides it until it clears and happens again.
 
-Servers lists every server with its state: Healthy, Degraded or Offline. The "⋯" menu of each
-server has "Apply now" and "Install command". The same page has a collapsed "Update telemt on
-servers" block.
+Servers lists every server with its state: Healthy, Degraded or Offline. Click a row to open the
+server; "Apply now" and the install command are on its page. "Update telemt…" on the same page
+opens the window for upgrading several servers.
 
 A server's page has five tabs: Health, Settings (telemt servers only), Cover site, Blocklist and
 Maintenance.
@@ -250,8 +250,7 @@ version.
 
 There are three ways:
 
-- "Update telemt on servers" on the Servers page upgrades several telemt servers one after
-  another;
+- "Update telemt…" on the Servers page upgrades several telemt servers one after another;
 - "Update Telemt" on the Maintenance tab upgrades one server;
 - `tgwp-agent upgrade` on the server itself upgrades telemt and the agent.
 
@@ -262,12 +261,13 @@ restarting telemt drops the current connections, and Telegram reconnects by itse
 
 ### Several telemt servers
 
-1. Open Servers and expand "Update telemt on servers". It lists only telemt servers that are
-   online right now.
-2. Tick the servers in the order they should be upgraded: the number next to a server shows its
-   place in the queue. Put first the server whose failure you can live with most easily. The new
-   version is tried on it before the others.
-3. Click "Start sequential update" and confirm.
+1. Open Servers and click "Update telemt…". The window lists every telemt server with the version
+   it would move from and to; only servers that are online right now can be ticked.
+2. Tick the servers, or click "Select outdated" to tick every online server on an older version.
+   They go in the order of the server list, and the number next to a server shows its place in
+   the queue. Put first, by dragging it up in the list, the server whose failure you can live
+   with most easily. The new version is tried on it before the others.
+3. Click "Update N servers".
 
 The panel takes the pinned version and its SHA256 checksum and upgrades the servers one at a
 time. Before each server it checks that the server is healthy. The agent verifies the download's
@@ -288,8 +288,10 @@ second time. It stops the queue with
 `dispatch was interrupted; inspect the node before starting a new rollout`. Open that server,
 look at the telemt row of the Versions block on its Maintenance tab, and start a new queue.
 
-It worked if the queue shows Complete and every server's Versions block says "Updated and
-checked". If the queue shows "Needs attention", the reason is written under it, and
+While the queue runs, its progress is shown above the server list. It worked if the queue,
+shown at the top of the "Update telemt…" window, says Complete and every server's
+Versions block says "Updated and checked". If the queue shows "Needs attention", the reason is
+written under it, above the server list, and
 [A telemt update failed](#a-telemt-update-failed) explains what to do next.
 
 ### One server from the panel

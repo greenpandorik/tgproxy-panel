@@ -23,22 +23,30 @@ stay in the panel.
 
 ## What the panel shows without them
 
-The Monitoring page has three tabs and a period switch (1h, 6h, 24h, 7d):
+The Monitoring page has three tabs:
 
-- "All servers" shows totals: servers online, healthy, running with errors, people online (with
-  the number of connections under it) and current traffic.
-- "Servers" shows a card of charts for each server: live sessions and streams, upload and
-  download speed. A telemt server has two lines instead of sessions and streams, "People online"
-  and "Connections", and one "Traffic" line.
+- "Overview" starts with five numbers: servers online (naming a server that does not respond),
+  people online with the number of connections under it, the slowest route to Telegram with
+  its server and DC, the TLS certificate that expires first, and current traffic. Below them
+  every server has a card: people online, processor and memory, latency to Telegram, days left
+  on the certificate, time since the last reboot, how long unapplied changes have waited and an
+  available telemt update. A server that does not respond says since when and shows what was
+  last known about it. Certificate dates come from the diagnostics the panel runs on every
+  online server every 15 minutes.
+- "By server" shows a card of charts for each server over a period of 1h, 6h, 24h or 7d: live
+  sessions and streams, upload and download speed. A telemt server has two lines instead of
+  sessions and streams, "People online" and "Connections", and one "Traffic" line.
 - "WEB transport" shows which WEB carriers clients chose on all telemt servers over the last
   24 hours, plus counters of failures, rejected attempts, evicted sessions and bridge recoveries.
 
-The export itself is described in "Settings" → "Integrations": a short Prometheus snippet,
-whether `METRICS_TOKEN` is set, and whether the alert webhook is configured. It used to be the
-"Metrics export" tab of the Monitoring page.
+Servers appear in one order across the panel. Owners and admins change it by dragging a card
+or a row by its handle, here, on Overview or on the Servers page. The Prometheus snippet that
+used to be under Monitoring is now in Settings → Integrations, which also
+shows whether `METRICS_TOKEN` is set and whether the alert webhook is configured.
 
 The panel reads each online server once a minute and keeps this history for 30 days. The
-Overview page is the one place that lists problems, under "Needs attention". Details for one
+Overview page is the one place that lists problems, under "Needs attention". "Mark read" takes
+a problem off that list until it clears and happens again. Details for one
 server are on its page: the Health tab has the same charts, and on a telemt server also the
 WEB carriers of that server. Telegram alerts are set up in "Settings" → "Notifications". The
 panel sends a message when a server goes offline or comes back, when changes fail to apply,

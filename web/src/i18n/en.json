@@ -1444,13 +1444,12 @@
         "fields": {
           "nodes_online": {
             "name": "Reachable servers",
-            "what": "The number of online servers and the total fleet size. A server that stops responding beyond the offline threshold is marked unavailable. See the server list below for details.",
+            "what": "How many servers respond out of all of them. Under the number: which server does not respond, or that every server does. A server silent for longer than the offline threshold counts as unavailable.",
             "tip": "An offline server hands out nothing: clients bound only to it will not connect."
           },
           "keys_active": {
-            "name": "Active keys",
-            "what": "Keys with Active status. The total number of keys appears below. Open the card to manage keys and inspect pending changes.",
-            "tip": "If the pending count never shrinks, an apply is failing on some server: open the server → Maintenance → Apply history."
+            "name": "Active users",
+            "what": "Users with Active status; under the number, how many there are in all. The tile opens the user list."
           },
           "people": {
             "name": "People online",
@@ -1463,7 +1462,11 @@
           },
           "traffic": {
             "name": "Traffic, 24 h",
-            "what": "Inbound plus outbound traffic of every server over the last 24 hours. Computed from stats snapshots, so it can lag a few minutes."
+            "what": "How much traffic went through all servers over the last 24 hours, from stats snapshots, so it can lag a few minutes. A proxy restart does not reset the sum. Under the number is the change against the day before; it is left out until the panel holds history for that whole day."
+          },
+          "servers": {
+            "name": "Servers",
+            "what": "A card per server: people online, latency to Telegram, processor and memory load, and when the server last answered. Click a card to open the server. Owners and admins reorder servers by dragging a card by its handle; from the keyboard, Tab to the handle, press Space, use the arrows and press Space again. The order is shared: monitoring, the server list, the server choice for a user and the subscription page follow it."
           },
           "chart": {
             "name": "People online over 24 hours",
@@ -1471,7 +1474,7 @@
           },
           "alerts": {
             "name": "Needs attention",
-            "what": "Open notifications about problems. Select a server name to inspect its status. Dismiss notification removes the entry but does not fix the cause.",
+            "what": "Problems waiting for a person: which server, what happened, how long ago, and the button that fixes it. Mark read takes a problem off the list until it clears and happens again; it does not fix the cause. Tick several problems and mark the selected ones read, or use Mark all read. A problem that arrived after the page loaded stays on the list. Owners and admins can mark problems read.",
             "tip": "The same events arrive in Telegram once notifications are on: Settings → Notifications and polling."
           },
           "jobs": {
@@ -1486,48 +1489,31 @@
       },
       "nodes.list": {
         "title": "Servers",
-        "intro": "A server is your VPS with its own domain, running the proxy. The panel installs everything it needs with one command and then manages it through an agent: keys, cover site, restarts. One panel, any number of servers in different countries; a key can be bound to several at once.",
+        "intro": "A server is your VPS with its own domain, running the proxy. The panel installs everything it needs with one command and then manages it through an agent: keys, cover site, restarts. One panel, any number of servers in different countries; a key can be bound to several at once. Click a row to open the server: that is also where changes are applied, a new install command is issued and the server is deleted.",
         "fields": {
           "status": {
             "name": "Status",
             "what": "\"Online\" - the agent sent a heartbeat recently. \"Offline\" - no heartbeat for longer than the offline threshold (Settings → Notifications and polling). \"Degraded\" - the server answers but one of its services is down. \"Pending\" - the server was created, but the install command has not been run yet."
           },
-          "engine": {
-            "name": "Engine",
-            "what": "telemt - a single process that gives keys two links (WEB and Fake-TLS), per-key limits and per-key stats. tproxy - the older tproxy-server + MTProxy pair, WEB links only. Chosen when the server is created and fixed afterwards."
-          },
-          "relay": {
-            "name": "Relay",
-            "what": "The proxy process version on the server: the telemt version or a short tproxy-server commit hash. Empty - the server has not reported yet."
-          },
-          "profiles": {
-            "name": "Profiles",
-            "what": "Used / maximum. A profile is one key on this server. A server has 128 slots by default; once they run out, new keys cannot be bound to it.",
-            "example": "37 / 128"
-          },
           "online": {
-            "name": "Online",
+            "name": "People online",
             "what": "An estimate of the people on the server right now, with its connections under it. A personal user with at least one connection is one person, a shared user counts as many as its distinct IP addresses; tproxy servers count WEB sessions. A dash means the server is offline or has sent nothing in the last three minutes."
           },
           "load": {
             "name": "CPU and RAM",
             "what": "Processor and memory load from the last heartbeat. Yellow from 80 %, red from 95 %. Keep headroom: an overloaded server adds latency for every client."
           },
-          "telegram": {
-            "name": "Telegram",
-            "what": "Latency to Telegram from the last heartbeat - telemt's one figure across all datacenters. Yellow from 150 ms, red from 400. A dash on tproxy servers and on offline servers. Per-DC detail is on the server page, Overview tab."
-          },
           "heartbeat": {
-            "name": "Last response",
+            "name": "Last seen",
             "what": "When the agent last checked in. \"never connected\" - the install has not run, or the script did not reach registration."
           },
-          "changes": {
-            "name": "Changes",
-            "what": "The \"pending\" tag means the panel holds changes (new or revoked keys, a different site) not yet sent to the server. They go out on the next apply, or right away with \"Apply now\"."
+          "order": {
+            "name": "Order",
+            "what": "Owners and admins drag a row by its handle, or a card on a phone; from the keyboard, Tab to the handle, press Space, use the arrows and press Space again. The order is shared across the panel: the overview, monitoring, the server choice for a user and the subscription page follow it. A new server goes last."
           },
-          "actions": {
-            "name": "Actions",
-            "what": "\"Apply now\" - send the accumulated changes now. \"Install command\" - mint a new one-time token and show the command (the old command stops working). \"Delete\" - remove the server together with its profiles and bindings. Keys bound only to this server are left with no servers."
+          "telemt_update": {
+            "name": "Update telemt…",
+            "what": "A window for choosing which servers to update to the telemt version the panel pins. Search finds a server by name or host; Select outdated ticks every online server on an older version. Servers are updated one at a time in list order: before the swap each waits up to two minutes for live sessions to end, afterwards the panel checks it and watches it for a minute. An error stops the queue and the remaining servers stay as they were."
           }
         },
         "notes": {
@@ -2205,7 +2191,7 @@
       },
       "monitoring": {
         "title": "Monitoring",
-        "intro": "Charts per server over the chosen range. Values come from stats snapshots the panel takes from the servers regularly, so a line can trail \"now\" by a few minutes. Metrics export for Prometheus and Grafana is under Settings → Integrations.",
+        "intro": "The summary and the server cards show what is happening now; the By server tab has charts over the chosen range. Values come from stats snapshots the panel takes from the servers regularly, so they can trail by a few minutes. The metrics export for Prometheus is in Settings → Integrations.",
         "fields": {
           "range": {
             "name": "Range",
@@ -2230,6 +2216,18 @@
           "connections": {
             "name": "Connections (telemt)",
             "what": "On telemt servers, the TCP connections telemt itself counts are shown instead of sessions and streams. One Telegram app holds several connections at once, usually 2 to 15, so there are more of them than people."
+          },
+          "worst_route": {
+            "name": "Slowest route to Telegram",
+            "what": "The highest latency to a Telegram data centre among the servers that are online, with the server and the DC number. Yellow from 150 ms, red from 400."
+          },
+          "certs": {
+            "name": "Certificates",
+            "what": "When the TLS certificate on port 443 of each server expires, as the last check read it; on online servers the check runs by itself every 15 minutes. Yellow with less than 14 days left, red once expired. Not available means no check has run yet."
+          },
+          "cards": {
+            "name": "Server cards",
+            "what": "For each server: people online, processor, memory, latency to Telegram, days left on the certificate, time since the last reboot, how long unapplied changes have waited and an available telemt update. A server that is not responding says since when and shows what was last known. The card order is shared across the panel; owners and admins change it by dragging a card by its handle."
           }
         },
         "notes": {
