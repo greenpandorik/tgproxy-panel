@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
@@ -53,6 +53,7 @@ export const useKeys = (filters: KeyFilters = {}) =>
     queryKey: keyKeys.list(filters),
     queryFn: () => api.get<Paginated<AccessKey>>(`/api/v1/keys${filtersToQuery(filters)}`),
     refetchInterval: 15_000,
+    placeholderData: keepPreviousData,
   });
 
 export const useKeySummary = () =>

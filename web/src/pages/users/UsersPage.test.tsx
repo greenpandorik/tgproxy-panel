@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/i18n';
@@ -45,20 +46,37 @@ function json(body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
 }
 
+const AMS = { id: 'n-ams', name: 'Amsterdam', hostname: 'ams1.proxy-demo.net', engine: 'telemt' };
+
 function mockApi(items: AccessKey[], total = items.length) {
+  const calls: string[] = [];
   vi.stubGlobal(
     'fetch',
     vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
+      calls.push(url);
       if (url.includes('/auth/me')) return json({ id: 'u1', username: 'root', role: 'owner', features: { totp: false } });
       if (url.includes('/keys/summary')) {
-        return json({ total, active: total, expiring: 0, expired: 0, disabled: 0, revoked: 0 });
+        return json({ total, active: total - 3, expiring: 1, expired: 1, disabled: 2, revoked: 0 });
       }
-      if (url.includes('/api/v1/keys?')) return json({ items, total, page: 1, per_page: 50 });
+      if (url.includes('/api/v1/keys?')) return json({ items, total, page: 1, per_page: 25 });
+      const one = items.find((k) => url.endsWith(`/api/v1/keys/${k.id}`));
+      if (one) return json(one);
+      if (url.includes('/api/v1/nodes')) return json({ items: [AMS], total: 1 });
       return json({ items: [], total: 0 });
     }),
   );
+  return {
+    lists: () => calls.filter((u) => u.includes('/api/v1/keys?')).map((u) => new URL(u, 'http://panel.test').searchParams),
+  };
 }
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.search}</output>;
+}
+
+const where = () => new URLSearchParams(screen.getByTestId('location').textContent ?? '');
 
 function renderPage(entry = '/users') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -67,6 +85,7 @@ function renderPage(entry = '/users') {
       <MemoryRouter initialEntries={[entry]}>
         <AuthProvider>
           <UsersPage />
+          <LocationProbe />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -79,32 +98,88 @@ describe('UsersPage pagination', () => {
     window.localStorage.clear();
   });
 
-  it('shows no pager when every user fits on one page', async () => {
-    mockApi([user('u-1', 'Ольга К.'), user('u-2', 'Мария С.')]);
+  it('says which rows are shown and draws no pages when everyone fits', async () => {
+    const api = mockApi([user('u-1', 'Ольга К.'), user('u-2', 'Мария С.')]);
     renderPage();
 
-    expect((await screen.findAllByText('Ольга К.')).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: /Вперёд/ })).toBeNull();
-    expect(screen.queryByText(/Страница 1 из 1/)).toBeNull();
+    expect(await screen.findByText('Показаны 1–2 из 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Следующая страница' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Сбросить фильтры' })).toBeNull();
+    expect(api.lists().at(-1)?.get('per_page')).toBe('25');
   });
 
-  it('says how many users a filter found', async () => {
-    mockApi([user('u-1', 'Ольга К.')]);
-    renderPage('/users?state=active');
+  it('remembers the chosen number of rows', async () => {
+    const api = mockApi([user('u-1', 'Ольга К.')], 120);
+    const view = renderPage('/users?page=3');
 
-    expect(await screen.findByText('Найдено: 1')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Вперёд/ })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toBeInTheDocument();
+    await userEvent.selectOptions(await screen.findByLabelText('Строк на странице'), '50');
+    await waitFor(() => expect(api.lists().at(-1)?.get('per_page')).toBe('50'));
+    expect(window.localStorage.getItem('tgwp-users-page-size')).toBe('50');
+    expect(where().get('page')).toBe('2');
+
+    view.unmount();
+    renderPage();
+    expect(await screen.findByLabelText('Строк на странице')).toHaveValue('50');
+    await waitFor(() => expect(api.lists().at(-1)?.get('per_page')).toBe('50'));
   });
 
-  it('pages through a long list', async () => {
-    mockApi([user('u-1', 'Ольга К.')], 120);
+  it('keeps the page in the address and numbers the pages', async () => {
+    const api = mockApi([user('u-1', 'Ольга К.')], 132);
     renderPage();
 
-    expect(await screen.findByText('Страница 1 из 3 · найдено: 120')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Вперёд/ })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Назад/ })).toBeDisabled();
+    const pages = await screen.findByRole('navigation', { name: 'Страницы' });
+    expect(within(pages).getAllByRole('button').map((b) => b.textContent)).toEqual(['', '1', '2', '3', '6', '']);
+    expect(within(pages).getByRole('button', { name: 'Страница 1' })).toHaveAttribute('aria-current', 'page');
+    expect(within(pages).getByRole('button', { name: 'Предыдущая страница' })).toBeDisabled();
+
+    await userEvent.click(within(pages).getByRole('button', { name: 'Страница 2' }));
+    await waitFor(() => expect(where().get('page')).toBe('2'));
+    await waitFor(() => expect(api.lists().at(-1)?.get('page')).toBe('2'));
+    expect(screen.getByText('Показаны 26–50 из 132')).toBeInTheDocument();
+
+    await userEvent.click(within(pages).getByRole('button', { name: 'Предыдущая страница' }));
+    await waitFor(() => expect(where().has('page')).toBe(false));
+  });
+
+  it('goes back to the first page when a filter changes', async () => {
+    mockApi([user('u-1', 'Ольга К.')], 132);
+    renderPage('/users?page=4');
+
+    await userEvent.click(await screen.findByRole('button', { name: /^Выключены/ }));
+    await waitFor(() => expect(where().get('state')).toBe('disabled'));
+    expect(where().has('page')).toBe(false);
+    expect(screen.getByRole('button', { name: /^Выключены/ })).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Страница 2' }));
+    await waitFor(() => expect(where().get('page')).toBe('2'));
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Поиск' }), 'оля');
+    await waitFor(() => expect(where().get('q')).toBe('оля'));
+    expect(where().has('page')).toBe(false);
+  });
+
+  it('filters by the server named in the address and clears it', async () => {
+    const api = mockApi([user('u-1', 'Ольга К.')]);
+    renderPage('/users?node=n-ams');
+
+    expect(await screen.findByText('Сервер: Amsterdam')).toBeInTheDocument();
+    expect(api.lists().at(-1)?.get('node')).toBe('n-ams');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Убрать фильтр «Сервер: Amsterdam»' }));
+    await waitFor(() => expect(where().has('node')).toBe(false));
+    await waitFor(() => expect(api.lists().at(-1)?.has('node')).toBe(false));
+  });
+
+  it('opens a user from anywhere on the row but not from the checkbox', async () => {
+    mockApi([user('u-1', 'Ольга К.')]);
+    renderPage();
+
+    const row = (await screen.findAllByText('Ольга К.'))[0].closest('tr') as HTMLElement;
+    await userEvent.click(within(row).getByRole('checkbox'));
+    expect(where().has('user')).toBe(false);
+    expect(within(row).getByRole('checkbox')).toBeChecked();
+
+    await userEvent.click(within(row).getByText('Активен'));
+    await waitFor(() => expect(where().get('user')).toBe('u-1'));
   });
 });
 

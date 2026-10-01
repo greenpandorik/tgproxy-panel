@@ -1,23 +1,18 @@
 import {
   CalendarPlus,
-  CalendarX2,
-  ChevronLeft,
-  ChevronRight,
   Columns3,
   Copy,
-  Hourglass,
+  ListFilter,
   MoreHorizontal,
-  PauseCircle,
   Plus,
   Power,
   RefreshCw,
   Trash2,
   TriangleAlert,
-  UserCheck,
   Users,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
@@ -29,8 +24,9 @@ import { CopyButton } from '@/components/common/CopyButton';
 import { DataTableSkeleton } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
+import { Pagination } from '@/components/common/Pagination';
 import { Panel } from '@/components/common/Panel';
-import { StatTile } from '@/components/common/StatTile';
+import { RowChevron } from '@/components/common/RowChevron';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -41,12 +37,13 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { ENTER_CLASS, enter, enterDelay } from '@/components/ui/motion';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ENTER_CLASS } from '@/components/ui/motion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
@@ -62,20 +59,51 @@ import { TONE_TEXT, expiryTone, shortHost } from './userState';
 import { UserDialog } from './UserDialog';
 import { extendExpiry, toLocalInputValue } from './userForm';
 
-import type { StatTone } from '@/components/common/statTone';
-import type { AccessKey, BulkKeyAction, KeyState, KeyType } from '@/api/types';
-import type { LucideIcon } from 'lucide-react';
+import type { AccessKey, BulkKeyAction, KeyState, KeySummary, KeyType } from '@/api/types';
+import type { MouseEvent } from 'react';
 
-const PER_PAGE = 50;
+const PAGE_SIZES = [25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_STORAGE = 'tgwp-users-page-size';
 
 type StateFilter = KeyState | 'expiring' | 'all';
 
 const STATE_FILTERS: StateFilter[] = ['all', 'active', 'pending', 'expiring', 'expired', 'disabled', 'revoked'];
+const CHIPS: StateFilter[] = ['all', 'active', 'expiring', 'expired', 'disabled', 'pending', 'revoked'];
+const RARE_CHIPS: StateFilter[] = ['pending', 'revoked'];
+const TYPE_FILTERS: KeyType[] = ['PERSONAL', 'SHARED'];
 
-const COLUMNS = ['link', 'type', 'servers', 'traffic', 'online', 'expires', 'created'] as const;
+const COLUMNS = ['online', 'expires', 'traffic', 'servers', 'type', 'link', 'created'] as const;
 type Column = (typeof COLUMNS)[number];
-const DEFAULT_COLUMNS: Column[] = ['link', 'servers', 'traffic', 'online', 'expires'];
+const DEFAULT_COLUMNS: Column[] = ['online', 'expires', 'traffic', 'servers'];
 const COLUMNS_STORAGE = 'tgwp-users-columns-v2';
+
+const ROW_CONTROLS = 'a, button, input, label, [role="checkbox"], [role="menu"], [role="menuitem"], [data-row-ignore]';
+
+function loadPageSize(): number {
+  try {
+    const saved = Number(localStorage.getItem(PAGE_SIZE_STORAGE));
+    return (PAGE_SIZES as readonly number[]).includes(saved) ? saved : DEFAULT_PAGE_SIZE;
+  } catch {
+    return DEFAULT_PAGE_SIZE;
+  }
+}
+
+function savePageSize(size: number): boolean {
+  try {
+    localStorage.setItem(PAGE_SIZE_STORAGE, String(size));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function chipCount(id: StateFilter, s: KeySummary | undefined): number | undefined {
+  if (!s) return undefined;
+  if (id === 'all') return s.total;
+  if (id === 'pending') return Math.max(0, s.total - s.active - s.expired - s.disabled - s.revoked);
+  return s[id];
+}
 
 function loadColumns(): Set<Column> {
   try {
@@ -169,11 +197,49 @@ function UserName({ user }: { user: AccessKey }) {
   );
 }
 
-interface TileSpec {
-  id: StateFilter;
-  icon: LucideIcon;
-  tone: StatTone;
-  value: number | undefined;
+function StateChip({
+  label,
+  count,
+  tone,
+  pressed,
+  title,
+  onClick,
+}: {
+  label: string;
+  count: number | undefined;
+  tone?: string;
+  pressed: boolean;
+  title?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      title={title}
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-8 shrink-0 items-center gap-2 rounded-control border px-3 text-label transition-[background-color,border-color,color,scale] outline-none active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring',
+        pressed
+          ? 'border-primary/70 bg-primary/12 font-medium text-foreground'
+          : 'border-hairline-strong text-mute hover:border-mute/55 hover:bg-elevated hover:text-foreground',
+      )}
+    >
+      {label}
+      {count !== undefined && <span className={cn('mono text-mono', pressed ? 'text-foreground' : (tone ?? 'text-mute'))}>{count}</span>}
+    </button>
+  );
+}
+
+function ActiveFilter({ label, removeLabel, onRemove }: { label: string; removeLabel: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex h-8 max-w-full items-center gap-1 rounded-control border border-primary/70 bg-primary/12 pr-1 pl-3 text-label text-foreground">
+      <span className="truncate">{label}</span>
+      <Button type="button" variant="ghost" size="icon-xs" onClick={onRemove} aria-label={removeLabel}>
+        <X />
+      </Button>
+    </span>
+  );
 }
 
 export function UsersPage() {
@@ -181,11 +247,14 @@ export function UsersPage() {
   const { isWriter } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [searchInput, setSearchInput] = useState('');
-  const [q, setQ] = useState('');
-  const [type, setType] = useState<KeyType | 'all'>('all');
-  const [node, setNode] = useState('all');
-  const [page, setPage] = useState(1);
+  const q = searchParams.get('q') ?? '';
+  const [searchInput, setSearchInput] = useState(q);
+  const [syncedQ, setSyncedQ] = useState(q);
+  if (q !== syncedQ) {
+    setSyncedQ(q);
+    setSearchInput(q);
+  }
+  const [pageSize, setPageSize] = useState(loadPageSize);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<Set<Column>>(loadColumns);
   const [welcomeId, setWelcomeId] = useState<string | null>(null);
@@ -195,41 +264,67 @@ export function UsersPage() {
 
   const stateParam = searchParams.get('state') as StateFilter | null;
   const state: StateFilter = stateParam && STATE_FILTERS.includes(stateParam) ? stateParam : 'all';
+  const typeParam = searchParams.get('type') as KeyType | null;
+  const type: KeyType | 'all' = typeParam && TYPE_FILTERS.includes(typeParam) ? typeParam : 'all';
+  const node = searchParams.get('node');
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '', 10) || 1);
   const openId = searchParams.get('user') ?? searchParams.get('key');
   const createOpen = searchParams.get('create') === '1';
 
-  const setParam = (name: string, value: string | null) => {
-    const next = new URLSearchParams(searchParams);
-    if (value === null) next.delete(name);
-    else next.set(name, value);
-    if (name === 'user') next.delete('key');
-    setSearchParams(next, { replace: true });
+  const updateParams = (changes: Record<string, string | null>, opts: { push?: boolean; firstPage?: boolean } = {}) => {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [name, value] of Object.entries(changes)) {
+          if (value === null) next.delete(name);
+          else next.set(name, value);
+        }
+        if ('user' in changes) next.delete('key');
+        if (opts.firstPage) next.delete('page');
+        return next;
+      },
+      { replace: !opts.push },
+    );
   };
+  const setParam = (name: string, value: string | null) => updateParams({ [name]: value });
+  const setFilter = (name: 'state' | 'type' | 'node', value: string | null) =>
+    updateParams({ [name]: value }, { push: true, firstPage: true });
+  const setPage = (next: number) => updateParams({ page: next > 1 ? String(next) : null }, { push: true });
 
-  const setState = (v: StateFilter) => {
-    setParam('state', v === 'all' ? null : v);
-    setPage(1);
-  };
+  const setState = (v: StateFilter) => setFilter('state', v === 'all' ? null : v);
   const openUser = (id: string | null, welcome = false) => {
     setWelcomeId(welcome ? id : null);
     setParam('user', id);
   };
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setQ(searchInput.trim());
-      setPage(1);
+  const searchTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(searchTimer.current), []);
+  const search = (value: string) => {
+    setSearchInput(value);
+    window.clearTimeout(searchTimer.current);
+    searchTimer.current = window.setTimeout(() => {
+      const next = value.trim();
+      if (next === q) return;
+      setSyncedQ(next);
+      updateParams({ q: next || null }, { firstPage: true });
     }, 300);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
+  };
+
+  const changePageSize = (size: number) => {
+    const firstRow = (page - 1) * pageSize;
+    setPageSize(size);
+    savePageSize(size);
+    const next = Math.floor(firstRow / size) + 1;
+    updateParams({ page: next > 1 ? String(next) : null });
+  };
 
   const filters = {
     page,
-    per_page: PER_PAGE,
+    per_page: pageSize,
     q: q || undefined,
     type: type === 'all' ? undefined : type,
     state: state === 'all' ? undefined : state,
-    node: node === 'all' ? undefined : node,
+    node: node ?? undefined,
   };
   const usersQuery = useKeys(filters);
   const summaryQuery = useKeySummary();
@@ -240,19 +335,31 @@ export function UsersPage() {
 
   const items = usersQuery.data?.items ?? [];
   const total = usersQuery.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
   const nodes = nodesQuery.data?.items ?? [];
   const telemtIds = new Set(nodes.filter((n) => n.engine === 'telemt').map((n) => n.id));
   const measured = (u: AccessKey) => u.nodes.some((n) => telemtIds.has(n.node_id));
   const summary = summaryQuery.data;
+  const nodeName = node ? (nodes.find((n) => n.id === node)?.name ?? (nodesQuery.isLoading ? '…' : t('users.filter_server_unknown'))) : '';
+  const typeName = type === 'SHARED' ? t('users.filter_type_shared') : t('users.filter_type_personal');
 
-  const tiles: TileSpec[] = [
-    { id: 'all', icon: Users, tone: 'neutral', value: summary?.total },
-    { id: 'active', icon: UserCheck, tone: 'ok', value: summary?.active },
-    { id: 'expiring', icon: Hourglass, tone: summary && summary.expiring > 0 ? 'warn' : 'neutral', value: summary?.expiring },
-    { id: 'expired', icon: CalendarX2, tone: summary && summary.expired > 0 ? 'err' : 'neutral', value: summary?.expired },
-    { id: 'disabled', icon: PauseCircle, tone: 'neutral', value: summary?.disabled },
-  ];
+  const pageGone = !!usersQuery.data && !usersQuery.isPlaceholderData && items.length === 0 && total > 0 && page > 1;
+  useEffect(() => {
+    if (!pageGone) return;
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (lastPage > 1) next.set('page', String(lastPage));
+        else next.delete('page');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [pageGone, lastPage, setSearchParams]);
+
+  const chips = CHIPS.filter((id) => !RARE_CHIPS.includes(id) || state === id || (chipCount(id, summary) ?? 0) > 0);
+  const chipTone = (id: StateFilter, count: number | undefined) =>
+    !count ? undefined : id === 'expiring' ? 'text-warn' : id === 'expired' ? 'text-err' : undefined;
 
   const toggleColumn = (col: Column, on: boolean) => {
     const next = new Set(columns);
@@ -270,7 +377,20 @@ export function UsersPage() {
       else next.delete(id);
       return next;
     });
-  const toggleAll = (checked: boolean) => setSelected(checked ? new Set(items.map((k) => k.id)) : new Set());
+  const toggleAll = (checked: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const k of items) {
+        if (checked) next.add(k.id);
+        else next.delete(k.id);
+      }
+      return next;
+    });
+  const pageSelected = items.filter((k) => selected.has(k.id)).length;
+  const onRowClick = (e: MouseEvent<HTMLElement>, id: string) => {
+    if ((e.target as HTMLElement).closest(ROW_CONTROLS)) return;
+    openUser(id);
+  };
 
   const runBulk = async (action: BulkKeyAction, expiresAt?: string) => {
     try {
@@ -344,14 +464,14 @@ export function UsersPage() {
   );
 
   const columnCount = 3 + COLUMNS.filter(show).length + (isWriter ? 2 : 0);
-  const filtered = !!q || state !== 'all' || type !== 'all' || node !== 'all';
+  const filtered = !!q || state !== 'all' || type !== 'all' || !!node;
+  const extraFilters = (type !== 'all' ? 1 : 0) + (node ? 1 : 0);
   const noUsers = summary?.total === 0 && !filtered;
   const resetFilters = () => {
+    window.clearTimeout(searchTimer.current);
     setSearchInput('');
-    setQ('');
-    setType('all');
-    setNode('all');
-    setState('all');
+    setSyncedQ('');
+    updateParams({ q: null, state: null, type: null, node: null }, { push: true, firstPage: true });
   };
   const extendMonth = async (u: AccessKey) => {
     try {
@@ -380,115 +500,110 @@ export function UsersPage() {
         }
       />
 
-      <div className={cn('grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5', noUsers && 'hidden')}>
-        {tiles.map((tile, i) => (
-          <button
-            key={tile.id}
-            type="button"
-            onClick={() => setState(state === tile.id ? 'all' : tile.id)}
-            aria-pressed={state === tile.id}
-            style={enter(i).style}
-            className={cn(
-              enter(i).className,
-              'rounded-surface text-left outline-offset-2 transition-shadow',
-              i === 0 && 'col-span-2 md:col-span-1',
-              state === tile.id && tile.id !== 'all' && 'ring-2 ring-brand-primary/60',
-            )}
-          >
-            <StatTile
-              icon={tile.icon}
-              tone={tile.tone}
-              label={t(`users.tile_${tile.id}`)}
-              context={tile.id === 'expiring' ? t('users.tile_expiring_context') : undefined}
-              value={tile.value ?? 0}
-              loading={summaryQuery.isLoading}
-              className="pointer-events-none"
+      <div className={cn('flex flex-col gap-3', noUsers && 'hidden')}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="search"
+            value={searchInput}
+            onChange={(e) => search(e.target.value)}
+            placeholder={t('users.search_placeholder')}
+            className="w-full sm:max-w-md sm:flex-1"
+            aria-label={t('common.search')}
+          />
+          <div className="ml-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button type="button" variant="outline" />}>
+                <ListFilter />
+                {t('users.filters')}
+                {extraFilters > 0 && <span className="mono text-mono text-mute">{extraFilters}</span>}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-56">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{t('users.column_type')}</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={type} onValueChange={(v) => setFilter('type', v === 'all' ? null : String(v))}>
+                    <DropdownMenuRadioItem value="all" closeOnClick>
+                      {t('keys.filter_type_all')}
+                    </DropdownMenuRadioItem>
+                    {TYPE_FILTERS.map((v) => (
+                      <DropdownMenuRadioItem key={v} value={v} closeOnClick>
+                        {t(v === 'SHARED' ? 'users.filter_type_shared' : 'users.filter_type_personal')}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{t('users.filter_server')}</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={node ?? 'all'} onValueChange={(v) => setFilter('node', v === 'all' ? null : String(v))}>
+                    <DropdownMenuRadioItem value="all" closeOnClick>
+                      {t('keys.filter_node_all')}
+                    </DropdownMenuRadioItem>
+                    {nodes.map((n) => (
+                      <DropdownMenuRadioItem key={n.id} value={n.id} closeOnClick>
+                        {n.name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button type="button" variant="outline" className="hidden md:inline-flex" />}>
+                <Columns3 />
+                {t('users.columns')}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{t('users.columns_hint')}</DropdownMenuLabel>
+                  {COLUMNS.map((col) => (
+                    <DropdownMenuCheckboxItem key={col} checked={show(col)} onCheckedChange={(on) => toggleColumn(col, !!on)}>
+                      {t(`users.column_${col}`)}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="group" aria-label={t('users.filter_state')} className="contents">
+            {chips.map((id) => {
+              const count = chipCount(id, summary);
+              return (
+                <StateChip
+                  key={id}
+                  label={t(`users.filter_${id}`)}
+                  count={count}
+                  tone={chipTone(id, count)}
+                  pressed={state === id}
+                  title={id === 'expiring' ? t('users.filter_expiring_hint') : undefined}
+                  onClick={() => state !== id && setState(id)}
+                />
+              );
+            })}
+          </div>
+          {extraFilters > 0 && <span aria-hidden="true" className="mx-1 h-5 w-px bg-hairline-strong" />}
+          {node && (
+            <ActiveFilter
+              label={t('users.filter_server_value', { name: nodeName })}
+              removeLabel={t('users.filter_remove', { name: t('users.filter_server_value', { name: nodeName }) })}
+              onRemove={() => setFilter('node', null)}
             />
-          </button>
-        ))}
-      </div>
-
-      <div className={cn('grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center', noUsers && 'hidden')}>
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder={t('users.search_placeholder')}
-          className="col-span-2 sm:max-w-sm sm:min-w-56 sm:flex-1"
-          aria-label={t('common.search')}
-        />
-        <Select value={state} onValueChange={(v) => setState((v ?? 'all') as StateFilter)}>
-          <SelectTrigger className="col-span-2 w-full sm:w-44" aria-label={t('keys.column_status')}>
-            <SelectValue>{(v: StateFilter) => t(`users.filter_${v ?? 'all'}`)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {STATE_FILTERS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {t(`users.filter_${s}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={type}
-          onValueChange={(v) => {
-            setType((v ?? 'all') as KeyType | 'all');
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-36" aria-label={t('keys.column_type')}>
-            <SelectValue>
-              {(v: KeyType | 'all') =>
-                t(v === 'SHARED' ? 'keys.type_shared' : v === 'PERSONAL' ? 'keys.type_personal' : 'keys.filter_type_all')
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('keys.filter_type_all')}</SelectItem>
-            <SelectItem value="PERSONAL">{t('keys.type_personal')}</SelectItem>
-            <SelectItem value="SHARED">{t('keys.type_shared')}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={node}
-          onValueChange={(v) => {
-            setNode(v ?? 'all');
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-44" aria-label={t('keys.column_nodes')}>
-            <SelectValue>{(v: string) => nodes.find((n) => n.id === v)?.name ?? t('keys.filter_node_all')}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('keys.filter_node_all')}</SelectItem>
-            {nodes.map((n) => (
-              <SelectItem key={n.id} value={n.id}>
-                {n.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {filtered && (
-          <Button type="button" variant="ghost" className="col-span-2" onClick={resetFilters}>
-            <X />
-            {t('users.reset_filters')}
-          </Button>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button type="button" variant="outline" className="hidden md:ml-auto md:inline-flex" />}>
-            <Columns3 />
-            {t('users.columns')}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>{t('users.columns_hint')}</DropdownMenuLabel>
-              {COLUMNS.map((col) => (
-                <DropdownMenuCheckboxItem key={col} checked={show(col)} onCheckedChange={(on) => toggleColumn(col, !!on)}>
-                  {t(`users.column_${col}`)}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+          {type !== 'all' && (
+            <ActiveFilter
+              label={t('users.filter_type_value', { name: typeName })}
+              removeLabel={t('users.filter_remove', { name: t('users.filter_type_value', { name: typeName }) })}
+              onRemove={() => setFilter('type', null)}
+            />
+          )}
+          {filtered && (
+            <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
+              <X />
+              {t('users.reset_filters')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {isWriter && selected.size > 0 && (
@@ -564,7 +679,8 @@ export function UsersPage() {
                     {isWriter && (
                       <TableHead className="w-0 pr-0">
                         <Checkbox
-                          checked={items.length > 0 && selected.size === items.length}
+                          checked={items.length > 0 && pageSelected === items.length}
+                          indeterminate={pageSelected > 0 && pageSelected < items.length}
                           onCheckedChange={(v) => toggleAll(!!v)}
                           aria-label={t('keys.select_all')}
                         />
@@ -572,41 +688,39 @@ export function UsersPage() {
                     )}
                     <TableHead>{t('users.column_name')}</TableHead>
                     <TableHead>{t('keys.column_status')}</TableHead>
+                    {show('online') && <TableHead>{t('users.column_online')}</TableHead>}
+                    {show('expires') && <TableHead className="text-right">{t('users.column_expires')}</TableHead>}
+                    {show('traffic') && <TableHead className="text-right">{t('users.column_traffic')}</TableHead>}
+                    {show('servers') && <TableHead>{t('users.column_servers')}</TableHead>}
+                    {show('type') && <TableHead>{t('users.column_type')}</TableHead>}
                     {show('link') && (
                       <TableHead className="w-0">
                         <span className="sr-only">{t('users.column_link')}</span>
                       </TableHead>
                     )}
-                    {show('type') && <TableHead>{t('users.column_type')}</TableHead>}
-                    {show('servers') && <TableHead>{t('users.column_servers')}</TableHead>}
-                    {show('traffic') && <TableHead className="text-right">{t('users.column_traffic')}</TableHead>}
-                    {show('online') && <TableHead>{t('users.column_online')}</TableHead>}
-                    {show('expires') && <TableHead className="text-right">{t('users.column_expires')}</TableHead>}
                     {show('created') && <TableHead className="text-right">{t('users.column_created')}</TableHead>}
-                    {isWriter && <TableHead className="w-0 pl-0" />}
+                    {isWriter && <TableHead className="w-0 px-0" />}
+                    <TableHead className="w-0 pl-0" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((u) => (
                     <TableRow
                       key={u.id}
+                      interactive
                       data-state={selected.has(u.id) ? 'selected' : undefined}
-                      className="cursor-pointer"
-                      onClick={() => openUser(u.id)}
+                      onClick={(e) => onRowClick(e, u.id)}
                     >
                       {isWriter && (
-                        <TableCell className="w-0 pr-0" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="w-0 pr-0" data-row-ignore="">
                           <Checkbox checked={selected.has(u.id)} onCheckedChange={(v) => toggleOne(u.id, !!v)} aria-label={u.label} />
                         </TableCell>
                       )}
                       <TableCell className="max-w-64">
                         <button
                           type="button"
-                          className="block max-w-full text-left underline-offset-4 hover:underline focus-visible:underline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openUser(u.id);
-                          }}
+                          className="block max-w-full rounded-control text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => openUser(u.id)}
                         >
                           <UserName user={u} />
                         </button>
@@ -614,8 +728,33 @@ export function UsersPage() {
                       <TableCell>
                         <StateBadge state={u.state} />
                       </TableCell>
+                      {show('online') && (
+                        <TableCell>
+                          <OnlineCell user={u} />
+                        </TableCell>
+                      )}
+                      {show('expires') && (
+                        <TableCell className="text-right">
+                          <ExpiresCell iso={u.expires_at} />
+                        </TableCell>
+                      )}
+                      {show('traffic') && (
+                        <TableCell className="mono text-right text-mono text-mute">
+                          {measured(u) || u.traffic_30d > 0 ? formatBytes(u.traffic_30d) : '—'}
+                        </TableCell>
+                      )}
+                      {show('servers') && (
+                        <TableCell className="max-w-56 whitespace-normal">
+                          <ServerChips nodes={u.nodes} />
+                        </TableCell>
+                      )}
+                      {show('type') && (
+                        <TableCell>
+                          <Badge>{t(u.type === 'SHARED' ? 'keys.type_shared' : 'keys.type_personal')}</Badge>
+                        </TableCell>
+                      )}
                       {show('link') && (
-                        <TableCell className="w-0" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="w-0" data-row-ignore="">
                           {(u.subscription_short_url ?? u.subscription_url) ? (
                             <CopyButton
                               value={(u.subscription_short_url ?? u.subscription_url) as string}
@@ -627,39 +766,17 @@ export function UsersPage() {
                           )}
                         </TableCell>
                       )}
-                      {show('type') && (
-                        <TableCell>
-                          <Badge>{t(u.type === 'SHARED' ? 'keys.type_shared' : 'keys.type_personal')}</Badge>
-                        </TableCell>
-                      )}
-                      {show('servers') && (
-                        <TableCell className="max-w-56 whitespace-normal">
-                          <ServerChips nodes={u.nodes} />
-                        </TableCell>
-                      )}
-                      {show('traffic') && (
-                        <TableCell className="mono text-right text-mono text-mute">
-                          {measured(u) || u.traffic_30d > 0 ? formatBytes(u.traffic_30d) : '—'}
-                        </TableCell>
-                      )}
-                      {show('online') && (
-                        <TableCell>
-                          <OnlineCell user={u} />
-                        </TableCell>
-                      )}
-                      {show('expires') && (
-                        <TableCell className="text-right">
-                          <ExpiresCell iso={u.expires_at} />
-                        </TableCell>
-                      )}
                       {show('created') && (
                         <TableCell className="mono text-right text-mono text-mute">{formatDate(u.created_at, i18n.language)}</TableCell>
                       )}
                       {isWriter && (
-                        <TableCell className="w-0 pl-0 text-right" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="w-0 px-0 text-right" data-row-ignore="">
                           {rowMenu(u)}
                         </TableCell>
                       )}
+                      <TableCell className="w-0 pl-1">
+                        <RowChevron />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -668,7 +785,11 @@ export function UsersPage() {
 
             <ul className="divide-y divide-hairline md:hidden">
               {items.map((u) => (
-                <li key={u.id} className="flex items-start gap-3 px-4 py-3">
+                <li
+                  key={u.id}
+                  className="group/row flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-elevated"
+                  onClick={(e) => onRowClick(e, u.id)}
+                >
                   {isWriter && (
                     <Checkbox
                       className="mt-1"
@@ -677,7 +798,11 @@ export function UsersPage() {
                       aria-label={u.label}
                     />
                   )}
-                  <button type="button" className="min-w-0 flex-1 space-y-2 text-left" onClick={() => openUser(u.id)}>
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 space-y-2 rounded-control text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => openUser(u.id)}
+                  >
                     <UserName user={u} />
                     <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                       <StateBadge state={u.state} />
@@ -687,44 +812,20 @@ export function UsersPage() {
                     <ServerChips nodes={u.nodes} />
                   </button>
                   {isWriter && rowMenu(u)}
+                  <RowChevron className="mt-1" />
                 </li>
               ))}
             </ul>
+            <Pagination
+              className="border-t border-hairline px-(--panel-x) py-3"
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              pageSizes={PAGE_SIZES}
+              onPageSizeChange={changePageSize}
+            />
           </Panel>
-
-          {(totalPages > 1 || filtered) && (
-            <div className={cn(ENTER_CLASS, 'flex flex-wrap items-center justify-between gap-2')} style={enterDelay(1)}>
-              <p className="mono text-mono text-mute">
-                {totalPages > 1
-                  ? t('users.pagination_summary', { page, totalPages, count: total })
-                  : t('users.found', { count: total })}
-              </p>
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    <ChevronLeft />
-                    {t('keys.pagination_prev')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    {t('keys.pagination_next')}
-                    <ChevronRight />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
         </>
       )}
 
