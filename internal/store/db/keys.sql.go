@@ -373,7 +373,7 @@ func (q *Queries) ListActiveSubscriptions(ctx context.Context, keyIds []uuid.UUI
 const listBindingsForKeys = `-- name: ListBindingsForKeys :many
 SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
-WHERE b.access_key_id = ANY($1::uuid[]) ORDER BY b.access_key_id, n.name
+WHERE b.access_key_id = ANY($1::uuid[]) ORDER BY b.access_key_id, n.sort_order, n.created_at
 `
 
 type ListBindingsForKeysRow struct {
@@ -468,7 +468,7 @@ func (q *Queries) ListExpiredActiveKeys(ctx context.Context) ([]AccessKey, error
 const listKeyBindings = `-- name: ListKeyBindings :many
 SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
-WHERE b.access_key_id = $1 ORDER BY n.name
+WHERE b.access_key_id = $1 ORDER BY n.sort_order, n.created_at
 `
 
 type ListKeyBindingsRow struct {

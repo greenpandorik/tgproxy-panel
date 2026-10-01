@@ -2,11 +2,12 @@
 -- that a caller which does not care about them (tests, fixtures) still gets the
 -- column defaults rather than an invalid enum value or a zero port.
 -- name: CreateNode :one
-INSERT INTO nodes (name, hostname, public_ip, acme_email, install_token_hash, install_token_expires, engine, tls_domain, classic_port)
+INSERT INTO nodes (name, hostname, public_ip, acme_email, install_token_hash, install_token_expires, engine, tls_domain, classic_port, sort_order)
 VALUES ($1, $2, $3, $4, $5, $6,
   COALESCE(sqlc.narg('engine')::node_engine, 'telemt'),
   COALESCE(sqlc.narg('tls_domain')::text, ''),
-  COALESCE(sqlc.narg('classic_port')::int, 8443))
+  COALESCE(sqlc.narg('classic_port')::int, 8443),
+  (SELECT COALESCE(max(sort_order), 0) + 1 FROM nodes))
 RETURNING *;
 
 
@@ -22,8 +23,9 @@ SELECT * FROM nodes WHERE install_token_hash = $1 AND install_token_expires > no
 -- name: GetNodeByAgentToken :one
 SELECT * FROM nodes WHERE agent_token_hash = $1;
 
+-- ListNodes is every node in the operator's order.
 -- name: ListNodes :many
-SELECT * FROM nodes ORDER BY created_at;
+SELECT * FROM nodes ORDER BY sort_order, created_at;
 
 -- name: UpdateNode :one
 UPDATE nodes SET name = $2, public_ip = $3, max_profiles = $4, acme_email = $5,
@@ -118,10 +120,21 @@ SELECT status, count(*) AS n FROM nodes GROUP BY status;
 -- endpoint no longer issues one CountNodeProfiles round trip per node.
 -- name: ListNodesWithCounts :many
 SELECT sqlc.embed(n), (SELECT count(*) FROM profiles p WHERE p.node_id = n.id) AS profile_count
-FROM nodes n ORDER BY n.created_at;
+FROM nodes n ORDER BY n.sort_order, n.created_at;
 
 -- ListDirtyNodesAny returns every dirty node regardless of status: the apply
 -- sweep decides reachability from the live driver, so a node marked offline by a
 -- stale heartbeat while its gRPC stream is up is still picked up.
 -- name: ListDirtyNodesAny :many
 SELECT * FROM nodes WHERE dirty = true;
+
+-- ReorderNodes puts the listed nodes first, in the order given, and keeps every other node after
+-- them in its current order. Ids that name no node are skipped.
+-- name: ReorderNodes :execrows
+WITH listed AS (
+  SELECT t.id, t.ord FROM unnest(sqlc.arg('ids')::uuid[]) WITH ORDINALITY AS t(id, ord)
+), ranked AS (
+  SELECT n.id, row_number() OVER (ORDER BY l.ord IS NULL, l.ord, n.sort_order, n.created_at, n.id)::int AS pos
+  FROM nodes n LEFT JOIN listed l ON l.id = n.id
+)
+UPDATE nodes n SET sort_order = r.pos FROM ranked r WHERE n.id = r.id AND n.sort_order <> r.pos;

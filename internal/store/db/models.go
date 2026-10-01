@@ -570,6 +570,7 @@ type Node struct {
 	TelemtUpdateAvailable       string     `json:"telemt_update_available"`
 	TelemtWebPolicy             []byte     `json:"telemt_web_policy"`
 	TlsDomains                  []string   `json:"tls_domains"`
+	SortOrder                   int32      `json:"sort_order"`
 }
 
 type NodeBlocklist struct {

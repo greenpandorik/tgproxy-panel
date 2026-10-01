@@ -100,7 +100,7 @@ DELETE FROM key_bindings WHERE access_key_id = $1 AND node_id = $2;
 -- name: ListKeyBindings :many
 SELECT b.*, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
-WHERE b.access_key_id = $1 ORDER BY n.name;
+WHERE b.access_key_id = $1 ORDER BY n.sort_order, n.created_at;
 
 -- name: ListNodeKeyBindings :many
 SELECT b.*, k.status AS key_status FROM key_bindings b JOIN access_keys k ON k.id = b.access_key_id WHERE b.node_id = $1;
@@ -115,7 +115,7 @@ UPDATE access_keys k SET status = 'active' WHERE k.status = 'pending'
 -- name: ListBindingsForKeys :many
 SELECT b.*, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
-WHERE b.access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) ORDER BY b.access_key_id, n.name;
+WHERE b.access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) ORDER BY b.access_key_id, n.sort_order, n.created_at;
 
 -- name: CreateSubscriptionToken :one
 INSERT INTO subscription_tokens (token_hash, access_key_id, token_enc) VALUES ($1, $2, $3) RETURNING *;

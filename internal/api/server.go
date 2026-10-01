@@ -169,6 +169,7 @@ func (s *Server) mountProtected(r chi.Router) {
 	r.Get("/nodes", s.handleListNodes)
 	r.With(RequireRole(writers...)).Post("/nodes/preflight/dns", s.handleNodeDNS)
 	r.With(RequireRole(writers...)).Post("/nodes", s.handleCreateNode)
+	r.With(RequireRole(writers...)).Put("/nodes/order", s.handleReorderNodes)
 	r.Route("/nodes/{id}", func(r chi.Router) {
 		r.Get("/", s.handleGetNode)
 		r.With(RequireRole(writers...)).Patch("/", s.handlePatchNode)
