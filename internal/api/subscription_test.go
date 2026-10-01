@@ -84,8 +84,8 @@ func TestSubscriptionCreateServesPublicPageAndJSON(t *testing.T) {
 	if cc := pageResp.Header.Get("Cache-Control"); cc != "no-store" {
 		t.Errorf("Cache-Control = %q, want no-store", cc)
 	}
-	if rt := pageResp.Header.Get("X-Robots-Tag"); rt != "noindex" {
-		t.Errorf("X-Robots-Tag = %q, want noindex", rt)
+	if rt := pageResp.Header.Get("X-Robots-Tag"); rt != "noindex, nofollow" {
+		t.Errorf("X-Robots-Tag = %q, want noindex, nofollow", rt)
 	}
 	if csp := pageResp.Header.Get("Content-Security-Policy"); csp == "" {
 		t.Error("missing Content-Security-Policy header")
@@ -427,8 +427,9 @@ func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
 		}
 	}
 	settings := map[string]any{
-		"language": "en", "platform": "desktop", "title_ru": "Наш прокси", "title_en": "Our proxy", "intro_ru": "", "intro_en": "", "show_fake_tls": true, "show_web": true,
-		"show_backup_domains": true, "show_guide": true, "show_status": true, "show_qr": false, "hidden_nodes": []string{hidden},
+		"language": "en", "title_ru": "Наш прокси", "title_en": "Our proxy", "intro_ru": "", "intro_en": "", "show_fake_tls": true, "show_web": true,
+		"web_note_en": "Opens like a website", "support_url": "https://t.me/helpdesk", "support_label_en": "Ask us",
+		"show_backup_domains": true, "show_status": true, "show_qr": false, "hidden_nodes": []string{hidden},
 	}
 	if resp := c.Put("/api/v1/settings", map[string]any{"subscription_page": settings}); resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
@@ -437,7 +438,7 @@ func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
 	token := tokenFromURL(t, createSubscription(t, c, keyID).URL)
 	body, _ := io.ReadAll(h.Anonymous().Get("/s/" + token).Body)
 	page := string(body)
-	for _, want := range []string{`lang="en"`, "Our proxy", "fra1.example.com", "Install Telegram"} {
+	for _, want := range []string{`lang="en"`, "Our proxy", "fra1.example.com", "Connect via Fake-TLS", "Opens like a website", `href="https://t.me/helpdesk"`, "Ask us"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page missing %q", want)
 		}
@@ -450,9 +451,9 @@ func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
 		t.Error("the JSON view ignores hidden servers")
 	}
 
-	preview := c.Get("/api/v1/settings/subscription-page/preview?platform=ios&language=ru")
+	preview := c.Get("/api/v1/settings/subscription-page/preview?language=ru")
 	html, _ := io.ReadAll(preview.Body)
-	if preview.StatusCode != 200 || !strings.Contains(string(html), "Открыть App Store") || !strings.Contains(string(html), "fra1.example.com") {
+	if preview.StatusCode != 200 || !strings.Contains(string(html), "Подключить через Fake-TLS") || !strings.Contains(string(html), "fra1.example.com") {
 		t.Fatalf("preview %d: %.300s", preview.StatusCode, html)
 	}
 
@@ -471,16 +472,24 @@ func TestSubscriptionPageFollowsItsSettings(t *testing.T) {
 	}
 }
 
-func TestPageFollowsTheVisitorByDefault(t *testing.T) {
+func TestPageFollowsTheVisitorsLanguageByDefault(t *testing.T) {
 	h, c, keyID := twoNodeKey(t)
 	var k keyResp2
 	c.JSON(c.Get("/api/v1/keys/"+keyID), &k)
-	iphone := h.Anonymous().
-		SetHeader("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15").
-		SetHeader("Accept-Language", "en-GB,en;q=0.9")
-	body, _ := io.ReadAll(iphone.Get("/s/" + tokenFromURL(t, *k.SubscriptionURL)).Body)
+	visitor := h.Anonymous().SetHeader("Accept-Language", "en-GB,en;q=0.9")
+	resp := visitor.Get("/s/" + tokenFromURL(t, *k.SubscriptionURL))
+	body, _ := io.ReadAll(resp.Body)
 	page := string(body)
-	if !strings.Contains(page, `<body data-platform="ios">`) || !strings.Contains(page, `lang="en"`) {
-		t.Fatal("without settings the page should open on the visitor's device and language")
+	if !strings.Contains(page, `lang="en"`) || strings.Contains(page, "data-platform") {
+		t.Fatal("without settings the page should open in the visitor's language, with no device tabs")
+	}
+	for header, want := range map[string]string{
+		"Referrer-Policy":        "no-referrer",
+		"X-Content-Type-Options": "nosniff",
+		"Cache-Control":          "no-store",
+	} {
+		if got := resp.Header.Get(header); got != want {
+			t.Errorf("%s = %q, want %q", header, got, want)
+		}
 	}
 }

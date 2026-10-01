@@ -134,6 +134,8 @@ export function AboutFields({ control, register, errors, values, locked, subscri
           </div>
           {errors.sub_slug ? (
             <FieldError>{errors.sub_slug.message === 'slug' ? t('users.validation_slug') : errors.sub_slug.message}</FieldError>
+          ) : values.sub_slug.length > 0 && values.sub_slug.length < 8 ? (
+            <p className="text-label text-warn">{t('users.field_slug_short')}</p>
           ) : (
             <p className="text-label text-mute">{t('users.field_slug_hint')}</p>
           )}

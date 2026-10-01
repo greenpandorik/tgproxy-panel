@@ -44,9 +44,16 @@ func failureOf(state string) failure {
 
 // SecurityHeaders are the headers every subscription response carries.
 func SecurityHeaders(w http.ResponseWriter) {
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Robots-Tag", "noindex")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'none'")
+	h := w.Header()
+	h.Set("Cache-Control", "no-store")
+	h.Set("X-Robots-Tag", "noindex, nofollow")
+	h.Set("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("X-Frame-Options", "DENY")
+	h.Set("Cross-Origin-Opener-Policy", "same-origin")
+	h.Set("Cross-Origin-Resource-Policy", "same-origin")
+	h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
 }
 
 // ServePage answers a request for the human-facing page.
@@ -57,17 +64,13 @@ func ServePage(w http.ResponseWriter, r *http.Request, d PageData) error {
 		f := failureOf(d.State)
 		w.WriteHeader(f.status)
 		return RenderError(w, ErrorPage{
-			Lang: string(lang), PanelName: d.Branding.PanelName, Theme: d.Branding.Theme,
+			Lang: string(lang), Theme: d.Branding.Theme,
 			Message: alerttext.Default().T(lang, f.message, nil),
 		})
 	}
-	platform := ParsePlatform(d.Settings.Platform)
-	if platform == "" {
-		platform = DetectPlatform(r.UserAgent())
-	}
 	page, err := Build(Input{
-		Settings: d.Settings, Lang: lang, Platform: platform, Locations: d.Locations,
-		ExpiresAt: d.ExpiresAt, Branding: d.Branding, QRSize: QRSize, PageURL: pageURL(r),
+		Settings: d.Settings, Lang: lang, Locations: d.Locations,
+		ExpiresAt: d.ExpiresAt, Branding: d.Branding, QRSize: QRSize,
 	})
 	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -75,18 +78,6 @@ func ServePage(w http.ResponseWriter, r *http.Request, d PageData) error {
 		return err
 	}
 	return Render(w, page)
-}
-
-// pageURL is the address the visitor opened, without the query.
-func pageURL(r *http.Request) string {
-	proto := r.Header.Get("X-Forwarded-Proto")
-	if proto != "https" && proto != "http" {
-		proto = "http"
-		if r.TLS != nil {
-			proto = "https"
-		}
-	}
-	return proto + "://" + r.Host + r.URL.EscapedPath()
 }
 
 // ServeJSON answers a request for the machine-readable view of the same links.

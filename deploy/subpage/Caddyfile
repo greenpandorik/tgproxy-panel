@@ -7,7 +7,23 @@
 
 {$SUBPAGE_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy subpage:8080 {
-		header_up X-Forwarded-For {remote_host}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	@pages path_regexp ^/s/[A-Za-z0-9_-]{3,64}(\.json)?$
+	@open path /healthz /robots.txt
+	handle @pages {
+		reverse_proxy subpage:8080 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+	handle @open {
+		reverse_proxy subpage:8080 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+	handle {
+		respond 404
 	}
 }

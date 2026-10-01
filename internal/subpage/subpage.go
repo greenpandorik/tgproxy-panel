@@ -29,6 +29,7 @@ const (
 	heartbeatEvery  = time.Minute
 	panelTimeout    = 8 * time.Second
 	maxPanelPayload = 4 << 20
+	maxVisitors     = 100000
 )
 
 type Config struct {
@@ -64,6 +65,12 @@ type entry struct {
 	fetched time.Time
 }
 
+type miss struct {
+	count int
+	since time.Time
+	until time.Time
+}
+
 type Service struct {
 	cfg     Config
 	log     *slog.Logger
@@ -72,14 +79,28 @@ type Service struct {
 	cache   map[string]entry
 	limits  map[string]int
 	window  time.Time
+	misses  map[string]miss
 	reached atomic.Int64
 }
 
 func New(cfg Config, log *slog.Logger) *Service {
-	return &Service{
-		cfg: cfg, log: log, client: &http.Client{Timeout: panelTimeout},
-		cache: map[string]entry{}, limits: map[string]int{},
+	client := &http.Client{
+		Timeout:       panelTimeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
+	return &Service{
+		cfg: cfg, log: log, client: client,
+		cache: map[string]entry{}, limits: map[string]int{}, misses: map[string]miss{},
+	}
+}
+
+// plain drops the request URL from a client error, so a token never reaches the log.
+func plain(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		return ue.Err
+	}
+	return err
 }
 
 var errUnauthorized = errors.New("the panel refused the service token")
@@ -93,11 +114,14 @@ func (s *Service) fetch(ctx context.Context, token string) (subscription.PageDat
 	req.Header.Set("Authorization", "Bearer "+s.cfg.Token)
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return d, err
+		return d, plain(err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 	switch {
 	case resp.StatusCode == http.StatusUnauthorized:
+		s.mu.Lock()
+		s.cache = map[string]entry{}
+		s.mu.Unlock()
 		return d, errUnauthorized
 	case resp.StatusCode != http.StatusOK:
 		return d, fmt.Errorf("panel answered %d", resp.StatusCode)
@@ -120,11 +144,14 @@ func (s *Service) data(ctx context.Context, token string) (subscription.PageData
 	}
 	d, err := s.fetch(ctx, token)
 	if err != nil {
-		if ok && time.Since(e.fetched) < staleFor {
+		if ok && !errors.Is(err, errUnauthorized) && time.Since(e.fetched) < staleFor {
 			s.log.Warn("panel unreachable, serving a saved copy", "err", err)
 			return e.data, nil
 		}
 		return d, err
+	}
+	if d.State == "not_found" {
+		return d, nil
 	}
 	s.mu.Lock()
 	if len(s.cache) >= maxCached {
@@ -133,6 +160,39 @@ func (s *Service) data(ctx context.Context, token string) (subscription.PageData
 	s.cache[token] = entry{data: d, fetched: time.Now()}
 	s.mu.Unlock()
 	return d, nil
+}
+
+// missBlocked reports whether a visitor tried too many links that do not exist this hour.
+func (s *Service) missBlocked(visitor string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	m, ok := s.misses[visitor]
+	return ok && time.Now().Before(m.until)
+}
+
+func (s *Service) countMiss(visitor string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	if len(s.misses) >= maxVisitors {
+		for k, m := range s.misses {
+			if now.Sub(m.since) > time.Hour && now.After(m.until) {
+				delete(s.misses, k)
+			}
+		}
+		if len(s.misses) >= maxVisitors {
+			s.misses = map[string]miss{}
+		}
+	}
+	m := s.misses[visitor]
+	if now.Sub(m.since) > time.Hour {
+		m = miss{since: now}
+	}
+	m.count++
+	if m.count > subscription.MissesPerHour {
+		m.until = now.Add(time.Hour)
+	}
+	s.misses[visitor] = m
 }
 
 // evict drops copies too old to serve, and the older half if that is not enough.
@@ -202,7 +262,7 @@ func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	last := s.reached.Load()
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"ok": true, "version": s.cfg.Version, "panel_reachable": last > 0 && time.Since(time.Unix(last, 0)) < 3*heartbeatEvery,
+		"ok": true, "panel_reachable": last > 0 && time.Since(time.Unix(last, 0)) < 3*heartbeatEvery,
 	})
 }
 
@@ -211,13 +271,24 @@ func (s *Service) handleLink(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	asJSON := strings.HasSuffix(token, ".json")
 	token = strings.TrimSuffix(token, ".json")
-	if !s.allow(clientIP(r)) {
+	if !subscription.PlausibleToken(token) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("404 page not found\n"))
+		return
+	}
+	ip := clientIP(r)
+	visitor := subscription.VisitorKey(ip)
+	if s.missBlocked(visitor) || !s.allow(ip) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte("too many requests\n"))
 		return
 	}
 	d, err := s.data(r.Context(), token)
+	if err == nil && d.State == "not_found" {
+		s.countMiss(visitor)
+	}
 	if err != nil {
 		s.log.Error("page data", "err", err)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -245,7 +316,7 @@ func (s *Service) heartbeat(ctx context.Context) error {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return err
+		return plain(err)
 	}
 	_ = resp.Body.Close()
 	switch resp.StatusCode {
@@ -276,7 +347,7 @@ func (s *Service) keepInTouch(ctx context.Context) {
 // Run serves pages until ctx ends.
 func Run(ctx context.Context, cfg Config, log *slog.Logger) error {
 	s := New(cfg, log)
-	srv := &http.Server{Addr: cfg.Listen, Handler: s.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Addr: cfg.Listen, Handler: s.Handler(), ReadHeaderTimeout: 10 * time.Second, MaxHeaderBytes: 16 << 10}
 	go s.keepInTouch(ctx)
 	go func() {
 		<-ctx.Done()

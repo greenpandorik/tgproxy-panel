@@ -1275,6 +1275,9 @@ configure_sub_domain() {
 	local file="$DIR/sites/subpage.caddy" current
 	mkdir -p "$DIR/sites"
 	current="$(env_get "$DIR/.env" SUBPAGE_DOMAIN)"
+	if [[ -z "$SUB_DOMAIN" && -n "$current" && -f "$file" ]]; then
+		SUB_DOMAIN="$current"
+	fi
 	[[ -n "$SUB_DOMAIN" ]] || return 0
 	if truthy "$LOCAL"; then
 		warn "--sub-domain needs a domain install with Caddy; ignored in local mode"
@@ -1290,20 +1293,35 @@ configure_sub_domain() {
 	SUB_DOMAIN="$(printf '%s' "$SUB_DOMAIN" | tr '[:upper:]' '[:lower:]')"
 	valid_domain "$SUB_DOMAIN" || usage_error "not a valid domain: $SUB_DOMAIN"
 	[[ "$SUB_DOMAIN" != "$DOMAIN" ]] || usage_error "--sub-domain must differ from the panel domain"
+	local before=""
+	[[ -f "$file" ]] && before="$(cat "$file")"
 	cat >"$file" <<CADDY
 $SUB_DOMAIN {
 	encode zstd gzip
-	reverse_proxy panel:8080 {
-		transport http {
-			versions h2c 1.1
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	@pages path_regexp ^/s/[A-Za-z0-9_-]{3,64}(\\.json)?\$
+	@open path /healthz /robots.txt
+	handle @pages {
+		reverse_proxy panel:8080 {
+			header_up X-Forwarded-For {remote_host}
 		}
-		header_up X-Forwarded-For {remote_host}
+	}
+	handle @open {
+		reverse_proxy panel:8080 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+	handle {
+		respond 404
 	}
 }
 CADDY
 	chmod 0644 "$file"
 	env_set "$DIR/.env" SUBPAGE_DOMAIN "$SUB_DOMAIN"
-	[[ "$current" == "$SUB_DOMAIN" ]] || SUB_DOMAIN_CHANGED=1
+	[[ "$current" == "$SUB_DOMAIN" && "$before" == "$(cat "$file")" ]] || SUB_DOMAIN_CHANGED=1
 	ok "subscription pages also on https://$SUB_DOMAIN"
 	info "in the panel set Subscription → Service → page domain to $SUB_DOMAIN"
 }

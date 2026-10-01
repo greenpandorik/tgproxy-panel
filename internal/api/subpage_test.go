@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -123,5 +124,69 @@ func TestSecondDomainShowsOnlyPagesBeforeItIsSaved(t *testing.T) {
 	}
 	if code := onSub("/healthz"); code != 200 {
 		t.Fatalf("healthz on the page domain: %d", code)
+	}
+}
+
+func TestPageDomainCannotBeTalkedIntoThePanel(t *testing.T) {
+	h := apitest.New(t, func(d *api.Deps) { d.Cfg.SubpageDomain = "sub.example.org" })
+	call := func(method, host, path string, header map[string]string) int {
+		req := httptest.NewRequest(method, path, nil)
+		req.Host = host
+		for k, v := range header {
+			req.Header.Set(k, v)
+		}
+		rec := httptest.NewRecorder()
+		h.Router().ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for _, host := range []string{"sub.example.org:443", "SUB.example.org.", "sub.example.org:8443"} {
+		for _, path := range []string{"/login", "/api/v1/auth/me", "/assets/index.js", "/s/a/b", "/s/", "/s/" + strings.Repeat("a", 65)} {
+			if code := call(http.MethodGet, host, path, nil); code != 404 {
+				t.Errorf("%s%s answered %d, the panel must stay hidden", host, path, code)
+			}
+		}
+	}
+	if code := call(http.MethodPost, "sub.example.org:443", "/s/abcdef", nil); code != 404 {
+		t.Errorf("only GET reaches a page: %d", code)
+	}
+	if code := call(http.MethodGet, "sub.example.org:443", "/s/abcdef", nil); code != 404 {
+		t.Errorf("a page path with a port still reaches the page handler and finds nothing: %d", code)
+	}
+}
+
+func TestGuessingLinksSoonStops(t *testing.T) {
+	h, c, keyID := twoNodeKey(t)
+	var k keyResp2
+	c.JSON(c.Get("/api/v1/keys/"+keyID), &k)
+	token := tokenFromURL(t, *k.SubscriptionURL)
+	guesser := h.Anonymous().SetHeader("X-Forwarded-For", "2001:db8:1:2::10")
+	for i := 0; i <= 20; i++ {
+		guesser.SetHeader("X-Forwarded-For", fmt.Sprintf("2001:db8:1:2::%x", i+1))
+		if code := guesser.Get(fmt.Sprintf("/s/team-%d", i)).StatusCode; code != 404 {
+			t.Fatalf("guess %d answered %d", i, code)
+		}
+	}
+	guesser.SetHeader("X-Forwarded-For", "2001:db8:1:2::ff")
+	if code := guesser.Get("/s/one-more").StatusCode; code != 429 {
+		t.Fatalf("after 21 misses from one /64 the next request should be refused, got %d", code)
+	}
+	if code := guesser.Get("/s/" + token).StatusCode; code != 429 {
+		t.Fatalf("after too many misses even a real link waits an hour, got %d", code)
+	}
+	other := h.Anonymous().SetHeader("X-Forwarded-For", "198.51.100.7")
+	if code := other.Get("/s/" + token).StatusCode; code != 200 {
+		t.Fatalf("other visitors are not affected: %d", code)
+	}
+}
+
+func TestPreviewRefusesOtherSites(t *testing.T) {
+	_, c, _ := twoNodeKey(t)
+	c.SetHeader("Sec-Fetch-Site", "cross-site")
+	if code := c.Get("/api/v1/settings/subscription-page/preview").StatusCode; code != 403 {
+		t.Fatalf("a preview opened from another site must be refused: %d", code)
+	}
+	c.SetHeader("Sec-Fetch-Site", "same-origin")
+	if code := c.Get("/api/v1/settings/subscription-page/preview").StatusCode; code != 200 {
+		t.Fatalf("the panel's own preview: %d", code)
 	}
 }

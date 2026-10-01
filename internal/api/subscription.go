@@ -92,6 +92,10 @@ func (s *Server) handleRevokeSubscription(w http.ResponseWriter, r *http.Request
 // page shows. A key that cannot be served comes back with its state and nothing else.
 func (s *Server) subscriptionData(ctx context.Context, token string) (subscription.PageData, error) {
 	d := subscription.PageData{Settings: s.subscriptionSettings(ctx), Branding: s.subscriptionBranding(ctx)}
+	if !subscription.PlausibleToken(token) {
+		d.State = "not_found"
+		return d, nil
+	}
 	var key db.AccessKey
 	sub, err := s.store.Q.GetSubscriptionByHash(ctx, crypto.HashToken(token))
 	switch {
@@ -126,13 +130,14 @@ func (s *Server) subscriptionData(ctx context.Context, token string) (subscripti
 	if err != nil {
 		return d, err
 	}
-	d.ExpiresAt, d.Locations = key.ExpiresAt, links
+	d.ExpiresAt, d.Locations = key.ExpiresAt, subscription.VisibleLinks(d.Settings, links)
 	return d, nil
 }
 
 func (s *Server) subscriptionAllowed(w http.ResponseWriter, r *http.Request, asJSON bool) bool {
 	subscription.SecurityHeaders(w)
-	if s.subLimiter.Allow(ipFrom(r.Context())) {
+	ip := ipFrom(r.Context())
+	if !s.subMisses.Blocked(subscription.VisitorKey(ip)) && s.subLimiter.Allow(ip) {
 		return true
 	}
 	if asJSON {
@@ -156,6 +161,7 @@ func (s *Server) handleSubscriptionPage(w http.ResponseWriter, r *http.Request) 
 		internal(w)
 		return
 	}
+	s.countMiss(r, d)
 	if err := subscription.ServePage(w, r, d); err != nil {
 		s.log.Error("subscription: render page", "err", err)
 	}
@@ -171,7 +177,15 @@ func (s *Server) handleSubscriptionJSON(w http.ResponseWriter, r *http.Request) 
 		internal(w)
 		return
 	}
+	s.countMiss(r, d)
 	if err := subscription.ServeJSON(w, d); err != nil {
 		s.log.Error("subscription: write json", "err", err)
+	}
+}
+
+// countMiss remembers a link that does not exist, so guessing short addresses soon stops working.
+func (s *Server) countMiss(r *http.Request, d subscription.PageData) {
+	if d.State == "not_found" {
+		s.subMisses.Allow(subscription.VisitorKey(ipFrom(r.Context())))
 	}
 }

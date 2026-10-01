@@ -158,3 +158,64 @@ func TestConfigNeedsPanelAndToken(t *testing.T) {
 		t.Fatalf("config %+v %v", c, err)
 	}
 }
+
+func TestOddLinksAndGuessesCostNothing(t *testing.T) {
+	var down atomic.Bool
+	var calls atomic.Int32
+	panel := fakePanel(t, &down, &calls)
+	defer panel.Close()
+	s := New(Config{PanelURL: panel.URL, Token: "good-token"}, slog.New(slog.DiscardHandler))
+	h := s.Handler()
+
+	for _, path := range []string{"/s/" + strings.Repeat("x", 5000), "/s/a.b", "/s/x"} {
+		if code, _ := get(t, h, path, nil); code != 404 {
+			t.Fatalf("%.40s: %d", path, code)
+		}
+	}
+	if calls.Load() != 0 {
+		t.Fatal("a link that cannot exist must not reach the panel")
+	}
+
+	if code, body := get(t, h, "/healthz", nil); code != 200 || strings.Contains(body, "version") {
+		t.Fatalf("healthz must not tell its version: %s", body)
+	}
+}
+
+func TestMissesAreNotCachedAndSoonRefused(t *testing.T) {
+	panel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		d := subscription.PageData{State: "not_found", Settings: subscription.DefaultSettings()}
+		_ = json.NewEncoder(w).Encode(d)
+	}))
+	defer panel.Close()
+	s := New(Config{PanelURL: panel.URL, Token: "good-token"}, slog.New(slog.DiscardHandler))
+	h := s.Handler()
+	for i := 0; i <= subscription.MissesPerHour; i++ {
+		get(t, h, "/s/guess"+strings.Repeat("a", i), nil)
+	}
+	if len(s.cache) != 0 {
+		t.Fatalf("misses must not fill the cache: %d entries", len(s.cache))
+	}
+	if code, _ := get(t, h, "/s/real-link", nil); code != http.StatusTooManyRequests {
+		t.Fatalf("a visitor who keeps guessing must be refused: %d", code)
+	}
+}
+
+func TestRejectedTokenDropsSavedPages(t *testing.T) {
+	var down atomic.Bool
+	var calls atomic.Int32
+	panel := fakePanel(t, &down, &calls)
+	defer panel.Close()
+	s := New(Config{PanelURL: panel.URL, Token: "good-token"}, slog.New(slog.DiscardHandler))
+	if code, _ := get(t, s.Handler(), "/s/abc", nil); code != 200 {
+		t.Fatal("page")
+	}
+	s.cfg.Token = "revoked"
+	s.mu.Lock()
+	e := s.cache["abc"]
+	e.fetched = time.Now().Add(-time.Hour)
+	s.cache["abc"] = e
+	s.mu.Unlock()
+	if code, _ := get(t, s.Handler(), "/s/abc", nil); code != http.StatusServiceUnavailable {
+		t.Fatalf("once the panel refuses the token, saved pages must not be served: %d", code)
+	}
+}

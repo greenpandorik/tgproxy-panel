@@ -17,6 +17,10 @@
 
 {$PANEL_DOMAIN} {
 	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
 	reverse_proxy panel:8080 {
 		transport http {
 			versions h2c 1.1

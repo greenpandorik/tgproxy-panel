@@ -4,15 +4,18 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 
 	"tgwebproxy/internal/crypto"
+	"tgwebproxy/internal/keys"
 	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/subscription"
 	"tgwebproxy/internal/version"
@@ -79,15 +82,28 @@ func (s *Server) subscriptionBase(ctx context.Context) string {
 	return s.cfg.PublicURL
 }
 
+// serviceSlugMissesPerHour caps short-address misses that arrive through a page service, so a
+// service in the wrong hands cannot guess short addresses without limit.
+const serviceSlugMissesPerHour = 1000
+
+// normalHost compares hosts the way Caddy routes them: no port, no trailing dot, lower case.
+func normalHost(h string) string {
+	h = strings.ToLower(strings.TrimSpace(h))
+	if host, _, err := net.SplitHostPort(h); err == nil {
+		h = host
+	}
+	return strings.TrimSuffix(strings.Trim(h, "[]"), ".")
+}
+
 func hostOf(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return ""
 	}
-	return strings.ToLower(u.Host)
+	return normalHost(u.Host)
 }
 
-func requestHost(r *http.Request) string { return strings.ToLower(r.Host) }
+func requestHost(r *http.Request) string { return normalHost(r.Host) }
 
 // normalizePublicURL accepts "sub.example.com" or "https://sub.example.com/" and returns
 // "https://sub.example.com"; a path, query or fragment is refused.
@@ -111,7 +127,7 @@ func normalizePublicURL(raw string) (string, bool) {
 // the one saved under Subscription → Service, or the one install.sh --sub-domain pointed here.
 func (s *Server) onSubscriptionHost(r *http.Request) bool {
 	host, panel := requestHost(r), hostOf(s.cfg.PublicURL)
-	if d := s.cfg.SubpageDomain; d != "" && d != panel && host == d {
+	if d := normalHost(s.cfg.SubpageDomain); d != "" && d != panel && host == d {
 		return true
 	}
 	svc := s.serviceSettings(r.Context())
@@ -122,19 +138,34 @@ func (s *Server) onSubscriptionHost(r *http.Request) bool {
 	return h != "" && h != panel && host == h
 }
 
+// PagesOnly reports whether the request came in on the subscription domain, where nothing but
+// subscription pages may answer: not the admin UI, not the API, not the agents' gRPC.
+func (s *Server) PagesOnly(r *http.Request) bool { return s.onSubscriptionHost(r) }
+
+func pagePath(p string) bool {
+	token, ok := strings.CutPrefix(p, "/s/")
+	return ok && subscription.PlausibleToken(strings.TrimSuffix(token, ".json"))
+}
+
 // subscriptionHostGuard keeps the panel itself off the subscription domain when both share a server.
 func (s *Server) subscriptionHostGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.onSubscriptionHost(r) && !strings.HasPrefix(r.URL.Path, "/s/") && r.URL.Path != "/healthz" {
-			if r.URL.Path == "/robots.txt" {
-				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
-				return
-			}
-			http.NotFound(w, r)
+		if !s.onSubscriptionHost(r) {
+			next.ServeHTTP(w, r)
 			return
 		}
-		next.ServeHTTP(w, r)
+		switch {
+		case r.URL.Path == "/robots.txt":
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
+		case r.URL.Path == "/healthz", pagePath(r.URL.Path) && (r.Method == http.MethodGet || r.Method == http.MethodHead):
+			next.ServeHTTP(w, r)
+		default:
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("404 page not found\n"))
+		}
 	})
 }
 
@@ -174,11 +205,20 @@ func (s *Server) handleSubpageData(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "service token required", nil)
 		return
 	}
-	d, err := s.subscriptionData(r.Context(), chi.URLParam(r, "token"))
+	token := chi.URLParam(r, "token")
+	slug := keys.ValidSlug(token)
+	if slug && s.serviceMisses.Blocked("service") {
+		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many short addresses that do not exist", nil)
+		return
+	}
+	d, err := s.subscriptionData(r.Context(), token)
 	if err != nil {
 		s.log.Error("subpage: load page", "err", err)
 		internal(w)
 		return
+	}
+	if slug && d.State == "not_found" {
+		s.serviceMisses.Allow("service")
 	}
 	writeJSON(w, 200, d)
 }
@@ -191,9 +231,18 @@ func (s *Server) handleSubpageHeartbeat(w http.ResponseWriter, r *http.Request) 
 	var in struct {
 		Version string `json:"version"`
 	}
-	_ = decodeJSON(r, &in)
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in)
+	ver := strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, in.Version)
+	if utf8.RuneCountInString(ver) > 64 {
+		ver = string([]rune(ver)[:64])
+	}
 	now := time.Now()
-	raw, _ := json.Marshal(subscriptionServiceStatus{LastSeenAt: &now, Version: in.Version, Address: ipFrom(r.Context())})
+	raw, _ := json.Marshal(subscriptionServiceStatus{LastSeenAt: &now, Version: ver, Address: ipFrom(r.Context())})
 	if err := s.store.Q.UpsertSetting(r.Context(), db.UpsertSettingParams{Key: settingSubscriptionServiceStatus, Value: raw}); err != nil {
 		s.log.Error("subpage: heartbeat", "err", err)
 		internal(w)

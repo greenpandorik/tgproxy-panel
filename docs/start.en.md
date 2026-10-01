@@ -179,8 +179,8 @@ You can leave the other fields alone. Click "Create". The user's window opens wi
 subscription link. The user starts working in under a minute, once the panel sends them to the
 server.
 
-The subscription link leads to a page where the person picks their device and connects the proxy
-step by step. You can copy it or show it with "QR code". The separate proxy links are under
+The subscription link leads to a page where every server has "Connect via Fake-TLS" and "Connect
+via WEB" buttons. You can copy it or show it with "QR code". The separate proxy links are under
 "Direct links", and there are two of them:
 
 - Fake-TLS works in every Telegram app. If in doubt, send this one.
@@ -247,4 +247,4 @@ can ask questions in [Discussions](https://github.com/greenpandorik/tgproxy-pane
 | WEB proxy | A newer kind of Telegram proxy. It works over plain HTTPS on port 443. |
 | Cover site | An ordinary website that opens on the proxy's domain. A stranger who visits the address sees it instead of the proxy. |
 | User | Access to the proxy for one person or a group. Each user has their own subscription link and can be turned off or revoked without touching the others. |
-| Subscription link | One link to a page where the person picks their device and connects the proxy step by step. |
+| Subscription link | One link to a page with connect buttons for all of the user's servers. |

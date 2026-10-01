@@ -755,21 +755,29 @@ export interface BackupSchedule {
 
 export interface SubscriptionPageSettings {
   language: 'auto' | 'ru' | 'en';
-  platform: 'auto' | SubscriptionPlatform;
   title_ru: string;
   title_en: string;
   intro_ru: string;
   intro_en: string;
+  tls_button_ru: string;
+  tls_button_en: string;
+  tls_note_ru: string;
+  tls_note_en: string;
+  web_button_ru: string;
+  web_button_en: string;
+  web_note_ru: string;
+  web_note_en: string;
+  support_label_ru: string;
+  support_label_en: string;
+  support_url: string;
+  hide_support: boolean;
   show_fake_tls: boolean;
   show_web: boolean;
   show_backup_domains: boolean;
-  show_guide: boolean;
   show_status: boolean;
   show_qr: boolean;
   hidden_nodes: string[];
 }
-
-export type SubscriptionPlatform = 'android' | 'ios' | 'desktop';
 
 export interface Settings {
   apply_interval: number;

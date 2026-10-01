@@ -10,7 +10,6 @@ import (
 
 	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/keys"
-	"tgwebproxy/internal/qrlink"
 )
 
 //go:embed page.tmpl.html error.tmpl.html
@@ -18,56 +17,14 @@ var templateFS embed.FS
 
 func safeURL(s string) template.URL { return template.URL(s) } //nolint:gosec // links are built server-side from stored hostnames and secrets
 
-var storeURLs = map[Platform]string{
-	Android: "https://play.google.com/store/apps/details?id=org.telegram.messenger",
-	IOS:     "https://apps.apple.com/app/telegram-messenger/id686449807",
-	Desktop: "https://desktop.telegram.org/",
-}
-
-func storeURL(p Platform) template.URL { return template.URL(storeURLs[p]) } //nolint:gosec // fixed official addresses
-
 var funcs = template.FuncMap{
-	"safeURL":  safeURL,
-	"storeURL": storeURL,
-	"t":        func(string, ...string) string { return "" },
+	"safeURL": safeURL,
+	"t":       func(string, ...string) string { return "" },
 }
 
 var pageTmpl = template.Must(template.New("page.tmpl.html").Funcs(funcs).ParseFS(templateFS, "page.tmpl.html"))
 
 var errorTmpl = template.Must(template.New("error.tmpl.html").Funcs(funcs).ParseFS(templateFS, "error.tmpl.html"))
-
-type Platform string
-
-const (
-	Android Platform = "android"
-	IOS     Platform = "ios"
-	Desktop Platform = "desktop"
-)
-
-var platforms = []Platform{Android, IOS, Desktop}
-
-// DetectPlatform guesses the visitor's device from the User-Agent.
-func DetectPlatform(userAgent string) Platform {
-	ua := strings.ToLower(userAgent)
-	switch {
-	case strings.Contains(ua, "iphone"), strings.Contains(ua, "ipad"), strings.Contains(ua, "ipod"):
-		return IOS
-	case strings.Contains(ua, "android"):
-		return Android
-	default:
-		return Desktop
-	}
-}
-
-// ParsePlatform accepts a platform name from a query string; anything else is empty.
-func ParsePlatform(s string) Platform {
-	for _, p := range platforms {
-		if string(p) == s {
-			return p
-		}
-	}
-	return ""
-}
 
 // PageLang is the visitor's own ?lang= choice when present, else the owner's setting.
 func PageLang(query, setting, acceptLanguage string) alerttext.Lang {
@@ -112,27 +69,20 @@ type Link struct {
 	QRDataURI string
 }
 
-// Server is one server a key is bound to, with the links the page shows for it.
+// Button is one way to connect to a server, with the line under it.
+type Button struct {
+	Kind    string
+	Text    string
+	Note    string
+	Href    string
+	Primary bool
+}
+
+// Server is one server a key is bound to: its connect buttons and every link it has.
 type Server struct {
-	Name     string
-	Hostname string
-	Links    []Link
-	WebOnly  bool
-}
-
-// Action is what the "Connect" row offers for one server on one device.
-type Action struct {
-	Name     string
-	Hostname string
-	Primary  Link
-	Alt      *Link
-}
-
-type PlatformView struct {
-	ID       Platform
-	Selected bool
-	Actions  []Action
-	HasAlt   bool
+	Name    string
+	Buttons []Button
+	Links   []Link
 }
 
 // Page is everything the template needs to render one subscription page.
@@ -140,24 +90,20 @@ type Page struct {
 	Lang         string
 	Title        string
 	Intro        string
-	PanelName    string
 	PrimaryColor string
 	AccentColor  string
 	PrimaryInk   string
 	Theme        string
-	SupportLink  string
 	FooterText   string
 	ShowStatus   bool
-	StatusText   string
-	ShowGuide    bool
+	StatusLabel  string
+	StatusUntil  string
 	ShowQR       bool
-	Platform     Platform
-	Platforms    []PlatformView
 	Servers      []Server
+	Trouble      string
+	SupportURL   string
+	SupportLabel string
 	Preview      bool
-	// PageURL is this page's own address; PageQR draws it for opening the page on a phone.
-	PageURL string
-	PageQR  string
 }
 
 // Branding is the part of the active branding profile the page uses.
@@ -174,58 +120,44 @@ type Branding struct {
 type Input struct {
 	Settings  Settings
 	Lang      alerttext.Lang
-	Platform  Platform
 	Locations []keys.NodeLinks
 	ExpiresAt *time.Time
 	Branding  Branding
 	QRSize    int
-	PageURL   string
 }
 
 // Build turns a key's links into the page, applying the owner's settings.
 func Build(in Input) (Page, error) {
 	c := alerttext.Default()
 	t := func(key string, vars map[string]string) string { return c.T(in.Lang, key, vars) }
-	s := in.Settings
-	page := Page{
-		Lang: string(in.Lang), PanelName: in.Branding.PanelName,
-		PrimaryColor: in.Branding.PrimaryColor, AccentColor: in.Branding.AccentColor, PrimaryInk: in.Branding.PrimaryInk,
-		Theme: in.Branding.Theme, SupportLink: in.Branding.SupportLink, FooterText: in.Branding.FooterText,
-		ShowStatus: s.ShowStatus, ShowGuide: s.ShowGuide, ShowQR: s.ShowQR, Platform: in.Platform,
-	}
-	page.Title, page.Intro = s.texts(in.Lang)
-	if in.PageURL != "" {
-		page.PageURL = in.PageURL
-		if s.ShowQR {
-			qr, err := qrlink.DataURI(in.PageURL, 200)
-			if err != nil {
-				return Page{}, err
-			}
-			page.PageQR = qr
+	or := func(own, key string) string {
+		if own != "" {
+			return own
 		}
+		return t(key, nil)
 	}
-	if page.Title == "" {
-		page.Title = t("subpage.title_default", nil)
-	}
-	if page.Intro == "" {
-		page.Intro = t("subpage.intro_default", nil)
+	s := in.Settings
+	tx := s.textsFor(in.Lang)
+	page := Page{
+		Lang: string(in.Lang), Title: or(tx.title, "subpage.title_default"), Intro: or(tx.intro, "subpage.intro_default"),
+		PrimaryColor: in.Branding.PrimaryColor, AccentColor: in.Branding.AccentColor, PrimaryInk: in.Branding.PrimaryInk,
+		Theme: in.Branding.Theme, FooterText: in.Branding.FooterText, ShowStatus: s.ShowStatus, ShowQR: s.ShowQR,
 	}
 	if in.ExpiresAt != nil {
-		page.StatusText = t("subpage.status_until", map[string]string{"date": formatDate(in.Lang, in.ExpiresAt.Local())})
+		page.StatusLabel = t("subpage.status_active", nil)
+		page.StatusUntil = t("subpage.status_until", map[string]string{"date": formatDate(in.Lang, in.ExpiresAt.Local())})
 	} else {
-		page.StatusText = t("subpage.status_forever", nil)
+		page.StatusLabel = t("subpage.status_forever", nil)
 	}
 
-	type choice struct {
-		web, tls, backup int
-	}
-	var choices []choice
+	tlsButton := Button{Kind: keys.LinkTLS, Text: or(tx.tlsButton, "subpage.tls_button"), Note: or(tx.tlsNote, "subpage.tls_note")}
+	webButton := Button{Kind: keys.LinkWeb, Text: or(tx.webButton, "subpage.web_button"), Note: or(tx.webNote, "subpage.web_note")}
 	for _, loc := range in.Locations {
 		if s.hidden(loc.NodeID.String()) {
 			continue
 		}
-		server := Server{Name: loc.NodeName, Hostname: loc.Hostname}
-		ch := choice{web: -1, tls: -1, backup: -1}
+		server := Server{Name: loc.NodeName}
+		var tlsLinks, webLinks []Link
 		tlsSeen := 0
 		for _, l := range loc.Links {
 			var label string
@@ -234,78 +166,72 @@ func Build(in Input) (Page, error) {
 				if !s.ShowWeb {
 					continue
 				}
-				label = t("subpage.label_web", nil)
+				label = t("subpage.link_web", nil)
 			case keys.LinkTLS:
 				tlsSeen++
 				if !s.ShowFakeTLS || (tlsSeen > 1 && !s.ShowBackupDomains) {
 					continue
 				}
-				label = t("subpage.label_tls", nil)
+				label = t("subpage.link_tls", nil)
 				if tlsSeen > 1 {
-					label = t("subpage.label_tls_domain", map[string]string{"domain": l.Domain})
+					label = t("subpage.link_tls_backup", map[string]string{"domain": l.Domain})
 				}
 			default:
 				continue
 			}
+			if !proxyLink(l.TMe, l.Tg) {
+				continue
+			}
 			link := Link{Kind: l.Kind, Label: label, TMe: l.TMe, Tg: l.Tg}
 			if s.ShowQR {
-				qr, err := qrlink.DataURI(l.TMe, in.QRSize)
+				qr, err := qrFor(l.TMe, in.QRSize)
 				if err != nil {
 					return Page{}, err
 				}
 				link.QRDataURI = qr
 			}
-			if l.Kind == keys.LinkWeb && ch.web < 0 {
-				ch.web = len(server.Links)
+			if l.Kind == keys.LinkTLS {
+				tlsLinks = append(tlsLinks, link)
+			} else {
+				webLinks = append(webLinks, link)
 			}
-			if l.Kind == keys.LinkTLS && tlsSeen == 2 {
-				ch.backup = len(server.Links)
-			}
-			if l.Kind == keys.LinkTLS && tlsSeen == 1 {
-				ch.tls = len(server.Links)
-			}
-			server.Links = append(server.Links, link)
 		}
-		if len(server.Links) == 0 {
+		if len(tlsLinks) > 0 {
+			b := tlsButton
+			b.Href = tlsLinks[0].TMe
+			server.Buttons = append(server.Buttons, b)
+		}
+		if len(webLinks) > 0 {
+			b := webButton
+			b.Href = webLinks[0].TMe
+			server.Buttons = append(server.Buttons, b)
+		}
+		if len(server.Buttons) == 0 {
 			continue
 		}
-		server.WebOnly = ch.tls < 0
+		server.Buttons[0].Primary = true
+		server.Links = append(tlsLinks, webLinks...)
 		page.Servers = append(page.Servers, server)
-		choices = append(choices, ch)
 	}
 
-	for _, p := range platforms {
-		view := PlatformView{ID: p, Selected: p == in.Platform}
-		for i, ch := range choices {
-			srv := page.Servers[i]
-			primary, alt := -1, -1
-			switch p {
-			case IOS:
-				primary, alt = ch.tls, ch.backup
-			case Android:
-				primary, alt = ch.tls, ch.web
-				if alt < 0 {
-					alt = ch.backup
-				}
-			case Desktop:
-				primary, alt = ch.web, ch.tls
-			}
-			if primary < 0 && p != IOS {
-				primary, alt = alt, -1
-			}
-			if primary < 0 {
-				continue
-			}
-			a := Action{Name: srv.Name, Hostname: srv.Hostname, Primary: srv.Links[primary]}
-			if alt >= 0 {
-				fallback := srv.Links[alt]
-				a.Alt = &fallback
-				view.HasAlt = true
-			}
-			view.Actions = append(view.Actions, a)
+	if !s.HideSupport {
+		if u := SafeSupportURL(s.SupportURL); u != "" {
+			page.SupportURL = u
+		} else if s.SupportURL == "" {
+			page.SupportURL = SafeSupportURL(in.Branding.SupportLink)
 		}
-		page.Platforms = append(page.Platforms, view)
+		if page.SupportURL != "" {
+			page.SupportLabel = or(tx.supportLabel, "subpage.support")
+		}
 	}
+	trouble := "subpage.trouble_one"
+	if len(page.Servers) > 1 {
+		trouble = "subpage.trouble_many"
+	}
+	if page.SupportURL != "" {
+		trouble += "_support"
+	}
+	page.Trouble = t(trouble, nil)
 	return page, nil
 }
 
@@ -329,10 +255,9 @@ func Render(w io.Writer, p Page) error {
 }
 
 type ErrorPage struct {
-	Lang      string
-	PanelName string
-	Theme     string
-	Message   string
+	Lang    string
+	Theme   string
+	Message string
 }
 
 func RenderError(w io.Writer, p ErrorPage) error {

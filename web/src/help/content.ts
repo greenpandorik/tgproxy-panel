@@ -148,7 +148,7 @@ export const HELP_TOPICS = {
     docs: 'monitoring',
   },
   'settings.subscription': {
-    fields: ['language', 'platform', 'title', 'links', 'blocks', 'servers'],
+    fields: ['language', 'title', 'buttons', 'links', 'blocks', 'support', 'servers'],
     docs: 'keys',
   },
   'subscription.service': {

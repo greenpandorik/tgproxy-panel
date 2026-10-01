@@ -708,9 +708,11 @@ user with their links and statistics.
 
 ### The subscription link
 
-Usually one subscription link is all the person needs. It opens a page where they pick their
-device and connect the proxy to all their servers in three steps, with every direct link and QR
-code further down. The name, contact and note never appear there.
+Usually one subscription link is all the person needs. It opens a page with a card for every
+server: the card holds "Connect via Fake-TLS" and "Connect via WEB" buttons with a short line under
+each, and its "Links and QR codes" block has the server's direct links, backup addresses and their
+QR codes. Under the title the page says how long access lasts: "Access is active until …" or
+"Access never expires". The name, contact and note never appear there.
 
 Subscription links are stored in the database encrypted with the master key, so the panel can
 show them at any time. Links issued by earlier versions of the panel keep working but cannot be
@@ -726,8 +728,18 @@ already taken. The short address opens the same page as the long link while
 the user has an active subscription link.
 
 What the subscription page shows is set in the side menu under Subscription → Page, with a live
-preview. These settings used to be under Settings → Subscription page, and the old link leads to
-the new place.
+preview. There you set the title and greeting, the button labels and the lines under them,
+separately for the Russian and English versions. An empty field shows the standard text, which you
+see greyed out in it, and "Back to standard" clears the field. The "Support button" block turns the
+button off or gives it a link: `https://`, `http://`, `tg://` or `mailto:`. With an empty link the
+button opens the support link from Settings → Branding, and without that there is no button. These
+settings used to be under Settings → Subscription page, and the old link leads to the new place.
+
+Nobody can guess someone else's subscription link: the long link carries 256 random bits. A shared
+access's short address is easier to guess, so the page counts misses. A visitor who opens more than
+20 links that do not exist within an hour is refused every link for an hour, and IPv6 addresses from
+one `/64` network count as one visitor. For shared access, a short address of 8 characters or more
+is still the better choice.
 
 ### Expiry, turning off and revoking
 
@@ -761,7 +773,8 @@ sudo /opt/tgproxy-panel/install.sh --update --sub-domain sub.example.com
 
 The command adds the domain to the panel's Caddy and restarts Caddy, which gets a certificate for
 it. On that domain the panel serves only subscription pages, `/healthz` and `robots.txt`, and
-answers 404 to everything else. Links move to the domain once you save it in the panel (see
+answers 404 to everything else: there is no panel login and no API there, even with another port or
+name put into the request. Links move to the domain once you save it in the panel (see
 below). The command with `--sub-domain off` removes the domain from Caddy.
 
 On another server. You need a separate VPS with ports 80 and 443 free. In Service, press "Get the
@@ -784,8 +797,8 @@ for up to 6 hours. Once a minute the service tells the panel it is alive, and Se
 version differs from the panel's, a warning appears next to it: update the service with
 `sudo /opt/tgproxy-subpage/install.sh --subpage --update` on its server. "New token", after a
 confirmation, invalidates the old token, and the new command has to be run on the service server.
-"Disconnect the service" revokes the token: pages open from the saved copy for a while and then
-stop.
+"Disconnect the service" revokes the token: as soon as the panel refuses the service, it drops its
+saved copies and the pages stop opening, usually within 30 seconds.
 
 Once the domain is up, choose "On my own domain" under "Where pages open", enter just the domain,
 such as `sub.example.com`, and save. It must differ from the panel's domain. From then on every
@@ -1058,5 +1071,10 @@ links work.
   to itself on 443 (section 7).
 - Fake-TLS links stopped working after the Fake-TLS domain or port changed. That is expected;
   reissue the links.
+- The telemt log repeats `Failed to reconcile conntrack firewall policy ... Chain
+  'TELEMT_NOTRACK' does not exist` every 30 seconds. This is a telemt 3.5.9 bug on systems with
+  iptables-nft ([telemt#932](https://github.com/telemt/telemt/issues/932)); the proxy keeps
+  working. This agent version works around it: update the agent with `tgwp-agent upgrade --agent`
+  and the messages stop within a minute.
 
 Detailed recovery procedures are in [the runbook](runbook.md).

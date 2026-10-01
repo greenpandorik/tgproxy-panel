@@ -48,6 +48,10 @@ func (s *Server) subscriptionBranding(ctx context.Context) subscription.Branding
 
 // handleSubscriptionPreview renders the page for the servers the panel has, with a secret that opens nothing.
 func (s *Server) handleSubscriptionPreview(w http.ResponseWriter, r *http.Request) {
+	if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" {
+		forbidden(w)
+		return
+	}
 	ctx := r.Context()
 	q := r.URL.Query()
 	settings := s.subscriptionSettings(ctx)
@@ -80,16 +84,12 @@ func (s *Server) handleSubscriptionPreview(w http.ResponseWriter, r *http.Reques
 			TLSDomain: n.TlsDomain, TLSDomains: n.TlsDomains, ClassicPort: int(n.ClassicPort),
 		}, previewSecret))
 	}
-	platform := subscription.ParsePlatform(q.Get("platform"))
-	if platform == "" {
-		platform = subscription.Android
-	}
 	lang := subscription.PageLang(q.Get("lang"), settings.Language, r.Header.Get("Accept-Language"))
 	if l := q.Get("language"); q.Get("lang") == "" && (l == "ru" || l == "en") {
 		lang = alerttext.Lang(l)
 	}
 	page, err := subscription.Build(subscription.Input{
-		Settings: settings, Lang: lang, Platform: platform, Locations: locations,
+		Settings: settings, Lang: lang, Locations: locations,
 		Branding: s.subscriptionBranding(ctx), QRSize: subscriptionQRSize,
 	})
 	if err != nil {
@@ -105,7 +105,8 @@ func (s *Server) handleSubscriptionPreview(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Robots-Tag", "noindex")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'self'")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+	w.Header().Set("Referrer-Policy", "no-referrer")
 	_, _ = w.Write(buf.Bytes())
 }
 

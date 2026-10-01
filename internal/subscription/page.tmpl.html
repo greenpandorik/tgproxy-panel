@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
 <title>{{.Title}}</title>
 <style>
   :root {
@@ -38,96 +39,50 @@
     font: 400 16px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   a { color: var(--primary); }
-  .wrap { max-width: 560px; margin: 0 auto; padding: 28px 16px 40px; }
-  .top { display: flex; align-items: center; gap: 10px; color: var(--text-dim); font-size: 0.92rem; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 24px 16px 40px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .mark { width: 26px; height: 26px; color: var(--text); flex: none; }
-  h1 { font-size: 1.6rem; line-height: 1.2; letter-spacing: -0.015em; margin: 22px 0 8px; }
-  .intro { color: var(--text-dim); margin: 0 0 16px; }
-  .status {
-    display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
-    font-size: 0.9rem;
-  }
-  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
-  .status span.until { color: var(--text-dim); }
-
-  .tabs {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
-    margin: 26px 0 18px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
-  }
-  .tabs button {
-    font: inherit; font-size: 0.92rem; font-weight: 600; color: var(--text-dim);
-    padding: 9px 6px; border: 0; border-radius: 9px; background: transparent; cursor: pointer;
-  }
-  .tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--text); }
-  .tabs button:focus-visible, .btn:focus-visible, summary:focus-visible, .copy:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-  .js .panel[data-inactive] { display: none; }
-  .panel-title { display: none; }
-  html:not(.js) .panel-title { display: block; font-size: 1.1rem; margin: 26px 0 10px; }
-
-  ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
-  .step { position: relative; padding: 0 0 22px 44px; counter-increment: step; }
-  .step::before {
-    content: counter(step); position: absolute; left: 0; top: 0;
-    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
-    background: color-mix(in srgb, var(--primary) 16%, var(--surface)); color: var(--text);
-    border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border)); font-weight: 650; font-size: 0.92rem;
-  }
-  .step:not(:last-child)::after {
-    content: ""; position: absolute; left: 14.5px; top: 36px; bottom: 6px; width: 1px; background: var(--border-2);
-  }
-  ol.steps.plain .step { padding-left: 0; }
-  ol.steps.plain .step::before, ol.steps.plain .step::after { display: none; }
-  .step h2 { font-size: 1.05rem; margin: 3px 0 4px; }
-  .step p { color: var(--text); opacity: 0.86; margin: 0 0 12px; font-size: 1rem; }
-  .step p.success { color: var(--text); }
-  .top { justify-content: space-between; }
   .lang { display: flex; gap: 4px; align-items: center; }
   .lang .lang-label { font-size: 0.82rem; color: var(--text-dim); margin-right: 4px; }
   .lang a { font-size: 0.82rem; font-weight: 600; color: var(--text-dim); text-decoration: none; padding: 5px 9px; border: 1px solid var(--border); border-radius: 8px; }
   .lang a[aria-current] { color: var(--text); border-color: var(--border-2); background: var(--surface); }
-  .trouble { margin: 4px 0 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
-  .trouble h2 { font-size: 1rem; margin: 0 0 4px; }
-  .trouble ol { margin: 6px 0 0; padding-left: 1.2em; font-size: 0.97rem; }
-  .trouble li { margin: 4px 0; }
-  .trouble .btn { margin-top: 12px; }
-  body[data-platform="ios"] .lnk[data-kind="web"], body[data-platform="ios"] .srv[data-web-only] { display: none; }
+  h1 { font-size: 1.6rem; line-height: 1.2; letter-spacing: -0.015em; margin: 22px 0 8px; }
+  .intro { color: var(--text-dim); margin: 0 0 14px; }
+  .status {
+    display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
+    font-size: 0.9rem;
+  }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .status .until { color: var(--text-dim); }
 
+  ul.servers { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 12px; }
+  .server {
+    display: grid; gap: 14px; padding: 16px;
+    border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
+  }
+  .server h2 { margin: 0; font-size: 1.06rem; font-weight: 650; }
+  .way { display: grid; gap: 6px; }
   .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    min-height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 600; text-decoration: none; font-size: 0.95rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
+    min-height: 48px; padding: 6px 18px; border-radius: 10px; font-weight: 650; text-decoration: none; font-size: 1rem;
   }
   .btn.primary { background: var(--primary); color: var(--on-primary); }
-  .btn.ghost { border: 1px solid var(--border-2); color: var(--text); background: var(--surface); }
+  .btn.secondary { border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text); }
+  .btn.ghost { border: 1px solid var(--border-2); color: var(--text); background: var(--surface); min-height: 44px; font-weight: 600; font-size: 0.95rem; }
+  .note { margin: 0; font-size: 0.84rem; color: var(--text-dim); }
 
-  ul.servers { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-  .server {
-    display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
-    padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+  details.links { border-top: 1px solid var(--border); padding-top: 4px; }
+  details.links summary {
+    cursor: pointer; list-style: none; position: relative; padding: 10px 28px 6px 0;
+    font-weight: 600; font-size: 0.95rem; color: var(--text);
   }
-  .server b { display: block; font-size: 1rem; }
-  .server .host { color: var(--text-dim); font-size: 0.82rem; word-break: break-all; }
-  .server .alt { grid-column: 1 / -1; font-size: 0.92rem; margin-top: 6px; }
-  .empty { padding: 16px; border: 1px dashed var(--border-2); border-radius: 12px; color: var(--text-dim); }
-  .handoff { display: none; gap: 14px; align-items: center; margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
-  .handoff p { margin: 0; flex: 1; }
-  .handoff .copy { margin-top: 10px; }
-  .is-mobile .handoff-desktop { display: block; }
-  .is-desktop .handoff-mobile { display: flex; }
-  .empty p { margin: 0; }
-  .empty .btn { margin-top: 12px; }
-
-  details.all { margin-top: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
-  details.all summary { cursor: pointer; padding: 14px 16px; font-weight: 600; list-style: none; position: relative; }
-  details.all summary::-webkit-details-marker { display: none; }
-  details.all summary::after { content: "+"; position: absolute; right: 16px; top: 11px; font-size: 1.3rem; color: var(--text-dim); }
-  details.all[open] summary::after { content: "–"; }
-  .all-body { padding: 0 16px 16px; }
-  .all-body .hint { color: var(--text-dim); font-size: 0.9rem; margin: 0 0 12px; }
-  .srv { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
-  .srv h3 { font-size: 0.98rem; margin: 0 0 8px; }
-  .srv h3 span { color: var(--text-dim); font-weight: 400; font-size: 0.82rem; margin-left: 6px; }
-  .lnk { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; margin-bottom: 14px; }
+  details.links summary::-webkit-details-marker { display: none; }
+  details.links summary::after { content: "+"; position: absolute; right: 2px; top: 6px; font-size: 1.3rem; color: var(--text-dim); }
+  details.links[open] summary::after { content: "–"; }
+  .links-body { display: grid; gap: 14px; padding-top: 8px; }
+  .links-body .hint { color: var(--text-dim); font-size: 0.88rem; margin: 0; }
+  .lnk { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
   .lnk.noqr { grid-template-columns: 1fr; }
   .qr { width: 112px; height: 112px; border-radius: 8px; background: #fff; padding: 6px; image-rendering: pixelated; }
   .kind { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
@@ -140,20 +95,22 @@
     font: inherit; font-size: 0.85rem; font-weight: 600; min-height: 36px; padding: 0 12px; cursor: pointer;
     border: 1px solid var(--border-2); border-radius: 8px; background: var(--surface); color: var(--text);
   }
-  .row .btn { min-height: 36px; font-size: 0.85rem; padding: 0 12px; }
+  .row .btn { min-height: 36px; font-size: 0.85rem; padding: 0 12px; font-weight: 600; }
+  .btn:focus-visible, summary:focus-visible, .copy:focus-visible, .lang a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-  footer { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-dim); font-size: 0.88rem; }
+  .empty { margin: 22px 0 0; padding: 16px; border: 1px dashed var(--border-2); border-radius: 12px; color: var(--text-dim); }
+  .help { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--border); display: grid; gap: 12px; justify-items: start; }
+  .help p { margin: 0; color: var(--text-dim); font-size: 0.92rem; }
+  footer { margin-top: 20px; color: var(--text-dim); font-size: 0.88rem; }
   @media (max-width: 420px) {
     h1 { font-size: 1.4rem; }
-    .server { grid-template-columns: 1fr; }
-    .server .btn { width: 100%; }
     .qr { width: 96px; height: 96px; }
   }
 </style>
 </head>
-<body data-platform="{{.Platform}}">
+<body>
 <script>
-document.documentElement.classList.add('js', /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ? 'is-mobile' : 'is-desktop');
+document.documentElement.classList.add('js');
 var remember = {{if .Preview}}false{{else}}true{{end}};
 (function () {
   if (!remember) return;
@@ -180,136 +137,55 @@ var remember = {{if .Preview}}false{{else}}true{{end}};
   <h1>{{.Title}}</h1>
   <p class="intro">{{.Intro}}</p>
   {{if .ShowStatus}}
-  <div class="status"><span class="dot" aria-hidden="true"></span><b>{{t "subpage.status_active"}}</b> <span class="until">{{.StatusText}}</span></div>
+  <div class="status"><span class="dot" aria-hidden="true"></span><b>{{.StatusLabel}}</b>{{if .StatusUntil}} <span class="until">{{.StatusUntil}}</span>{{end}}</div>
   {{end}}
 
   {{if .Servers}}
-  <div class="tabs" role="tablist" aria-label="{{t "subpage.device"}}">
-    {{range .Platforms}}<button type="button" role="tab" id="tab-{{.ID}}" aria-controls="panel-{{.ID}}" aria-selected="{{if .Selected}}true{{else}}false{{end}}" tabindex="{{if .Selected}}0{{else}}-1{{end}}" data-platform="{{.ID}}">{{t (print "subpage.platform_" .ID)}}</button>{{end}}
-  </div>
-
-  {{range .Platforms}}
-  <section class="panel" id="panel-{{.ID}}" role="tabpanel" aria-labelledby="tab-{{.ID}}" data-platform="{{.ID}}"{{if not .Selected}} data-inactive{{end}}>
-    <h2 class="panel-title">{{t (print "subpage.platform_" .ID)}}</h2>
-    {{if not .Actions}}
-    <div class="empty">
-      <p>{{t "subpage.empty_device"}}</p>
-      {{if $.SupportLink}}<a class="btn ghost" href="{{$.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
-    </div>
-    {{else}}
-    {{if $.PageURL}}
-    {{if eq .ID "desktop"}}
-    <div class="handoff handoff-desktop">
-      <p>{{t "subpage.handoff_desktop"}}</p>
-      <button type="button" class="copy" data-copy="{{$.PageURL}}">{{t "subpage.copy_page_link"}}</button>
-    </div>
-    {{else if $.PageQR}}
-    <div class="handoff handoff-mobile">
-      <img class="qr" src="{{safeURL $.PageQR}}" alt="{{t "subpage.handoff_qr_alt"}}">
-      <p>{{t "subpage.handoff_mobile"}}</p>
-    </div>
-    {{end}}
-    {{end}}
-    <ol class="steps{{if not $.ShowGuide}} plain{{end}}">
-      {{if $.ShowGuide}}
-      <li class="step">
-        <h2>{{t "subpage.step1_title"}}</h2>
-        <p>{{t (print "subpage.step1_" .ID)}}</p>
-        <a class="btn ghost" href="{{storeURL .ID}}" target="_blank" rel="noopener">{{t (print "subpage.store_" .ID)}}</a>
-      </li>
-      {{end}}
-      <li class="step">
-        {{if $.ShowGuide}}<h2>{{t "subpage.step2_title"}}</h2>
-        <p>{{if eq .ID "desktop"}}{{t "subpage.step2_text_desktop"}}{{else}}{{t "subpage.step2_text"}}{{end}}{{if gt (len .Actions) 1}} {{t "subpage.step2_many"}}{{end}}</p>{{end}}
-        <ul class="servers">
-          {{range .Actions}}
-          <li class="server">
-            <div><b>{{.Name}}</b></div>
-            <a class="btn primary" href="{{safeURL .Primary.TMe}}">{{t "subpage.connect"}}</a>
-            {{if .Alt}}<a class="alt" href="{{safeURL .Alt.TMe}}">{{t "subpage.alt"}}</a>{{end}}
-          </li>
-          {{end}}
-        </ul>
-      </li>
-      {{if $.ShowGuide}}
-      <li class="step">
-        <h2>{{t "subpage.step3_title"}}</h2>
-        <p>{{t "subpage.step3_confirm"}}</p>
-        <p class="success">{{t "subpage.step3_success"}}</p>
-        <p>{{t (print "subpage.step3_check_" .ID)}}</p>
-      </li>
-      {{end}}
-    </ol>
-    {{if $.ShowGuide}}
-    <section class="trouble">
-      <h2>{{t "subpage.trouble_title"}}</h2>
-      <ol>
-        <li>{{t "subpage.trouble_wait"}}</li>
-        {{if .HasAlt}}<li>{{t "subpage.trouble_alt"}}</li>{{end}}
-        {{if gt (len .Actions) 1}}<li>{{t "subpage.trouble_next"}}</li>{{end}}
-        <li>{{t "subpage.trouble_contact"}}</li>
-      </ol>
-      {{if $.SupportLink}}<a class="btn ghost" href="{{$.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
-    </section>
-    {{end}}
-    {{end}}
-  </section>
-  {{end}}
-
-
-  <details class="all">
-    <summary>{{if .ShowQR}}{{t "subpage.all_links"}}{{else}}{{t "subpage.all_links_plain"}}{{end}}</summary>
-    <div class="all-body">
-      <p class="hint">{{if .ShowQR}}{{t "subpage.all_links_hint"}}{{else}}{{t "subpage.all_links_hint_plain"}}{{end}}</p>
-      {{range .Servers}}
-      <div class="srv"{{if .WebOnly}} data-web-only{{end}}>
-        <h3>{{.Name}}<span>{{.Hostname}}</span></h3>
-        {{range .Links}}
-        <div class="lnk{{if not .QRDataURI}} noqr{{end}}" data-kind="{{.Kind}}">
-          {{if .QRDataURI}}<img class="qr" src="{{safeURL .QRDataURI}}" alt="QR {{.Label}}">{{end}}
-          <div>
-            <div class="kind">{{.Label}}</div>
-            <span class="val">{{.TMe}}</span>
-            <div class="row">
-              <button type="button" class="copy" data-copy="{{.TMe}}">{{t "subpage.copy"}}</button>
-              <a class="btn ghost" href="{{safeURL .Tg}}">{{t "subpage.open"}}</a>
-            </div>
-          </div>
-        </div>
-        {{end}}
+  <ul class="servers">
+    {{range .Servers}}
+    <li class="server">
+      <h2>{{.Name}}</h2>
+      {{range .Buttons}}
+      <div class="way" data-kind="{{.Kind}}">
+        <a class="btn {{if .Primary}}primary{{else}}secondary{{end}}" href="{{safeURL .Href}}">{{.Text}}</a>
+        {{if .Note}}<p class="note">{{.Note}}</p>{{end}}
       </div>
       {{end}}
-    </div>
-  </details>
+      <details class="links">
+        <summary>{{if $.ShowQR}}{{t "subpage.links_qr"}}{{else}}{{t "subpage.links_plain"}}{{end}}</summary>
+        <div class="links-body">
+          <p class="hint">{{if $.ShowQR}}{{t "subpage.links_qr_hint"}}{{else}}{{t "subpage.links_plain_hint"}}{{end}}</p>
+          {{range .Links}}
+          <div class="lnk{{if not .QRDataURI}} noqr{{end}}" data-kind="{{.Kind}}">
+            {{if .QRDataURI}}<img class="qr" src="{{safeURL .QRDataURI}}" alt="{{t "subpage.qr_alt" "link" .Label}}">{{end}}
+            <div>
+              <div class="kind">{{.Label}}</div>
+              <span class="val">{{.TMe}}</span>
+              <div class="row">
+                <button type="button" class="copy" data-copy="{{.TMe}}">{{t "subpage.copy"}}</button>
+                <a class="btn ghost" href="{{safeURL .Tg}}">{{t "subpage.open"}}</a>
+              </div>
+            </div>
+          </div>
+          {{end}}
+        </div>
+      </details>
+    </li>
+    {{end}}
+  </ul>
+
+  <section class="help">
+    <p>{{.Trouble}}</p>
+    {{if .SupportURL}}<a class="btn ghost" href="{{safeURL .SupportURL}}" target="_blank" rel="noopener noreferrer">{{.SupportLabel}}</a>{{end}}
+  </section>
   {{else}}
   <p class="empty">{{t "subpage.empty"}}</p>
   {{end}}
 
-  {{if or .FooterText (and .SupportLink (not .ShowGuide))}}
-  <footer>
-    <span>{{.FooterText}}</span>
-    {{if and .SupportLink (not .ShowGuide)}}<a class="btn ghost" href="{{.SupportLink}}" target="_blank" rel="noopener">{{t "subpage.support"}}</a>{{end}}
-  </footer>
-  {{end}}
+  {{if .FooterText}}<footer>{{.FooterText}}</footer>{{end}}
 </div>
 <script>
 (function () {
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
-  function select(tab, save) {
-    document.body.setAttribute('data-platform', tab.getAttribute('data-platform'));
-    if (remember && save) { try { localStorage.setItem('tgwp-sub-tab', tab.getAttribute('data-platform')); } catch (e) {} }
-    tabs.forEach(function (t) {
-      var on = t === tab;
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-      t.tabIndex = on ? 0 : -1;
-      var panel = document.getElementById(t.getAttribute('aria-controls'));
-      if (on) { panel.removeAttribute('data-inactive'); } else { panel.setAttribute('data-inactive', ''); }
-    });
-  }
-  if (remember) try {
-    var savedTab = localStorage.getItem('tgwp-sub-tab');
-    tabs.forEach(function (t) { if (t.getAttribute('data-platform') === savedTab) select(t, false); });
-  } catch (e) {}
   document.querySelectorAll('.lang a').forEach(function (a) {
     a.addEventListener('click', function (e) {
       var lang = a.getAttribute('data-lang');
@@ -318,15 +194,6 @@ var remember = {{if .Preview}}false{{else}}true{{end}};
       params.set('lang', lang);
       e.preventDefault();
       location.search = params.toString();
-    });
-  });
-  tabs.forEach(function (tab, i) {
-    tab.addEventListener('click', function () { select(tab, true); });
-    tab.addEventListener('keydown', function (e) {
-      var next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null;
-      if (next === null) return;
-      var target = tabs[(next + tabs.length) % tabs.length];
-      select(target, true); target.focus();
     });
   });
   var copied = {{t "subpage.copied"}};

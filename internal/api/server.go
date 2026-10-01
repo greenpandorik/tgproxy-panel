@@ -23,6 +23,7 @@ import (
 	"tgwebproxy/internal/nodesvc"
 	"tgwebproxy/internal/notify"
 	"tgwebproxy/internal/store"
+	"tgwebproxy/internal/subscription"
 	"tgwebproxy/internal/updates"
 	"tgwebproxy/internal/worker"
 	"tgwebproxy/web"
@@ -59,6 +60,8 @@ type Server struct {
 	secureCookies  bool
 	loginLimiter   *ipLimiter
 	subLimiter     *ipLimiter
+	subMisses      *ipLimiter
+	serviceMisses  *ipLimiter
 	svcCache       serviceCache
 	driver         nodedriver.Driver
 	presence       *nodesvc.Presence
@@ -85,6 +88,8 @@ func New(d Deps) *Server {
 		secureCookies: strings.HasPrefix(d.Cfg.PublicURL, "https://"),
 		loginLimiter:  newIPLimiter(10, 10*time.Minute, 15*time.Minute),
 		subLimiter:    newIPLimiter(60, time.Minute, time.Minute),
+		subMisses:     newIPLimiter(subscription.MissesPerHour, time.Hour, time.Hour),
+		serviceMisses: newIPLimiter(serviceSlugMissesPerHour, time.Hour, time.Hour),
 		driver:        d.Driver, presence: d.Presence, keys: d.Keys, applyNow: d.ApplyNow, siteProvider: d.SiteProvider,
 		tg: d.Notifier, nodeChecker: d.NodeChecker, backups: d.Backups,
 		backupSlot: make(chan struct{}, 1),
