@@ -178,7 +178,7 @@ export function NodeDetailPage() {
         </div>
       </div>
 
-      <SectionTabs label={t('workspace.node_navigation')} value={section} onChange={setSection} items={tabs} />
+      <SectionTabs label={t('workspace.node_navigation')} value={section} onChange={setSection} items={tabs} scroll />
       <section className="min-w-0" aria-label={current?.label}>
         {section === 'overview' && <NodeOverviewTab node={node} focus={focus} />}
         {section === 'proxy' && telemt && <NodeProxyTab node={node} canEdit={isWriter} />}

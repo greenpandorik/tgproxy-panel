@@ -459,7 +459,6 @@
     "detail_status_warn": "Есть проблемы",
     "detail_status_err": "Не на связи",
     "detail_status_seen": "ответ {{ago}}",
-    "detail_status_last_seen": "был на связи {{ago}}",
     "detail_strip_load": "Нагрузка",
     "detail_strip_load_sub": "процессор · память",
     "detail_strip_telegram": "До Telegram",

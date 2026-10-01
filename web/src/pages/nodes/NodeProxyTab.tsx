@@ -25,9 +25,9 @@ export function NodeProxyTab({ node, canEdit }: { node: Node; canEdit: boolean }
   const policy: Summary = policyQuery.data
     ? {
         text:
-          capability === 'supported'
-            ? t(`web.preset_${policyQuery.data.policy.preset}`, policyQuery.data.policy.preset)
-            : t('nodes.detail_policy_locked'),
+          capability === 'unsupported'
+            ? t('nodes.detail_policy_locked')
+            : t(`web.preset_${policyQuery.data.policy.preset}`, policyQuery.data.policy.preset),
         tone: 'neutral',
       }
     : { text: policyQuery.isError ? t('nodes.detail_summary_error') : t('common.state.loading'), tone: 'neutral' };

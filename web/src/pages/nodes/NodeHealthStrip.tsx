@@ -63,9 +63,7 @@ export function NodeHealthStrip({
       id: 'status',
       label: t('nodes.detail_strip_status'),
       value: t(`nodes.detail_status_${verdict.tone}`),
-      sub: seen
-        ? t(node.online ? 'nodes.detail_status_seen' : 'nodes.detail_status_last_seen', { ago: seen })
-        : t('nodes.last_seen_never'),
+      sub: seen ? (node.online ? t('nodes.detail_status_seen', { ago: seen }) : seen) : t('nodes.last_seen_never'),
       tone: verdict.tone,
     },
     {

@@ -45,12 +45,12 @@ function MiniChart({ rows, dataKey, name, format, axisFormat, domain = [0, 'auto
       </figcaption>
       <div className={chartTextClass}>
         <ResponsiveContainer width="100%" height={HEIGHT}>
-          <AreaChart data={rows} syncId={syncId} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <AreaChart data={rows} syncId={syncId} margin={{ top: 4, right: 18, bottom: 0, left: 0 }}>
             <CartesianGrid {...gridProps} />
             <XAxis {...xAxisProps} tickFormatter={(v: string) => formatTimeTick(v, i18n.language)} />
             <YAxis
               {...yAxisProps}
-              width={52}
+              width={60}
               domain={domain}
               ticks={ticks}
               tickCount={3}

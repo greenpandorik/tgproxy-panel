@@ -99,13 +99,14 @@ export function SectionNav({ label, items, value, onChange }: SectionProps) {
 /**
  * The same sections as a row of tabs above the content; groups are set apart by a rule.
  * The row appears only when its own box is wide enough for every tab, so a narrow window or an
- * expanded sidebar gets the select instead of tabs pushed out of sight.
+ * expanded sidebar gets the select instead of tabs pushed out of sight. With `scroll` the row
+ * stays at every width and scrolls sideways inside itself.
  */
-export function SectionTabs({ label, items, value, onChange }: SectionProps) {
+export function SectionTabs({ label, items, value, onChange, scroll = false }: SectionProps & { scroll?: boolean }) {
   return (
     <nav aria-label={label} className="@container min-w-0">
-      <SectionSelect label={label} items={items} value={value} onChange={onChange} className="@min-[52rem]:hidden" />
-      <div className="hidden border-b border-hairline @min-[52rem]:block">
+      {!scroll && <SectionSelect label={label} items={items} value={value} onChange={onChange} className="@min-[52rem]:hidden" />}
+      <div className={cn('border-b border-hairline', !scroll && 'hidden @min-[52rem]:block')}>
         <div className="-mb-px flex items-center gap-4 overflow-x-auto [scrollbar-width:thin]">
           {items.map((item, index) => (
             <Fragment key={item.value}>

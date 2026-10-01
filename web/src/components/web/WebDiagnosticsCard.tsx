@@ -254,7 +254,7 @@ export function WebDiagnosticsCard({
       <Button
         variant="ghost"
         size="sm"
-        className="ml-auto"
+        className={cn(!embedded && 'ml-auto')}
         onClick={() => {
           const blob = new Blob([JSON.stringify(run, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
@@ -303,8 +303,7 @@ export function WebDiagnosticsCard({
 
   if (embedded) {
     return (
-      <SubSection title={t('web.diagnostics_title')} meta={meta}>
-        {controls}
+      <SubSection title={t('web.diagnostics_title')} meta={meta} actions={controls}>
         <div className="overflow-hidden rounded-control border border-hairline">{body}</div>
       </SubSection>
     );

@@ -459,7 +459,6 @@
     "detail_status_warn": "Has problems",
     "detail_status_err": "Not connected",
     "detail_status_seen": "answered {{ago}}",
-    "detail_status_last_seen": "last seen {{ago}}",
     "detail_strip_load": "Load",
     "detail_strip_load_sub": "processor · memory",
     "detail_strip_telegram": "To Telegram",

@@ -55,7 +55,7 @@ export function NodeVerdict({ verdict, canInstall = true }: { verdict: Verdict; 
             <div className="grid gap-1.5 lg:grid-cols-2">
               {AGENT_COMMANDS.map((cmd) => (
                 <div key={cmd} className="flex min-w-0 items-center gap-1.5">
-                  <code className="mono min-w-0 flex-1 truncate rounded-control border border-hairline bg-[var(--field-bg)] px-2.5 py-1 text-mono text-foreground">
+                  <code className="mono min-w-0 flex-1 break-all rounded-control sm:truncate sm:break-normal border border-hairline bg-[var(--field-bg)] px-2.5 py-1 text-mono text-foreground">
                     {cmd}
                   </code>
                   <CopyButton value={cmd} label={t('nodes.verdict_copy_command')} className="size-8 shrink-0" />

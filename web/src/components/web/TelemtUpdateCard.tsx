@@ -67,7 +67,7 @@ export function TelemtUpdateCard({ node }: { node: Node }) {
             <div className="flex flex-wrap gap-6">
               <div>
                 <p className="text-label text-mute">{t('web.update_installed')}</p>
-                <p className="mono text-mono text-foreground">telemt {query.data?.installed_version || '—'}</p>
+                <p className="mono text-mono text-foreground">{query.data?.installed_version || '—'}</p>
               </div>
               <div>
                 <p className="text-label text-mute">{t('web.update_recommended')}</p>

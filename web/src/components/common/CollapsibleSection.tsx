@@ -72,7 +72,12 @@ export function CollapsibleSection({
       className={cn('border-t border-hairline first:border-t-0', className)}
     >
       <div className={cn('flex items-center gap-3', action && 'pr-(--panel-x)')}>
-        <Collapsible.Trigger className="group/section flex min-h-13 min-w-0 flex-1 cursor-pointer items-center gap-3 py-3 pr-(--panel-x) pl-(--panel-x) text-left transition-colors outline-none hover:bg-elevated/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
+        <Collapsible.Trigger
+          className={cn(
+            'group/section flex min-h-13 min-w-0 flex-1 cursor-pointer items-center gap-3 py-3 pl-(--panel-x) text-left transition-colors outline-none hover:bg-elevated/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+            !action && 'pr-(--panel-x)',
+          )}
+        >
           <ChevronRight
             aria-hidden="true"
             className="size-4 shrink-0 text-mute transition-transform duration-fast group-hover/section:text-foreground group-data-panel-open/section:rotate-90"
