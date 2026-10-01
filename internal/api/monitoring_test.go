@@ -118,6 +118,7 @@ func TestMonitoringLoadSeries(t *testing.T) {
 		_ = h.Store.Q.InsertSnapshot(t.Context(), db.InsertSnapshotParams{
 			NodeID: n.ID, SessionsLive: 1, MtproxyRaw: []byte("{}"),
 			CpuPercent: pgtype.Float4{Float32: cpu, Valid: true}, MemUsedPercent: cpu + 10, DiskUsedPercent: 5,
+			CpuUtilisationPercent: pgtype.Float4{Float32: cpu / 2, Valid: i == 0},
 		})
 		_, _ = h.Store.Pool.Exec(t.Context(),
 			`UPDATE node_stats_snapshots SET taken_at = $1 WHERE node_id = $2 AND taken_at > $1`,
@@ -127,15 +128,19 @@ func TestMonitoringLoadSeries(t *testing.T) {
 
 	var series struct {
 		Points []struct {
-			CPU  float32 `json:"cpu_percent"`
-			Mem  float32 `json:"mem_used_percent"`
-			Disk float32 `json:"disk_used_percent"`
+			CPU  float32  `json:"cpu_percent"`
+			Util *float32 `json:"cpu_utilisation_percent"`
+			Mem  float32  `json:"mem_used_percent"`
+			Disk float32  `json:"disk_used_percent"`
 		} `json:"points"`
 	}
 	c.JSON(c.Get("/api/v1/monitoring/nodes/"+n.ID.String()+"/series?"+q), &series)
 	if len(series.Points) != 2 || series.Points[0].CPU != 20 || series.Points[1].CPU != 40 ||
 		series.Points[1].Mem != 50 || series.Points[1].Disk != 5 {
 		t.Fatalf("series load %+v", series.Points)
+	}
+	if u := series.Points[0].Util; u == nil || *u != 10 || series.Points[1].Util != nil {
+		t.Fatalf("series utilisation %+v", series.Points)
 	}
 
 	// Both snapshots fall into one five-minute bucket; the bucket reports their average.

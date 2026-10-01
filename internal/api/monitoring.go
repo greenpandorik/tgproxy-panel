@@ -92,7 +92,8 @@ func (s *Server) handleMonitoringSeries(w http.ResponseWriter, r *http.Request) 
 		points = append(points, map[string]any{
 			"t": snap.TakenAt, "sessions_live": snap.SessionsLive, "streams_live": snap.StreamsLive,
 			"people_online": int4Ptr(snap.PeopleOnline), "bytes_up": snap.BytesUp, "bytes_down": snap.BytesDown,
-			"cpu_percent": snap.CpuPercent, "mem_used_percent": snap.MemUsedPercent, "disk_used_percent": snap.DiskUsedPercent,
+			"cpu_percent": snap.CpuPercent, "cpu_utilisation_percent": float4Ptr(snap.CpuUtilisationPercent),
+			"mem_used_percent": snap.MemUsedPercent, "disk_used_percent": snap.DiskUsedPercent,
 			"dc_latency": dcLatencyRaw(snap.DcLatency),
 		})
 	}
