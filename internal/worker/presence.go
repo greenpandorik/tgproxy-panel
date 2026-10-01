@@ -155,6 +155,8 @@ func computePresence(window [][]nodeReading) presence {
 const (
 	presenceWindow = 15 * time.Minute
 	presenceSweeps = 15
+	// presenceCarry is how long a node that is due but could not be read keeps its last reading.
+	presenceCarry = 3 * time.Minute
 )
 
 type pastSweep struct {
@@ -165,12 +167,26 @@ type pastSweep struct {
 // presenceRing holds the last presenceWindow of sweeps; addresses live here and nowhere else.
 type presenceRing struct{ sweeps []pastSweep }
 
-// add records a sweep and returns the ones still inside the window, oldest first.
-func (r *presenceRing) add(at time.Time, nodes []nodeReading) [][]nodeReading {
+// add records a sweep and returns the ones still inside the window, oldest first. The last one
+// also has, for each due node that was not read, its newest reading from the last presenceCarry.
+func (r *presenceRing) add(at time.Time, due []uuid.UUID, nodes []nodeReading) [][]nodeReading {
 	kept := make([]pastSweep, 0, presenceSweeps)
 	for _, s := range r.sweeps {
 		if at.Sub(s.at) < presenceWindow {
 			kept = append(kept, s)
+		}
+	}
+	read := make(map[uuid.UUID]bool, len(nodes))
+	for _, n := range nodes {
+		read[n.NodeID] = true
+	}
+	now := append([]nodeReading(nil), nodes...)
+	for _, id := range due {
+		if read[id] {
+			continue
+		}
+		if n, ok := lastReading(kept, id, at); ok {
+			now = append(now, n)
 		}
 	}
 	kept = append(kept, pastSweep{at: at, nodes: nodes})
@@ -182,5 +198,17 @@ func (r *presenceRing) add(at time.Time, nodes []nodeReading) [][]nodeReading {
 	for i, s := range kept {
 		out[i] = s.nodes
 	}
+	out[len(out)-1] = now
 	return out
+}
+
+func lastReading(sweeps []pastSweep, id uuid.UUID, at time.Time) (nodeReading, bool) {
+	for i := len(sweeps) - 1; i >= 0 && at.Sub(sweeps[i].at) <= presenceCarry; i-- {
+		for _, n := range sweeps[i].nodes {
+			if n.NodeID == id {
+				return n, true
+			}
+		}
+	}
+	return nodeReading{}, false
 }

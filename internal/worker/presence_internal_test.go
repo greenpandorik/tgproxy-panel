@@ -171,13 +171,38 @@ func TestPresenceRingKeepsFifteenMinutes(t *testing.T) {
 	mark := func(i int) []nodeReading { return []nodeReading{{Sessions: i}} }
 	var window [][]nodeReading
 	for i := range 20 {
-		window = r.add(base.Add(time.Duration(i)*time.Minute), mark(i))
+		window = r.add(base.Add(time.Duration(i)*time.Minute), nil, mark(i))
 	}
 	if len(window) != presenceSweeps || window[0][0].Sessions != 5 || window[len(window)-1][0].Sessions != 19 {
 		t.Fatalf("window holds %d sweeps from %d to %d, want the last 15", len(window), window[0][0].Sessions, window[len(window)-1][0].Sessions)
 	}
-	window = r.add(base.Add(40*time.Minute), mark(40))
+	window = r.add(base.Add(40*time.Minute), nil, mark(40))
 	if len(window) != 1 || window[0][0].Sessions != 40 {
 		t.Fatalf("after a long gap only the new sweep is left, got %d", len(window))
+	}
+}
+
+func TestPresenceRingCarriesANodeThatWasNotRead(t *testing.T) {
+	var r presenceRing
+	base := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	a, b, gone := uuid.New(), uuid.New(), uuid.New()
+	ivan := uuid.New()
+	onA := nodeReading{NodeID: a, Connections: 3, Keys: []keyReading{personal(ivan, 3, "198.51.100.7")}}
+	onB := nodeReading{NodeID: b, Connections: 2, Sessions: 2}
+	r.add(base, []uuid.UUID{a, b, gone}, []nodeReading{onA, onB, {NodeID: gone, Sessions: 4}})
+
+	window := r.add(base.Add(time.Minute), []uuid.UUID{a, b}, []nodeReading{onB})
+	p := computePresence(window)
+	if p.People != 3 || p.Connections != 5 || p.Keys[ivan].Connections != 3 {
+		t.Fatalf("presence = %+v: a due node that could not be read keeps its last reading", p)
+	}
+	if got := window[len(window)-1]; len(got) != 2 {
+		t.Fatalf("now = %+v: a node that is no longer due is not carried", got)
+	}
+
+	window = r.add(base.Add(4*time.Minute), []uuid.UUID{a, b}, []nodeReading{onB})
+	p = computePresence(window)
+	if p.People != 2 || p.Keys[ivan].Connections != 0 || p.Keys[ivan].Devices15m != 1 {
+		t.Fatalf("presence = %+v: after presenceCarry the old reading only counts in the window", p)
 	}
 }

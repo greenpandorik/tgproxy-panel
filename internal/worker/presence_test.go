@@ -155,6 +155,47 @@ func TestStatsCountsPeopleAcrossTheFleet(t *testing.T) {
 	}
 }
 
+func TestStatsKeepsPeopleOnAServerItMissedOnce(t *testing.T) {
+	p := newPresenceFleet(t)
+	ctx := context.Background()
+	p.mock.SetStats(p.a, p.userStats("7",
+		map[uuid.UUID][]string{p.team: {"203.0.113.1", "203.0.113.2"}},
+		map[uuid.UUID]string{p.team: "7"}))
+	p.mock.SetStats(p.b, p.userStats("3",
+		map[uuid.UUID][]string{p.ivan: {"198.51.100.7"}},
+		map[uuid.UUID]string{p.ivan: "3"}))
+	s := worker.NewStats(p.f.st, p.mock, 90*time.Second, slog.New(slog.DiscardHandler))
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	p.mock.SetOnline(p.b, false)
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	fleet, _ := p.f.st.Q.LatestFleetSnapshot(ctx, time.Now().Add(-time.Minute))
+	if fleet.PeopleOnline != 3 || fleet.Connections != 10 {
+		t.Fatalf("fleet = %+v: a server missed for one sweep keeps its last reading", fleet)
+	}
+	if k := keyPresence(t, p)[p.ivan]; k.Connections != 3 || k.Devices != 1 {
+		t.Fatalf("ivan = %+v, want him still online", k)
+	}
+
+	if _, err := p.f.st.Pool.Exec(ctx, `UPDATE nodes SET status = 'offline' WHERE id = $1`, p.b); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	fleet, _ = p.f.st.Q.LatestFleetSnapshot(ctx, time.Now().Add(-time.Minute))
+	if fleet.PeopleOnline != 2 || fleet.Connections != 7 {
+		t.Fatalf("fleet = %+v: a server marked offline no longer counts", fleet)
+	}
+	if k := keyPresence(t, p)[p.ivan]; k.Connections != 0 || k.Devices != 0 || k.Devices15m != 1 {
+		t.Fatalf("ivan = %+v, want him offline but seen in the window", k)
+	}
+}
+
 func TestStatsCountsPeopleFromOldAgents(t *testing.T) {
 	p := newPresenceFleet(t)
 	ctx := context.Background()

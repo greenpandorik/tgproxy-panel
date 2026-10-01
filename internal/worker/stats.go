@@ -248,11 +248,13 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	readings := make([]nodeReading, 0, len(nodes))
+	due := make([]uuid.UUID, 0, len(nodes))
 	for _, n := range nodes {
 		s.collectProbes(ctx, n)
 		if n.Status == db.NodeStatusOffline || n.Status == db.NodeStatusPending {
 			continue
 		}
+		due = append(due, n.ID)
 		wg.Add(1)
 		sem <- struct{}{}
 		go func(n db.Node) {
@@ -275,7 +277,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	}
 	wg.Wait()
 	s.log.Debug("stats sweep", "nodes", polled.Load(), "incomplete", failed.Load(), "took", time.Since(started))
-	s.recordPresence(ctx, readings)
+	s.recordPresence(ctx, due, readings)
 
 	if err := s.st.Q.DeleteExpiredSessions(ctx); err != nil {
 		s.log.Error("delete expired sessions", "err", err)
@@ -289,8 +291,8 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 }
 
 // recordPresence stores the head count of a sweep: counts only, the addresses stay in memory.
-func (s *Stats) recordPresence(ctx context.Context, readings []nodeReading) {
-	p := computePresence(s.presence.add(s.clock(), readings))
+func (s *Stats) recordPresence(ctx context.Context, due []uuid.UUID, readings []nodeReading) {
+	p := computePresence(s.presence.add(s.clock(), due, readings))
 	if err := s.st.Q.InsertFleetSnapshot(ctx, db.InsertFleetSnapshotParams{
 		PeopleOnline: int32(p.People), People15m: int32(p.People15m), Connections: int32(p.Connections),
 	}); err != nil {
@@ -318,7 +320,8 @@ func (s *Stats) recordPresence(ctx context.Context, readings []nodeReading) {
 }
 
 // collectNode gathers one node's snapshot and its reading for the head count, nil when there was
-// nothing to read. ok is false when the node could not be read; it never fails the sweep for others.
+// nothing to read or its users could not be told apart. ok is false when the node could not be
+// read; it never fails the sweep for others.
 func (s *Stats) collectNode(ctx context.Context, n db.Node) (*nodeReading, bool) {
 	s.collectIncidents(ctx, n)
 	if rows, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && rows > 0 {
@@ -385,7 +388,10 @@ func (s *Stats) collectNode(ctx context.Context, n db.Node) (*nodeReading, bool)
 	}); err != nil {
 		s.log.Error("snapshot", "err", err)
 	}
-	if n.Engine == db.NodeEngineTelemt && peopleKnown {
+	if !peopleKnown {
+		return nil, false
+	}
+	if n.Engine == db.NodeEngineTelemt {
 		if err := s.keySnapshots(ctx, n.ID, profiles, telemtM, stats); err != nil {
 			s.log.Error("key snapshot", "node", n.ID, "err", err)
 		}
