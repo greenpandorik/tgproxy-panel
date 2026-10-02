@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { Download, Stethoscope } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { useNode } from '@/api/nodes';
 import { useNodeDiagnostics, useRunWebDiagnostics } from '@/api/web';
 import { useAuth } from '@/auth/AuthProvider';
 import { AdvancedSettings } from '@/components/common/AdvancedSettings';
@@ -22,8 +23,11 @@ import { CHECK_TONE, tallyChecks } from './diagnostics';
 import type { DiagnosticCheck, DiagnosticGroup, DiagnosticsRun } from '@/api/types';
 import type { CSSProperties } from 'react';
 
+const FrontDomain = createContext('');
+
 function CheckRow({ check, group, showDetail }: { check: DiagnosticCheck; group?: string; showDetail: boolean }) {
   const { t } = useTranslation();
+  const domain = useContext(FrontDomain) || t('web.remedy_domain_fallback');
   const tone = CHECK_TONE[check.status] ?? 'neutral';
   const skipped = check.status === 'not_available';
   const problem = check.status === 'fail' || check.status === 'warn';
@@ -52,7 +56,9 @@ function CheckRow({ check, group, showDetail }: { check: DiagnosticCheck; group?
             {group && <span className="text-label text-mute"> · {t(`web.group_${group}`, group)}</span>}
           </span>
           {problem && (
-            <span className="mt-1 text-label text-foreground">{t(`web.remedy_${check.key}`, t('web.remedy_default'))}</span>
+            <span className="mt-1 text-label text-foreground">
+              {t(`web.remedy_${check.key}`, { defaultValue: t('web.remedy_default'), domain })}
+            </span>
           )}
           {check.detail && (problem || showDetail) && (
             <span className="mt-0.5 text-label text-mute">
@@ -192,6 +198,7 @@ export function WebDiagnosticsCard({
   const [selected, setSelected] = useState<number | null>(null);
   const own = useRunWebDiagnostics(nodeId);
   const runDiagnostics = runner ?? own;
+  const frontDomain = useNode(nodeId).data?.tls_domain ?? '';
 
   const run =
     selected === null
@@ -296,7 +303,9 @@ export function WebDiagnosticsCard({
       <Skeleton className="h-3 w-3/5" />
     </div>
   ) : run ? (
-    <RunReport run={run} />
+    <FrontDomain.Provider value={frontDomain}>
+      <RunReport run={run} />
+    </FrontDomain.Provider>
   ) : (
     <PanelEmpty>{isWriter ? t('web.diagnostics_empty') : t('web.diagnostics_empty_viewer')}</PanelEmpty>
   );

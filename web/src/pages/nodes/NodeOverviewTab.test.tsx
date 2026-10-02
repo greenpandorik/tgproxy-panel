@@ -21,6 +21,7 @@ vi.mock('@/api/nodes', () => ({
   useNodeHealth: vi.fn(),
   useNodeStats: () => idle,
   useRunNodeCheck: () => mutation,
+  useNode: () => ({ data: undefined }),
   nodeKeys: { health: (id: string) => ['nodes', id, 'health'] },
 }));
 vi.mock('@/api/web', () => ({

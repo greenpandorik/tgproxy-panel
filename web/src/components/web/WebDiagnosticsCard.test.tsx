@@ -14,6 +14,7 @@ import type { DiagnosticGroup, DiagnosticsRun } from '@/api/types';
 
 vi.mock('@/api/web', () => ({ useNodeDiagnostics: vi.fn(), useRunWebDiagnostics: vi.fn() }));
 vi.mock('@/auth/AuthProvider', () => ({ useAuth: vi.fn() }));
+vi.mock('@/api/nodes', () => ({ useNode: () => ({ data: { tls_domain: 'ams1.example.com' } }) }));
 
 const check = (key: string, status: 'ok' | 'warn' | 'fail' | 'not_available', detail: string) => ({
   key,
