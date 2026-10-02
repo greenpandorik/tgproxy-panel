@@ -395,6 +395,9 @@
     "check_pq_kex": "Post-quantum key exchange",
     "check_pq_kex_hint": "Caddy on the server negotiates X25519MLKEM768 with modern clients. Informational.",
     "header_online": "{{online}} / {{total}} online",
+    "column_versions": "Versions",
+    "version_agent": "agent",
+    "version_newer": "{{name}} {{version}} is available",
     "column_heartbeat": "Last seen",
     "state_up": "up",
     "state_down": "down",
@@ -1532,6 +1535,10 @@
           "load": {
             "name": "CPU and RAM",
             "what": "Processor and memory load from the last heartbeat. Yellow from 80 %, red from 95 %. Keep headroom: an overloaded server adds latency for every client."
+          },
+          "versions": {
+            "name": "Versions",
+            "what": "Which telemt (or tproxy) and which agent the server runs. A yellow chip with an arrow means a newer one exists: for telemt the version the panel installs, for the agent the panel's own version. The agent is marked only when it is a minor release behind (2.14 with a 2.15 panel): patch releases often leave the agent unchanged."
           },
           "heartbeat": {
             "name": "Last seen",

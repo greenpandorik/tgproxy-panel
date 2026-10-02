@@ -425,6 +425,9 @@ on the server negotiates the hybrid X25519MLKEM768 with modern clients, and it d
 overall result. The "Full server check" keeps its history, and "Export report" downloads it. Checks
 that could not run are counted separately and never as passes.
 
+The Versions column of the servers list shows which telemt and which agent each server runs; a
+yellow chip with an arrow means a newer version is out.
+
 Server load shows up in several places. The servers list has CPU and RAM columns and the Overview
 has a CPU column; both come from the agent's last report and show a dash for an offline server.
 The Health tab shows current processor and memory and a chart of people online, processor and

@@ -27,7 +27,7 @@ export const HELP_TOPICS = {
   },
 
   'nodes.list': {
-    fields: ['status', 'online', 'load', 'heartbeat', 'order', 'telemt_update'],
+    fields: ['status', 'online', 'load', 'versions', 'heartbeat', 'order', 'telemt_update'],
     docs: 'install',
   },
   'nodes.create': {

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useFleetRollouts, useNodes } from '@/api/nodes';
+import { useUpdateStatus } from '@/api/updates';
 import { useAuth } from '@/auth/AuthProvider';
 import { DataTableSkeleton } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -26,6 +27,7 @@ import { CreateNodeDialog } from './CreateNodeDialog';
 import { FleetRolloutStatus, FleetUpdateDialog } from './FleetUpdates';
 import { InstallCommandDialog } from './InstallCommandDialog';
 import { NodePeople } from './NodePeople';
+import { NodeVersions } from './NodeVersions';
 import { DASH, LOAD_TONE_CLASS, loadTone, nodeLoad, nodeStatus } from './nodeDisplay';
 
 import type { MouseEvent, ReactNode } from 'react';
@@ -86,7 +88,12 @@ function NameCell({ node }: { node: Node }) {
   );
 }
 
-function NodeTableRow({ node, writer }: { node: Node; writer: boolean }) {
+interface Versions {
+  pinnedTelemt?: string;
+  panelVersion?: string;
+}
+
+function NodeTableRow({ node, writer, versions }: { node: Node; writer: boolean; versions: Versions }) {
   const { t } = useTranslation();
   const { setNode, style, dragging, handle } = useSortableItem(node.id, !writer);
   const { activator, attributes, listeners } = handle;
@@ -118,6 +125,9 @@ function NodeTableRow({ node, writer }: { node: Node; writer: boolean }) {
       <TableCell>
         <LoadBar percent={load?.mem} />
       </TableCell>
+      <TableCell>
+        <NodeVersions node={node} {...versions} />
+      </TableCell>
       <TableCell className={cn('mono text-right text-mono', heartbeat.offline ? 'text-err' : 'text-mute')}>
         {heartbeat.text}
       </TableCell>
@@ -138,7 +148,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function NodeCard({ node, writer }: { node: Node; writer: boolean }) {
+function NodeCard({ node, writer, versions }: { node: Node; writer: boolean; versions: Versions }) {
   const { t } = useTranslation();
   const { setNode, style, dragging, handle } = useSortableItem(node.id, !writer);
   const { activator, attributes, listeners } = handle;
@@ -184,6 +194,11 @@ function NodeCard({ node, writer }: { node: Node; writer: boolean }) {
         <Field label={t('nodes.load_ram')}>
           <LoadText percent={load?.mem} />
         </Field>
+        <div className="col-span-2">
+          <Field label={t('nodes.column_versions')}>
+            <NodeVersions node={node} {...versions} />
+          </Field>
+        </div>
       </dl>
     </li>
   );
@@ -201,6 +216,7 @@ export function NodesPage() {
   const { isWriter } = useAuth();
   const { data, isLoading } = useNodes();
   const rollouts = useFleetRollouts();
+  const updateStatus = useUpdateStatus();
   const narrow = useMediaQuery('(max-width: 767.98px)');
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -208,6 +224,7 @@ export function NodesPage() {
   const [installResult, setInstallResult] = useState<InstallResult | null>(null);
 
   const nodes = data?.items ?? [];
+  const versions: Versions = { pinnedTelemt: rollouts.data?.version, panelVersion: updateStatus.data?.current };
   const telemt = nodes.some((n) => n.engine === 'telemt');
   const latest = rollouts.data?.items[0];
   const shownRollout = latest && (latest.status === 'running' || latest.status === 'failed') ? latest : undefined;
@@ -262,7 +279,7 @@ export function NodesPage() {
               {narrow ? (
                 <ul className="divide-y divide-hairline">
                   {nodes.map((node) => (
-                    <NodeCard key={node.id} node={node} writer={isWriter} />
+                    <NodeCard key={node.id} node={node} writer={isWriter} versions={versions} />
                   ))}
                 </ul>
               ) : (
@@ -278,13 +295,14 @@ export function NodesPage() {
                       <TableHead>{t('common.people_online')}</TableHead>
                       <TableHead>{t('nodes.load_cpu')}</TableHead>
                       <TableHead>{t('nodes.load_ram')}</TableHead>
+                      <TableHead>{t('nodes.column_versions')}</TableHead>
                       <TableHead className="text-right">{t('nodes.column_heartbeat')}</TableHead>
                       <TableHead className="w-0" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {nodes.map((node) => (
-                      <NodeTableRow key={node.id} node={node} writer={isWriter} />
+                      <NodeTableRow key={node.id} node={node} writer={isWriter} versions={versions} />
                     ))}
                   </TableBody>
                 </Table>
