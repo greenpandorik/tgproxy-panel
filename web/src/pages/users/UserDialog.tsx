@@ -64,7 +64,17 @@ const FORM_ID = 'user-form';
 const WINDOW_CLASS =
   'flex flex-col gap-0 overflow-hidden p-0 sm:h-[min(52rem,calc(100dvh-3rem))] sm:max-w-3xl max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0';
 const STATS_RANGES: KeyStatsRange[] = ['24h', '7d'];
-const SERVER_FIELDS = ['label', 'owner_label', 'note', 'carrier_mode', 'expires_at', 'sub_slug', 'node_ids', 'limits', 'telemt_limits'] as const;
+const SERVER_FIELDS = [
+  'label',
+  'owner_label',
+  'note',
+  'carrier_mode',
+  'expires_at',
+  'sub_slug',
+  'node_ids',
+  'limits',
+  'telemt_limits',
+] as const;
 type ServerField = (typeof SERVER_FIELDS)[number];
 
 const TAB_LABEL: Record<UserTab, string> = {
@@ -361,7 +371,11 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                   {draft.draft && (
                     <DraftBanner className="mb-5" savedAt={draft.draft.savedAt} onResume={resumeDraft} onDiscard={draft.clear} />
                   )}
-                  <form id={FORM_ID} onSubmit={(e) => void handleSubmit(onSubmit, (errs) => routeErrors(Object.keys(errs)))(e)} noValidate>
+                  <form
+                    id={FORM_ID}
+                    onSubmit={(e) => void handleSubmit(onSubmit, (errs) => routeErrors(Object.keys(errs)))(e)}
+                    noValidate
+                  >
                     <TabsContent value="main" className="space-y-5">
                       {welcome && !revoked && (
                         <Notice tone="welcome">{t(user.type === 'SHARED' ? 'users.welcome_shared' : 'users.welcome')}</Notice>
@@ -379,11 +393,24 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                           user={user}
                           disabled={!isWriter || setDisabled.isPending}
                           onToggle={(on) =>
-                            void run(() => setDisabled.mutateAsync({ id: user.id, disabled: !on }), on ? t('users.enabled') : t('users.disabled'))
+                            void run(
+                              () => setDisabled.mutateAsync({ id: user.id, disabled: !on }),
+                              on ? t('users.enabled') : t('users.disabled'),
+                            )
                           }
                         />
                       )}
                       <UserFacts user={user} measured={measured} nodesTotal={nodes.length} />
+                      <section className="rounded-surface border border-hairline px-4 py-3.5">
+                        <ExpiryField
+                          control={control}
+                          register={register}
+                          errors={errors}
+                          values={values}
+                          locked={locked}
+                          setValue={setValue}
+                        />
+                      </section>
                       {!revoked && (
                         <SubscriptionBlock
                           user={user}
@@ -411,9 +438,10 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                             subscriptionBase={subscriptionBase(serviceQuery.data)}
                           />
                         </div>
-                        <ExpiryField control={control} register={register} errors={errors} values={values} locked={locked} setValue={setValue} />
                       </section>
-                      <p className="mono text-mono text-mute">{t('users.created_at', { date: formatDateTime(user.created_at, i18n.language) })}</p>
+                      <p className="mono text-mono text-mute">
+                        {t('users.created_at', { date: formatDateTime(user.created_at, i18n.language) })}
+                      </p>
                     </TabsContent>
                     <TabsContent value="access" className="space-y-5">
                       <section className="space-y-2" aria-labelledby="user-type-title">
@@ -421,9 +449,13 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                           {t('users.type_label')}
                         </h3>
                         <div className="flex items-start gap-3 rounded-surface border border-hairline px-4 py-3">
-                          <Badge className="mt-0.5">{t(user.type === 'SHARED' ? 'keys.type_shared' : 'keys.type_personal')}</Badge>
+                          <Badge className="mt-0.5">
+                            {t(user.type === 'SHARED' ? 'keys.type_shared' : 'keys.type_personal')}
+                          </Badge>
                           <div className="min-w-0 space-y-0.5">
-                            <p className="text-body">{t(user.type === 'SHARED' ? 'users.create_hint_shared' : 'users.create_hint_personal')}</p>
+                            <p className="text-body">
+                              {t(user.type === 'SHARED' ? 'users.create_hint_shared' : 'users.create_hint_personal')}
+                            </p>
                             <p className="text-label text-mute">{t('users.type_fixed')}</p>
                           </div>
                         </div>
@@ -502,7 +534,9 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                             </DropdownMenuItem>
                           </>
                         ) : (
-                          <DropdownMenuItem onClick={() => void run(() => issueLink.mutateAsync(), t('keys.subscription_create_success'))}>
+                          <DropdownMenuItem
+                            onClick={() => void run(() => issueLink.mutateAsync(), t('keys.subscription_create_success'))}
+                          >
                             <Plus />
                             {t('keys.subscription_create')}
                           </DropdownMenuItem>
@@ -563,7 +597,12 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                   type="button"
                   variant="outline"
                   nativeButton={false}
-                  render={<a href={subscriptionQrUrl(user.id, !!user.subscription_short_url, 640)} download={`${user.label}-subscription.png`} />}
+                  render={
+                    <a
+                      href={subscriptionQrUrl(user.id, !!user.subscription_short_url, 640)}
+                      download={`${user.label}-subscription.png`}
+                    />
+                  }
                 >
                   <Download />
                   {t('keys.link_download_qr')}

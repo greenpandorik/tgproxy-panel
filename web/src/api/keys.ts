@@ -64,7 +64,7 @@ export const useKeySummary = () =>
   });
 
 export const useKey = (id: string) =>
-  useQuery({ queryKey: keyKeys.one(id), queryFn: () => api.get<AccessKey>(`/api/v1/keys/${id}`), enabled: !!id });
+  useQuery({ queryKey: keyKeys.one(id), queryFn: () => api.get<AccessKey>(`/api/v1/keys/${id}`), enabled: !!id, refetchInterval: 15_000 });
 
 // Every link of a key, grouped by node.
 export const useKeyLinks = (id: string, enabled = true) =>
