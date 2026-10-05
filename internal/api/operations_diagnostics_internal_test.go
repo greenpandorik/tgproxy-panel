@@ -29,3 +29,17 @@ func TestCounterGrowthOnlyCountsWhatIsNew(t *testing.T) {
 		t.Fatal("a reading from another group is not this check's baseline")
 	}
 }
+
+func TestFailedBeforeLooksAtTheSameCheckOfThePreviousRun(t *testing.T) {
+	previous := []domain.DiagnosticGroup{{Key: "dns", Checks: []domain.DiagnosticCheck{
+		{Key: "hostname", Status: domain.CheckFail},
+		{Key: "tls_domain", Status: domain.CheckOK},
+		{Key: "aaaa", Status: domain.CheckWarn},
+	}}}
+	if !failedBefore(previous, "dns", "hostname") || !failedBefore(previous, "dns", "aaaa") {
+		t.Fatal("a check that failed or warned last time was not seen")
+	}
+	if failedBefore(previous, "dns", "tls_domain") || failedBefore(previous, "telemt", "hostname") || failedBefore(nil, "dns", "hostname") {
+		t.Fatal("a passing, missing or other-group check counted as failed")
+	}
+}

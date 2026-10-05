@@ -43,7 +43,9 @@ func TestReadIncidentStaysReadUntilItClearsAndComesBack(t *testing.T) {
 	s := NewStats(st, nil, 90*time.Second, slog.New(slog.DiscardHandler))
 	node := db.Node{ID: id}
 	sweep := func(failed bool) {
-		s.recordFindings(ctx, node, []reliability.Finding{{Kind: "disk_pressure", Message: "disk", Known: true, Failed: failed}})
+		for range findingStreak {
+			s.recordFindings(ctx, node, []reliability.Finding{{Kind: "disk_pressure", Message: "disk", Known: true, Failed: failed}})
+		}
 		s.WaitNotifications()
 	}
 

@@ -688,9 +688,19 @@ fails, and when an incident on a server opens and closes. A message names the pr
 in a sentence, shows the current value where it helps (for example "Connections now: 2 of 3" for a
 Telegram datacentre) and links to the server page, the "Server checks" row for scheduled checks. It is
 written in the "Notification language" chosen under Settings → Notifications, Russian by default. The webhook
-receives the same text without formatting. Each server and kind of message gets
-at most one message in 5 minutes, so a flapping server does not flood the chat. If messages don't arrive,
-see [Telegram alerts do not arrive](runbook.md#telegram-alerts-do-not-arrive).
+receives the same text without formatting. To keep the chat readable:
+
+- a server is reported offline only after it stays silent for 3 more minutes once marked offline;
+  one that comes back sooner sends nothing;
+- a problem checked every minute (disk, memory, engine, reliability) opens after 3 failed checks in
+  a row and closes after 3 good ones; the scheduled server check needs 2 failed runs in a row;
+- counters kept since telemt started (TLS handshake failures, WEB rejections) send a message only
+  when they grew by at least 50 between two scheduled checks, and never a "resolved" one;
+- the same problem on the same server is sent at most once per 15 minutes for offline, per hour for
+  a failed apply and per 3 hours for anything else;
+- "resolved" only follows a problem message that went out.
+
+If messages don't arrive, see [Telegram alerts do not arrive](runbook.md#telegram-alerts-do-not-arrive).
 
 The same messages can go to your own HTTPS address: set `ALERT_WEBHOOK_URL` and
 `ALERT_WEBHOOK_SECRET`. The webhook works whether or not the Telegram bot is on. The panel sends

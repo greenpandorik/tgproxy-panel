@@ -31,12 +31,40 @@ func (s *Stats) collectIncidents(ctx context.Context, n db.Node) {
 	s.recordFindings(ctx, n, findings)
 }
 
+// findingStreak is how many sweeps in a row a finding must keep its state before it opens or closes an alert.
+const findingStreak = 3
+
+// findingRun records one sweep's state for key and returns how many sweeps in a row it has held.
+func (s *Stats) findingRun(key string, failed bool) int {
+	s.findingMu.Lock()
+	defer s.findingMu.Unlock()
+	run := s.findingStreak[key]
+	switch {
+	case failed && run > 0:
+		run++
+	case failed:
+		run = 1
+	case run < 0:
+		run--
+	default:
+		run = -1
+	}
+	s.findingStreak[key] = run
+	if run < 0 {
+		return -run
+	}
+	return run
+}
+
 func (s *Stats) recordFindings(ctx context.Context, n db.Node, findings []reliability.Finding) {
 	for _, f := range findings {
 		if !f.Known {
 			continue
 		}
 		kind := "reliability_" + f.Kind
+		if s.findingRun(n.ID.String()+"|"+kind, f.Failed) < findingStreak {
+			continue
+		}
 		if f.Failed {
 			// One stats sweep owns a node. Persisted incidents survive process restarts.
 			tag, e := s.st.Pool.Exec(ctx, `INSERT INTO alerts(node_id,kind,message) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND kind=$2 AND resolved_at IS NULL)`, n.ID, kind, f.Message)
@@ -60,9 +88,10 @@ func (a *Alerts) Incident(ctx context.Context, n db.Node, in alerttext.Incident)
 	if a == nil {
 		return
 	}
-	kind := in.Kind
+	msg := alerttext.Default().Incident(a.lang(ctx), textNode(n), in, a.PanelURL)
 	if in.Recovered {
-		kind += "_recovered"
+		a.recovered(ctx, n.ID.String(), in.Kind, msg)
+		return
 	}
-	a.send(ctx, n.ID.String(), kind, alerttext.Default().Incident(a.lang(ctx), textNode(n), in, a.PanelURL))
+	a.problem(ctx, n.ID.String(), in.Kind, incidentCooldown, msg)
 }

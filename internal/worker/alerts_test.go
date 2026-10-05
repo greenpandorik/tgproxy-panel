@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/worker"
 )
@@ -199,5 +200,39 @@ func TestAlertsFailedSendDoesNotConsumeTheRateLimitSlot(t *testing.T) {
 	a.NodeOffline(t.Context(), node)
 	if sender.count() != 2 {
 		t.Fatalf("successful send did not open the rate-limit window: %d attempts, want 2", sender.count())
+	}
+}
+
+func TestAlertsRecoveryOnlyFollowsAnAnnouncedProblem(t *testing.T) {
+	sender := &fakeSender{}
+	a := worker.NewAlerts(srcEnabled("tok", "42"), sender, slog.New(slog.DiscardHandler))
+	node := testNode("n1", "n1.test")
+
+	a.NodeOnline(t.Context(), node)
+	if sender.count() != 0 {
+		t.Fatalf("a recovery with no announced outage was sent: %d", sender.count())
+	}
+	a.NodeOffline(t.Context(), node)
+	a.NodeOnline(t.Context(), node)
+	a.NodeOnline(t.Context(), node)
+	if sender.count() != 2 {
+		t.Fatalf("want the outage and one recovery, got %d sends", sender.count())
+	}
+}
+
+func TestAlertsFlappingIncidentIsAnnouncedOnce(t *testing.T) {
+	sender := &fakeSender{}
+	a := worker.NewAlerts(srcEnabled("tok", "42"), sender, slog.New(slog.DiscardHandler))
+	node := testNode("n1", "n1.test")
+	in := alerttext.Incident{Kind: "diagnostic_telemt_tls_front_errors", Message: "x"}
+	back := in
+	back.Recovered = true
+
+	for range 4 {
+		a.Incident(t.Context(), node, in)
+		a.Incident(t.Context(), node, back)
+	}
+	if sender.count() != 2 {
+		t.Fatalf("a flapping problem sent %d messages, want the first problem and its recovery", sender.count())
 	}
 }

@@ -81,8 +81,16 @@ func TestStatsNotifiesOfflineThenOnlineOnce(t *testing.T) {
 		t.Fatalf("no notification expected yet, got %d", sender.count())
 	}
 
-	// simulate stale heartbeat: offline detection notifies once.
+	// simulate stale heartbeat: the outage is announced once it has lasted a few minutes.
 	_, _ = f.st.Pool.Exec(ctx, `UPDATE nodes SET last_seen_at = now() - interval '10 minutes'`)
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s.WaitNotifications()
+	if sender.count() != 0 {
+		t.Fatalf("an outage was announced before it lasted, sends=%d", sender.count())
+	}
+	s.SetNow(func() time.Time { return time.Now().Add(4 * time.Minute) })
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -107,6 +115,35 @@ func TestStatsNotifiesOfflineThenOnlineOnce(t *testing.T) {
 	s.WaitNotifications()
 	if sender.count() != 2 {
 		t.Fatalf("expected no further notification, got %d sends", sender.count())
+	}
+}
+
+func TestStatsStaysQuietAboutAShortOutage(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	_ = f.st.Q.SetNodeOnline(ctx, db.SetNodeOnlineParams{ID: f.node.ID})
+
+	sender := &fakeSender{}
+	alerts := worker.NewAlerts(srcEnabled("tok", "42"), sender, slog.New(slog.DiscardHandler))
+	s := worker.NewStats(f.st, mock, 90*time.Second, slog.New(slog.DiscardHandler))
+	s.SetAlerts(alerts)
+
+	_, _ = f.st.Pool.Exec(ctx, `UPDATE nodes SET last_seen_at = now() - interval '10 minutes'`)
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.st.Q.SetNodeOnline(ctx, db.SetNodeOnlineParams{ID: f.node.ID})
+	s.SetNow(func() time.Time { return time.Now().Add(4 * time.Minute) })
+	for range 2 {
+		if err := s.RunOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.WaitNotifications()
+	if sender.count() != 0 {
+		t.Fatalf("a server back within minutes produced %d notifications, want none", sender.count())
 	}
 }
 
@@ -146,8 +183,12 @@ func TestStatsDoesNotBlockOnSlowNotifications(t *testing.T) {
 	s := worker.NewStats(f.st, mock, 90*time.Second, slog.New(slog.DiscardHandler))
 	s.SetAlerts(alerts)
 
-	// Stale heartbeat: this tick notifies, and the notifier is wedged.
+	// Stale heartbeat, still offline a few minutes later: this tick notifies, and the notifier is wedged.
 	_, _ = f.st.Pool.Exec(ctx, `UPDATE nodes SET last_seen_at = now() - interval '10 minutes'`)
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s.SetNow(func() time.Time { return time.Now().Add(4 * time.Minute) })
 	start := time.Now()
 	if err := s.RunOnce(ctx); err != nil {
 		t.Fatal(err)

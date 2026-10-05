@@ -16,7 +16,11 @@ type Sender interface {
 	SendWith(ctx context.Context, botToken, chatID, text string) error
 }
 
-const alertRateLimit = 5 * time.Minute
+const (
+	offlineCooldown  = 15 * time.Minute
+	applyCooldown    = time.Hour
+	incidentCooldown = 3 * time.Hour
+)
 
 type Alerts struct {
 	Webhook *notify.Webhook
@@ -27,28 +31,36 @@ type Alerts struct {
 	tg       Sender
 	log      *slog.Logger
 
-	mu   sync.Mutex
-	sent map[string]time.Time // key: "<nodeID>|<kind>"
+	mu     sync.Mutex
+	sent   map[string]time.Time // key: "<nodeID>|<kind>"
+	pushed map[string]bool      // problems whose message went out and whose recovery has not
 }
 
 // NewAlerts builds an Alerts notifier.
 func NewAlerts(src func(context.Context) (bool, string, string, error), tg Sender, log *slog.Logger) *Alerts {
-	return &Alerts{src: src, tg: tg, log: log, sent: map[string]time.Time{}}
+	return &Alerts{src: src, tg: tg, log: log, sent: map[string]time.Time{}, pushed: map[string]bool{}}
 }
 
-// allow reports whether key is outside its rate-limit window.
-func (a *Alerts) allow(key string) bool {
+func (a *Alerts) allow(key string, cooldown time.Duration) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	last, ok := a.sent[key]
-	return !ok || time.Since(last) >= alertRateLimit
+	return !ok || time.Since(last) >= cooldown
 }
 
-// markSent opens the rate-limit window for key.
-func (a *Alerts) markSent(key string) {
+func (a *Alerts) markPushed(key string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.sent[key] = time.Now()
+	a.pushed[key] = true
+}
+
+func (a *Alerts) takePushed(key string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	was := a.pushed[key]
+	delete(a.pushed, key)
+	return was
 }
 
 func (a *Alerts) lang(ctx context.Context) alerttext.Lang {
@@ -62,31 +74,47 @@ func textNode(n db.Node) alerttext.Node {
 	return alerttext.Node{ID: n.ID.String(), Name: n.Name, Hostname: n.Hostname}
 }
 
-func (a *Alerts) send(ctx context.Context, nodeID, kind string, msg alerttext.Message) {
-	if a.Webhook != nil && a.allow(nodeID+"|webhook_"+kind) {
+// problem sends a problem at most once per cooldown for the same node and kind.
+func (a *Alerts) problem(ctx context.Context, nodeID, kind string, cooldown time.Duration, msg alerttext.Message) {
+	key := nodeID + "|" + kind
+	if !a.allow(key, cooldown) {
+		return
+	}
+	if a.deliver(ctx, nodeID, kind, msg) {
+		a.markPushed(key)
+	}
+}
+
+// recovered sends a recovery only for a problem whose message went out.
+func (a *Alerts) recovered(ctx context.Context, nodeID, kind string, msg alerttext.Message) {
+	if !a.takePushed(nodeID + "|" + kind) {
+		return
+	}
+	a.deliver(ctx, nodeID, kind+"_recovered", msg)
+}
+
+func (a *Alerts) deliver(ctx context.Context, nodeID, kind string, msg alerttext.Message) bool {
+	delivered := false
+	if a.Webhook != nil {
 		if err := a.Webhook.Send(ctx, nodeID, kind, msg.Plain); err != nil {
 			a.log.Warn("webhook delivery", "kind", kind, "err", err)
 		} else {
-			a.markSent(nodeID + "|webhook_" + kind)
+			delivered = true
 		}
 	}
 	enabled, token, chatID, err := a.src(ctx)
 	if err != nil {
 		a.log.Error("telegram config", "err", err)
-		return
+		return delivered
 	}
 	if !enabled || token == "" || chatID == "" {
-		return
-	}
-	key := nodeID + "|" + kind
-	if !a.allow(key) {
-		return
+		return delivered
 	}
 	if err := a.tg.SendWith(ctx, token, chatID, msg.HTML); err != nil {
 		a.log.Warn("telegram send failed", "err", err, "kind", kind)
-		return
+		return delivered
 	}
-	a.markSent(key)
+	return true
 }
 
 // NodeOffline notifies that node stopped sending heartbeats.
@@ -94,15 +122,15 @@ func (a *Alerts) NodeOffline(ctx context.Context, node db.Node) {
 	if a == nil {
 		return
 	}
-	a.send(ctx, node.ID.String(), "node_offline", alerttext.Default().Offline(a.lang(ctx), textNode(node), a.PanelURL))
+	a.problem(ctx, node.ID.String(), "node_offline", offlineCooldown, alerttext.Default().Offline(a.lang(ctx), textNode(node), a.PanelURL))
 }
 
-// NodeOnline notifies that a previously offline node is back.
+// NodeOnline notifies that a node whose outage was announced is back.
 func (a *Alerts) NodeOnline(ctx context.Context, node db.Node) {
 	if a == nil {
 		return
 	}
-	a.send(ctx, node.ID.String(), "node_online", alerttext.Default().Online(a.lang(ctx), textNode(node)))
+	a.recovered(ctx, node.ID.String(), "node_offline", alerttext.Default().Online(a.lang(ctx), textNode(node)))
 }
 
 // ApplyFailed notifies that an apply job failed on node.
@@ -110,5 +138,5 @@ func (a *Alerts) ApplyFailed(ctx context.Context, node db.Node, jobErr string) {
 	if a == nil {
 		return
 	}
-	a.send(ctx, node.ID.String(), "apply_failed", alerttext.Default().ApplyFailed(a.lang(ctx), textNode(node), jobErr, a.PanelURL))
+	a.problem(ctx, node.ID.String(), "apply_failed", applyCooldown, alerttext.Default().ApplyFailed(a.lang(ctx), textNode(node), jobErr, a.PanelURL))
 }

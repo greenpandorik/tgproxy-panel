@@ -1315,9 +1315,11 @@ when checks open or close a problem.
    - "Test message sent": delivery works, go to the next step.
 3. Check that "Enable alerts" is on. The test ignores this switch, but real alerts are not sent
    without it.
-4. Mind the limit: each pair of server and alert kind sends at most one message per 5 minutes. The
-   window starts only after a successful send, so a failed attempt does not hold back the next
-   one. A server that went offline and came back twice within 5 minutes produces one message.
+4. Mind the anti-spam limits. A server that was gone for less than 3 minutes sends nothing. The
+   same problem on the same server is sent at most once per 15 minutes (offline), per hour (failed
+   apply) or per 3 hours (anything else), and "resolved" only follows a problem message that went
+   out. The window starts only after a successful send, so a failed attempt does not hold back the
+   next one.
 5. If the test works but real alerts never come, look for `telegram config` or
    `telegram send failed` warnings in the panel log:
 

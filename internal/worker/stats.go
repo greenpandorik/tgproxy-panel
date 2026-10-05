@@ -176,6 +176,10 @@ type Stats struct {
 	now               func() time.Time
 
 	presence presenceRing
+
+	pendingOffline map[uuid.UUID]time.Time
+	findingMu      sync.Mutex
+	findingStreak  map[string]int
 }
 
 // maxInFlightNotifications bounds the goroutines RunOnce may have out sending Telegram messages.
@@ -184,7 +188,9 @@ const maxInFlightNotifications = 32
 func NewStats(st *store.Store, driver nodedriver.Driver, offlineAfter time.Duration, log *slog.Logger) *Stats {
 	return &Stats{
 		st: st, driver: driver, offlineAfter: offlineAfter, log: log,
-		notifySlots: make(chan struct{}, maxInFlightNotifications),
+		notifySlots:    make(chan struct{}, maxInFlightNotifications),
+		pendingOffline: map[uuid.UUID]time.Time{},
+		findingStreak:  map[string]int{},
 	}
 }
 
@@ -204,8 +210,33 @@ func (s *Stats) notify(ctx context.Context, fn func(context.Context)) {
 	}()
 }
 
+// offlineNotifyDelay is how long a server must stay offline before its outage is announced.
+const offlineNotifyDelay = 3 * time.Minute
+
+func (s *Stats) announceOutages(ctx context.Context, nodes []db.Node) {
+	byID := make(map[uuid.UUID]db.Node, len(nodes))
+	for _, n := range nodes {
+		byID[n.ID] = n
+	}
+	for id, since := range s.pendingOffline {
+		node, ok := byID[id]
+		if !ok || node.Status != db.NodeStatusOffline {
+			delete(s.pendingOffline, id)
+			continue
+		}
+		if s.clock().Sub(since) < offlineNotifyDelay {
+			continue
+		}
+		delete(s.pendingOffline, id)
+		s.notify(ctx, func(ctx context.Context) { s.alerts.NodeOffline(ctx, node) })
+	}
+}
+
 // WaitNotifications blocks until every notification spawned so far has finished.
 func (s *Stats) WaitNotifications() { s.notifyWG.Wait() }
+
+// SetNow replaces the clock, for tests.
+func (s *Stats) SetNow(f func() time.Time) { s.now = f }
 
 func (s *Stats) SetOfflineAfterFunc(f func(context.Context) time.Duration) {
 	s.offlineAfterFunc = f
@@ -230,15 +261,14 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 		if _, err := s.st.Q.InsertAlert(ctx, db.InsertAlertParams{NodeID: nullUUID(id), Kind: "node_offline", Message: "node stopped sending heartbeats"}); err != nil {
 			s.log.Error("insert alert", "err", err)
 		}
-		if node, err := s.st.Q.GetNode(ctx, id); err == nil {
-			s.notify(ctx, func(ctx context.Context) { s.alerts.NodeOffline(ctx, node) })
-		}
+		s.pendingOffline[id] = s.clock()
 	}
 	// 2. snapshots for online nodes; resolve offline alerts
 	nodes, err := s.st.Q.ListNodes(ctx)
 	if err != nil {
 		return err
 	}
+	s.announceOutages(ctx, nodes)
 	// Nodes are polled together: one that has stopped answering holds a request open for the
 	// driver's whole timeout, and a handful of those used to push every healthy node's snapshot
 	// minutes late. The pool is small on purpose - each worker holds a database connection.

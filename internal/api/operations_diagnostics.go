@@ -63,15 +63,19 @@ func (s *Server) scheduledDiagnostics(ctx context.Context, alerts *worker.Alerts
 				if check.Value != nil {
 					incident.Value = *check.Value
 				}
-				if failed && nodediag.LifetimeCounter(check.Key) {
+				counter := nodediag.LifetimeCounter(check.Key)
+				if failed && counter {
 					growth, grew := counterGrowth(previous, g.Key, check)
-					failed = grew
+					failed = grew && growth >= counterAlertGrowth
 					if grew {
 						incident.Growth = strconv.FormatFloat(growth, 'f', -1, 64)
 						message += " (+" + incident.Growth + " since the previous check)"
 					}
 				}
 				incident.Message = message
+				if failed && !counter && !failedBefore(previous, g.Key, check.Key) {
+					continue
+				}
 				if failed {
 					tag, e := s.store.Pool.Exec(ctx, `INSERT INTO alerts(node_id,kind,message) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND kind=$2 AND resolved_at IS NULL)`, n.ID, kind, message)
 					if e == nil && tag.RowsAffected() > 0 {
@@ -81,7 +85,7 @@ func (s *Server) scheduledDiagnostics(ctx context.Context, alerts *worker.Alerts
 					}
 				} else {
 					count, e := s.store.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: uuid.NullUUID{UUID: n.ID, Valid: true}, Kind: kind})
-					if e == nil && count > 0 {
+					if e == nil && count > 0 && !counter {
 						notifyCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 						incident.Recovered = true
 						alerts.Incident(notifyCtx, n, incident)
@@ -92,6 +96,24 @@ func (s *Server) scheduledDiagnostics(ctx context.Context, alerts *worker.Alerts
 		}
 		return
 	}
+}
+
+// counterAlertGrowth is how much a lifetime counter must rise between two scheduled checks to raise an alert.
+const counterAlertGrowth = 50
+
+// failedBefore reports whether the same check failed or warned in the previous run.
+func failedBefore(previous []domain.DiagnosticGroup, group, key string) bool {
+	for _, g := range previous {
+		if g.Key != group {
+			continue
+		}
+		for _, c := range g.Checks {
+			if c.Key == key {
+				return c.Status == domain.CheckFail || c.Status == domain.CheckWarn
+			}
+		}
+	}
+	return false
 }
 
 // counterGrowth is how much a lifetime counter rose since the previous run.
