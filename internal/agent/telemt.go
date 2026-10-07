@@ -909,6 +909,13 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 			}
 			rb.irreversible = append(rb.irreversible, "quota reset of user "+d.name)
 			changed = true
+			// Checkpoint only the completed reset, keeping the old secret/limit hashes.
+			// A later mutation can fail: retry it without resetting this user's traffic
+			// again, even if the agent restarts before the next apply.
+			state.QuotaResets[d.name] = d.quotaReset
+			if err := writeTelemtState(h.cfg.StateDir, state); err != nil {
+				return changed, reload, fmt.Errorf("record quota reset of user %s: %w", d.name, err)
+			}
 			lg.f("user %s quota reset for the period starting %s", d.name, time.Unix(d.quotaReset, 0).UTC().Format(time.RFC3339))
 		}
 		secretChanged := state.SecretHashes[d.name] != secretHash
