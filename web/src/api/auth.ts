@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
@@ -9,6 +10,17 @@ export const authKeys = {
   me: ['auth', 'me'] as const,
   admins: ['auth', 'admins'] as const,
 };
+
+/**
+ * Drops everything the ended session loaded. Some of it is only served to writers (subscription
+ * links, secrets), so a viewer signing in next in the same tab must not be shown it from cache.
+ * The me query is kept and set to null rather than removed, so its live observer stays attached.
+ */
+export function forgetSession(qc: QueryClient) {
+  const me = JSON.stringify(authKeys.me);
+  qc.removeQueries({ predicate: (q) => JSON.stringify(q.queryKey) !== me });
+  qc.setQueryData(authKeys.me, null);
+}
 
 export const useMe = () => useQuery({ queryKey: authKeys.me, queryFn: () => api.get<Me>('/api/v1/auth/me'), retry: false });
 
@@ -54,7 +66,7 @@ export const useLogout = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<void>('/api/v1/auth/logout'),
-    onSuccess: () => qc.setQueryData(authKeys.me, null),
+    onSuccess: () => forgetSession(qc),
   });
 };
 
