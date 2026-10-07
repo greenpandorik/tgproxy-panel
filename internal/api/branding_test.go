@@ -85,6 +85,36 @@ func TestBrandingUpload(t *testing.T) {
 	}
 }
 
+func TestBrandingUploadRefusesAnOversizedFileWithoutSpooling(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp)
+	_, c, _ := ownerWithNode(t)
+	var list struct {
+		Items []struct {
+			ID uuid.UUID `json:"id"`
+		} `json:"items"`
+	}
+	c.JSON(c.Get("/api/v1/branding/profiles"), &list)
+
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("file", "logo.png")
+	_, _ = fw.Write(bytes.Repeat([]byte{0x89}, 3<<20))
+	_ = mw.Close()
+	resp := c.PostRaw("/api/v1/branding/profiles/"+list.Items[0].ID.String()+"/upload?kind=logo", mw.FormDataContentType(), body.Bytes())
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("oversized upload: %d %s, want 422", resp.StatusCode, b)
+	}
+	left, err := os.ReadDir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) != 0 {
+		t.Fatalf("the upload left %d file(s) in the temp dir", len(left))
+	}
+}
+
 func uploadBrandingAsset(t *testing.T, c interface {
 	PostRaw(path, contentType string, body []byte) *http.Response
 	JSON(resp *http.Response, out any)

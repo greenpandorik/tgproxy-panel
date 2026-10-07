@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -329,9 +330,20 @@ func (s *Server) handleUploadBrandingAsset(w http.ResponseWriter, r *http.Reques
 		validation(w, map[string]string{"kind": "must be logo, logo_dark, favicon or login_bg"})
 		return
 	}
+	// Without the cap ParseMultipartForm spools any size of upload to temp files before the size
+	// check below ever runs.
+	r.Body = http.MaxBytesReader(w, r.Body, maxBrandingAssetSize+(64<<10))
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			validation(w, map[string]string{"file": "must be 2MB or smaller"})
+			return
+		}
 		badRequest(w, "invalid multipart form")
 		return
+	}
+	if r.MultipartForm != nil {
+		defer func() { _ = r.MultipartForm.RemoveAll() }()
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
