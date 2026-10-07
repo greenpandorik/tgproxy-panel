@@ -22,6 +22,7 @@ it('reads the kinds the agent reports under the reliability_ prefix', () => {
   expect(title('reliability_probe_isp-a_stale')).toBe('Внешняя проверка isp-a давно не присылала отчёт');
   expect(title('reliability_dc_2')).toBe('Датацентр Telegram 2');
   expect(title('reliability_conntrack_pressure')).toBe('Переполняется таблица соединений');
+  expect(title('reliability_looks_like_blocking')).toBe('Подключения обрываются — похоже на блокировку');
 });
 
 it('names datacentre connections and routes from scheduled checks', () => {

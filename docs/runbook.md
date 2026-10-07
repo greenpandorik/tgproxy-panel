@@ -1207,7 +1207,9 @@ Work from the person towards the server.
    window says the link cannot be shown, an earlier version of the panel issued it: press "Issue a
    new link" and send the new one.
 4. If people on one provider or in one region cannot connect while others can, the provider is
-   probably blocking the Fake-TLS domain or port. What you can do:
+   probably blocking the Fake-TLS domain or port. On a telemt server the panel raises
+   "Connections are being cut, possibly blocked" when most new handshakes start failing, and
+   closes it once they succeed again. What you can do:
    - add "Backup masking domains" on the server's Settings tab, in the "Addresses and Fake-TLS"
      card. Every user gets extra Fake-TLS links with other domains, and links already issued keep
      working. The next apply restarts telemt;

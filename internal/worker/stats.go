@@ -180,6 +180,7 @@ type Stats struct {
 	pendingOffline map[uuid.UUID]time.Time
 	findingMu      sync.Mutex
 	findingStreak  map[string]int
+	handshakes     handshakeWatch
 }
 
 // maxInFlightNotifications bounds the goroutines RunOnce may have out sending Telegram messages.
@@ -382,6 +383,7 @@ func (s *Stats) collectNode(ctx context.Context, n db.Node) (*nodeReading, bool)
 	var profiles []db.ListNodeProfilesWithKeyRow
 	if n.Engine == db.NodeEngineTelemt {
 		telemtM = ParseTelemtMetrics(text)
+		s.observeBlocking(ctx, n, text)
 		m = telemtRelayMetrics(telemtM, stats)
 		if profiles, err = s.st.Q.ListNodeProfilesWithKey(ctx, n.ID); err != nil {
 			s.log.Error("node profiles", "node", n.ID, "err", err)

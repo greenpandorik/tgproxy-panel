@@ -208,7 +208,8 @@
     "alert_upstream_failure": "A route to Telegram is down",
     "alert_fd_pressure": "telemt is running out of file descriptors",
     "alert_conntrack_pressure": "The connection table is filling up",
-    "alert_inode_pressure": "The disk is running out of inodes"
+    "alert_inode_pressure": "The disk is running out of inodes",
+    "alert_looks_like_blocking": "Connections are being cut, possibly blocked"
   },
   "nodes": {
     "verdict_ok": "All good",
@@ -2798,6 +2799,7 @@
       "fd_pressure": "telemt uses over 90% of its file descriptors and will soon stop accepting new connections.",
       "conntrack_pressure": "The kernel connection tracking table is over 90% full. New connections may be dropped.",
       "inode_pressure": "The disk is running out of inodes, the file entries, even if space remains.",
+      "looks_like_blocking": "Most new connections die during the TLS handshake, which is what it looks like when a provider blocks the server. Add a backup masking domain, or give people the WEB link. If people still connect, it may be a scan of the open port.",
       "disk_pressure": "The server's disk is at least 90% full.",
       "memory_pressure": "The server's memory is at least 95% used.",
       "engine_unready": "The proxy fails its readiness check, so people may not be able to connect.",
