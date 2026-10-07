@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -87,6 +88,24 @@ func TestLoginRateLimit(t *testing.T) {
 	}
 	if last != 429 {
 		t.Fatalf("expected 429 on 11th attempt, got %d", last)
+	}
+}
+
+func TestLoginRateLimitCountsIPv6ByPrefix(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	wrong := map[string]string{"username": "root", "password": "bad"}
+	var last int
+	for i := 0; i < 11; i++ {
+		c := h.Anonymous().SetHeader("X-Forwarded-For", fmt.Sprintf("2001:db8:1:2::%x", i+1))
+		last = c.Post("/api/v1/auth/login", wrong).StatusCode
+	}
+	if last != 429 {
+		t.Fatalf("11th attempt from a fresh address in the same /64: %d, want 429", last)
+	}
+	other := h.Anonymous().SetHeader("X-Forwarded-For", "2001:db8:1:3::1")
+	if code := other.Post("/api/v1/auth/login", wrong).StatusCode; code != 401 {
+		t.Fatalf("another /64: %d, want 401", code)
 	}
 }
 
