@@ -248,6 +248,36 @@ func (q *Queries) ListProfilesByKey(ctx context.Context, accessKeyID uuid.NullUU
 	return items, nil
 }
 
+const listTelemtNodesWithQuotaPeriod = `-- name: ListTelemtNodesWithQuotaPeriod :many
+SELECT DISTINCT p.node_id FROM profiles p
+JOIN access_keys k ON k.id = p.access_key_id
+JOIN nodes n ON n.id = p.node_id
+WHERE n.engine = 'telemt' AND k.status <> 'revoked'
+  AND k.telemt_limits->>'data_quota_period' = $1::text
+`
+
+// ListTelemtNodesWithQuotaPeriod returns the telemt nodes serving a key whose quota resets every
+// given period, so the panel can push the new period to them when it starts.
+func (q *Queries) ListTelemtNodesWithQuotaPeriod(ctx context.Context, period string) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listTelemtNodesWithQuotaPeriod, period)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var node_id uuid.UUID
+		if err := rows.Scan(&node_id); err != nil {
+			return nil, err
+		}
+		items = append(items, node_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setNodeProfilesSync = `-- name: SetNodeProfilesSync :exec
 UPDATE profiles SET sync_state = $2 WHERE node_id = $1
 `
