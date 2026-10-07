@@ -146,7 +146,7 @@ func (h *Handler) recoverUpdate(ctx context.Context) error {
 	if e = writeAtomic(h.cfg.TelemtBin, binary, 0o755); e != nil {
 		return e
 	}
-	if e = writeAtomic(h.cfg.TelemtConfigPath, config, 0o600); e != nil {
+	if e = writeAtomicKeepOwner(h.cfg.TelemtConfigPath, config, 0o600); e != nil {
 		return e
 	}
 	if e = h.restartTelemt(ctx); e != nil {
