@@ -2,14 +2,40 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // writeAtomic writes data to a temp file in the same directory, sets mode, and renames over path.
 func writeAtomic(path string, data []byte, mode os.FileMode) error {
+	return writeAtomicAs(path, data, mode, -1, -1)
+}
+
+// writeAtomicKeepOwner is writeAtomic for a file another service reads, such as telemt's
+// config: the replacement keeps the owner of the file it replaces instead of becoming the
+// agent's (root's), which with mode 0600 would lock the service out of its own file.
+func writeAtomicKeepOwner(path string, data []byte, mode os.FileMode) error {
+	info, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return writeAtomic(path, data, mode)
+	}
+	if err != nil {
+		return err
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return writeAtomic(path, data, mode)
+	}
+	return writeAtomicAs(path, data, mode, int(stat.Uid), int(stat.Gid))
+}
+
+// writeAtomicAs is writeAtomic with the temp file chowned before the rename, so path is never
+// briefly owned by someone else. uid and gid of -1 leave the owner alone.
+func writeAtomicAs(path string, data []byte, mode os.FileMode, uid, gid int) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
 	if err != nil {
 		return err
@@ -24,6 +50,13 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 		_ = tmp.Close()
 		_ = os.Remove(name)
 		return err
+	}
+	if uid != -1 || gid != -1 {
+		if err := tmp.Chown(uid, gid); err != nil {
+			_ = tmp.Close()
+			_ = os.Remove(name)
+			return fmt.Errorf("preserve owner of %s: %w", path, err)
+		}
 	}
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
