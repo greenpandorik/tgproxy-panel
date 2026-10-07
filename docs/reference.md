@@ -491,6 +491,13 @@ tproxy servers; telemt takes only the session and stream limits from them. On tp
 user also has a carrier mode: HTTPS (the default), HTTPS lanes, WebSocket or WebSocket lanes. On
 telemt the WEB carrier is chosen automatically for each connection.
 
+A quota can reset on a schedule: "Quota resets" is "Never", "Every week" or "Every month". A week
+starts on Monday and a month on the 1st, both at 00:00 UTC. When a period starts the panel sends
+the servers a new apply, and the agent zeroes the user's consumed traffic once; the quota itself
+stays the same. If the panel or the server was down when the period changed, the reset happens
+on the first apply after that. Turning the schedule on in the middle of a period does not zero
+the quota: the first reset comes at the start of the next period.
+
 On telemt servers the panel also counts traffic per user. The user window shows the traffic
 over 30 days and whether the person is online, from about how many devices (distinct IP
 addresses across all servers) and over how many connections, or when they last connected.
