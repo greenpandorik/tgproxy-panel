@@ -224,12 +224,17 @@ ORDER BY s.node_id, s.taken_at;
 -- monotonic counter, so the bucket's max is its closing value and consecutive maxima give the
 -- correct traffic between two buckets. The point's timestamp is max(taken_at), not the bucket
 -- boundary, so a partial trailing bucket is placed where its data actually ends.
+--
+-- total_octets is NULL in rows where the node reported connections but not the counter, so a
+-- bucket can have no counter reading at all: octet_readings is 0 there and total_octets is a
+-- placeholder the caller must not treat as a value.
 -- name: ListKeyStatsSnapshotsBucketed :many
 SELECT s.node_id,
        n.name AS node_name,
        max(s.taken_at)::timestamptz AS taken_at,
        round(avg(s.connections))::int AS connections,
-       max(s.total_octets)::bigint AS total_octets
+       coalesce(max(s.total_octets), 0)::bigint AS total_octets,
+       count(s.total_octets)::bigint AS octet_readings
 FROM key_stats_snapshots s JOIN nodes n ON n.id = s.node_id
 WHERE s.access_key_id = sqlc.arg('access_key_id')
   AND s.taken_at >= sqlc.arg('from_at') AND s.taken_at <= sqlc.arg('to_at')

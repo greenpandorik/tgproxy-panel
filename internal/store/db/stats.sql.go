@@ -595,7 +595,8 @@ SELECT s.node_id,
        n.name AS node_name,
        max(s.taken_at)::timestamptz AS taken_at,
        round(avg(s.connections))::int AS connections,
-       max(s.total_octets)::bigint AS total_octets
+       coalesce(max(s.total_octets), 0)::bigint AS total_octets,
+       count(s.total_octets)::bigint AS octet_readings
 FROM key_stats_snapshots s JOIN nodes n ON n.id = s.node_id
 WHERE s.access_key_id = $1
   AND s.taken_at >= $2 AND s.taken_at <= $3
@@ -611,11 +612,12 @@ type ListKeyStatsSnapshotsBucketedParams struct {
 }
 
 type ListKeyStatsSnapshotsBucketedRow struct {
-	NodeID      uuid.UUID `json:"node_id"`
-	NodeName    string    `json:"node_name"`
-	TakenAt     time.Time `json:"taken_at"`
-	Connections int32     `json:"connections"`
-	TotalOctets int64     `json:"total_octets"`
+	NodeID        uuid.UUID `json:"node_id"`
+	NodeName      string    `json:"node_name"`
+	TakenAt       time.Time `json:"taken_at"`
+	Connections   int32     `json:"connections"`
+	TotalOctets   int64     `json:"total_octets"`
+	OctetReadings int64     `json:"octet_readings"`
 }
 
 // ListKeyStatsSnapshotsBucketed is ListKeyStatsSnapshots with the thinning done in the
@@ -627,6 +629,10 @@ type ListKeyStatsSnapshotsBucketedRow struct {
 // monotonic counter, so the bucket's max is its closing value and consecutive maxima give the
 // correct traffic between two buckets. The point's timestamp is max(taken_at), not the bucket
 // boundary, so a partial trailing bucket is placed where its data actually ends.
+//
+// total_octets is NULL in rows where the node reported connections but not the counter, so a
+// bucket can have no counter reading at all: octet_readings is 0 there and total_octets is a
+// placeholder the caller must not treat as a value.
 func (q *Queries) ListKeyStatsSnapshotsBucketed(ctx context.Context, arg ListKeyStatsSnapshotsBucketedParams) ([]ListKeyStatsSnapshotsBucketedRow, error) {
 	rows, err := q.db.Query(ctx, listKeyStatsSnapshotsBucketed,
 		arg.AccessKeyID,
@@ -647,6 +653,7 @@ func (q *Queries) ListKeyStatsSnapshotsBucketed(ctx context.Context, arg ListKey
 			&i.TakenAt,
 			&i.Connections,
 			&i.TotalOctets,
+			&i.OctetReadings,
 		); err != nil {
 			return nil, err
 		}
