@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"testing"
+	"time"
 
 	"tgwebproxy/internal/crypto"
 	"tgwebproxy/internal/nodesvc"
@@ -17,7 +18,12 @@ func TestPresenceLifecycle(t *testing.T) {
 	ctx := context.Background()
 	n, _ := st.Q.CreateNode(ctx, db.CreateNodeParams{Name: "a", Hostname: "a.test"})
 	tok := "node-token"
-	_ = st.Q.RegisterNode(ctx, db.RegisterNodeParams{ID: n.ID, AgentTokenHash: ptr(crypto.HashToken(tok)), TproxyVersion: "v", AgentVersion: "a"})
+	installHash := crypto.HashToken("install-token")
+	expires := time.Now().Add(time.Hour)
+	_ = st.Q.SetNodeInstallToken(ctx, db.SetNodeInstallTokenParams{ID: n.ID, InstallTokenHash: &installHash, InstallTokenExpires: &expires})
+	if rows, err := st.Q.RegisterNode(ctx, db.RegisterNodeParams{ID: n.ID, InstallTokenHash: installHash, AgentTokenHash: ptr(crypto.HashToken(tok)), TproxyVersion: "v", AgentVersion: "a"}); err != nil || rows != 1 {
+		t.Fatalf("register: rows=%d err=%v", rows, err)
+	}
 	p := nodesvc.NewPresence(st, slog.New(slog.DiscardHandler))
 
 	id, err := p.NodeByToken(ctx, tok)

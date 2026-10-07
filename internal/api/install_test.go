@@ -66,6 +66,45 @@ func TestInstallScriptAndRegister(t *testing.T) {
 	}
 }
 
+func TestInstallTokenRegistersOnlyOnceUnderConcurrency(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	_, cmd := createNode(t, c, "n1.test")
+	token := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)[1]
+
+	const callers = 20
+	codes := make(chan int, callers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			resp := h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"hostname": "n1.test", "public_ip": "203.0.113.4"})
+			_ = resp.Body.Close()
+			codes <- resp.StatusCode
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(codes)
+	ok := 0
+	for code := range codes {
+		switch code {
+		case 200:
+			ok++
+		case 404:
+		default:
+			t.Errorf("unexpected status %d", code)
+		}
+	}
+	if ok != 1 {
+		t.Fatalf("%d registrations got an agent token from one install token, want 1", ok)
+	}
+}
+
 func TestInstallUnknownToken(t *testing.T) {
 	h := apitest.New(t)
 	if resp := h.Anonymous().Get("/api/v1/install/nope.sh"); resp.StatusCode != 404 {

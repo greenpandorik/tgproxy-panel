@@ -43,13 +43,21 @@ UPDATE nodes SET telemt_web_policy = $2 WHERE id = $1 RETURNING *;
 -- name: SetNodeInstallToken :exec
 UPDATE nodes SET install_token_hash = $2, install_token_expires = $3 WHERE id = $1;
 
--- name: RegisterNode :exec
-UPDATE nodes SET agent_token_hash = $2, install_token_hash = NULL, install_token_expires = NULL,
-  tproxy_version = $3, agent_version = $4, status = 'offline' WHERE id = $1;
+-- RegisterNode consumes the install token and issues the agent token in one statement. The
+-- token is checked again here, not only when the node was looked up: two concurrent
+-- registrations with one token would otherwise both get an agent token, and the last write would
+-- take over the node. Zero rows means the token was already spent or has expired. public_ip is
+-- filled in only when the panel did not have one.
+-- name: RegisterNode :execrows
+UPDATE nodes SET agent_token_hash = sqlc.arg('agent_token_hash'),
+  install_token_hash = NULL, install_token_expires = NULL,
+  tproxy_version = sqlc.arg('tproxy_version'), agent_version = sqlc.arg('agent_version'), status = 'offline',
+  public_ip = CASE WHEN public_ip = '' THEN sqlc.arg('public_ip')::text ELSE public_ip END
+WHERE id = sqlc.arg('id') AND install_token_hash = sqlc.arg('install_token_hash')::text
+  AND install_token_expires > now();
 
--- SetNodePublicIP fills in the address the node reported at registration. telemt
--- needs it for web.vhosts.public_addr, and the install script is the only place
--- that reliably knows it.
+-- SetNodePublicIP sets the node's public address, which telemt needs for
+-- web.vhosts.public_addr. Registration fills it in through RegisterNode.
 -- name: SetNodePublicIP :exec
 UPDATE nodes SET public_ip = $2 WHERE id = $1;
 
