@@ -271,6 +271,16 @@ export function UsersPage() {
   const openId = searchParams.get('user') ?? searchParams.get('key');
   const createOpen = searchParams.get('create') === '1';
 
+  // The selection follows the operator across pages of one result set, but a new search or filter
+  // is a different set: users picked under the old one would be hidden from view yet still go to
+  // the bulk action.
+  const filterKey = JSON.stringify([q, state, type, node]);
+  const [selectionFilterKey, setSelectionFilterKey] = useState(filterKey);
+  if (filterKey !== selectionFilterKey) {
+    setSelectionFilterKey(filterKey);
+    setSelected(new Set());
+  }
+
   const updateParams = (changes: Record<string, string | null>, opts: { push?: boolean; firstPage?: boolean } = {}) => {
     setSearchParams(
       (current) => {
@@ -864,6 +874,7 @@ export function UsersPage() {
           if (!deleteTarget) return;
           try {
             await deleteKey.mutateAsync(deleteTarget.id);
+            toggleOne(deleteTarget.id, false);
             toast.add({ description: t('users.deleted'), type: 'success' });
           } catch (err) {
             toast.add({ description: errText(err, t('common.error_generic')), type: 'error' });
