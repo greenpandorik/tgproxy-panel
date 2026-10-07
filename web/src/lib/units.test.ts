@@ -10,6 +10,7 @@ import {
   gbToBytes,
   isEmptyTelemtLimits,
   mbitToBps,
+  nextQuotaReset,
   parseAmount,
   telemtLimitsFromForm,
   telemtLimitsToForm,
@@ -108,6 +109,30 @@ describe('form <-> api limits', () => {
   it('truncates counts that must be whole', () => {
     const out = telemtLimitsFromForm({ ...EMPTY_TELEMT_LIMITS_FORM, max_unique_ips: '3.7' });
     expect(out.max_unique_ips).toBe(3);
+  });
+
+  it('round-trips a quota period and drops it without a quota', () => {
+    const limits = { data_quota_bytes: gbToBytes(50), data_quota_period: 'month' as const };
+    expect(telemtLimitsFromForm(telemtLimitsToForm(limits))).toMatchObject(limits);
+    const out = telemtLimitsFromForm({ ...EMPTY_TELEMT_LIMITS_FORM, quota_period: 'week' });
+    expect(out).not.toHaveProperty('data_quota_period');
+  });
+
+  it('does not validate the period as a number', () => {
+    expect(validateTelemtLimitsForm({ ...EMPTY_TELEMT_LIMITS_FORM, quota_gb: '5', quota_period: 'week' })).toEqual({});
+  });
+});
+
+describe('nextQuotaReset', () => {
+  it('is the next Monday or 1st at 00:00 UTC', () => {
+    const wed = new Date(Date.UTC(2026, 9, 7, 15));
+    expect(nextQuotaReset('week', wed).toISOString()).toBe('2026-10-12T00:00:00.000Z');
+    expect(nextQuotaReset('month', wed).toISOString()).toBe('2026-11-01T00:00:00.000Z');
+    const monday = new Date(Date.UTC(2026, 9, 12, 0));
+    expect(nextQuotaReset('week', monday).toISOString()).toBe('2026-10-19T00:00:00.000Z');
+    const sunday = new Date(Date.UTC(2026, 11, 27, 23));
+    expect(nextQuotaReset('week', sunday).toISOString()).toBe('2026-12-28T00:00:00.000Z');
+    expect(nextQuotaReset('month', new Date(Date.UTC(2026, 11, 31, 23))).toISOString()).toBe('2027-01-01T00:00:00.000Z');
   });
 });
 
