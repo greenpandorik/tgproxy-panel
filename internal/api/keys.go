@@ -795,18 +795,37 @@ func (s *Server) handleKeyStats(w http.ResponseWriter, r *http.Request) {
 	var connectionsNow int32
 	var octetsDelta int64
 	byNode := map[uuid.UUID]int{}
+	// prev holds the node's last real counter reading; a bucket without one repeats it, so the
+	// chart shows no traffic there and the whole move lands on the next bucket that has a reading.
 	prev := map[uuid.UUID]int64{}
+	hasPrev := map[uuid.UUID]bool{}
+	// Buckets before the node's first reading are filled with that reading once it arrives.
+	leading := map[uuid.UUID]int{}
 	for _, row := range rows {
 		idx, seen := byNode[row.NodeID]
 		if !seen {
 			idx = len(nodes)
 			byNode[row.NodeID] = idx
 			nodes = append(nodes, keyStatsNodeJSON{NodeID: row.NodeID, NodeName: row.NodeName})
-		} else if d := row.TotalOctets - prev[row.NodeID]; d > 0 {
-			octetsDelta += d
 		}
-		prev[row.NodeID] = row.TotalOctets
-		nodes[idx].Points = append(nodes[idx].Points, keyStatsPointJSON{T: row.TakenAt, Connections: row.Connections, TotalOctets: row.TotalOctets})
+		octets := prev[row.NodeID]
+		if row.OctetReadings > 0 {
+			octets = row.TotalOctets
+			if hasPrev[row.NodeID] {
+				if d := octets - prev[row.NodeID]; d > 0 {
+					octetsDelta += d
+				}
+			} else {
+				for i := 0; i < leading[row.NodeID]; i++ {
+					nodes[idx].Points[i].TotalOctets = octets
+				}
+			}
+			prev[row.NodeID] = octets
+			hasPrev[row.NodeID] = true
+		} else if !hasPrev[row.NodeID] {
+			leading[row.NodeID]++
+		}
+		nodes[idx].Points = append(nodes[idx].Points, keyStatsPointJSON{T: row.TakenAt, Connections: row.Connections, TotalOctets: octets})
 	}
 	for i := range nodes {
 		pts := nodes[i].Points
