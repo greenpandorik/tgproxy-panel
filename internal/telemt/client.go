@@ -185,6 +185,12 @@ func (c *Client) Disable(ctx context.Context, username string) (User, error) {
 	return out, err
 }
 
+// ResetQuota zeroes the user's consumed data quota; the configured quota itself is unchanged.
+func (c *Client) ResetQuota(ctx context.Context, username string) error {
+	_, err := c.do(ctx, http.MethodPost, userPath(username, "reset-quota"), nil, nil)
+	return err
+}
+
 // GetConfig returns the editable config sections (never `access`) and the current revision.
 func (c *Client) GetConfig(ctx context.Context) (map[string]any, string, error) {
 	out := map[string]any{}

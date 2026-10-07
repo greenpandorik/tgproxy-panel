@@ -16,6 +16,9 @@ func ProfileToProto(p Profile) *agentv1.Profile {
 	if p.ExpiresAt != nil {
 		out.ExpiresAtUnix = p.ExpiresAt.Unix()
 	}
+	if p.QuotaResetAt != nil {
+		out.QuotaResetUnix = p.QuotaResetAt.Unix()
+	}
 	if p.Limits != nil {
 		l := p.Limits
 		out.Limits = &agentv1.ProfileLimits{
@@ -42,6 +45,10 @@ func ProfileFromProto(p *agentv1.Profile) Profile {
 	if v := p.GetExpiresAtUnix(); v != 0 {
 		t := time.Unix(v, 0).UTC()
 		out.ExpiresAt = &t
+	}
+	if v := p.GetQuotaResetUnix(); v != 0 {
+		t := time.Unix(v, 0).UTC()
+		out.QuotaResetAt = &t
 	}
 	if l := p.GetLimits(); l != nil {
 		out.Limits = &domain.ProfileLimits{

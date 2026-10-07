@@ -1563,8 +1563,11 @@ type Profile struct {
 	MaxTcpConns      uint32                 `protobuf:"varint,14,opt,name=max_tcp_conns,json=maxTcpConns,proto3" json:"max_tcp_conns,omitempty"`
 	ExpiresAtUnix    int64                  `protobuf:"varint,15,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
 	Enabled          bool                   `protobuf:"varint,16,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Start of the current quota period. When it moves forward the agent resets the user's
+	// consumed quota once; zero means the quota never resets.
+	QuotaResetUnix int64 `protobuf:"varint,17,opt,name=quota_reset_unix,json=quotaResetUnix,proto3" json:"quota_reset_unix,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Profile) Reset() {
@@ -1679,6 +1682,13 @@ func (x *Profile) GetEnabled() bool {
 		return x.Enabled
 	}
 	return false
+}
+
+func (x *Profile) GetQuotaResetUnix() int64 {
+	if x != nil {
+		return x.QuotaResetUnix
+	}
+	return 0
 }
 
 type ProfilesFile struct {
@@ -4101,7 +4111,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x16new_streams_per_minute\x18\x06 \x01(\x05R\x13newStreamsPerMinute\x12*\n" +
 	"\x11new_streams_burst\x18\a \x01(\x05R\x0fnewStreamsBurst\x125\n" +
 	"\x17max_streams_per_session\x18\b \x01(\x05R\x14maxStreamsPerSession\x125\n" +
-	"\x17max_pending_per_session\x18\t \x01(\x05R\x14maxPendingPerSession\"\xb3\x03\n" +
+	"\x17max_pending_per_session\x18\t \x01(\x05R\x14maxPendingPerSession\"\xdd\x03\n" +
 	"\aProfile\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06secret\x18\x02 \x01(\tR\x06secret\x12\x18\n" +
@@ -4115,7 +4125,8 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x0emax_unique_ips\x18\r \x01(\rR\fmaxUniqueIps\x12\"\n" +
 	"\rmax_tcp_conns\x18\x0e \x01(\rR\vmaxTcpConns\x12&\n" +
 	"\x0fexpires_at_unix\x18\x0f \x01(\x03R\rexpiresAtUnix\x12\x18\n" +
-	"\aenabled\x18\x10 \x01(\bR\aenabled\"=\n" +
+	"\aenabled\x18\x10 \x01(\bR\aenabled\x12(\n" +
+	"\x10quota_reset_unix\x18\x11 \x01(\x03R\x0equotaResetUnix\"=\n" +
 	"\fProfilesFile\x12-\n" +
 	"\bprofiles\x18\x01 \x03(\v2\x11.agent.v1.ProfileR\bprofiles\"\xb7\x02\n" +
 	"\vWebTimeouts\x12<\n" +

@@ -144,6 +144,13 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 		f.attrs[name] = attrs
 		w.WriteHeader(http.StatusCreated)
 		f.ok(w, map[string]any{"user": map[string]any{"username": name, "enabled": true}, "secret": secret})
+	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v1/users/") && strings.HasSuffix(r.URL.Path, "/reset-quota"):
+		name := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/users/"), "/reset-quota")
+		if _, found := f.users[name]; !found {
+			f.fail(w, http.StatusNotFound, "not_found", "no such user")
+			return
+		}
+		f.ok(w, map[string]any{"username": name})
 	case r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, "/v1/users/"):
 		name := strings.TrimPrefix(r.URL.Path, "/v1/users/")
 		var req map[string]any
@@ -1147,6 +1154,82 @@ func TestTelemtApplySkipsPatchWhenLimitsAlreadyMatch(t *testing.T) {
 	}
 	if got := ft.bodies("node"); len(got) != 0 {
 		t.Fatalf("matching limits must not be patched: %v", got)
+	}
+}
+
+func TestTelemtApplyResetsQuotaOnlyWhenThePeriodMovesForward(t *testing.T) {
+	h, cfg, ft := telemtHandler(t, &fakeExec{})
+	oct := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	k1 := limitedProfile("k1", secretK1, time.Time{})
+	k1.QuotaResetUnix = oct.Unix()
+	req := &agentv1.ApplyRequest{ApplyProfiles: true, Profiles: append(profiles("node", secretNode), k1)}
+	resets := func() []string {
+		_, writes, _, _ := ft.snapshot()
+		var out []string
+		for _, w := range writes {
+			if strings.HasSuffix(w, "/reset-quota") {
+				out = append(out, w)
+			}
+		}
+		return out
+	}
+
+	// A new user starts in the current period: nothing to reset.
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("setup apply: %s", res.Log)
+	}
+	if got := resets(); len(got) != 0 {
+		t.Fatalf("a new user must not be reset: %v", got)
+	}
+	if got := readTelemtState(cfg.StateDir).QuotaResets["k1"]; got != oct.Unix() {
+		t.Fatalf("period not recorded: %d", got)
+	}
+
+	// The same period again, as after an agent restart: still nothing.
+	ft.resetWrites()
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("repeat apply: %s", res.Log)
+	}
+	if _, writes, _, _ := ft.snapshot(); len(writes) != 0 {
+		t.Fatalf("the same period must not write anything: %v", writes)
+	}
+
+	// November starts: exactly one reset, then none on the next apply.
+	ft.resetWrites()
+	k1.QuotaResetUnix = oct.AddDate(0, 1, 0).Unix()
+	res := h.Apply(context.Background(), req)
+	if !res.Ok {
+		t.Fatalf("rollover apply: %s", res.Log)
+	}
+	if got := resets(); len(got) != 1 || got[0] != "POST /v1/users/k1/reset-quota" {
+		t.Fatalf("want one reset of k1, got %v", got)
+	}
+	if !strings.Contains(res.Log, "user k1 quota reset") {
+		t.Fatalf("reset not logged: %s", res.Log)
+	}
+	ft.resetWrites()
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("post-rollover apply: %s", res.Log)
+	}
+	if got := resets(); len(got) != 0 {
+		t.Fatalf("a period must be reset once: %v", got)
+	}
+
+	// Dropping the period forgets it, so turning it back on later does not reset at once.
+	k1.QuotaResetUnix = 0
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("drop period apply: %s", res.Log)
+	}
+	if _, ok := readTelemtState(cfg.StateDir).QuotaResets["k1"]; ok {
+		t.Fatal("period still recorded after it was dropped")
+	}
+	k1.QuotaResetUnix = oct.AddDate(0, 2, 0).Unix()
+	ft.resetWrites()
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("re-enable apply: %s", res.Log)
+	}
+	if got := resets(); len(got) != 0 {
+		t.Fatalf("re-enabling a period must not reset: %v", got)
 	}
 }
 

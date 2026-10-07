@@ -31,6 +31,8 @@ type telemtDesired struct {
 	secret    string
 	policy    telemtPolicy
 	webLimits domain.WebProfileLimits
+	// quotaReset is the start of the user's current quota period, zero when it never resets.
+	quotaReset int64
 }
 
 // telemtPolicy is the per-user state the panel owns, in telemt's own units.
@@ -169,7 +171,11 @@ func telemtDesiredFrom(req *agentv1.ApplyRequest) ([]telemtDesired, error) {
 				MaxStreamsPerSession: int(limits.GetMaxStreamsPerSession()),
 			}
 		}
-		out = append(out, telemtDesired{name: p.Name, secret: p.Secret, policy: policy, webLimits: webLimits})
+		var quotaReset int64
+		if policy.DataQuotaBytes > 0 {
+			quotaReset = p.GetQuotaResetUnix()
+		}
+		out = append(out, telemtDesired{name: p.Name, secret: p.Secret, policy: policy, webLimits: webLimits, quotaReset: quotaReset})
 	}
 	return out, nil
 }
@@ -178,6 +184,10 @@ func telemtDesiredFrom(req *agentv1.ApplyRequest) ([]telemtDesired, error) {
 type telemtState struct {
 	SecretHashes map[string]string `json:"secret_hashes"`
 	LimitHashes  map[string]string `json:"limit_hashes"`
+	// QuotaResets holds the quota period each user was last reset into. A period the agent has
+	// not seen before for a user is recorded without a reset: only a period that moves forward
+	// zeroes the counter, so a restart or a reapply never hands out a second quota.
+	QuotaResets map[string]int64 `json:"quota_resets,omitempty"`
 }
 
 func secretFingerprint(secret string) string {
@@ -189,9 +199,9 @@ func telemtStatePath(stateDir string) string {
 	return filepath.Join(stateDir, "telemt-users.json")
 }
 
-// readTelemtState returns the last recorded fingerprints, with both maps always non-nil.
+// readTelemtState returns the last recorded fingerprints, with every map always non-nil.
 func readTelemtState(stateDir string) telemtState {
-	out := telemtState{SecretHashes: map[string]string{}, LimitHashes: map[string]string{}}
+	out := telemtState{SecretHashes: map[string]string{}, LimitHashes: map[string]string{}, QuotaResets: map[string]int64{}}
 	raw, err := os.ReadFile(telemtStatePath(stateDir))
 	if err != nil {
 		return out
@@ -205,6 +215,9 @@ func readTelemtState(stateDir string) telemtState {
 	}
 	if s.LimitHashes != nil {
 		out.LimitHashes = s.LimitHashes
+	}
+	if s.QuotaResets != nil {
+		out.QuotaResets = s.QuotaResets
 	}
 	return out
 }
@@ -862,15 +875,24 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 	next := telemtState{
 		SecretHashes: make(map[string]string, len(desired)),
 		LimitHashes:  make(map[string]string, len(desired)),
+		QuotaResets:  map[string]int64{},
 	}
 	wanted := make(map[string]bool, len(desired))
 	names := make([]string, 0, len(desired))
+	stateMoved := false
 
 	for _, d := range desired {
 		wanted[d.name] = true
 		names = append(names, d.name)
 		secretHash, policyHash := secretFingerprint(d.secret), d.policy.fingerprint()
 		next.SecretHashes[d.name], next.LimitHashes[d.name] = secretHash, policyHash
+		lastReset, hadReset := state.QuotaResets[d.name]
+		if d.quotaReset != 0 {
+			next.QuotaResets[d.name] = d.quotaReset
+		}
+		if lastReset != d.quotaReset {
+			stateMoved = true
+		}
 		u, exists := existing[d.name]
 		if !exists {
 			if _, err := h.tm.CreateUser(ctx, d.policy.createRequest(d.name, d.secret)); err != nil {
@@ -880,6 +902,14 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 			changed = true
 			lg.f("user %s created", d.name)
 			continue
+		}
+		if hadReset && d.quotaReset > lastReset {
+			if err := h.tm.ResetQuota(ctx, d.name); err != nil {
+				return changed, reload, fmt.Errorf("reset quota of user %s: %w", d.name, err)
+			}
+			rb.irreversible = append(rb.irreversible, "quota reset of user "+d.name)
+			changed = true
+			lg.f("user %s quota reset for the period starting %s", d.name, time.Unix(d.quotaReset, 0).UTC().Format(time.RFC3339))
 		}
 		secretChanged := state.SecretHashes[d.name] != secretHash
 		prev, recorded := state.LimitHashes[d.name]
@@ -968,7 +998,7 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 		lg.f("user %s deleted", u.Username)
 	}
 
-	if changed {
+	if changed || stateMoved {
 		if err := writeTelemtState(h.cfg.StateDir, next); err != nil {
 			lg.f("warning: telemt state not recorded: %v (the next apply will re-set every secret)", err)
 		}

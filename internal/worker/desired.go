@@ -146,6 +146,11 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 			if err := json.Unmarshal(p.KeyTelemtLimits, &telemt); err == nil && telemt != (domain.TelemtLimits{}) {
 				t := telemt
 				prof.Telemt = &t
+				if t.DataQuotaBytes > 0 {
+					if start := t.DataQuotaPeriod.Start(now); !start.IsZero() {
+						prof.QuotaResetAt = &start
+					}
+				}
 			}
 		}
 		var limits domain.ProfileLimits
