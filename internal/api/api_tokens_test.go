@@ -341,3 +341,128 @@ func TestAPITokenScopesRespectOwnerOnlySettings(t *testing.T) {
 	}
 	tokenStatus(t, c.Post("/api/v1/api-tokens", map[string]any{"name": "Settings", "expires_in_days": 30, "scopes": []string{"settings:write"}}), 422)
 }
+
+// waitForAPITokenBlockedQuery confirms the HTTP request has authenticated and is
+// waiting at the account lock, rather than relying on a scheduler-dependent delay.
+func waitForAPITokenBlockedQuery(t *testing.T, h *apitest.Harness, needle string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var count int
+		if err := h.Store.Pool.QueryRow(context.Background(), "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE $1", "%"+needle+"%").Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count > 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("did not observe blocked query %s", needle)
+}
+
+func TestAPITokenPasswordRotationRejectsQueuedOldSessionIssuance(t *testing.T) {
+	h := apitest.New(t)
+	owner := h.CreateAdmin("root", "pass-123456", "owner")
+	passwordClient := h.Login("root", "pass-123456")
+	createClient := h.Login("root", "pass-123456")
+	old := issueToken(t, createClient, "nodes:read")
+	ctx := context.Background()
+	lock, err := h.Store.Pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Rollback(ctx)
+	if _, err := lock.Exec(ctx, "SELECT id FROM admin_users WHERE id=$1 FOR UPDATE", owner); err != nil {
+		t.Fatal(err)
+	}
+	passwordDone := make(chan int, 1)
+	go func() {
+		passwordDone <- statusOf(t, passwordClient.Post("/api/v1/me/password", map[string]string{"current": "pass-123456", "new": "pass-654321"}))
+	}()
+	waitForAPITokenBlockedQuery(t, h, "UPDATE admin_users SET password_hash")
+	createDone := make(chan int, 1)
+	go func() {
+		createDone <- statusOf(t, createClient.Post("/api/v1/api-tokens", map[string]any{"name": "Queued token", "expires_in_days": 30, "scopes": []string{"nodes:read"}}))
+	}()
+	waitForAPITokenBlockedQuery(t, h, "LockAPITokenOwner")
+	if err := lock.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status := <-passwordDone; status != 204 {
+		t.Fatalf("password status %d want204", status)
+	}
+	if status := <-createDone; status != 401 {
+		t.Fatalf("pre-rotation session issued a token after rotation: status %d want401", status)
+	}
+	tokenStatus(t, h.Anonymous().SetHeader("Authorization", "Bearer "+old.Token).Get("/api/v1/nodes"), 401)
+	var count int
+	if err := h.Store.Pool.QueryRow(ctx, "SELECT count(*) FROM api_tokens WHERE admin_user_id=$1 AND revoked_at IS NULL", owner).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("%d tokens survived password rotation", count)
+	}
+}
+
+func TestAPITokenQueuedIssuanceUsesCurrentAccountRole(t *testing.T) {
+	h := apitest.New(t)
+	owner := h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	ctx := context.Background()
+	lock, err := h.Store.Pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Rollback(ctx)
+	if _, err := lock.Exec(ctx, "UPDATE admin_users SET role='viewer' WHERE id=$1", owner); err != nil {
+		t.Fatal(err)
+	}
+	createDone := make(chan int, 1)
+	go func() {
+		createDone <- statusOf(t, c.Post("/api/v1/api-tokens", map[string]any{"name": "Queued writer token", "expires_in_days": 30, "scopes": []string{"nodes:write"}}))
+	}()
+	waitForAPITokenBlockedQuery(t, h, "LockAPITokenOwner")
+	if err := lock.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if status := <-createDone; status != 422 {
+		t.Fatalf("scope validation used stale account role: status %d want422", status)
+	}
+}
+
+func TestAPITokenReadSearchDoesNotMatchHiddenSubscriptionSlug(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	const fixtureSlug = "synthetic-private-subscription"
+	var created struct {
+		ID uuid.UUID `json:"id"`
+	}
+	c.JSON(c.Post("/api/v1/keys", map[string]any{"label": "Visible user", "type": "SHARED", "sub_slug": fixtureSlug, "node_ids": []uuid.UUID{n.ID}}), &created)
+	if created.ID == uuid.Nil {
+		t.Fatal("missing key fixture")
+	}
+	read := issueToken(t, c, "users:read")
+	write := issueToken(t, c, "users:read", "users:write")
+	for _, tc := range []struct {
+		name   string
+		client *apitest.Client
+		query  string
+		want   int
+	}{{"read hidden slug", h.Anonymous().SetHeader("Authorization", "Bearer "+read.Token), fixtureSlug, 0}, {"read visible label", h.Anonymous().SetHeader("Authorization", "Bearer "+read.Token), "Visible%20user", 1}, {"write hidden slug", h.Anonymous().SetHeader("Authorization", "Bearer "+write.Token), fixtureSlug, 1}, {"session hidden slug", c, fixtureSlug, 1}} {
+		t.Run(tc.name, func(t *testing.T) {
+			var result struct {
+				Items []struct {
+					ID uuid.UUID `json:"id"`
+				} `json:"items"`
+				Total int `json:"total"`
+			}
+			resp := tc.client.Get("/api/v1/keys?q=" + tc.query)
+			tc.client.JSON(resp, &result)
+			if resp.StatusCode != 200 {
+				t.Fatalf("status %d", resp.StatusCode)
+			}
+			if len(result.Items) != tc.want || result.Total != tc.want {
+				t.Fatalf("list/count exposed hidden-only match: %d items, total%d want%d", len(result.Items), result.Total, tc.want)
+			}
+		})
+	}
+}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"tgwebproxy/internal/crypto"
 	"tgwebproxy/internal/store/db"
 )
@@ -21,7 +22,11 @@ const (
 	maxAPITokenDays = 365
 )
 
-var errAPITokenLimit = errors.New("API token limit reached")
+var (
+	errAPITokenLimit            = errors.New("API token limit reached")
+	errAPITokenSessionExpired   = errors.New("API token issuing session expired")
+	errAPITokenScopeUnavailable = errors.New("API token scope unavailable")
+)
 
 type apiTokenScope struct {
 	ID       string `json:"id"`
@@ -92,18 +97,11 @@ func (s *Server) handleCreateAPIToken(w http.ResponseWriter, r *http.Request) {
 	if req.ExpiresInDays < 1 || req.ExpiresInDays > maxAPITokenDays {
 		fields["expires_in_days"] = "1–365 days"
 	}
-	available := map[string]bool{}
-	for _, scope := range apiTokenScopes(p.Role) {
-		available[scope.ID] = true
-	}
 	if len(req.Scopes) == 0 {
 		fields["scopes"] = "at least one scope is required"
 	}
 	normalized := make([]string, 0, len(req.Scopes))
 	for _, scope := range req.Scopes {
-		if !available[scope] {
-			fields["scopes"] = "unknown or unavailable scope"
-		}
 		if !slices.Contains(normalized, scope) {
 			normalized = append(normalized, scope)
 		}
@@ -122,7 +120,31 @@ func (s *Server) handleCreateAPIToken(w http.ResponseWriter, r *http.Request) {
 	var token db.ApiToken
 	err = s.store.Tx(r.Context(), func(q *db.Queries) error {
 		if _, err := q.LockAPITokenOwner(r.Context(), p.UserID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return errAPITokenSessionExpired
+			}
 			return err
+		}
+		// Rotation holds this same account lock while deleting old sessions.
+		// Authentication before the lock therefore cannot authorize issuance after rotation.
+		session, err := q.GetSession(r.Context(), p.SessionID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errAPITokenSessionExpired
+		}
+		if err != nil {
+			return err
+		}
+		if session.AdminUserID != p.UserID || !session.ExpiresAt.After(time.Now()) {
+			return errAPITokenSessionExpired
+		}
+		available := map[string]bool{}
+		for _, scope := range apiTokenScopes(string(session.Role)) {
+			available[scope.ID] = true
+		}
+		for _, scope := range normalized {
+			if !available[scope] {
+				return errAPITokenScopeUnavailable
+			}
 		}
 		count, err := q.CountActiveAPITokens(r.Context(), p.UserID)
 		if err != nil {
@@ -134,6 +156,14 @@ func (s *Server) handleCreateAPIToken(w http.ResponseWriter, r *http.Request) {
 		token, err = q.CreateAPIToken(r.Context(), db.CreateAPITokenParams{AdminUserID: p.UserID, Name: req.Name, Prefix: secret[:13], TokenHash: hash[:], Scopes: normalized, ExpiresAt: time.Now().Add(time.Duration(req.ExpiresInDays) * 24 * time.Hour)})
 		return err
 	})
+	if errors.Is(err, errAPITokenSessionExpired) {
+		unauthorized(w)
+		return
+	}
+	if errors.Is(err, errAPITokenScopeUnavailable) {
+		validation(w, map[string]string{"scopes": "unknown or unavailable scope"})
+		return
+	}
 	if errors.Is(err, errAPITokenLimit) {
 		conflict(w, "maximum 50 active API tokens")
 		return

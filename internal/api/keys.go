@@ -407,13 +407,15 @@ func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("state"); v != "" {
 		state = &v
 	}
-	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
+	p, _ := PrincipalFrom(r.Context())
+	searchSubSlug := p.APITokenID == uuid.Nil || principalCanWrite(r, "users")
+	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{SearchSubSlug: searchSubSlug, Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
 	if err != nil {
 		s.log.Error("list keys", "err", err)
 		internal(w)
 		return
 	}
-	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
+	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{SearchSubSlug: searchSubSlug, Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
 	extras := s.extrasFor(r.Context(), rows)
 	items := make([]keyJSON, 0, len(rows))
 	for _, k := range rows {
