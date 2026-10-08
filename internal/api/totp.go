@@ -290,7 +290,7 @@ func (s *Server) handleTOTPVerify(w http.ResponseWriter, r *http.Request) {
 	if !s.totpEnabled(w) {
 		return
 	}
-	ip := ipFrom(r.Context())
+	ip := loginLimiterKey(r)
 	if s.loginLimiter.Blocked(ip) {
 		writeError(w, 429, "rate_limited", "too many attempts, try later", nil)
 		return

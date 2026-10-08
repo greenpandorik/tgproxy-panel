@@ -2,7 +2,10 @@ package crypto
 
 import (
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestPasswordHashAndVerify(t *testing.T) {
@@ -44,5 +47,57 @@ func TestVerifyPasswordRejectsAbsurdParams(t *testing.T) {
 	ok, err := VerifyPassword("pass-123456", good)
 	if err != nil || !ok {
 		t.Fatalf("our own hash no longer verifies: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestPasswordHashingIsBoundedInParallel(t *testing.T) {
+	h, err := HashPassword("correct horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var running, peak atomic.Int32
+	entered := make(chan struct{}, 8)
+	release := make(chan struct{})
+	orig := argon2Key
+	argon2Key = func(password, salt []byte, iterations, memory uint32, threads uint8, keyLen uint32) []byte {
+		n := running.Add(1)
+		for {
+			p := peak.Load()
+			if n <= p || peak.CompareAndSwap(p, n) {
+				break
+			}
+		}
+		entered <- struct{}{}
+		<-release
+		running.Add(-1)
+		return orig(password, salt, 1, 8, 1, keyLen)
+	}
+	var wg sync.WaitGroup
+	defer func() { close(release); wg.Wait(); argon2Key = orig }()
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if i%2 == 0 {
+				_, _ = HashPassword("new password")
+			} else {
+				_, _ = VerifyPassword("wrong", h)
+			}
+		}()
+	}
+	for range 2 {
+		select {
+		case <-entered:
+		case <-time.After(2 * time.Second):
+			t.Fatal("two computations did not start")
+		}
+	}
+	select {
+	case <-entered:
+		t.Fatal("more than two password computations ran before a slot was released")
+	case <-time.After(100 * time.Millisecond):
+	}
+	if p := peak.Load(); p != 2 {
+		t.Fatalf("peak = %d, want 2", p)
 	}
 }

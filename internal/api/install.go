@@ -80,7 +80,8 @@ type registerReq struct {
 
 func (s *Server) handleInstallRegister(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	n, err := s.store.Q.GetNodeByInstallToken(r.Context(), ptr(crypto.HashToken(token)))
+	tokenHash := crypto.HashToken(token)
+	n, err := s.store.Q.GetNodeByInstallToken(r.Context(), &tokenHash)
 	if err != nil {
 		notFound(w)
 		return
@@ -91,7 +92,6 @@ func (s *Server) handleInstallRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	publicIP := strings.TrimSpace(req.PublicIP)
-	storeIP := publicIP != "" && n.PublicIp == ""
 	if n.Engine == db.NodeEngineTelemt && n.PublicIp == "" && publicIP == "" {
 		// Refused before the install token is consumed, so the script can retry.
 		validation(w, map[string]string{"public_ip": "required for telemt nodes"})
@@ -102,14 +102,17 @@ func (s *Server) handleInstallRegister(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	if storeIP {
-		if err := s.store.Q.SetNodePublicIP(r.Context(), db.SetNodePublicIPParams{ID: n.ID, PublicIp: publicIP}); err != nil {
-			internal(w)
-			return
-		}
-	}
-	if err := s.store.Q.RegisterNode(r.Context(), db.RegisterNodeParams{ID: n.ID, AgentTokenHash: ptr(crypto.HashToken(nodeToken)), TproxyVersion: req.TProxyVersion, AgentVersion: req.AgentVersion}); err != nil {
+	registered, err := s.store.Q.RegisterNode(r.Context(), db.RegisterNodeParams{
+		ID: n.ID, InstallTokenHash: tokenHash, AgentTokenHash: ptr(crypto.HashToken(nodeToken)),
+		TproxyVersion: req.TProxyVersion, AgentVersion: req.AgentVersion, PublicIp: publicIP,
+	})
+	if err != nil {
 		internal(w)
+		return
+	}
+	if registered == 0 {
+		// Another registration spent the token between the lookup and here.
+		notFound(w)
 		return
 	}
 	s.Audit(r.Context(), "node.register", "node", n.ID.String(), map[string]any{"hostname": n.Hostname})

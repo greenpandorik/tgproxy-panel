@@ -518,26 +518,46 @@ func (q *Queries) MarkStaleNodesOffline(ctx context.Context, lastSeenAt *time.Ti
 	return items, nil
 }
 
-const registerNode = `-- name: RegisterNode :exec
-UPDATE nodes SET agent_token_hash = $2, install_token_hash = NULL, install_token_expires = NULL,
-  tproxy_version = $3, agent_version = $4, status = 'offline' WHERE id = $1
+const registerNode = `-- name: RegisterNode :execrows
+WITH locked_node AS MATERIALIZED (
+  SELECT source.id, source.install_token_hash, source.install_token_expires FROM nodes source
+  WHERE source.id = $6 FOR UPDATE
+)
+UPDATE nodes n SET agent_token_hash = $1,
+  install_token_hash = NULL, install_token_expires = NULL,
+  tproxy_version = $2, agent_version = $3, status = 'offline',
+  public_ip = CASE WHEN n.public_ip = '' THEN $4::text ELSE n.public_ip END
+FROM locked_node
+WHERE n.id = locked_node.id AND locked_node.install_token_hash = $5::text
+  AND locked_node.install_token_expires > clock_timestamp()
 `
 
 type RegisterNodeParams struct {
-	ID             uuid.UUID `json:"id"`
-	AgentTokenHash *string   `json:"agent_token_hash"`
-	TproxyVersion  string    `json:"tproxy_version"`
-	AgentVersion   string    `json:"agent_version"`
+	AgentTokenHash   *string   `json:"agent_token_hash"`
+	TproxyVersion    string    `json:"tproxy_version"`
+	AgentVersion     string    `json:"agent_version"`
+	PublicIp         string    `json:"public_ip"`
+	InstallTokenHash string    `json:"install_token_hash"`
+	ID               uuid.UUID `json:"id"`
 }
 
-func (q *Queries) RegisterNode(ctx context.Context, arg RegisterNodeParams) error {
-	_, err := q.db.Exec(ctx, registerNode,
-		arg.ID,
+// RegisterNode locks the node before consuming its install token and issuing the agent token.
+// The final checks depend on the locked tuple, so the token and wall-clock expiry are checked
+// after a lock wait even when the lock holder did not change the row. Zero rows means the token
+// was already spent, reissued, or expired. public_ip is filled only when the panel has none.
+func (q *Queries) RegisterNode(ctx context.Context, arg RegisterNodeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, registerNode,
 		arg.AgentTokenHash,
 		arg.TproxyVersion,
 		arg.AgentVersion,
+		arg.PublicIp,
+		arg.InstallTokenHash,
+		arg.ID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const reorderNodes = `-- name: ReorderNodes :execrows
@@ -708,9 +728,8 @@ type SetNodePublicIPParams struct {
 	PublicIp string    `json:"public_ip"`
 }
 
-// SetNodePublicIP fills in the address the node reported at registration. telemt
-// needs it for web.vhosts.public_addr, and the install script is the only place
-// that reliably knows it.
+// SetNodePublicIP sets the node's public address, which telemt needs for
+// web.vhosts.public_addr. Registration fills it in through RegisterNode.
 func (q *Queries) SetNodePublicIP(ctx context.Context, arg SetNodePublicIPParams) error {
 	_, err := q.db.Exec(ctx, setNodePublicIP, arg.ID, arg.PublicIp)
 	return err

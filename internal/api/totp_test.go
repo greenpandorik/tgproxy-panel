@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -467,5 +468,43 @@ func TestTOTPConfirmRequiresThePasswordAndEndsOtherSessions(t *testing.T) {
 	// The tab that did the enrolling keeps working - it was handed a new cookie.
 	if resp := enroller.Get("/api/v1/auth/me"); resp.StatusCode != 200 {
 		t.Fatalf("enrolling session after confirm: %d, want 200", resp.StatusCode)
+	}
+}
+
+func TestTOTPVerifyRateLimitsIPv6PrefixAcrossLogin(t *testing.T) {
+	h := apitest.New(t, apitest.WithTOTP())
+	id := h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	enrol(t, c, "pass-123456")
+	anon := h.Anonymous().SetHeader("X-Forwarded-For", "2001:db8:1:2::1")
+	var lb loginBody
+	anon.JSON(anon.Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "pass-123456"}), &lb)
+	if lb.Challenge == "" {
+		t.Fatal("no TOTP challenge")
+	}
+	// One login and ten failed second factors exhaust the shared /64 budget.
+	for i := range 10 {
+		client := h.Anonymous().SetHeader("X-Forwarded-For", fmt.Sprintf("2001:db8:1:2::%x", i+2))
+		code, status := errCodeOf(t, client.Post("/api/v1/auth/totp/verify", map[string]string{"challenge": lb.Challenge, "recovery_code": "invalid-recovery"}))
+		if status != 401 || code != "invalid_code" {
+			t.Fatalf("attempt %d: %d %s", i+1, status, code)
+		}
+	}
+	blocked := h.Anonymous().SetHeader("X-Forwarded-For", "2001:db8:1:2::ffff")
+	_, status := errCodeOf(t, blocked.Post("/api/v1/auth/totp/verify", map[string]string{"challenge": lb.Challenge, "recovery_code": "invalid-recovery"}))
+	if status != 429 {
+		t.Fatalf("same prefix second factor: %d, want 429", status)
+	}
+	if status := statusOf(t, blocked.Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "pass-123456"})); status != 429 {
+		t.Fatalf("same prefix login: %d, want 429", status)
+	}
+	other := h.Anonymous().SetHeader("X-Forwarded-For", "2001:db8:1:3::1")
+	_, status = errCodeOf(t, other.Post("/api/v1/auth/totp/verify", map[string]string{"challenge": lb.Challenge, "recovery_code": "invalid-recovery"}))
+	if status != 401 {
+		t.Fatalf("different prefix: %d, want 401", status)
+	}
+	user, err := h.Store.Q.GetAdmin(t.Context(), id)
+	if err != nil || user.FailedLogins != 11 {
+		t.Fatalf("failed attempts: %d err=%v, want 11", user.FailedLogins, err)
 	}
 }

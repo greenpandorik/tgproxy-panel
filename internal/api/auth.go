@@ -9,7 +9,15 @@ import (
 
 	"tgwebproxy/internal/crypto"
 	"tgwebproxy/internal/store/db"
+	"tgwebproxy/internal/subscription"
 )
+
+// loginLimiterKey is the caller's address as the login limiter counts it. IPv6 counts by /64: an
+// ordinary client is handed a whole /64, so counting single addresses would let it cycle through
+// fresh ones and never hit the limit.
+func loginLimiterKey(r *http.Request) string {
+	return subscription.VisitorKey(ipFrom(r.Context()))
+}
 
 type loginReq struct {
 	Username string `json:"username"`
@@ -36,7 +44,7 @@ func (s *Server) recordLoginFailure(r *http.Request, reason, username, userID st
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if !s.loginLimiter.Allow(ipFrom(r.Context())) {
+	if !s.loginLimiter.Allow(loginLimiterKey(r)) {
 		writeError(w, 429, "rate_limited", "too many attempts, try later", nil)
 		return
 	}
