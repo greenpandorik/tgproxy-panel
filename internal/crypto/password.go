@@ -23,13 +23,29 @@ const (
 	maxArgonThreads   = 64
 )
 
+// argonSlots bounds how many argon2 computations run at once. Each one allocates its memory
+// parameter (64 MiB for our hashes) and the login endpoint is unauthenticated, so without a bound
+// a burst of parallel logins could take the panel down for lack of memory. Two slots keep normal
+// hashes within 128 MiB regardless of the CPU count. Callers over the bound
+// wait for a slot instead.
+var argonSlots = make(chan struct{}, 2)
+
+// argon2Key is argon2.IDKey, replaceable in tests.
+var argon2Key = argon2.IDKey
+
+func argonIDKey(password, salt []byte, t, m uint32, p uint8, keyLen uint32) []byte {
+	argonSlots <- struct{}{}
+	defer func() { <-argonSlots }()
+	return argon2Key(password, salt, t, m, p, keyLen)
+}
+
 // HashPassword returns a PHC-format argon2id string.
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	hash := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	hash := argonIDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", argonMemory, argonTime, argonThreads,
 		base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(hash)), nil
 }
@@ -61,6 +77,6 @@ func VerifyPassword(password, phc string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	got := argon2.IDKey([]byte(password), salt, t, m, p, uint32(len(want)))
+	got := argonIDKey([]byte(password), salt, t, m, p, uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1, nil
 }

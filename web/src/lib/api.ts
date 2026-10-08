@@ -1,4 +1,3 @@
-
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -28,7 +27,14 @@ function csrf(): string {
 
 export const UNAUTHORIZED_EVENT = 'tgwp:unauthorized';
 
+// Requests share the browser session cookie. An old response must not expire a newer session.
+let sessionRevision = 0;
+export function invalidateSessionRequests() {
+  sessionRevision += 1;
+}
+
 export async function request<T>(method: string, path: string, body?: unknown, init: RequestInit = {}): Promise<T> {
+  const revision = sessionRevision;
   const headers: Record<string, string> = { ...(init.headers as Record<string, string> | undefined) };
   if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
   if (method !== 'GET') headers['X-CSRF-Token'] = csrf();
@@ -41,7 +47,7 @@ export async function request<T>(method: string, path: string, body?: unknown, i
     ...init,
   });
 
-  if (res.status === 401 && !path.endsWith('/auth/login')) {
+  if (res.status === 401 && revision === sessionRevision && !init.signal?.aborted && !path.endsWith('/auth/login')) {
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
 

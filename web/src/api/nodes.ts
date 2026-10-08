@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api, ApiError } from '@/lib/api';
+import { sessionGuard } from '@/lib/session';
 
 import type {
   ApplyJob,
@@ -203,15 +204,18 @@ export const useReorderNodes = () => {
   return useMutation({
     mutationFn: (ids: string[]) => api.put<{ ids: string[] }>('/api/v1/nodes/order', { ids }),
     onMutate: async (ids) => {
+      const isCurrent = sessionGuard(qc);
       await qc.cancelQueries({ queryKey: nodeKeys.all, exact: true });
+      if (!isCurrent()) return { isCurrent };
       const previous = qc.getQueryData<Paginated<Node>>(nodeKeys.all);
       if (previous) qc.setQueryData<Paginated<Node>>(nodeKeys.all, { ...previous, items: reorderedNodes(previous.items, ids) });
-      return { previous };
+      return { previous, isCurrent };
     },
     onError: (_error, _ids, context) => {
-      if (context?.previous) qc.setQueryData(nodeKeys.all, context.previous);
+      if (context?.isCurrent() && context.previous) qc.setQueryData(nodeKeys.all, context.previous);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, _ids, context) => {
+      if (!context?.isCurrent()) return;
       void qc.invalidateQueries({ queryKey: nodeKeys.all, exact: true });
       void qc.invalidateQueries({ queryKey: ['monitoring', 'overview'] });
     },
