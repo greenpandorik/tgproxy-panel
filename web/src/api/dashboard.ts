@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { sessionGuard } from '@/lib/session';
 
 import type { Alert, DashboardSummary, DashboardTrends, SeriesPoint } from './types';
 import type { UseQueryResult } from '@tanstack/react-query';
@@ -63,7 +64,9 @@ export const useReadAlerts = () => {
   return useMutation({
     mutationFn: (ids: number[]) => api.post<{ resolved: number }>('/api/v1/alerts/resolve', { ids }),
     onMutate: async (ids) => {
+      const isCurrent = sessionGuard(qc);
       await qc.cancelQueries({ queryKey: dashboardKeys.alerts });
+      if (!isCurrent()) return { isCurrent };
       const previous = qc.getQueryData<{ items: Alert[] }>(dashboardKeys.alerts);
       if (previous) {
         qc.setQueryData<{ items: Alert[] }>(dashboardKeys.alerts, {
@@ -71,12 +74,13 @@ export const useReadAlerts = () => {
           items: previous.items.filter((a) => !ids.includes(a.id)),
         });
       }
-      return { previous };
+      return { previous, isCurrent };
     },
     onError: (_error, _ids, context) => {
-      if (context?.previous) qc.setQueryData(dashboardKeys.alerts, context.previous);
+      if (context?.isCurrent() && context.previous) qc.setQueryData(dashboardKeys.alerts, context.previous);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, _ids, context) => {
+      if (!context?.isCurrent()) return;
       void qc.invalidateQueries({ queryKey: dashboardKeys.alerts });
       void qc.invalidateQueries({ queryKey: dashboardKeys.summary });
     },

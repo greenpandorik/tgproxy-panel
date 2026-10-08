@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
-import { authKeys, useLogin, useLogout, useMe, useTotpVerify } from '@/api/auth';
+import { authKeys, forgetSession, useLogin, useLogout, useMe, useTotpVerify } from '@/api/auth';
 import { UNAUTHORIZED_EVENT } from '@/lib/api';
-import { queryClient } from '@/lib/query';
 
 import type { LoginResult, Me, SecondFactor } from '@/api/types';
 
@@ -30,6 +30,7 @@ export function useAuth(): AuthContextValue {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const meQuery = useMe();
   const loginMutation = useLogin();
   const logoutMutation = useLogout();
@@ -37,14 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onUnauthorized = () => {
-      queryClient.setQueryData(authKeys.me, null);
+      forgetSession(queryClient);
       if (window.location.pathname !== '/login') {
         navigate('/login', { replace: true });
       }
     };
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   const user = meQuery.data ?? null;
   const value: AuthContextValue = {
@@ -54,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     verifyTotp: async (challenge, factor) => verifyMutation.mutateAsync({ challenge, ...factor }),
     logout: async () => {
       await logoutMutation.mutateAsync();
-      navigate('/login', { replace: true });
+      if (!queryClient.getQueryData(authKeys.me)) navigate('/login', { replace: true });
     },
     isWriter: user?.role === 'owner' || user?.role === 'admin',
     isOwner: user?.role === 'owner',

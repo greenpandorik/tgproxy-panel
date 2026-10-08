@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@/i18n';
 import { setLang } from '@/i18n';
 import type { ApiToken } from '@/api/apiTokens';
+import { UNAUTHORIZED_EVENT } from '@/lib/api';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { ApiTokensPanel } from './ApiTokensPanel';
 
@@ -215,6 +216,49 @@ describe('ApiTokensPanel', () => {
     expect(qc.getQueryState(['api-tokens', 'list', 'a1'])?.isInvalidated).toBe(true);
     expect(qc.getQueryState(['api-tokens', 'list', 'b1'])?.isInvalidated).toBe(false);
     expect(otherAccountListRequests).toBe(0);
+  });
+
+  it('clears an open one-time secret and its metadata when the session expires', async () => {
+    const { qc } = mount();
+    await submitCreate();
+    expect(screen.getByText(SECRET)).toBeInTheDocument();
+    act(() => window.dispatchEvent(new Event(UNAUTHORIZED_EVENT)));
+    await waitFor(() => expect(screen.queryByText(SECRET)).not.toBeInTheDocument());
+    expect(qc.getQueryData(['auth', 'me'])).toBeNull();
+    expect(qc.getQueryData(['api-tokens', 'list', 'a1'])).toBeUndefined();
+    expect(screen.queryByRole('dialog', { name: 'Save your API token' })).not.toBeInTheDocument();
+    expect(
+      JSON.stringify(
+        qc
+          .getMutationCache()
+          .getAll()
+          .map((m) => m.state),
+      ),
+    ).not.toContain(SECRET);
+  });
+
+  it('does not restore old metadata when a pending token list finishes after session expiry', async () => {
+    let completeList!: (response: Response) => void;
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith('/api-tokens') && init?.method === 'GET')
+          return new Promise<Response>((resolve) => {
+            completeList = resolve;
+          });
+        return originalFetch(input, init);
+      }),
+    );
+    const { qc } = mount();
+    await waitFor(() => expect(qc.getQueryState(['api-tokens', 'list', 'a1'])?.fetchStatus).toBe('fetching'));
+    act(() => window.dispatchEvent(new Event(UNAUTHORIZED_EVENT)));
+    await act(async () => {
+      completeList(await json({ items: [TOKEN], total: 1 }));
+    });
+    await waitFor(() => expect(screen.queryByText('Service Bot')).not.toBeInTheDocument());
+    expect(qc.getQueryData(['api-tokens', 'list', 'a1'])).toBeUndefined();
+    expect(qc.getQueryData(['auth', 'me'])).toBeNull();
   });
 
   it('does not request personal tokens before the administrator identity is known', async () => {
