@@ -25,3 +25,5 @@ tgwp-agent*
 skills-lock.json
 /output/
 .DS_Store
+# Assembled GitHub Pages artifact
+_site/

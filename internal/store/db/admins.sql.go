@@ -222,11 +222,19 @@ func (q *Queries) ListRecoveryCodes(ctx context.Context, adminUserID uuid.UUID) 
 }
 
 const recordFailedLogin = `-- name: RecordFailedLogin :exec
-UPDATE admin_users SET failed_logins = failed_logins + 1,
-  locked_until = CASE WHEN failed_logins + 1 >= 20 THEN now() + interval '15 minutes' ELSE locked_until END
+UPDATE admin_users SET
+  failed_logins = CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END,
+  locked_until = CASE
+    WHEN locked_until <= now() THEN NULL
+    WHEN failed_logins + 1 >= 20 THEN now() + interval '15 minutes'
+    ELSE locked_until
+  END
 WHERE id = $1
 `
 
+// RecordFailedLogin starts a fresh count once a lockout has run out. Carrying the old count over
+// would relock the account on every single failure after it, so one bad attempt every
+// 15 minutes would keep the account out for good.
 func (q *Queries) RecordFailedLogin(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, recordFailedLogin, id)
 	return err

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"tgwebproxy/internal/api/apitest"
 )
@@ -107,6 +108,42 @@ func TestLoginRateLimitCountsIPv6ByPrefix(t *testing.T) {
 	if code := other.Post("/api/v1/auth/login", wrong).StatusCode; code != 401 {
 		t.Fatalf("another /64: %d, want 401", code)
 	}
+}
+
+func TestLockoutDoesNotRelockAfterExpiry(t *testing.T) {
+	h := apitest.New(t)
+	id := h.CreateAdmin("root", "pass-123456", "owner")
+	ctx := t.Context()
+	for i := 0; i < 20; i++ {
+		if err := h.Store.Q.RecordFailedLogin(ctx, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	u, err := h.Store.Q.GetAdmin(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.LockedUntil == nil || !u.LockedUntil.After(time.Now()) {
+		t.Fatalf("20 failures should lock the account, locked_until = %v", u.LockedUntil)
+	}
+	if resp := h.Anonymous().Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "pass-123456"}); resp.StatusCode != 423 {
+		t.Fatalf("login while locked: expected 423, got %d", resp.StatusCode)
+	}
+
+	if _, err := h.Store.Pool.Exec(ctx, `UPDATE admin_users SET locked_until = now() - interval '1 minute' WHERE id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Store.Q.RecordFailedLogin(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	u, err = h.Store.Q.GetAdmin(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.FailedLogins != 1 || u.LockedUntil != nil {
+		t.Fatalf("first failure after the lockout: failed_logins = %d, locked_until = %v; want 1, nil", u.FailedLogins, u.LockedUntil)
+	}
+	h.Login("root", "pass-123456")
 }
 
 func TestAuditRecordsLogin(t *testing.T) {

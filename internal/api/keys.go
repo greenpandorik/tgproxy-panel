@@ -152,7 +152,10 @@ func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, x
 			out.SubscriptionShortURL = &u
 		}
 	}
-	if withSecret && k.Status != db.KeyStatusRevoked {
+	if p, ok := PrincipalFrom(r.Context()); ok && p.APITokenID != uuid.Nil && !principalCanWrite(r, "users") {
+		out.SubSlug = nil
+	}
+	if withSecret && k.Status != db.KeyStatusRevoked && isWriter(r) {
 		out.Secret, _ = s.keys.Secret(r.Context(), k)
 		out.Links, _ = s.keys.Links(r.Context(), k.ID)
 	}
@@ -258,8 +261,7 @@ func (s *Server) trafficByKey(ctx context.Context, ks []db.AccessKey) map[uuid.U
 }
 
 func isWriter(r *http.Request) bool {
-	p, _ := PrincipalFrom(r.Context())
-	return p.Role == RoleOwner || p.Role == RoleAdmin
+	return principalCanWrite(r, "users")
 }
 
 func (s *Server) keysErr(w http.ResponseWriter, err error) {
@@ -405,13 +407,15 @@ func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("state"); v != "" {
 		state = &v
 	}
-	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
+	p, _ := PrincipalFrom(r.Context())
+	searchSubSlug := p.APITokenID == uuid.Nil || principalCanWrite(r, "users")
+	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{SearchSubSlug: searchSubSlug, Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
 	if err != nil {
 		s.log.Error("list keys", "err", err)
 		internal(w)
 		return
 	}
-	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
+	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{SearchSubSlug: searchSubSlug, Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
 	extras := s.extrasFor(r.Context(), rows)
 	items := make([]keyJSON, 0, len(rows))
 	for _, k := range rows {
@@ -795,18 +799,37 @@ func (s *Server) handleKeyStats(w http.ResponseWriter, r *http.Request) {
 	var connectionsNow int32
 	var octetsDelta int64
 	byNode := map[uuid.UUID]int{}
+	// prev holds the node's last real counter reading; a bucket without one repeats it, so the
+	// chart shows no traffic there and the whole move lands on the next bucket that has a reading.
 	prev := map[uuid.UUID]int64{}
+	hasPrev := map[uuid.UUID]bool{}
+	// Buckets before the node's first reading are filled with that reading once it arrives.
+	leading := map[uuid.UUID]int{}
 	for _, row := range rows {
 		idx, seen := byNode[row.NodeID]
 		if !seen {
 			idx = len(nodes)
 			byNode[row.NodeID] = idx
 			nodes = append(nodes, keyStatsNodeJSON{NodeID: row.NodeID, NodeName: row.NodeName})
-		} else if d := row.TotalOctets - prev[row.NodeID]; d > 0 {
-			octetsDelta += d
 		}
-		prev[row.NodeID] = row.TotalOctets
-		nodes[idx].Points = append(nodes[idx].Points, keyStatsPointJSON{T: row.TakenAt, Connections: row.Connections, TotalOctets: row.TotalOctets})
+		octets := prev[row.NodeID]
+		if row.OctetReadings > 0 {
+			octets = row.TotalOctets
+			if hasPrev[row.NodeID] {
+				if d := octets - prev[row.NodeID]; d > 0 {
+					octetsDelta += d
+				}
+			} else {
+				for i := 0; i < leading[row.NodeID]; i++ {
+					nodes[idx].Points[i].TotalOctets = octets
+				}
+			}
+			prev[row.NodeID] = octets
+			hasPrev[row.NodeID] = true
+		} else if !hasPrev[row.NodeID] {
+			leading[row.NodeID]++
+		}
+		nodes[idx].Points = append(nodes[idx].Points, keyStatsPointJSON{T: row.TakenAt, Connections: row.Connections, TotalOctets: octets})
 	}
 	for i := range nodes {
 		pts := nodes[i].Points

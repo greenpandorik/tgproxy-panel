@@ -214,20 +214,23 @@ func (s *Stats) notify(ctx context.Context, fn func(context.Context)) {
 const offlineNotifyDelay = 3 * time.Minute
 
 func (s *Stats) announceOutages(ctx context.Context, nodes []db.Node) {
-	byID := make(map[uuid.UUID]db.Node, len(nodes))
-	for _, n := range nodes {
-		byID[n.ID] = n
-	}
-	for id, since := range s.pendingOffline {
-		node, ok := byID[id]
-		if !ok || node.Status != db.NodeStatusOffline {
-			delete(s.pendingOffline, id)
+	for _, node := range nodes {
+		if node.Status != db.NodeStatusOffline {
+			delete(s.pendingOffline, node.ID)
 			continue
+		}
+		since, ok := s.pendingOffline[node.ID]
+		if !ok {
+			// The persisted outage incident supplies the original start after a restart.
+			if err := s.st.Pool.QueryRow(ctx, `SELECT min(created_at) FROM alerts WHERE node_id=$1 AND kind='node_offline' AND resolved_at IS NULL`, node.ID).Scan(&since); err != nil {
+				continue
+			}
+			s.pendingOffline[node.ID] = since
 		}
 		if s.clock().Sub(since) < offlineNotifyDelay {
 			continue
 		}
-		delete(s.pendingOffline, id)
+		// Retain eligibility until online: a full queue or failed send retries next sweep.
 		s.notify(ctx, func(ctx context.Context) { s.alerts.NodeOffline(ctx, node) })
 	}
 }
@@ -243,7 +246,13 @@ func (s *Stats) SetOfflineAfterFunc(f func(context.Context) time.Duration) {
 }
 
 // SetAlerts installs the Telegram alert notifier; nil (the default) means no notifications are sent.
-func (s *Stats) SetAlerts(a *Alerts) { s.alerts = a }
+func (s *Stats) SetAlerts(a *Alerts) {
+	s.alerts = a
+	if a != nil {
+		a.pool = s.st.Pool
+		a.now = s.clock
+	}
+}
 
 func (s *Stats) RunOnce(ctx context.Context) error {
 	offlineAfter := s.offlineAfter
@@ -282,6 +291,9 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	for _, n := range nodes {
 		s.collectProbes(ctx, n)
 		if n.Status == db.NodeStatusOffline || n.Status == db.NodeStatusPending {
+			if s.alerts != nil {
+				s.alerts.observeReliability(ctx, n, false, s.clock())
+			}
 			continue
 		}
 		due = append(due, n.ID)
@@ -354,7 +366,8 @@ func (s *Stats) recordPresence(ctx context.Context, due []uuid.UUID, readings []
 // read; it never fails the sweep for others.
 func (s *Stats) collectNode(ctx context.Context, n db.Node) (*nodeReading, bool) {
 	s.collectIncidents(ctx, n)
-	if rows, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && rows > 0 {
+	s.notifyReliability(ctx, n)
+	if _, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && s.alerts != nil && s.driver.Online(n.ID) {
 		// Not on this node's polling budget: sending an alert is not part of reading a node, and
 		// a Telegram call outliving a 30s poll is normal.
 		s.notify(context.WithoutCancel(ctx), func(ctx context.Context) { s.alerts.NodeOnline(ctx, n) })

@@ -7,10 +7,10 @@
 <meta name="google-site-verification" content="7W_vbByQP82tpJH83rRbAkgH6utltVfZGRO__ocN-X4">
 <title>Панель для MTProxy с Fake-TLS и WEB-прокси | TGProxy Panel</title>
 <meta name="description" content="Бесплатная панель для своих Telegram-прокси. Ставится одной командой, выдаёт людям одну ссылку на все серверы, поднимает сайт-прикрытие и следит за серверами.">
-<link rel="canonical" href="https://greenpandorik.github.io/tgproxy-panel/">
-<link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/">
-<link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/">
-<link rel="alternate" hreflang="x-default" href="https://greenpandorik.github.io/tgproxy-panel/en/">
+<link rel="canonical" href="https://tgproxypanel.com/">
+<link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/">
+<link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/">
+<link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/">
 <meta name="theme-color" content="#171b21">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
@@ -18,8 +18,8 @@
 <meta property="og:site_name" content="TGProxy Panel">
 <meta property="og:title" content="Панель для MTProxy с Fake-TLS и WEB-прокси">
 <meta property="og:description" content="Ставится одной командой, выдаёт людям одну ссылку на все серверы, поднимает сайт-прикрытие и следит за серверами. Открытый код.">
-<meta property="og:url" content="https://greenpandorik.github.io/tgproxy-panel/">
-<meta property="og:image" content="https://greenpandorik.github.io/tgproxy-panel/og.png">
+<meta property="og:url" content="https://tgproxypanel.com/">
+<meta property="og:image" content="https://tgproxypanel.com/og.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
@@ -27,22 +27,59 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "TGProxy Panel",
-  "description": "Панель для своих Telegram-прокси: пользователи со ссылками подписки, Fake-TLS и WEB, сайты-прикрытия, мониторинг и обновление серверов.",
-  "applicationCategory": "UtilitiesApplication",
-  "operatingSystem": "Linux",
-  "inLanguage": ["ru", "en"],
-  "url": "https://greenpandorik.github.io/tgproxy-panel/",
-  "downloadUrl": "https://github.com/greenpandorik/tgproxy-panel/releases",
-  "image": "https://greenpandorik.github.io/tgproxy-panel/og.png",
-  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
-  "sameAs": "https://github.com/greenpandorik/tgproxy-panel",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://tgproxypanel.com/#website",
+      "url": "https://tgproxypanel.com/",
+      "name": "TGProxy Panel",
+      "inLanguage": [
+        "ru",
+        "en"
+      ]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://tgproxypanel.com/#page",
+      "url": "https://tgproxypanel.com/",
+      "name": "Панель для MTProxy с Fake-TLS и WEB-прокси | TGProxy Panel",
+      "inLanguage": "ru",
+      "isPartOf": {
+        "@id": "https://tgproxypanel.com/#website"
+      },
+      "mainEntity": {
+        "@id": "https://tgproxypanel.com/#application"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "TGProxy Panel",
+      "description": "Панель для своих Telegram-прокси: пользователи со ссылками подписки, Fake-TLS и WEB, сайты-прикрытия, мониторинг и обновление серверов.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Linux",
+      "inLanguage": [
+        "ru",
+        "en"
+      ],
+      "url": "https://tgproxypanel.com/",
+      "downloadUrl": "https://github.com/greenpandorik/tgproxy-panel/releases",
+      "image": "https://tgproxypanel.com/og.png",
+      "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+      "sameAs": "https://github.com/greenpandorik/tgproxy-panel",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "@id": "https://tgproxypanel.com/#application",
+      "isAccessibleForFree": true,
+      "screenshot": "https://tgproxypanel.com/img/dashboard.png"
+    }
+  ]
 }
 </script>
 <link rel="stylesheet" href="style.css">
-<script defer src="vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="greenpandorik.github.io"></script>
+<script defer src="vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="tgproxypanel.com,www.tgproxypanel.com"></script>
 </head>
 <body>
 
@@ -54,6 +91,8 @@
   <nav class="nav" aria-label="Разделы страницы">
     <a href="#links">Ссылки</a>
     <a href="#install">Установка</a>
+    <a href="#guides">Руководства</a>
+    <a href="/api/">API</a>
     <a href="#faq">Вопросы</a>
     <a class="lang" data-umami-event="language" href="en/" hreflang="en" lang="en">English</a>
     <a class="gh" href="https://github.com/greenpandorik/tgproxy-panel" data-umami-event="github" data-umami-event-place="header">GitHub</a>
@@ -105,7 +144,7 @@
           <div class="link">
             <h3><span class="eye" aria-hidden="true"></span>Fake-TLS</h3>
             <span class="shape mono">https://t.me/proxy?server=…&amp;secret=ee…</span>
-            <p>MTProxy, который снаружи выглядит как обычный заход на сайт: TLS-рукопожатие идёт с доменом вашего сервера, а по этому домену открывается сайт-прикрытие. Такие ссылки понимают все официальные клиенты Telegram.</p>
+            <p>MTProxy, который снаружи выглядит как обычный заход на сайт: Соединение начинается с TLS-подобного рукопожатия с настроенным доменом маскировки. Адрес прокси и его порт указаны в ссылке, а на HTTPS-домене сервера открывается сайт-прикрытие. Такие ссылки понимают все официальные клиенты Telegram.</p>
           </div>
           <div class="link">
             <h3><span class="eye" aria-hidden="true"></span>WEB-прокси</h3>
@@ -181,10 +220,22 @@
         <div><dt>Изменения без обрывов</dt><dd>Новые и отозванные пользователи уходят на сервер через control API telemt без перезапуска, живые сессии сохраняются.</dd></div>
         <div><dt>Запасные домены</dt><dd>Если провайдер перестал пропускать основной домен сервера, пользователю хватит ссылки с запасным доменом. Переустанавливать сервер не нужно.</dd></div>
         <div><dt>Проверки и мониторинг</dt><dd>Главная страница начинается с вердикта: что сломалось и где. Панель проверяет DNS, порты, сертификат и маскировку Fake-TLS, отдаёт метрики Prometheus для готовой панели Grafana и пишет о сбоях в Telegram.</dd></div>
-        <div><dt>Личный и общий доступ</dt><dd>Личный доступ выдаётся одному человеку, общий — группе по одной ссылке с коротким адресом вроде /s/team. Доступ можно поставить на паузу и продлить в пару кликов, а по истечении срока он снимается с серверов, пока его не продлят.</dd></div>
+        <div><dt>Личный и общий доступ</dt><dd>Личный доступ выдаётся одному человеку, общий — группе по одной ссылке с коротким адресом вроде /s/team. Доступ можно поставить на паузу и продлить в пару кликов, а по истечении срока пользоваться им можно после продления.</dd></div>
         <div><dt>Защита панели</dt><dd>Двухфакторный вход с кодами восстановления, журнал действий, ночные резервные копии базы и ротация мастер-ключа.</dd></div>
         <div><dt>Русский и английский</dt><dd>Интерфейс и документация на двух языках, язык переключается в один клик.</dd></div>
       </dl>
+    </div>
+  </section>
+
+  <section id="guides">
+    <div class="wrap">
+      <h2>Разобраться и настроить</h2>
+      <p class="mute prose intro">TGProxy Panel — открытая панель для администратора собственных Telegram-прокси. Она управляет доступом и настройками, а пользовательский трафик идёт через прокси-серверы. Для установки нужны свои VPS и домены.</p>
+      <div class="guide-links">
+        <a href="/guides/install-telemt/"><h3>Установка панели и telemt</h3><p>Два сервера, DNS, порты, первый пользователь и проверка подключения.</p></a>
+        <a href="/guides/mtproxy-faketls-web/"><h3>MTProxy, Fake-TLS и WEB</h3><p>Чем отличаются протоколы, как выбрать ссылку и зачем нужны запасные домены.</p></a>
+        <a href="/api/"><h3>API для скриптов и интеграций</h3><p>Персональные токены, права, примеры curl и Python и спецификация OpenAPI.</p></a>
+      </div>
     </div>
   </section>
 
@@ -194,7 +245,7 @@
       <div class="faq prose">
         <details>
           <summary>Чем Fake-TLS отличается от обычного MTProxy?</summary>
-          <p>Обычный MTProxy шифрует трафик, но само соединение не похоже ни на что привычное. Fake-TLS начинает его с TLS-рукопожатия с доменом вашего сервера, поэтому снаружи подключение выглядит как заход на сайт. На этом домене действительно открывается сайт-прикрытие.</p>
+          <p>Обычный MTProxy шифрует трафик, но само соединение не похоже ни на что привычное. Fake-TLS начинает соединение с TLS-подобного рукопожатия и настроенного домена маскировки. Telegram подключается к адресу и порту прокси из ссылки. Обычный браузер на HTTPS-домене сервера видит сайт-прикрытие.</p>
         </details>
         <details>
           <summary>Что такое WEB-прокси в Telegram?</summary>
@@ -225,6 +276,7 @@
   <div class="wrap">
     <span>TGProxy Panel, открытый проект под лицензией AGPL-3.0</span>
     <nav aria-label="Ссылки проекта">
+      <a href="/api/">API</a>
       <a href="https://github.com/greenpandorik/tgproxy-panel" data-umami-event="github" data-umami-event-place="footer">GitHub</a>
       <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md" data-umami-event="setup-guide" data-umami-event-place="footer">Инструкция</a>
       <a href="https://github.com/greenpandorik/tgproxy-panel/releases" data-umami-event="releases">Релизы</a>

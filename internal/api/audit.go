@@ -14,6 +14,14 @@ func (s *Server) Audit(ctx context.Context, action, targetType, targetID string,
 	if meta == nil {
 		meta = map[string]any{}
 	}
+	if p, ok := PrincipalFrom(ctx); ok && p.APITokenID != uuid.Nil {
+		copied := make(map[string]any, len(meta)+1)
+		for k, v := range meta {
+			copied[k] = v
+		}
+		copied["api_token_id"] = p.APITokenID.String()
+		meta = copied
+	}
 	raw, _ := json.Marshal(meta)
 	var uid uuid.NullUUID
 	if p, ok := PrincipalFrom(ctx); ok {

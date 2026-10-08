@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"io"
+	"slices"
 	"testing"
 	"time"
 
@@ -71,6 +72,45 @@ func TestKeyStatsSeriesAndTotals(t *testing.T) {
 	}
 	if got.Totals.ConnectionsNow != 4 || got.Totals.OctetsDelta != 900 {
 		t.Fatalf("totals: %+v", got.Totals)
+	}
+}
+
+func TestKeyStatsBucketsWithoutCounterReading(t *testing.T) {
+	h, c, n := ownerWithNode(t)
+	k := keyOnNode(t, c, n.ID)
+	now := time.Now().UTC()
+	seedNoCounter := func(at time.Time) {
+		t.Helper()
+		if _, err := h.Store.Pool.Exec(context.Background(),
+			`INSERT INTO key_stats_snapshots (access_key_id, node_id, taken_at, connections, total_octets, active_ips)
+			 VALUES ($1, $2, $3, 2, NULL, 1)`, k.ID, n.ID, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	seedNoCounter(now.Add(-3 * time.Hour))
+	seedKeyStats(t, h, k.ID, n.ID, now.Add(-2*time.Hour), 1, 100)
+	seedNoCounter(now.Add(-90 * time.Minute))
+	seedKeyStats(t, h, k.ID, n.ID, now.Add(-1*time.Hour), 4, 300)
+
+	resp := c.Get("/api/v1/keys/" + k.ID.String() + "/stats")
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("stats %d %s", resp.StatusCode, b)
+	}
+	var got keyStatsResp
+	c.JSON(resp, &got)
+	if len(got.Nodes) != 1 {
+		t.Fatalf("nodes: %+v", got.Nodes)
+	}
+	var octets []int64
+	for _, p := range got.Nodes[0].Points {
+		octets = append(octets, p.TotalOctets)
+	}
+	if want := []int64{100, 100, 100, 300}; !slices.Equal(octets, want) {
+		t.Fatalf("total_octets per point = %v, want %v", octets, want)
+	}
+	if got.Totals.OctetsDelta != 200 {
+		t.Fatalf("octets_delta = %d, want 200", got.Totals.OctetsDelta)
 	}
 }
 

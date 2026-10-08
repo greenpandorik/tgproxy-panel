@@ -100,8 +100,16 @@ WHERE id = $1;
 -- name: SetNodeStatus :exec
 UPDATE nodes SET status = $2 WHERE id = $1;
 
+-- MarkStaleNodesOffline also returns offline nodes without an open node_offline alert: a closed
+-- agent stream marks its node offline at once, and without this such an outage never raised an
+-- alert because the node was no longer online or degraded by the time it went stale.
 -- name: MarkStaleNodesOffline :many
-UPDATE nodes SET status = 'offline' WHERE status IN ('online','degraded') AND last_seen_at < $1 RETURNING id;
+UPDATE nodes SET status = 'offline'
+WHERE last_seen_at < $1
+  AND (status IN ('online','degraded')
+    OR (status = 'offline' AND NOT EXISTS (
+      SELECT 1 FROM alerts a WHERE a.node_id = nodes.id AND a.kind = 'node_offline' AND a.resolved_at IS NULL)))
+RETURNING id;
 
 -- SetNodeDirty bumps dirty_seq whenever it marks a node dirty. An in-flight apply carries
 -- the dirty_seq it snapshotted, so any mutation that lands while it runs makes the apply's

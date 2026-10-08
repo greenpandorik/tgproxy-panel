@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src https://gateway.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="google-site-verification" content="7W_vbByQP82tpJH83rRbAkgH6utltVfZGRO__ocN-X4">
+<title>MTProxy, Fake-TLS и WEB-прокси: различия и выбор для Telegram | TGProxy Panel</title>
+<meta name="description" content="Сравнение MTProxy, Fake-TLS и WEB: ссылки Telegram, порты, домены маскировки, совместимость клиентов и управление через telemt и TGProxy Panel.">
+<link rel="canonical" href="https://tgproxypanel.com/guides/mtproxy-faketls-web/">
+<link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/guides/mtproxy-faketls-web/">
+<link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/">
+<link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#171b21">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:site_name" content="TGProxy Panel">
+<meta property="og:title" content="MTProxy, Fake-TLS и WEB-прокси: различия и выбор для Telegram">
+<meta property="og:description" content="Сравнение MTProxy, Fake-TLS и WEB: ссылки Telegram, порты, домены маскировки, совместимость клиентов и управление через telemt и TGProxy Panel.">
+<meta property="og:url" content="https://tgproxypanel.com/guides/mtproxy-faketls-web/">
+<meta property="og:image" content="https://tgproxypanel.com/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://tgproxypanel.com/guides/mtproxy-faketls-web/#article",
+      "headline": "MTProxy, Fake-TLS и WEB-прокси: различия и выбор для Telegram",
+      "description": "Сравнение MTProxy, Fake-TLS и WEB: ссылки Telegram, порты, домены маскировки, совместимость клиентов и управление через telemt и TGProxy Panel.",
+      "url": "https://tgproxypanel.com/guides/mtproxy-faketls-web/",
+      "mainEntityOfPage": "https://tgproxypanel.com/guides/mtproxy-faketls-web/",
+      "inLanguage": "ru",
+      "dateModified": "2026-10-08",
+      "isAccessibleForFree": true,
+      "isPartOf": {
+        "@id": "https://tgproxypanel.com/#website"
+      },
+      "about": {
+        "@id": "https://tgproxypanel.com/#application"
+      },
+      "image": "https://tgproxypanel.com/og.png"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "TGProxy Panel",
+          "item": "https://tgproxypanel.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "MTProxy, Fake-TLS и WEB",
+          "item": "https://tgproxypanel.com/guides/mtproxy-faketls-web/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script defer src="/vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="tgproxypanel.com,www.tgproxypanel.com"></script>
+</head>
+<body>
+<a class="skip-link" href="#article">К содержанию</a>
+<header class="wrap top">
+<a class="brand" href="/" aria-label="TGProxy Panel, на главную">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/></svg>
+    TGProxy Panel
+  </a>
+<nav class="nav" aria-label="Навигация сайта">
+<a href="/#guides">Руководства</a>
+<a href="/api/">API</a>
+<a class="lang" href="/en/guides/mtproxy-faketls-web/" hreflang="en" lang="en">English</a>
+<a class="gh" href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
+</nav>
+</header>
+<main class="wrap guide" id="article">
+<nav class="breadcrumbs" aria-label="Путь страницы"><a href="/">Главная</a><span aria-hidden="true">/</span><span>MTProxy, Fake-TLS и WEB</span></nav>
+<div class="guide-header"><h1>MTProxy, Fake-TLS и WEB-прокси: различия и выбор для Telegram</h1><p class="lead">Сравнение MTProxy, Fake-TLS и WEB: ссылки Telegram, порты, домены маскировки, совместимость клиентов и управление через telemt и TGProxy Panel.</p><p class="updated">Обновлено 8 октября 2026 · Документация открытого проекта</p></div>
+<div class="guide-layout">
+<nav class="toc" aria-label="Содержание"><p>Содержание</p><a href="#comparison">Различия</a><a href="#faketls">Fake-TLS</a><a href="#web">WEB-прокси</a><a href="#choice">Выбор ссылки</a><a href="#management">Панель и telemt</a></nav>
+<article class="guide-body" aria-label="MTProxy, Fake-TLS и WEB-прокси: различия и выбор для Telegram">
+<p>MTProxy — прокси-протокол для Telegram. Fake-TLS добавляет к MTProxy TLS-подобное начало соединения. WEB-прокси использует отдельный HTTPS-транспорт со ссылкой <code>t.me/webproxy</code>. TGProxy Panel управляет серверами и пользовательскими секретами, а telemt обслуживает подключения.</p>
+<section id="comparison"><h2>Различия на практике</h2>
+<div class="table-scroll" role="region" aria-label="Сравнение протоколов Telegram" tabindex="0"><table><thead><tr><th>Критерий</th><th>MTProxy</th><th>Fake-TLS</th><th>WEB</th></tr></thead><tbody>
+<tr><th>Начало соединения</th><td>Обфусцированный транспорт MTProxy</td><td>TLS-подобное рукопожатие, затем MTProxy</td><td>HTTPS и WEB-транспорт</td></tr>
+<tr><th>Ссылка</th><td><code>t.me/proxy</code></td><td><code>t.me/proxy</code> с секретом <code>ee…</code></td><td><code>t.me/webproxy</code></td></tr>
+<tr><th>Подключение</th><td>Адрес и порт из ссылки</td><td>Адрес и порт из ссылки; у панели по умолчанию 8443</td><td>HTTPS-домен, обычно порт 443</td></tr>
+<tr><th>Выбор в панели</th><td>Базовый протокол; для tproxy-server панель выдаёт только WEB-ссылки</td><td>Ссылки для пользователей telemt</td><td>Ссылки для telemt и tproxy-server</td></tr>
+</tbody></table></div>
+<p>Поддержка WEB зависит от версии и платформы клиента Telegram. Документация проекта указывает Telegram Desktop как основной вариант, Android — как экспериментальный. Проверяйте свой клиент и сохраняйте Fake-TLS как запасной способ подключения. Поддержка клиента может меняться со временем.</p></section>
+<section id="faketls"><h2>Как работает Fake-TLS</h2>
+<p>Telegram использует адрес прокси, порт и секрет из ссылки. Начало подключения имитирует TLS-рукопожатие и содержит настроенный домен маскировки. Он может отличаться от адреса самого прокси: это отдельные параметры, а не требование указать одно и то же имя везде.</p>
+<p>Панель также устанавливает сайт-прикрытие на HTTPS-домене сервера. Поэтому обычный браузер открывает сайт, а Telegram использует свой прокси-транспорт. Маскировка не гарантирует доступность у всех провайдеров: могут быть заблокированы IP, домен, порт или маршрут к Telegram.</p></section>
+<section id="web"><h2>Как работает WEB-прокси</h2>
+<p>WEB подключается к HTTPS-домену сервера. В зависимости от движка и конфигурации используются HTTPS, HTTPS lanes, WebSocket или WebSocket lanes. При автоматическом выборе движок ищет подходящий транспорт; фиксированная настройка может ограничивать выбор.</p>
+<p>WEB-ссылка и Fake-TLS-ссылка — разные способы подключения. Не меняйте вручную префиксы секретов: возьмите готовую ссылку из панели или со страницы подписки. Рабочий сайт и корректный сертификат сами по себе не доказывают, что прокси сможет доставить запрос до Telegram.</p></section>
+<section id="choice"><h2>Какую ссылку отправить пользователю</h2>
+<p>Отправьте одну ссылку подписки. Страница предложит варианты для устройства и покажет все прямые ссылки с QR-кодами. Для первого теста используйте Fake-TLS; если клиент поддерживает WEB, сравните его работу в той же сети. При проблемах полезно повторить тест через другую сеть.</p>
+<p>Запасные домены маскировки дают дополнительные Fake-TLS-ссылки. Они могут помочь при ограничениях на основное имя, но не заменяют резервный сервер и не устраняют недоступность Telegram со стороны хостинга.</p></section>
+<section id="management"><h2>Зачем нужна панель поверх telemt</h2>
+<p>telemt — движок прокси. TGProxy Panel — интерфейс для управления парком серверов: пользователи и секреты, подписки, квоты, сайты-прикрытия, проверки, статистика и обновления. Панель передаёт настройки агентам и control API движка; она не принимает пользовательский прокси-трафик.</p>
+<p>Панель бесплатна и открыта под AGPL-3.0. Она рассчитана на собственные VPS и домены. Для развёртывания начните с <a href="/guides/install-telemt/">руководства по установке</a>. Совместимость и детали конфигурации проверяйте в <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/reference.ru.md">справочнике проекта</a> и <a href="https://github.com/telemt/telemt">репозитории telemt</a>.</p></section>
+<p>Для автоматизации пользователей и серверов используйте <a href="/api/">API управления</a>: персональные токены, права доступа и готовые примеры.</p>
+</article>
+</div>
+</main>
+<footer><div class="wrap"><span>TGProxy Panel · AGPL-3.0</span><nav aria-label="Ссылки проекта"><a href="/">Главная</a><a href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a><a href="/api/">API</a><a href="https://github.com/greenpandorik/tgproxy-panel/releases">Релизы</a><a href="https://github.com/greenpandorik/tgproxy-panel/discussions">Обсуждения</a></nav></div></footer>
+<script defer src="/copy.js"></script>
+</body>
+</html>

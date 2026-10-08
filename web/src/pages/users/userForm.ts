@@ -44,6 +44,7 @@ export const userSchema = z
       rate_down_mbit: z.string(),
       max_unique_ips: z.string(),
       max_tcp_conns: z.string(),
+      quota_period: z.enum(['', 'week', 'month']),
     }),
   })
   .superRefine((val, ctx) => {
