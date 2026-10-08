@@ -1,0 +1,7 @@
+# Disposable real-engine bench; bind separately from the development panel on :8080.
+services:
+  panel:
+    ports: ["127.0.0.1:${E2E_PANEL_PORT:-18080}:8080"]
+  fakenode-telemt:
+    ports:
+      - "127.0.0.1:${E2E_TLS_PORT:-18443}:8443"

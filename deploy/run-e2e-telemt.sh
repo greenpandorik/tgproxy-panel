@@ -9,16 +9,24 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-PANEL_URL="${PANEL_URL:-http://localhost:8080}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-tgwp-e2e-telemt-$$}"
+export COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml:$SCRIPT_DIR/docker-compose.e2e-telemt.yml"
+export E2E_STATE_FILE="${E2E_STATE_FILE:-$(mktemp -t tgwp-e2e-telemt-state.XXXXXX)}"
+PANEL_URL="${PANEL_URL:-http://localhost:${E2E_PANEL_PORT:-18080}}"
 ADMIN_USER="${ADMIN_USER:-root}"
 ADMIN_PASS="${ADMIN_PASS:-change-me-now-1}"
-COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.override.example.yml)
+COMPOSE=(docker compose)
 
 log() { echo "[run-e2e-telemt] $*"; }
 
 cleanup() {
+	if [[ "${E2E_KEEP_STACK:-0}" == "1" ]]; then
+		log "keeping disposable project $COMPOSE_PROJECT_NAME for inspection (E2E_KEEP_STACK=1)"
+		return
+	fi
 	log "tearing down (docker compose down -v)"
 	"${COMPOSE[@]}" --profile dev-telemt down -v || true
+	rm -f "$E2E_STATE_FILE"
 }
 trap cleanup EXIT
 
