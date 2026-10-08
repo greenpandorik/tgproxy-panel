@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/net/proxy"
 
 	"tgwebproxy/internal/reliability"
+	"tgwebproxy/internal/telemt"
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
 
@@ -259,7 +261,19 @@ func (h *Handler) recoveryTick(ctx context.Context) {
 		return
 	}
 	ready, re := h.tm.Ready(ctx)
-	badService := re != nil || !ready.Ready
+	if ctx.Err() != nil || (re == nil && !ready.Ready && ready.Reason == "admission_closed") {
+		return
+	}
+	// A valid unready response means the control API is working. In telemt it
+	// describes an admission pause or unavailable upstreams, neither of which a
+	// process restart repairs. Unknown future readiness reasons stay observable
+	// without authorizing a restart. Route failures can still use failover below.
+	badService := re != nil
+	var apiErr *telemt.APIError
+	if errors.As(re, &apiErr) && apiErr.Status < http.StatusInternalServerError {
+		// Restarting cannot repair credentials, unsupported endpoints or rate limits.
+		badService = false
+	}
 	routeBad := false
 	if p.AutomaticFailover {
 		st, e := h.tm.UpstreamsStats(ctx)

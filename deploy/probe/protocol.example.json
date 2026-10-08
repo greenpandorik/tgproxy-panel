@@ -1,0 +1,14 @@
+{
+  "timeout_seconds": 15,
+  "dc": 2,
+  "faketls": {
+    "secret": "replace-with-32-hex-character-test-user-secret",
+    "sni": "cover.example.com",
+    "port": 443
+  },
+  "web": {
+    "secret": "replace-with-plain-or-dd-test-user-secret",
+    "port": 443,
+    "base_path": ""
+  }
+}

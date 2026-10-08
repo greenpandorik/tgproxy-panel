@@ -75,6 +75,12 @@ seconds (45 by default) a background task sends the full configuration to each m
 Both intervals can also be changed without a restart under Settings → Notifications.
 "Apply changes" on the server page sends the changes at once.
 
+The panel applies background changes to at most four servers at once. Failed attempts retry
+with randomized delays from 45 seconds up to 15 minutes. A new configuration revision does not
+inherit an older revision's retry delay, so new changes, including access revocation, can start
+at the next opportunity. Manual applies run immediately; other servers wait in the background
+queue.
+
 On a telemt server the agent applies the changes through telemt's control API, and connected
 users stay connected. On a tproxy server the agent rewrites the relay's files and restarts it,
 which drops live connections; Telegram clients reconnect by themselves. A new user starts
@@ -491,6 +497,13 @@ tproxy servers; telemt takes only the session and stream limits from them. On tp
 user also has a carrier mode: HTTPS (the default), HTTPS lanes, WebSocket or WebSocket lanes. On
 telemt the WEB carrier is chosen automatically for each connection.
 
+A quota can reset on a schedule: "Quota resets" is "Never", "Every week" or "Every month". A week
+starts on Monday and a month on the 1st, both at 00:00 UTC. When a period starts the panel sends
+the servers a new apply, and the agent zeroes the user's consumed traffic once; the quota itself
+stays the same. If the panel or the server was down when the period changed, the reset happens
+on the first apply after that. Turning the schedule on in the middle of a period does not zero
+the quota: the first reset comes at the start of the next period.
+
 On telemt servers the panel also counts traffic per user. The user window shows the traffic
 over 30 days and whether the person is online, from about how many devices (distinct IP
 addresses across all servers) and over how many connections, or when they last connected.
@@ -653,8 +666,9 @@ The panel also runs this check by itself, at most once every 15 minutes per onli
 
 A check from the panel's own network does not show how the server is seen from other networks.
 For that there is `tgwp-probe`, a small program you run in other networks on a timer. It makes
-a real TLS handshake with the server and opens the cover site, and it can call your own adapter
-to test Fake-TLS and WEB with a real client. Results appear under "External network checks" in
+a real TLS handshake with the server and opens the cover site. With a private test-secret
+configuration it also performs authenticated Fake-TLS and WEB exchanges with Telegram; a custom
+client adapter remains supported. Results appear under "External network checks" in
 the "Server checks" row. A report older than three minutes counts as missing and opens an incident.
 
 It is turned on with `PROBE_TOKEN` and `PROBE_LOCATIONS` in the panel's `.env`. The systemd
@@ -683,22 +697,21 @@ Settings → Notifications: enter the bot token and the chat ID, turn on "Enable
 "Send test message" works before saving: it uses what the form holds, and the stored values for
 empty fields. The token is stored encrypted and never sent back to the browser.
 
-The panel then writes to the chat when a server goes offline and comes back, when an apply
-fails, and when an incident on a server opens and closes. A message names the problem, explains it
-in a sentence, shows the current value where it helps (for example "Connections now: 2 of 3" for a
-Telegram datacentre) and links to the server page, the "Server checks" row for scheduled checks. It is
-written in the "Notification language" chosen under Settings → Notifications, Russian by default. The webhook
-receives the same text without formatting. To keep the chat readable:
+Server health notifications combine datacenter, route and scheduled-check findings into one
+problem episode per server. A problem must persist for 5 minutes before one warning is sent.
+Recovery is sent only after 10 minutes of continuously healthy observations. Missing or stale
+observations do not prove recovery and interrupt the confirmation period. Details remain in
+the server's Health tab; a failing Middle Proxy writer alone does not prove that Telegram is
+unavailable, because direct routing may still work.
 
-- a server is reported offline only after it stays silent for 3 more minutes once marked offline;
-  one that comes back sooner sends nothing;
-- a problem checked every minute (disk, memory, engine, reliability) opens after 3 failed checks in
-  a row and closes after 3 good ones; the scheduled server check needs 2 failed runs in a row;
-- counters kept since telemt started (TLS handshake failures, WEB rejections) send a message only
-  when they grew by at least 50 between two scheduled checks, and never a "resolved" one;
-- the same problem on the same server is sent at most once per 15 minutes for offline, per hour for
-  a failed apply and per 3 hours for anything else;
-- "resolved" only follows a problem message that went out.
+The panel stores notification state in PostgreSQL, so restarting it does not start the same
+notification episode again. Telegram and webhook delivery are acknowledged separately; failed
+attempts are retried. Brief server outages under 3 minutes stay silent. Longer outages have a
+separate offline/recovery notification. Failed applies are reported at most once per hour.
+
+Detailed health findings still use their own confirmation rules (normally three bad or three
+good observations, and two runs for scheduled checks); these remain visible in the panel
+without producing a separate chat message for each datacenter.
 
 If messages don't arrive, see [Telegram alerts do not arrive](runbook.md#telegram-alerts-do-not-arrive).
 
@@ -935,7 +948,7 @@ The panel reads its settings from `.env`. The file `.env.example` lists them all
 | `NODE_DRIVER` | `gateway` | `gateway` for real servers, `mock` for demos and tests |
 | `METRICS_TOKEN` | none | Protects `/metrics`. Required with `gateway` |
 | `TPROXY_COMMIT` | `52a5feb7fac38f68da5afef9cedd9b3bfc8473ca` | The `tproxy-server` commit for new tproxy servers, 7 to 40 lowercase hex characters |
-| `TELEMT_VERSION` | `3.5.9` | The telemt release for telemt servers, like `3.5.7` |
+| `TELEMT_VERSION` | `3.5.14` | The telemt release for telemt servers, like `3.5.7` |
 | `TELEMT_SHA256_X86_64` | none, filled in `.env.example` | sha256 of `telemt-x86_64-linux-gnu.tar.gz` for that release. Required with `gateway`. Change it together with `TELEMT_VERSION` |
 | `FEATURE_TOTP` | `true` | `false` hides two-factor login |
 | `TRUST_FORWARDED_FOR` | `true` | Take the visitor's IP from `X-Forwarded-For`. Right when Caddy sits in front, since it rewrites the header. Local mode without Caddy sets `false`, otherwise the login attempt limit could be bypassed with a forged header |
@@ -1050,6 +1063,12 @@ network, usually from the systemd timer in `deploy/probe`:
 TGWP_PROBE_TOKEN=<PROBE_TOKEN> tgwp-probe --panel https://panel.example.com \
   --host proxy1.example.com --node <server UUID> --location isp-a
 ```
+
+`--protocol-config /path/to/private.json` enables the built-in authenticated Fake-TLS and WEB
+checks: a successful result requires a Telegram `resPQ` response matching the request nonce.
+Keep the proxy test secret in a private file, not in arguments. See
+[Authenticated probes](authenticated-probes.md) for the configuration and systemd setup.
+Without configured credentials, authenticated checks remain `not_run`.
 
 `--client-check /absolute/path` adds your own adapter that tests Fake-TLS and WEB with a real
 client. It gets the domain on standard input and has 45 seconds to print up to 4096 bytes of

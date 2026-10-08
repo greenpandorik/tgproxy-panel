@@ -33,7 +33,14 @@ function limitsSummary(limits: Profile['limits'] | LiveProfile['limits'], t: TFu
 function telemtLimitsSummary(limits: TelemtLimits | undefined, t: TFunction): string {
   if (!limits) return DASH;
   const parts: string[] = [];
-  if (limits.data_quota_bytes) parts.push(t('nodes.limit_quota', { value: formatBytes(limits.data_quota_bytes) }));
+  if (limits.data_quota_bytes) {
+    const value = formatBytes(limits.data_quota_bytes);
+    parts.push(
+      limits.data_quota_period
+        ? t(`nodes.limit_quota_${limits.data_quota_period}`, { value })
+        : t('nodes.limit_quota', { value }),
+    );
+  }
   if (limits.rate_limit_up_bps) parts.push(t('nodes.limit_rate_up', { value: bpsToMbit(limits.rate_limit_up_bps) }));
   if (limits.rate_limit_down_bps) parts.push(t('nodes.limit_rate_down', { value: bpsToMbit(limits.rate_limit_down_bps) }));
   if (limits.max_unique_ips) parts.push(t('nodes.limit_ips', { count: limits.max_unique_ips }));

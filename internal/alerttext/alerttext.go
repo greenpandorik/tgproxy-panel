@@ -211,3 +211,12 @@ func (m Message) withName(name string) Message {
 func (c *Catalog) T(l Lang, key string, vars map[string]string) string {
 	return c.text(l, key, vars)
 }
+
+// Reliability summarizes one server episode; individual findings remain in the panel.
+func (c *Catalog) Reliability(l Lang, n Node, recovered bool, panelURL string) Message {
+	title, body, icon := "notify.reliability_title", "notify.reliability_body", "⚠️ "
+	if recovered {
+		title, body, icon = "notify.reliability_recovered_title", "notify.reliability_recovered_body", "✅ "
+	}
+	return message([]string{icon + c.htmlText(l, title, map[string]string{"name": "\x00"}), c.htmlText(l, body, nil), c.link(l, panelURL, n.ID, "")}).withName(n.Name)
+}

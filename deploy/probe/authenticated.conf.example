@@ -1,0 +1,5 @@
+# /etc/systemd/system/tgwp-probe@<name>.service.d/authenticated.conf
+# systemd copies the root-owned 0600 file into this DynamicUser's credentials directory.
+[Service]
+LoadCredential=protocol-config:/etc/tgwp-probe/%i.json
+Environment=TGWP_PROBE_CONFIG=%d/protocol-config
