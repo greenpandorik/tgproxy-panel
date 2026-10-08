@@ -45,6 +45,11 @@ class APIDocsTest(unittest.TestCase):
         self.assertIn("Owner only", route_rows(doc, "en"))
         self.assertIn("Только владелец", route_rows(doc, "ru"))
 
+    def test_russian_operations_are_translated(self):
+        self.doc["paths"]["/api/v1/nodes/{id}"]["get"]["summary"] = "Get node"
+        self.assertNotIn("Get node", route_rows(self.doc, "ru"))
+        self.assertIn("Get node", route_rows(self.doc, "en"))
+
 
 if __name__ == "__main__":
     unittest.main()

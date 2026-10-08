@@ -13,6 +13,7 @@ on:
       - scripts/build-site.sh
       - scripts/check-site.py
       - scripts/render_api_docs.py
+      - scripts/api_route_labels_ru.json
       - docs/api/openapi.json
   workflow_dispatch:
 

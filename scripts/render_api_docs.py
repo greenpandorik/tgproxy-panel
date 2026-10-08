@@ -12,6 +12,7 @@ RESOURCES = {
     "nodes": "Серверы", "users": "Пользователи", "monitoring": "Мониторинг",
     "sites": "Сайты", "branding": "Оформление", "settings": "Настройки", "audit": "Аудит",
 }
+RU_LABELS = json.loads(Path(__file__).with_name("api_route_labels_ru.json").read_text())
 
 
 def route_rows(doc, lang):
@@ -30,7 +31,10 @@ def route_rows(doc, lang):
             row = f'<tr><td><code>{method.upper()}</code></td><td><code>{html.escape(path)}</code></td><td><code>{html.escape(scope)}</code>'
             if owner:
                 row += f'<br><span>{owner}</span>'
-            row += f'</td><td>{html.escape(operation["summary"])}</td></tr>'
+            summary = operation["summary"]
+            if lang == "ru":
+                summary = RU_LABELS.get(summary, summary)
+            row += f'</td><td>{html.escape(summary)}</td></tr>'
             grouped.setdefault(resource, []).append(row)
     sections = []
     for resource in RESOURCES:
@@ -56,6 +60,15 @@ def replace_catalog(source, doc, lang):
 
 def render(root):
     doc = json.loads((root / "api/openapi.json").read_text())
+    summaries = {
+        operation["summary"]
+        for item in doc["paths"].values()
+        for method, operation in item.items()
+        if method in ("get", "post", "put", "patch", "delete", "head", "options")
+    }
+    missing = summaries - RU_LABELS.keys()
+    if missing:
+        raise ValueError("missing Russian operation labels: " + ", ".join(sorted(missing)))
     for lang, rel in (("ru", "api/index.html"), ("en", "en/api/index.html")):
         path = root / rel
         path.write_text(replace_catalog(path.read_text(), doc, lang))
