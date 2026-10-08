@@ -252,7 +252,7 @@ func openAPIParameters(route APIRoute) []any {
 		query("action", apiString(), "Action prefix.")
 		query("user", apiString(), "Exact administrator username.")
 	}
-	if path == "/audit" || strings.HasPrefix(path, "/monitoring/") && !strings.HasSuffix(path, "/carriers") || strings.HasSuffix(path, "/stats") && strings.HasPrefix(path, "/keys/") {
+	if path == "/audit" || strings.HasPrefix(path, "/monitoring/") || path == "/nodes/{id}/web/carriers" || strings.HasSuffix(path, "/stats") && strings.HasPrefix(path, "/keys/") {
 		query("from", apiSchema{"type": "string", "format": "date-time"}, "Range start in RFC3339; monitoring defaults to 24 hours ago, at most 31 days.")
 		query("to", apiSchema{"type": "string", "format": "date-time"}, "Range end in RFC3339; monitoring defaults to now.")
 	}

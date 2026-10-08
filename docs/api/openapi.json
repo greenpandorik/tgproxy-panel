@@ -6281,6 +6281,26 @@
       "get": {
         "description": "Requires scope `monitoring:read` and the current account role allowed by this endpoint. Write scopes do not imply read scopes.",
         "operationId": "get_api_v1_monitoring_web_carriers",
+        "parameters": [
+          {
+            "description": "Range start in RFC3339; monitoring defaults to 24 hours ago, at most 31 days.",
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Range end in RFC3339; monitoring defaults to now.",
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -10975,6 +10995,24 @@
             "required": true,
             "schema": {
               "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Range start in RFC3339; monitoring defaults to 24 hours ago, at most 31 days.",
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Range end in RFC3339; monitoring defaults to now.",
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "format": "date-time",
               "type": "string"
             }
           }
