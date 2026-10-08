@@ -169,6 +169,23 @@ describe('UsersPage pagination', () => {
     await waitFor(() => expect(api.lists().at(-1)?.has('node')).toBe(false));
   });
 
+  it('keeps the selection across pages but drops it when the filter changes', async () => {
+    mockApi([user('u-1', 'Ольга К.')], 132);
+    renderPage();
+
+    const row = (await screen.findAllByText('Ольга К.'))[0].closest('tr') as HTMLElement;
+    await userEvent.click(within(row).getByRole('checkbox'));
+    expect(screen.getByText('Выбрано: 1')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Страница 2' }));
+    await waitFor(() => expect(where().get('page')).toBe('2'));
+    expect(screen.getByText('Выбрано: 1')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /^Выключены/ }));
+    await waitFor(() => expect(where().get('state')).toBe('disabled'));
+    expect(screen.queryByText('Выбрано: 1')).toBeNull();
+  });
+
   it('opens a user from anywhere on the row but not from the checkbox', async () => {
     mockApi([user('u-1', 'Ольга К.')]);
     renderPage();

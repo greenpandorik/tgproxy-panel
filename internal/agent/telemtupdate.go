@@ -269,13 +269,16 @@ func (h *Handler) runTelemtUpdate(ctx context.Context, u *telemtUpdate, req *age
 	plan.preserveClosed = journal.HadWeb && !journal.AdmissionOpen
 	defer func() {
 		state := u.snapshot()
-		if state.Outcome == UpdateOutcomeUpdated || state.Outcome == UpdateOutcomeRolledBack {
-			journal.Active = false
-			journal.Outcome = state.Outcome
-			journal.Error = state.Error
-			if e := h.writeUpdateJournal(journal); e != nil {
-				h.log.Error("finalize update journal", "err", e)
-			}
+		checkCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		if !h.updateSettled(checkCtx, journal, state.Outcome) {
+			return
+		}
+		journal.Active = false
+		journal.Outcome = state.Outcome
+		journal.Error = state.Error
+		if e := h.writeUpdateJournal(journal); e != nil {
+			h.log.Error("finalize update journal", "err", e)
 		}
 	}()
 	if err := h.updatePause(ctx, u, plan); err != nil {
@@ -402,6 +405,32 @@ func (h *Handler) stageTelemtBinary(ctx context.Context, req *agentv1.UpdateTele
 		return "", err
 	}
 	return staged, nil
+}
+
+// updateSettled reports whether a finished update leaves nothing for recoverUpdate to undo, so
+// its journal can be closed. An active journal blocks every apply until the agent restarts, and
+// on restart puts the saved binary back, so it must stay active only when the node really is
+// half-updated. A failed run counts as settled only once the binary on disk is verified to be
+// the saved one and WEB admission is back where the update found it.
+func (h *Handler) updateSettled(ctx context.Context, j updateJournal, outcome string) bool {
+	switch outcome {
+	case UpdateOutcomeUpdated, UpdateOutcomeRolledBack:
+		return true
+	case UpdateOutcomeAdmissionClosed:
+		// The new binary passed verification: rolling it back on restart would undo a good update.
+		return true
+	case UpdateOutcomeFailed:
+		if _, err := verifiedFile(h.cfg.TelemtBin, j.BinarySHA); err != nil {
+			return false
+		}
+		if !j.HadWeb {
+			return true
+		}
+		st, err := h.tm.WebStatus(ctx)
+		return err == nil && st.OperatorLifecycle != nil && st.OperatorLifecycle.AdmissionOpen == j.AdmissionOpen
+	default:
+		return false
+	}
 }
 
 func (h *Handler) updatePause(ctx context.Context, u *telemtUpdate, plan updatePlan) error {

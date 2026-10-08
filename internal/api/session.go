@@ -20,10 +20,12 @@ const (
 )
 
 type Principal struct {
-	UserID    uuid.UUID
-	Username  string
-	Role      string
-	SessionID string
+	UserID         uuid.UUID
+	Username       string
+	Role           string
+	SessionID      string
+	APITokenID     uuid.UUID
+	APITokenScopes []string
 }
 
 type ctxKey int

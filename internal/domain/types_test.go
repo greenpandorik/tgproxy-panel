@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -106,6 +107,8 @@ func TestTelemtLimitsValidate(t *testing.T) {
 		"ips too large":   {MaxUniqueIPs: MaxTelemtCounter + 1},
 		"conns too large": {MaxTCPConns: MaxTelemtCounter + 1},
 		"ips wrap":        {MaxUniqueIPs: 4294967297},
+		"unknown period":  {DataQuotaBytes: 1, DataQuotaPeriod: "day"},
+		"period no quota": {DataQuotaPeriod: QuotaPeriodMonth},
 	} {
 		if err := l.Validate(); err == nil {
 			t.Errorf("%s: expected validation error", name)
@@ -116,6 +119,35 @@ func TestTelemtLimitsValidate(t *testing.T) {
 	}
 	if err := (TelemtLimits{MaxUniqueIPs: MaxTelemtCounter, MaxTCPConns: MaxTelemtCounter}).Validate(); err != nil {
 		t.Fatalf("counters at the cap must be accepted: %v", err)
+	}
+}
+
+func TestQuotaPeriodStartAndNext(t *testing.T) {
+	utc := func(y int, m time.Month, d, h int) time.Time { return time.Date(y, m, d, h, 0, 0, 0, time.UTC) }
+	msk := time.FixedZone("MSK", 3*3600)
+	for name, c := range map[string]struct {
+		p           QuotaPeriod
+		at          time.Time
+		start, next time.Time
+	}{
+		"week midweek":      {QuotaPeriodWeek, utc(2026, 10, 7, 15), utc(2026, 10, 5, 0), utc(2026, 10, 12, 0)},
+		"week on monday":    {QuotaPeriodWeek, utc(2026, 10, 5, 0), utc(2026, 10, 5, 0), utc(2026, 10, 12, 0)},
+		"week on sunday":    {QuotaPeriodWeek, utc(2026, 10, 11, 23), utc(2026, 10, 5, 0), utc(2026, 10, 12, 0)},
+		"week across years": {QuotaPeriodWeek, utc(2027, 1, 2, 8), utc(2026, 12, 28, 0), utc(2027, 1, 4, 0)},
+		"month":             {QuotaPeriodMonth, utc(2026, 10, 31, 23), utc(2026, 10, 1, 0), utc(2026, 11, 1, 0)},
+		"month december":    {QuotaPeriodMonth, utc(2026, 12, 15, 0), utc(2026, 12, 1, 0), utc(2027, 1, 1, 0)},
+		// 01:00 on the 1st in Moscow is still the previous month in UTC.
+		"month in utc": {QuotaPeriodMonth, time.Date(2026, 11, 1, 1, 0, 0, 0, msk), utc(2026, 10, 1, 0), utc(2026, 11, 1, 0)},
+	} {
+		if got := c.p.Start(c.at); !got.Equal(c.start) {
+			t.Errorf("%s: start %s, want %s", name, got, c.start)
+		}
+		if got := c.p.Next(c.at); !got.Equal(c.next) {
+			t.Errorf("%s: next %s, want %s", name, got, c.next)
+		}
+	}
+	if !QuotaPeriodNone.Start(time.Now()).IsZero() || !QuotaPeriodNone.Next(time.Now()).IsZero() {
+		t.Fatal("no period must never reset")
 	}
 }
 

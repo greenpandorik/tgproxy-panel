@@ -50,7 +50,7 @@ type Config struct {
 
 const (
 	DefaultTProxyCommit  = "52a5feb7fac38f68da5afef9cedd9b3bfc8473ca"
-	DefaultTelemtVersion = "3.5.9"
+	DefaultTelemtVersion = "3.5.14"
 	DefaultGitHubRepo    = "greenpandorik/tgproxy-panel"
 )
 

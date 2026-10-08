@@ -2,8 +2,11 @@ package worker_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -11,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"tgwebproxy/internal/alerttext"
+	"tgwebproxy/internal/notify"
 	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/worker"
 )
@@ -234,5 +238,46 @@ func TestAlertsFlappingIncidentIsAnnouncedOnce(t *testing.T) {
 	}
 	if sender.count() != 2 {
 		t.Fatalf("a flapping problem sent %d messages, want the first problem and its recovery", sender.count())
+	}
+}
+
+func TestAlertsFailedRecoveryIsRetried(t *testing.T) {
+	sender := &fakeSender{}
+	a := worker.NewAlerts(srcEnabled("tok", "42"), sender, slog.New(slog.DiscardHandler))
+	node := testNode("n1", "n1.test")
+	a.NodeOffline(t.Context(), node)
+	sender.failNextSends(1)
+	a.NodeOnline(t.Context(), node)
+	a.NodeOnline(t.Context(), node)
+	if sender.count() != 3 {
+		t.Fatalf("failed recovery lost its retry: got %d attempts, want 3", sender.count())
+	}
+}
+
+func TestRecoveryIsPairedOnlyForDeliveredDestinations(t *testing.T) {
+	sender := &fakeSender{}
+	sender.failNextSends(1)
+	a := worker.NewAlerts(srcEnabled("tok", "42"), sender, slog.New(slog.DiscardHandler))
+	var webhookKinds []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Kind string `json:"kind"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Error(err)
+		}
+		webhookKinds = append(webhookKinds, payload.Kind)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	a.Webhook = &notify.Webhook{URL: srv.URL, Client: srv.Client()}
+	n := testNode("partial", "partial.test")
+	a.NodeOffline(t.Context(), n)
+	a.NodeOnline(t.Context(), n)
+	if sender.count() != 1 {
+		t.Fatalf("Telegram got recovery for an undelivered problem: %d", sender.count())
+	}
+	if len(webhookKinds) != 2 || webhookKinds[1] != "node_offline_recovered" {
+		t.Fatalf("webhook delivery pairing: %v", webhookKinds)
 	}
 }

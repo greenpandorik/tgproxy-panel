@@ -20,6 +20,15 @@ SELECT p.*, k.telemt_limits AS key_telemt_limits, k.expires_at AS key_expires_at
 FROM profiles p LEFT JOIN access_keys k ON k.id = p.access_key_id
 WHERE p.node_id = $1 ORDER BY p.created_at;
 
+-- ListTelemtNodesWithQuotaPeriod returns the telemt nodes serving a key whose quota resets every
+-- given period, so the panel can push the new period to them when it starts.
+-- name: ListTelemtNodesWithQuotaPeriod :many
+SELECT DISTINCT p.node_id FROM profiles p
+JOIN access_keys k ON k.id = p.access_key_id
+JOIN nodes n ON n.id = p.node_id
+WHERE n.engine = 'telemt' AND k.status <> 'revoked'
+  AND k.telemt_limits->>'data_quota_period' = sqlc.arg('period')::text;
+
 -- name: CountNodeProfiles :one
 SELECT count(*) FROM profiles WHERE node_id = $1;
 

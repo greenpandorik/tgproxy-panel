@@ -61,6 +61,18 @@ Authorization: \$(cat /etc/telemt/api.token)
 EOF"
 }
 
+telemt_pid() { node_exec cat /run/fake/telemt.pid; }
+
+expect_no_restart() {
+	local before="$1"
+	[[ "$(telemt_pid)" == "$before" ]] || die "telemt PID changed during a restart-free apply"
+	grep -q "no restart" <<<"$JOB_LOG" || die "apply did not report no restart: $JOB_LOG"
+}
+
+quota_reset_time() {
+	telemt_api /v1/stats/users/quota | jq -er --arg n "$1" '.data.users[] | select(.username==$n) | .last_reset_epoch_secs'
+}
+
 cookie_value() {
 	awk -F'\t' -v name="$1" '$6==name{v=$7} END{print v}' "$COOKIE_JAR" 2>/dev/null
 }
@@ -130,6 +142,9 @@ wait_node_online() {
 		status="$(jq -r '.status' <<<"$LAST_BODY")"
 		version="$(jq -r '.telemt_version' <<<"$LAST_BODY")"
 		if [[ "$status" == "online" && -n "$version" && "$version" != "null" ]]; then
+			local pinned
+			pinned="$(sed -n 's/^TELEMT_VERSION=//p' "$SCRIPT_DIR/../.env.example")"
+			[[ "$version" == "$pinned" ]] || die "node runs telemt $version, want pinned $pinned"
 			log "node is online, telemt $version"
 			return 0
 		fi
@@ -164,23 +179,30 @@ wait_dc_data() {
 # apply_and_wait triggers an apply and returns once the newest job is terminal. The job log is
 # left in $JOB_LOG so the caller can assert on what the agent actually did.
 apply_and_wait() {
-	local id="$1" deadline=120 elapsed=0 status
+	local id="$1" deadline=120 elapsed=0 status previous job_id
+	http GET "/api/v1/nodes/$id/jobs?limit=1"
+	expect_status 200 "$LAST_STATUS" "list jobs before apply"
+	previous="$(jq -r '.items[0].id // empty' <<<"$LAST_BODY")"
 	http POST "/api/v1/nodes/$id/apply" ""
 	expect_status 202 "$LAST_STATUS" "trigger apply"
 	while true; do
 		http GET "/api/v1/nodes/$id/jobs?limit=1"
 		expect_status 200 "$LAST_STATUS" "list jobs"
 		status="$(jq -r '.items[0].status // empty' <<<"$LAST_BODY")"
+		job_id="$(jq -r '.items[0].id // empty' <<<"$LAST_BODY")"
 		JOB_LOG="$(jq -r '.items[0].log // empty' <<<"$LAST_BODY")"
-		case "$status" in
-		ok)
-			return 0
-			;;
-		failed | rolled_back)
-			die "apply job $status:
+		# An old terminal job is not proof that this apply ran.
+		if [[ -n "$job_id" && "$job_id" != "$previous" ]]; then
+			case "$status" in
+			ok)
+				return 0
+				;;
+			failed | rolled_back)
+				die "apply job $status:
 $JOB_LOG"
-			;;
-		esac
+				;;
+			esac
+		fi
 		elapsed=$((elapsed + 3))
 		[[ "$elapsed" -ge "$deadline" ]] && die "apply job did not finish within ${deadline}s (last status: $status)"
 		sleep 3
@@ -200,7 +222,7 @@ phase_continue() {
 	log "creating a personal key with telemt limits, bound to the node"
 	http POST /api/v1/keys "$(jq -n --arg id "$NODE_ID" --argjson q "$QUOTA_BYTES" --argjson ips "$MAX_UNIQUE_IPS" \
 		'{label:"e2e-telemt",type:"PERSONAL",carrier_mode:"https",node_ids:[$id],
-		  telemt_limits:{data_quota_bytes:$q,max_unique_ips:$ips}}')"
+		  telemt_limits:{data_quota_bytes:$q,data_quota_period:"week",max_unique_ips:$ips}}')"
 	expect_status 201 "$LAST_STATUS" "create key"
 	local key_id stored_quota
 	key_id="$(jq -r '.id' <<<"$LAST_BODY")"
@@ -210,11 +232,12 @@ phase_continue() {
 	log "key created: id=$key_id"
 
 	log "applying the key to the node"
+	local pid_before
+	pid_before="$(telemt_pid)"
 	apply_and_wait "$NODE_ID"
 	# The whole point of the telemt engine: users and profiles are pushed over the control
 	# API, so a key reaching the node must never have cost a relay restart.
-	grep -q "no restart" <<<"$JOB_LOG" || die "apply job log does not say the apply was restart-free:
-$JOB_LOG"
+	expect_no_restart "$pid_before"
 	log "apply ok, restart-free"
 
 	log "checking the key is active"
@@ -263,6 +286,75 @@ $JOB_LOG"
 	[[ "$node_ips" == "$MAX_UNIQUE_IPS" ]] || die "telemt reports max_unique_ips=$node_ips for $profile_name, want $MAX_UNIQUE_IPS: $users"
 	log "telemt has $profile_name with data_quota_bytes=$node_quota max_unique_ips=$node_ips"
 
+	log "updating the quota without restarting telemt"
+	http PATCH "/api/v1/keys/$key_id" "$(jq -n --argjson q "$((QUOTA_BYTES * 2))" --argjson ips "$MAX_UNIQUE_IPS" \
+		'{telemt_limits:{data_quota_bytes:$q,data_quota_period:"week",max_unique_ips:$ips}}')"
+	expect_status 200 "$LAST_STATUS" "update quota"
+	apply_and_wait "$NODE_ID"
+	expect_no_restart "$pid_before"
+	users="$(telemt_api /v1/users)"
+	jq -e --arg n "$profile_name" --argjson q "$((QUOTA_BYTES * 2))" \
+		'.data[] | select(.username==$n) | .data_quota_bytes==$q' >/dev/null <<<"$users" || die "quota update did not reach telemt"
+
+	# Simulate a week boundary by backdating only the disposable agent's remembered
+	# quota period. The next real apply must call telemt's reset API exactly once.
+	log "simulating a new quota period and checking reset idempotency"
+	local state reset_before reset_after
+	reset_before="$(quota_reset_time "$profile_name")"
+	state="$(node_exec cat /var/lib/tgwp-agent/telemt-users.json)"
+	jq -e --arg n "$profile_name" '.quota_resets[$n] > 0' >/dev/null <<<"$state" || die "agent did not checkpoint the initial quota period"
+	jq --arg n "$profile_name" '.quota_resets[$n] -= 604800' <<<"$state" | \
+		node_exec sh -c 'umask 077; cat > /var/lib/tgwp-agent/telemt-users.json.tmp; mv /var/lib/tgwp-agent/telemt-users.json.tmp /var/lib/tgwp-agent/telemt-users.json'
+	sleep 1
+	apply_and_wait "$NODE_ID"
+	expect_no_restart "$pid_before"
+	reset_after="$(quota_reset_time "$profile_name")"
+	[[ "$reset_after" -gt "$reset_before" ]] || die "new period did not reset telemt quota"
+
+	log "restarting the panel and waiting for a fresh agent heartbeat"
+	http GET "/api/v1/nodes/$NODE_ID"
+	local last_seen reconnected=0
+	last_seen="$(jq -r '.last_seen_at' <<<"$LAST_BODY")"
+	compose restart panel
+	for _ in $(seq 1 60); do
+		if curl -fsS "$PANEL_URL/healthz" >/dev/null 2>&1; then
+			break
+		fi
+		sleep 2
+	done
+	login
+	for _ in $(seq 1 60); do
+		http GET "/api/v1/nodes/$NODE_ID"
+		expect_status 200 "$LAST_STATUS" "get reconnected node"
+		if jq -e --arg seen "$last_seen" '.online==true and .last_seen_at!=null and .last_seen_at!=$seen' >/dev/null <<<"$LAST_BODY"; then
+			reconnected=1
+			break
+		fi
+		sleep 2
+	done
+	[[ "$reconnected" == "1" ]] || die "agent did not reconnect with a fresh heartbeat after panel restart"
+	apply_and_wait "$NODE_ID"
+	expect_no_restart "$pid_before"
+	[[ "$(quota_reset_time "$profile_name")" == "$reset_after" ]] || die "reconnect/reapply reset the same quota period twice"
+	log "agent reconnected; quota period preserved on reapply"
+
+	log "restarting telemt and checking persisted user/quota recovery"
+	node_exec systemctl restart telemt
+	local ready=0
+	for _ in $(seq 1 90); do
+		if telemt_api /v1/health/ready | jq -e '.data.ready==true' >/dev/null 2>&1; then
+			ready=1
+			break
+		fi
+		sleep 1
+	done
+	[[ "$ready" == "1" ]] || die "telemt did not become ready after restart"
+	[[ "$(quota_reset_time "$profile_name")" == "$reset_after" ]] || die "telemt restart lost persisted quota reset timestamp"
+	pid_before="$(telemt_pid)"
+	apply_and_wait "$NODE_ID"
+	expect_no_restart "$pid_before"
+	[[ "$(quota_reset_time "$profile_name")" == "$reset_after" ]] || die "apply after telemt restart reset quota twice"
+
 	log "checking the key's WEB profile reached telemt's vhost config"
 	local cfg
 	cfg="$(telemt_api /v1/config)"
@@ -293,9 +385,11 @@ $JOB_LOG"
 	log "backup domain live: telemt restarted with it, the key has a Fake-TLS link per domain"
 
 	log "revoking the key"
+	pid_before="$(telemt_pid)"
 	http POST "/api/v1/keys/$key_id/revoke" ""
 	[[ "$LAST_STATUS" == "200" || "$LAST_STATUS" == "204" ]] || die "revoke key: expected HTTP 200/204, got $LAST_STATUS: $LAST_BODY"
 	apply_and_wait "$NODE_ID"
+	expect_no_restart "$pid_before"
 	users="$(telemt_api /v1/users)"
 	if jq -e --arg n "$profile_name" '[.data[]?.username] | index($n)' >/dev/null 2>&1 <<<"$users"; then
 		die "telemt still lists $profile_name one apply after the key was revoked: $users"

@@ -399,7 +399,11 @@ export interface TelemtLimits {
   rate_limit_down_bps?: number;
   max_unique_ips?: number;
   max_tcp_conns?: number;
+  /** The consumed quota resets at the start of every calendar week or month (UTC). */
+  data_quota_period?: QuotaPeriod;
 }
+
+export type QuotaPeriod = 'week' | 'month';
 
 export interface KeyNode {
   node_id: string;

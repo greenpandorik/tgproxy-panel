@@ -1,5 +1,5 @@
 
-import type { TelemtLimits } from '@/api/types';
+import type { QuotaPeriod, TelemtLimits } from '@/api/types';
 
 export const BYTES_PER_GB = 1024 ** 3;
 export const BPS_PER_MBIT = 1_000_000;
@@ -47,6 +47,8 @@ export interface TelemtLimitsForm {
   rate_down_mbit: string;
   max_unique_ips: string;
   max_tcp_conns: string;
+  /** Empty means the quota is a lifetime total. */
+  quota_period: QuotaPeriod | '';
 }
 
 export const EMPTY_TELEMT_LIMITS_FORM: TelemtLimitsForm = {
@@ -55,7 +57,17 @@ export const EMPTY_TELEMT_LIMITS_FORM: TelemtLimitsForm = {
   rate_down_mbit: '',
   max_unique_ips: '',
   max_tcp_conns: '',
+  quota_period: '',
 };
+
+/** When a quota with this period next resets: Monday or the 1st, 00:00 UTC, mirroring internal/domain.QuotaPeriod. */
+export function nextQuotaReset(period: QuotaPeriod, now: Date = new Date()): Date {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  if (period === 'month') return new Date(Date.UTC(y, m + 1, 1));
+  const daysSinceMonday = (now.getUTCDay() + 6) % 7;
+  return new Date(Date.UTC(y, m, now.getUTCDate() - daysSinceMonday + 7));
+}
 
 /** A machine value as form text: 0 and absent both mean "no limit", which is an empty field. */
 function text(value: number): string {
@@ -70,6 +82,7 @@ export function telemtLimitsToForm(limits: TelemtLimits | undefined | null): Tel
     rate_down_mbit: text(bpsToMbit(limits.rate_limit_down_bps ?? 0)),
     max_unique_ips: text(limits.max_unique_ips ?? 0),
     max_tcp_conns: text(limits.max_tcp_conns ?? 0),
+    quota_period: limits.data_quota_period ?? '',
   };
 }
 
@@ -83,13 +96,16 @@ export function parseAmount(raw: string): number {
 }
 
 export function telemtLimitsFromForm(form: TelemtLimitsForm): TelemtLimits {
-  return {
+  const out: TelemtLimits = {
     data_quota_bytes: gbToBytes(parseAmount(form.quota_gb)),
     rate_limit_up_bps: mbitToBps(parseAmount(form.rate_up_mbit)),
     rate_limit_down_bps: mbitToBps(parseAmount(form.rate_down_mbit)),
     max_unique_ips: Math.trunc(parseAmount(form.max_unique_ips)),
     max_tcp_conns: Math.trunc(parseAmount(form.max_tcp_conns)),
   };
+  // A period without a quota has nothing to reset, and the backend rejects it.
+  if (form.quota_period && out.data_quota_bytes) out.data_quota_period = form.quota_period;
+  return out;
 }
 
 /** True when nothing in the form is set - the key runs unlimited. */
@@ -102,6 +118,7 @@ export function isEmptyTelemtLimits(limits: TelemtLimits | undefined | null): bo
 export function validateTelemtLimitsForm(form: TelemtLimitsForm): Partial<Record<keyof TelemtLimitsForm, string>> {
   const out: Partial<Record<keyof TelemtLimitsForm, string>> = {};
   for (const [name, raw] of Object.entries(form) as [keyof TelemtLimitsForm, string][]) {
+    if (name === 'quota_period') continue;
     const trimmed = raw.trim().replace(',', '.');
     if (trimmed === '') continue;
     const n = Number(trimmed);

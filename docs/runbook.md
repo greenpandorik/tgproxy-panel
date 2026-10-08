@@ -681,6 +681,12 @@ The agent restarts only a running service that stopped responding. It never star
 service, including one stopped by hand. It never reopens WEB admission that was closed on
 purpose either. "Recovery history" lists what the agent did.
 
+A valid control API response with `no_healthy_upstreams` means the service is alive but cannot
+reach Telegram; the agent does not restart it for that reason. Other valid unready responses
+and API authorization errors also do not trigger restarts. Switching to a healthy configured
+backup route remains available under the existing recovery policy.
+
+
 "Maintenance mode" suspends automatic restarts and route switching. While it is on, the panel
 does not run the scheduled full check on this server, does not open problems from its readings
 or external checks, and a telemt update queue stops on it. Turn it on while you work on the
@@ -1315,11 +1321,11 @@ when checks open or close a problem.
    - "Test message sent": delivery works, go to the next step.
 3. Check that "Enable alerts" is on. The test ignores this switch, but real alerts are not sent
    without it.
-4. Mind the anti-spam limits. A server that was gone for less than 3 minutes sends nothing. The
-   same problem on the same server is sent at most once per 15 minutes (offline), per hour (failed
-   apply) or per 3 hours (anything else), and "resolved" only follows a problem message that went
-   out. The window starts only after a successful send, so a failed attempt does not hold back the
-   next one.
+4. Mind the anti-spam limits. Outages shorter than 3 minutes stay silent. Health findings are
+   grouped per server: one warning after 5 minutes of persistent problems, then one recovery
+   after 10 minutes of healthy observations. Failed applies are reported at most once per hour.
+   Delivery state survives panel restarts. Telegram and webhook retries are tracked separately;
+   a failed send does not count as delivered.
 5. If the test works but real alerts never come, look for `telegram config` or
    `telegram send failed` warnings in the panel log:
 

@@ -10,7 +10,7 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/greenpandorik/tgproxy-panel)](go.mod)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-**English** · [Русский](README.ru.md) · [Website](https://greenpandorik.github.io/tgproxy-panel/en/)
+**English** · [Русский](README.ru.md) · [Website](https://tgproxypanel.com/en/)
 
 TGProxy Panel lets you run your own Telegram proxies and manage them from a browser. You install
 the panel on one server, and it sets up the proxies on the others: it gives people ready-made

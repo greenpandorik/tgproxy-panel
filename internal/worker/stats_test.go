@@ -118,6 +118,48 @@ func TestStatsNotifiesOfflineThenOnlineOnce(t *testing.T) {
 	}
 }
 
+func TestStatsAnnouncesAClosedAgentStream(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	_ = f.st.Q.SetNodeOnline(ctx, db.SetNodeOnlineParams{ID: f.node.ID})
+
+	sender := &fakeSender{}
+	s := worker.NewStats(f.st, mock, 90*time.Second, slog.New(slog.DiscardHandler))
+	s.SetAlerts(worker.NewAlerts(srcEnabled("tok", "42"), sender, slog.New(slog.DiscardHandler)))
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// The agent's stream closed: presence marks the node offline straight away, then the
+	// heartbeats stop.
+	mock.SetOnline(f.node.ID, false)
+	_ = f.st.Q.SetNodeStatus(ctx, db.SetNodeStatusParams{ID: f.node.ID, Status: db.NodeStatusOffline})
+	_, _ = f.st.Pool.Exec(ctx, `UPDATE nodes SET last_seen_at = now() - interval '10 minutes'`)
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	alerts, _ := f.st.Q.ListOpenAlerts(ctx)
+	if len(alerts) != 1 || alerts[0].Kind != "node_offline" {
+		t.Fatalf("open alerts after a closed stream: %+v", alerts)
+	}
+
+	s.SetNow(func() time.Time { return time.Now().Add(4 * time.Minute) })
+	for i := 0; i < 2; i++ {
+		if err := s.RunOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.WaitNotifications()
+	if sender.count() != 1 || !strings.Contains(sender.last().text, "is not connected") {
+		t.Fatalf("expected 1 offline notification, sends=%d", sender.count())
+	}
+	if alerts, _ = f.st.Q.ListOpenAlerts(ctx); len(alerts) != 1 {
+		t.Fatalf("the outage was recorded more than once: %d open alerts", len(alerts))
+	}
+}
+
 func TestStatsStaysQuietAboutAShortOutage(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
