@@ -1,0 +1,36 @@
+# TGProxy Panel
+
+> Open-source, self-hosted control panel for your own Telegram proxy nodes. Русский и English.
+
+Canonical website: https://tgproxypanel.com/
+Source repository: https://github.com/greenpandorik/tgproxy-panel
+License: AGPL-3.0. The software is free; operators supply their own VPS hosts and domains.
+
+TGProxy Panel manages users, proxy secrets, subscription pages, limits, cover websites,
+monitoring, backups and updates. telemt serves Fake-TLS, WEB proxy traffic and cover websites.
+Legacy tproxy-server nodes remain supported. The panel and proxy nodes run on separate hosts;
+user proxy traffic goes through the nodes, not through the panel.
+
+## Public guides
+
+- [Project overview — Русский](https://tgproxypanel.com/): purpose, features and installation entry point.
+- [Project overview — English](https://tgproxypanel.com/en/): English overview and installation entry point.
+- [Установка панели и telemt](https://tgproxypanel.com/guides/install-telemt/): VPS, DNS, firewall ports, node registration, users and checks.
+- [Install the panel and telemt](https://tgproxypanel.com/en/guides/install-telemt/): English installation and connection checklist.
+- [MTProxy, Fake-TLS и WEB](https://tgproxypanel.com/guides/mtproxy-faketls-web/): protocols, masking domains, links and client compatibility.
+- [MTProxy, Fake-TLS and WEB](https://tgproxypanel.com/en/guides/mtproxy-faketls-web/): English protocol comparison and usage guidance.
+
+## Authoritative project documentation
+
+- [Full setup — Русский](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md)
+- [Full setup — English](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.en.md)
+- [Reference — Русский](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/reference.ru.md)
+- [Reference — English](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/reference.md)
+- [Troubleshooting — Русский](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/runbook.ru.md)
+- [Troubleshooting — English](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/runbook.md)
+- [Releases](https://github.com/greenpandorik/tgproxy-panel/releases): current published versions and changes.
+- [telemt source](https://github.com/telemt/telemt): engine-specific behavior and compatibility.
+
+Client support and engine versions can change. Check current project documentation and releases
+before making version-specific claims. A reachable HTTPS cover site alone does not prove that
+an authenticated proxy can reach Telegram. Masking does not guarantee access from every network.

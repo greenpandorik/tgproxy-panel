@@ -9,6 +9,14 @@ permissions:
   contents: read
 
 jobs:
+  site:
+    name: Public site
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check canonical URLs, language links, crawler access and assets
+        run: bash scripts/build-site.sh
+
   go:
     name: Go
     runs-on: ubuntu-24.04

@@ -1,15 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://greenpandorik.github.io/tgproxy-panel/</loc>
-    <lastmod>2026-09-29</lastmod>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/"/>
+    <loc>https://tgproxypanel.com/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/"/>
   </url>
   <url>
-    <loc>https://greenpandorik.github.io/tgproxy-panel/en/</loc>
-    <lastmod>2026-09-29</lastmod>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/"/>
+    <loc>https://tgproxypanel.com/en/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/"/>
+  </url>
+  <url>
+    <loc>https://tgproxypanel.com/en/guides/install-telemt/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/guides/install-telemt/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/guides/install-telemt/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/guides/install-telemt/"/>
+  </url>
+  <url>
+    <loc>https://tgproxypanel.com/en/guides/mtproxy-faketls-web/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/guides/mtproxy-faketls-web/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/"/>
+  </url>
+  <url>
+    <loc>https://tgproxypanel.com/guides/install-telemt/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/guides/install-telemt/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/guides/install-telemt/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/guides/install-telemt/"/>
+  </url>
+  <url>
+    <loc>https://tgproxypanel.com/guides/mtproxy-faketls-web/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/guides/mtproxy-faketls-web/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/"/>
   </url>
 </urlset>

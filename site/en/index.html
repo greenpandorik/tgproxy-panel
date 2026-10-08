@@ -7,10 +7,10 @@
 <meta name="google-site-verification" content="7W_vbByQP82tpJH83rRbAkgH6utltVfZGRO__ocN-X4">
 <title>MTProxy panel with Fake-TLS and WEB proxy | TGProxy Panel</title>
 <meta name="description" content="A free, self-hosted panel for your own Telegram proxies. One command to install; it gives people one link to all your servers, serves a cover site and watches your servers.">
-<link rel="canonical" href="https://greenpandorik.github.io/tgproxy-panel/en/">
-<link rel="alternate" hreflang="ru" href="https://greenpandorik.github.io/tgproxy-panel/">
-<link rel="alternate" hreflang="en" href="https://greenpandorik.github.io/tgproxy-panel/en/">
-<link rel="alternate" hreflang="x-default" href="https://greenpandorik.github.io/tgproxy-panel/en/">
+<link rel="canonical" href="https://tgproxypanel.com/en/">
+<link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/">
+<link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/">
+<link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/">
 <meta name="theme-color" content="#171b21">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
@@ -19,8 +19,8 @@
 <meta property="og:site_name" content="TGProxy Panel">
 <meta property="og:title" content="MTProxy panel with Fake-TLS and WEB proxy">
 <meta property="og:description" content="One command to install. Gives people one link to all your servers, serves a cover site on every server and watches their health. Open source.">
-<meta property="og:url" content="https://greenpandorik.github.io/tgproxy-panel/en/">
-<meta property="og:image" content="https://greenpandorik.github.io/tgproxy-panel/en/og.png">
+<meta property="og:url" content="https://tgproxypanel.com/en/">
+<meta property="og:image" content="https://tgproxypanel.com/en/og.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
@@ -28,22 +28,59 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "TGProxy Panel",
-  "description": "A self-hosted panel for your own Telegram proxies: users with subscription links, Fake-TLS and WEB, cover websites, monitoring and server upgrades.",
-  "applicationCategory": "UtilitiesApplication",
-  "operatingSystem": "Linux",
-  "inLanguage": ["en", "ru"],
-  "url": "https://greenpandorik.github.io/tgproxy-panel/en/",
-  "downloadUrl": "https://github.com/greenpandorik/tgproxy-panel/releases",
-  "image": "https://greenpandorik.github.io/tgproxy-panel/en/og.png",
-  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
-  "sameAs": "https://github.com/greenpandorik/tgproxy-panel",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://tgproxypanel.com/#website",
+      "url": "https://tgproxypanel.com/",
+      "name": "TGProxy Panel",
+      "inLanguage": [
+        "ru",
+        "en"
+      ]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://tgproxypanel.com/en/#page",
+      "url": "https://tgproxypanel.com/en/",
+      "name": "MTProxy panel with Fake-TLS and WEB proxy | TGProxy Panel",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://tgproxypanel.com/#website"
+      },
+      "mainEntity": {
+        "@id": "https://tgproxypanel.com/#application"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "TGProxy Panel",
+      "description": "A self-hosted panel for your own Telegram proxies: users with subscription links, Fake-TLS and WEB, cover websites, monitoring and server upgrades.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Linux",
+      "inLanguage": [
+        "en",
+        "ru"
+      ],
+      "url": "https://tgproxypanel.com/en/",
+      "downloadUrl": "https://github.com/greenpandorik/tgproxy-panel/releases",
+      "image": "https://tgproxypanel.com/en/og.png",
+      "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+      "sameAs": "https://github.com/greenpandorik/tgproxy-panel",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "@id": "https://tgproxypanel.com/#application",
+      "isAccessibleForFree": true,
+      "screenshot": "https://tgproxypanel.com/en/img/dashboard.png"
+    }
+  ]
 }
 </script>
 <link rel="stylesheet" href="../style.css">
-<script defer src="../vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="greenpandorik.github.io"></script>
+<script defer src="../vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="tgproxypanel.com,www.tgproxypanel.com"></script>
 </head>
 <body>
 
@@ -55,6 +92,7 @@
   <nav class="nav" aria-label="Page sections">
     <a href="#links">Links</a>
     <a href="#install">Install</a>
+    <a href="#guides">Guides</a>
     <a href="#faq">FAQ</a>
     <a class="lang" data-umami-event="language" href="../" hreflang="ru" lang="ru">Русский</a>
     <a class="gh" href="https://github.com/greenpandorik/tgproxy-panel" data-umami-event="github" data-umami-event-place="header">GitHub</a>
@@ -106,7 +144,7 @@
           <div class="link">
             <h3><span class="eye" aria-hidden="true"></span>Fake-TLS</h3>
             <span class="shape mono">https://t.me/proxy?server=…&amp;secret=ee…</span>
-            <p>MTProxy that looks like an ordinary website visit from the outside: the TLS handshake uses your server's domain, and that domain serves a real cover site. Every official Telegram app understands these links.</p>
+            <p>MTProxy that looks like an ordinary website visit from the outside: the connection starts with a TLS-shaped handshake using the configured masking domain. The proxy address and port are in the link; its HTTPS domain serves a cover website. Every official Telegram app understands these links.</p>
           </div>
           <div class="link">
             <h3><span class="eye" aria-hidden="true"></span>WEB proxy</h3>
@@ -182,10 +220,21 @@
         <div><dt>Changes without dropped sessions</dt><dd>New and revoked users reach the server through telemt's control API without a restart, so live sessions stay up.</dd></div>
         <div><dt>Backup domains</dt><dd>If an ISP stops letting a server's main domain through, users take the link with a backup domain instead. No reinstall needed.</dd></div>
         <div><dt>Checks and monitoring</dt><dd>The overview starts with a verdict: what is broken and where. The panel checks DNS, ports, the certificate and Fake-TLS masking, exports Prometheus metrics for a ready-made Grafana dashboard and sends alerts to Telegram.</dd></div>
-        <div><dt>Personal and shared access</dt><dd>Personal access goes to one person; shared access goes to a group on one link with a short address like /s/team. Access can be paused and extended in a couple of clicks, and when it expires it is taken off the servers until someone extends it.</dd></div>
+        <div><dt>Personal and shared access</dt><dd>Personal access goes to one person; shared access goes to a group on one link with a short address like /s/team. Access can be paused and extended in a couple of clicks, and expired access can be used again after renewal.</dd></div>
         <div><dt>Panel security</dt><dd>Two-factor sign-in with recovery codes, an activity log, nightly database backups and master key rotation.</dd></div>
         <div><dt>English and Russian</dt><dd>The interface and the docs come in both languages, and switching takes one click.</dd></div>
       </dl>
+    </div>
+  </section>
+
+  <section id="guides">
+    <div class="wrap">
+      <h2>Understand and set up</h2>
+      <p class="mute prose intro">TGProxy Panel is an open-source control panel for administrators running their own Telegram proxies. It manages access and configuration; user traffic goes through the proxy nodes. Installation requires your own VPS hosts and domains.</p>
+      <div class="guide-links">
+        <a href="/en/guides/install-telemt/"><h3>Install the panel and telemt</h3><p>Two servers, DNS, ports, your first user and a connection check.</p></a>
+        <a href="/en/guides/mtproxy-faketls-web/"><h3>MTProxy, Fake-TLS and WEB</h3><p>How the protocols differ, which link to use and why backup domains help.</p></a>
+      </div>
     </div>
   </section>
 
@@ -195,7 +244,7 @@
       <div class="faq prose">
         <details>
           <summary>How is Fake-TLS different from plain MTProxy?</summary>
-          <p>Plain MTProxy encrypts the traffic, but the connection itself doesn't look like anything familiar. Fake-TLS opens with a TLS handshake for your server's domain, so from the outside the connection looks like a visit to a website. That domain really does serve a cover site.</p>
+          <p>Plain MTProxy encrypts the traffic, but the connection itself doesn't look like anything familiar. Fake-TLS opens with a TLS-shaped handshake and a configured masking domain. Telegram connects to the proxy address and port in its link. A normal browser visiting the server’s HTTPS domain sees a cover website.</p>
         </details>
         <details>
           <summary>What is a WEB proxy in Telegram?</summary>
