@@ -175,7 +175,7 @@ api("POST", "/keys/" + user["id"] + "/enable")
 |---|---|
 | `/keys: page` | Начиная с 1; по умолчанию 1. |
 | `/keys: per_page` | 1–200; по умолчанию 50. Значения вне диапазона заменяются на 50. |
-| `/keys: q` | Поиск по имени, владельцу, заметке и короткому адресу подписки. |
+| `/keys: q` | Персональные токены без `users:write` ищут только по `label`, `owner_label` и `note`; скрытые короткие адреса подписки исключены. Токены с `users:write` и браузерные сеансы также ищут по коротким адресам подписки. |
 | `/keys: type` | PERSONAL или SHARED. |
 | `/keys: status` | Состояние в базе: pending, active или revoked. |
 | `/keys: state` | active, pending, expiring, expired, disabled или revoked. expiring — срок истекает в ближайшие семь дней. |

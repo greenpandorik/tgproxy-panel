@@ -175,7 +175,7 @@ List responses use `items`; do not assume that every list accepts the same pagin
 |---|---|
 | `/keys: page` | Starts at 1; default 1. |
 | `/keys: per_page` | 1–200; default 50. Values outside that range use 50. |
-| `/keys: q` | Search labels, owner labels, notes and subscription slugs. |
+| `/keys: q` | Personal tokens without `users:write` search only `label`, `owner_label` and `note`; hidden subscription slugs are excluded. Tokens with `users:write` and browser sessions also search subscription slugs. |
 | `/keys: type` | PERSONAL or SHARED. |
 | `/keys: status` | Stored status: pending, active or revoked. |
 | `/keys: state` | active, pending, expiring, expired, disabled or revoked. expiring means within seven days. |
