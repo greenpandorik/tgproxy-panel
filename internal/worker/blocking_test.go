@@ -272,3 +272,60 @@ func TestBlockingStaleFutureAndPublicChecksCannotCorroborate(t *testing.T) {
 		})
 	}
 }
+
+func TestBlockingWarmupAndMissingMetricsPreserveExecutedTransportHistory(t *testing.T) {
+	for _, missingMetrics := range []bool{false, true} {
+		t.Run(fmt.Sprintf("missing-metrics-%v", missingMetrics), func(t *testing.T) {
+			f := newBlockingFixture(t)
+			f.report(t, "ok", "authenticated_mtproto", true)
+			text := "telemt_connections_total 0\ntelemt_handshake_failures_by_class_total{class=\"timeout\"} 0\n"
+			if missingMetrics {
+				text = ""
+			}
+			f.s.observeBlocking(t.Context(), f.n, text)
+			step := func(webStatus string, both bool) {
+				t.Helper()
+				status, method := "not_run", ""
+				if both {
+					status, method = "ok", "authenticated_mtproto"
+				}
+				f.report(t, status, method, true)
+				if _, e := f.s.st.Pool.Exec(t.Context(), `UPDATE probe_reports SET report=jsonb_set(report,'{web,status}',to_jsonb($2::text)) WHERE node_id=$1`, f.n.ID, webStatus); e != nil {
+					t.Fatal(e)
+				}
+				f.s.recordFindings(t.Context(), f.n, []reliability.Finding{{Kind: "disk_pressure", Known: true}})
+				f.s.observeBlocking(t.Context(), f.n, fmt.Sprintf("telemt_connections_total %d\ntelemt_handshake_failures_by_class_total{class=\"timeout\"} %d\n", f.accepted, f.cuts))
+				f.a.observeReliability(t.Context(), f.n, true, f.now)
+				f.a.sendReliability(t.Context(), f.n)
+				f.now = f.now.Add(time.Minute)
+				f.accepted += 60
+				f.cuts += 40
+			}
+			f.now = f.now.Add(time.Minute)
+			f.accepted = 60
+			f.cuts = 40
+			for range 9 {
+				step("failed", false)
+			}
+			if f.open(t) != 1 || f.sender.calls.Load() != 1 {
+				t.Fatal("corroborated degradation did not open")
+			}
+			f.s = NewStats(f.s.st, nil, time.Hour, slog.New(slog.DiscardHandler))
+			f.s.SetNow(func() time.Time { return f.now })
+			f.s.SetAlerts(f.a)
+			f.s.SetProbeLocations([]string{"isp"})
+			for range 18 {
+				step("ok", false)
+			}
+			if f.open(t) != 1 || f.sender.calls.Load() != 1 {
+				t.Fatal("FakeTLS seen before usable metrics disappeared and falsely recovered after restart")
+			}
+			for range 11 {
+				step("ok", true)
+			}
+			if f.open(t) != 0 || f.sender.calls.Load() != 2 {
+				t.Fatal("both authenticated transports healthy did not recover")
+			}
+		})
+	}
+}

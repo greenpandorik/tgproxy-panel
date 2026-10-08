@@ -1220,7 +1220,11 @@ Work from the person towards the server.
    traffic alone cannot trigger it. Public TLS/HTTP checks and unmarked legacy reports
    cannot corroborate it; without authenticated probes this detector remains unknown.
    Missing, stale, reset or disabled metrics and disappeared checks never count as recovery.
-   Fresh successful authenticated checks can clear it even if scanners continue. Notifications
+   Recovery requires a fresh successful authenticated check at every configured probe
+   location and for every previously executed transport. Public-only or legacy-only
+   locations must gain authenticated checks or be deliberately retired from
+   `PROBE_LOCATIONS`; missing checks stay unknown. Recovery can occur while scanners
+   continue. Notifications
    join the existing server episode (5 bad minutes, 10 healthy minutes), with no separate spam.
    Filtering is one possible cause; inspect server and probe configuration too. What you can do:
    - add "Backup masking domains" on the server's Settings tab, in the "Addresses and Fake-TLS"

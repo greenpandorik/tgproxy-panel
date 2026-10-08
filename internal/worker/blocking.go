@@ -215,9 +215,13 @@ func (s *Stats) blockingProbeEvidence(ctx context.Context, n db.Node) (failed, h
 	healthy = true
 	for _, loc := range s.probeLocations {
 		p, ok := reports[loc]
-		if !ok || now.Sub(p.At) > reliabilityFreshness || p.At.Sub(now) > 30*time.Second {
+		if !ok || p.At.Sub(now) > 30*time.Second {
 			healthy = false
 			continue
+		}
+		fresh := now.Sub(p.At) <= reliabilityFreshness
+		if !fresh {
+			healthy = false
 		}
 		executed := false
 		for key, c := range map[string]reliability.ProbeCheck{"faketls": p.FakeTLS, "web": p.WEB} {
@@ -226,9 +230,13 @@ func (s *Stats) blockingProbeEvidence(ctx context.Context, n db.Node) (failed, h
 			}
 			executed = true
 			id := loc + "|" + key
-			checks[id] = c
-			failed = failed || c.Status == "failed"
-			if _, e = s.st.Pool.Exec(ctx, `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,'blocking_evidence',$2,false,true,$3) ON CONFLICT(node_id,kind) DO UPDATE SET observed_at=excluded.observed_at`, n.ID, id, now); e != nil {
+			if fresh {
+				checks[id] = c
+				failed = failed || c.Status == "failed"
+			}
+			// Backfill reports accepted before ingestion retained identities. Their
+			// age never certifies health, but their executed transport stays required.
+			if _, e = s.st.Pool.Exec(ctx, `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,'blocking_evidence',$2,false,true,$3) ON CONFLICT(node_id,kind) DO UPDATE SET observed_at=GREATEST(notification_findings.observed_at,excluded.observed_at)`, n.ID, id, p.At); e != nil {
 				return false, false
 			}
 		}
@@ -270,6 +278,8 @@ func (s *Stats) retireBlockingEvidence(ctx context.Context, n db.Node) {
 
 func (s *Stats) observeBlocking(ctx context.Context, n db.Node, text string) {
 	finding := reliability.Finding{Kind: "looks_like_blocking"}
+	// Persist executed check identities even during metric warmup or outages.
+	failed, healthy := s.blockingProbeEvidence(ctx, n)
 	var h struct{ Reliability reliability.Report }
 	if json.Unmarshal(n.LastHealth, &h) == nil && h.Reliability.Policy.Maintenance {
 		s.handshakes.forget(n.ID)
@@ -281,7 +291,6 @@ func (s *Stats) observeBlocking(ctx context.Context, n db.Node, text string) {
 		if ok {
 			v := s.handshakes.observe(n.ID, p)
 			if v.known {
-				failed, healthy := s.blockingProbeEvidence(ctx, n)
 				finding.Known = healthy || (v.failed && failed)
 				finding.Failed = v.failed && failed
 				v.failed = finding.Failed

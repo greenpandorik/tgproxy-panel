@@ -80,8 +80,14 @@ Legacy objects without `method` remain valid for existing probe diagnostics, but
 cannot corroborate possible network filtering. The panel needs fresh marked
 checks plus an interruption window; it does not infer successful clients from
 `telemt_connections_total`, which includes unauthenticated accepted connections.
-Previously executed marked locations/transports remain required across panel
-restarts. Missing, stale, unmarked and `not_run` results leave an existing incident
+Executed marked identities are retained as each newer report is accepted, even
+when metrics are missing or warming up and reports arrive between worker polls.
+Older stored reports are also backfilled by the worker. These locations/transports
+remain required across panel restarts. Recovery requires at least one fresh executed
+authenticated check at **every** configured `PROBE_LOCATION`, plus a successful fresh
+result for every previously executed transport. A public-only or legacy-only location
+cannot certify recovery: upgrade/configure its authenticated checker, or deliberately
+retire that location from `PROBE_LOCATIONS`. Missing, stale, unmarked and `not_run` results leave an existing incident
 unconfirmed rather than recovering it. Remove a location from `PROBE_LOCATIONS`
 when deliberately retiring that external monitor; its observations then stop
 participating in the aggregate notification episode without claiming that its
