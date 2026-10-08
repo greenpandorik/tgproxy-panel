@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
+import { api, invalidateSessionRequests } from '@/lib/api';
+import { advanceSession, sessionGuard } from '@/lib/session';
+import { brandingKeys } from './branding';
 
 import type { Admin, LoginResult, Me, SecondFactor, TotpEnrolment, TotpSetup } from './types';
 import { isTotpChallenge } from './types';
@@ -11,24 +13,43 @@ export const authKeys = {
   admins: ['auth', 'admins'] as const,
 };
 
-/**
- * Drops everything the ended session loaded. Some of it is only served to writers (subscription
- * links, secrets), so a viewer signing in next in the same tab must not be shown it from cache.
- * The me query is kept and set to null rather than removed, so its live observer stays attached.
- */
-export function forgetSession(qc: QueryClient) {
-  const me = JSON.stringify(authKeys.me);
-  qc.removeQueries({ predicate: (q) => JSON.stringify(q.queryKey) !== me });
+/** Clear private data while keeping the live authentication and public branding observers. */
+export function forgetSession(qc: QueryClient, refreshBranding = !!qc.getQueryData(authKeys.me)) {
+  advanceSession(qc);
+  invalidateSessionRequests();
+  // Cancellation is synchronous; it prevents late results, including /me, from restoring data.
+  void qc.cancelQueries({
+    predicate: (q) => JSON.stringify(q.queryKey) !== JSON.stringify(brandingKeys.active),
+  });
+  qc.removeQueries({
+    predicate: (q) =>
+      JSON.stringify(q.queryKey) !== JSON.stringify(authKeys.me) &&
+      JSON.stringify(q.queryKey) !== JSON.stringify(brandingKeys.active),
+  });
+  qc.getMutationCache().clear();
   qc.setQueryData(authKeys.me, null);
+  // ThemeProvider survives navigation and must remain attached to this public query.
+  if (refreshBranding) void qc.invalidateQueries({ queryKey: brandingKeys.active, exact: true });
 }
 
-export const useMe = () => useQuery({ queryKey: authKeys.me, queryFn: () => api.get<Me>('/api/v1/auth/me'), retry: false });
+export const useMe = () =>
+  useQuery({
+    queryKey: authKeys.me,
+    queryFn: ({ signal }) => api.get<Me>('/api/v1/auth/me', { signal }),
+    retry: false,
+  });
 
 export const useLogin = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { username: string; password: string }) => api.post<LoginResult>('/api/v1/auth/login', input),
-    onSuccess: (res) => {
+    onMutate: () => {
+      void qc.cancelQueries({ queryKey: authKeys.me, exact: true });
+      return sessionGuard(qc);
+    },
+    onSuccess: (res, _input, isCurrent) => {
+      if (!isCurrent()) return;
+      forgetSession(qc, true);
       if (!isTotpChallenge(res)) qc.setQueryData(authKeys.me, res);
     },
   });
@@ -39,7 +60,15 @@ export const useTotpVerify = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SecondFactor & { challenge: string }) => api.post<Me>('/api/v1/auth/totp/verify', input),
-    onSuccess: (me) => qc.setQueryData(authKeys.me, me),
+    onMutate: () => {
+      void qc.cancelQueries({ queryKey: authKeys.me, exact: true });
+      return sessionGuard(qc);
+    },
+    onSuccess: (me, _input, isCurrent) => {
+      if (!isCurrent()) return;
+      forgetSession(qc, true);
+      qc.setQueryData(authKeys.me, me);
+    },
   });
 };
 
@@ -48,8 +77,7 @@ export const useTotpSetup = () => useMutation({ mutationFn: () => api.post<TotpS
 export const useTotpConfirm = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { password: string; code: string }) =>
-      api.post<TotpEnrolment>('/api/v1/auth/totp/confirm', input),
+    mutationFn: (input: { password: string; code: string }) => api.post<TotpEnrolment>('/api/v1/auth/totp/confirm', input),
     onSuccess: () => qc.invalidateQueries({ queryKey: authKeys.me }),
   });
 };
@@ -66,7 +94,10 @@ export const useLogout = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<void>('/api/v1/auth/logout'),
-    onSuccess: () => forgetSession(qc),
+    onMutate: () => sessionGuard(qc),
+    onSuccess: (_data, _input, isCurrent) => {
+      if (isCurrent()) forgetSession(qc);
+    },
   });
 };
 

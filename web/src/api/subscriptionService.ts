@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { sessionGuard } from '@/lib/session';
 
 import { keyKeys } from './keys';
 
@@ -39,7 +40,9 @@ export const usePutSubscriptionService = () => {
   return useMutation({
     mutationFn: (b: { public_url: string; hide_on_panel: boolean }) =>
       api.put<SubscriptionService>('/api/v1/subscription-service', b),
-    onSuccess: (data) => {
+    onMutate: () => sessionGuard(qc),
+    onSuccess: (data, _input, isCurrent) => {
+      if (!isCurrent()) return;
       qc.setQueryData(serviceKey, data);
       void qc.invalidateQueries({ queryKey: keyKeys.all });
     },

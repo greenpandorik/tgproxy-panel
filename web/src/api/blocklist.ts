@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { sessionGuard } from '@/lib/session';
 
 export interface BlocklistEntry {
   prefix: string;
@@ -46,7 +47,12 @@ export function useSaveBlocklist(id: string) {
   return useMutation({
     mutationFn: ({ revision, entries }: { revision: number; entries: BlocklistEntryInput[] }) =>
       api.put<Blocklist>(`/api/v1/nodes/${id}/blocklist`, { revision, entries }),
-    onSuccess: (data) => qc.setQueryData(blocklistKey(id), data),
-    onError: () => qc.invalidateQueries({ queryKey: blocklistKey(id) }),
+    onMutate: () => sessionGuard(qc),
+    onSuccess: (data, _input, isCurrent) => {
+      if (isCurrent()) qc.setQueryData(blocklistKey(id), data);
+    },
+    onError: (_error, _input, isCurrent) => {
+      if (isCurrent?.()) void qc.invalidateQueries({ queryKey: blocklistKey(id) });
+    },
   });
 }
