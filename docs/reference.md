@@ -686,8 +686,8 @@ apply that keeps retrying is one incident until an apply succeeds. Incidents com
 - a server going offline, and an apply that failed;
 - the agent's reports: disk at least 90% full, memory at least 95% full, the engine not ready,
   WEB sessions closed, running out of file descriptors or of the connection table, too many
-  failed connections to Telegram, an egress route down, a surge of TLS handshakes cut
-  before they finish (what blocking the server looks like);
+  failed connections to Telegram, an egress route down, or interrupted handshakes
+  corroborated by failed authenticated external proxy checks (possible filtering);
 - the scheduled full server checks;
 - external checks that failed or stopped reporting;
 - a backup that could not be encrypted or uploaded.

@@ -278,6 +278,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	s.handshakes.prune(nodes)
 	s.announceOutages(ctx, nodes)
 	// Nodes are polled together: one that has stopped answering holds a request open for the
 	// driver's whole timeout, and a handful of those used to push every healthy node's snapshot
@@ -290,6 +291,7 @@ func (s *Stats) RunOnce(ctx context.Context) error {
 	readings := make([]nodeReading, 0, len(nodes))
 	due := make([]uuid.UUID, 0, len(nodes))
 	for _, n := range nodes {
+		s.retireBlockingEvidence(ctx, n)
 		s.collectProbes(ctx, n)
 		if n.Status == db.NodeStatusOffline || n.Status == db.NodeStatusPending {
 			if s.alerts != nil {
@@ -367,17 +369,23 @@ func (s *Stats) recordPresence(ctx context.Context, due []uuid.UUID, readings []
 // read; it never fails the sweep for others.
 func (s *Stats) collectNode(ctx context.Context, n db.Node) (*nodeReading, bool) {
 	s.collectIncidents(ctx, n)
-	s.notifyReliability(ctx, n)
+	defer s.notifyReliability(ctx, n)
 	if _, err := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: "node_offline"}); err == nil && s.alerts != nil && s.driver.Online(n.ID) {
 		// Not on this node's polling budget: sending an alert is not part of reading a node, and
 		// a Telegram call outliving a 30s poll is normal.
 		s.notify(context.WithoutCancel(ctx), func(ctx context.Context) { s.alerts.NodeOnline(ctx, n) })
 	}
 	if !s.driver.Online(n.ID) {
+		if n.Engine == db.NodeEngineTelemt {
+			s.observeBlocking(ctx, n, "")
+		}
 		return nil, true // not connected right now: nothing to read, and nothing wrong either
 	}
 	text, err := s.driver.Metrics(ctx, n.ID)
 	if err != nil {
+		if n.Engine == db.NodeEngineTelemt {
+			s.observeBlocking(ctx, n, "")
+		}
 		s.log.Warn("metrics", "node", n.ID, "err", err)
 		return nil, false
 	}

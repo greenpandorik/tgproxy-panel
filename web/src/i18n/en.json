@@ -209,7 +209,7 @@
     "alert_fd_pressure": "telemt is running out of file descriptors",
     "alert_conntrack_pressure": "The connection table is filling up",
     "alert_inode_pressure": "The disk is running out of inodes",
-    "alert_looks_like_blocking": "Connections are being cut, possibly blocked"
+    "alert_looks_like_blocking": "Handshake interruptions and failed authenticated checks: possible filtering"
   },
   "nodes": {
     "verdict_ok": "All good",
@@ -2815,7 +2815,7 @@
       "fd_pressure": "telemt uses over 90% of its file descriptors and will soon stop accepting new connections.",
       "conntrack_pressure": "The kernel connection tracking table is over 90% full. New connections may be dropped.",
       "inode_pressure": "The disk is running out of inodes, the file entries, even if space remains.",
-      "looks_like_blocking": "Most new connections die during the TLS handshake, which is what it looks like when a provider blocks the server. Add a backup masking domain, or give people the WEB link. If people still connect, it may be a scan of the open port.",
+      "looks_like_blocking": "Interrupted handshakes coincide with an authenticated external proxy check failing. Network filtering is possible; a server fault or probe configuration problem can also cause this. Check from another network and inspect the affected transport before changing masking domains.",
       "disk_pressure": "The server's disk is at least 90% full.",
       "memory_pressure": "The server's memory is at least 95% used.",
       "engine_unready": "The proxy fails its readiness check, so people may not be able to connect.",
@@ -2823,7 +2823,8 @@
       "probe_stale": "The check from another network hasn't reported for a while. The check itself may be broken.",
       "probe_failed": "The server failed a check from another network. It may be blocked there."
     },
-    "value_dc": "Connections now: {{alive}} of {{required}}"
+    "value_dc": "Connections now: {{alive}} of {{required}}",
+    "reliability_blocking_reason": "Handshake interruptions coincide with failed authenticated proxy checks. Possible network filtering or a server/probe configuration problem; check from another network."
   },
   "subpage": {
     "language": "Language",

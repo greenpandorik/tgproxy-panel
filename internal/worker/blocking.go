@@ -1,80 +1,67 @@
 package worker
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"context"
-
 	"github.com/google/uuid"
-
 	"tgwebproxy/internal/reliability"
 	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/telemt"
 )
 
 const (
-	// blockingMinSpan is the shortest interval a rate is judged over.
-	blockingMinSpan = 3 * time.Minute
-	// blockingMaxSpan drops samples older than this, so a panel outage is not one long rate.
-	blockingMaxSpan = 12 * time.Minute
-	// blockingLookback is the interval the comparison aims for.
-	blockingLookback = 5 * time.Minute
-	// blockingMinCuts is the smallest growth that can be a block rather than background noise.
-	blockingMinCuts = 40
-	// blockingShare is how much of the new attempts (cuts plus connections) must be cuts.
-	blockingShare = 0.5
-	// blockingSurge is how many times the quiet rate a jump must be.
-	blockingSurge = 4
-	// blockingExtremeCuts is a surge large enough to report before a quiet rate is known.
-	blockingExtremeCuts  = 120
-	blockingExtremeShare = 0.8
-	// blockingMinConnRate is the quiet connection rate, per minute, that shows the server
-	// normally accepts people. Below it, only an extreme surge is reported.
-	blockingMinConnRate = 0.2
+	blockingMinSpan   = 3 * time.Minute
+	blockingMaxSpan   = 12 * time.Minute
+	blockingLookback  = 5 * time.Minute
+	blockingMinCuts   = 40
+	blockingShare     = .5
+	blockingMaxPoints = 64
 )
 
-// handshakeCut is a failure class where the peer never finished saying anything: a timeout, or a
-// connection that closed before the first bytes. Protocol errors such as bad padding are a
-// different problem and stay with the tls_front_errors check.
+// These classes describe interrupted handshakes, including plain MTProto and
+// errors after bytes have arrived. They do not prove TLS filtering or zero-byte clients.
 func handshakeCut(class string) bool {
-	return class == "timeout" || strings.Contains(class, "got_0")
+	switch class {
+	case "timeout", "expected_64_got_0_unexpected_eof", "expected_64_got_0_connection_reset", "expected_64_got_0_connection_aborted", "expected_64_got_0_broken_pipe", "expected_64_got_0_not_connected":
+		return true
+	}
+	return false
 }
 
-type handshakePoint struct {
-	at          time.Time
-	cuts        float64
-	connections float64
-}
-
-type handshakeSeries struct {
-	points   []handshakePoint
-	cutRate  float64
-	connRate float64
-	ready    bool
-}
-
-type blockingVerdict struct {
-	known   bool
-	failed  bool
-	cuts    float64
-	conns   float64
-	minutes float64
-}
+type (
+	handshakePoint struct {
+		at                time.Time
+		cuts, connections float64
+		uptime            *float64
+	}
+	handshakeSeries struct{ points []handshakePoint }
+	blockingVerdict struct {
+		known, failed        bool
+		cuts, conns, minutes float64
+	}
+)
 
 func (w *handshakeSeries) observe(p handshakePoint) blockingVerdict {
 	if n := len(w.points); n > 0 {
 		last := w.points[n-1]
-		if p.cuts < last.cuts || p.connections < last.connections {
-			*w = handshakeSeries{}
+		if !p.at.After(last.at) || p.at.Sub(last.at) > reliabilityFreshness || p.cuts < last.cuts || p.connections < last.connections || (p.uptime != nil && last.uptime != nil && *p.uptime < *last.uptime) {
+			w.points = nil
 		}
 	}
 	w.points = append(w.points, p)
 	cutoff := p.at.Add(-blockingMaxSpan)
 	for len(w.points) > 1 && w.points[0].at.Before(cutoff) {
 		w.points = w.points[1:]
+	}
+	if len(w.points) > blockingMaxPoints {
+		w.points = append([]handshakePoint(nil), w.points[len(w.points)-blockingMaxPoints:]...)
 	}
 	base := -1
 	best := blockingMaxSpan
@@ -87,43 +74,22 @@ func (w *handshakeSeries) observe(p handshakePoint) blockingVerdict {
 		if dist < 0 {
 			dist = -dist
 		}
-		if base == -1 || dist < best {
+		if base < 0 || dist < best {
 			base, best = i, dist
 		}
 	}
-	if base == -1 {
+	if base < 0 {
 		return blockingVerdict{}
 	}
-	older := w.points[base]
-	minutes := p.at.Sub(older.at).Minutes()
-	if minutes <= 0 {
-		return blockingVerdict{}
-	}
-	dCuts := p.cuts - older.cuts
-	dConn := p.connections - older.connections
-	rate := dCuts / minutes
-	connNow := dConn / minutes
-	share := 0.0
-	if total := dCuts + dConn; total > 0 {
-		share = dCuts / total
-	}
-	v := blockingVerdict{known: true, cuts: dCuts, conns: dConn, minutes: minutes}
-	surge := w.ready && dCuts >= blockingMinCuts && share >= blockingShare &&
-		rate >= blockingSurge*w.cutRate && (w.connRate >= blockingMinConnRate || dCuts >= blockingExtremeCuts)
-	extreme := !w.ready && dCuts >= blockingExtremeCuts && share >= blockingExtremeShare
-	v.failed = surge || extreme
-	if !v.failed {
-		if !w.ready {
-			w.cutRate, w.connRate, w.ready = rate, connNow, true
-		} else if share < blockingShare {
-			w.cutRate = w.cutRate*0.8 + rate*0.2
-			w.connRate = w.connRate*0.8 + connNow*0.2
-		}
-	}
+	old := w.points[base]
+	cuts, accepted := p.cuts-old.cuts, p.connections-old.connections
+	v := blockingVerdict{known: true, cuts: cuts, conns: accepted, minutes: p.at.Sub(old.at).Minutes()}
+	// Accepted connections already include interrupted attempts. Completions can
+	// cross window boundaries, so this is only an approximate share, never success accounting.
+	v.failed = accepted > 0 && cuts >= blockingMinCuts && cuts/accepted >= blockingShare
 	return v
 }
 
-// handshakeWatch keeps one series per node. Stats sweeps read nodes in parallel.
 type handshakeWatch struct {
 	mu    sync.Mutex
 	nodes map[uuid.UUID]*handshakeSeries
@@ -143,40 +109,196 @@ func (w *handshakeWatch) observe(id uuid.UUID, p handshakePoint) blockingVerdict
 	return s.observe(p)
 }
 
+func (w *handshakeWatch) forget(id uuid.UUID) { w.mu.Lock(); defer w.mu.Unlock(); delete(w.nodes, id) }
+
+func (w *handshakeWatch) prune(nodes []db.Node) {
+	active := map[uuid.UUID]bool{}
+	for _, n := range nodes {
+		if n.Engine == db.NodeEngineTelemt && n.Status != db.NodeStatusOffline && n.Status != db.NodeStatusPending {
+			active[n.ID] = true
+		}
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for id := range w.nodes {
+		if !active[id] {
+			delete(w.nodes, id)
+		}
+	}
+}
+
+func validCounter(v float64) bool { return v >= 0 && !math.IsNaN(v) && !math.IsInf(v, 0) }
 func handshakePointFrom(text string, at time.Time) (handshakePoint, bool) {
 	m := telemt.ParseWebMetrics(text)
-	if !m.HandshakeFailures.Present || !m.Connections.Present {
+	accepted, ok := m.Connections.Get("")
+	if !ok || !m.HandshakeFailures.Present || !validCounter(accepted) {
 		return handshakePoint{}, false
 	}
-	var cuts float64
+	p := handshakePoint{at: at, connections: accepted}
 	for _, class := range m.HandshakeFailures.Labels() {
-		if !handshakeCut(class) {
-			continue
+		if class == "" {
+			return handshakePoint{}, false
 		}
 		v, _ := m.HandshakeFailures.Get(class)
-		cuts += v
+		if !validCounter(v) {
+			return handshakePoint{}, false
+		}
+		if handshakeCut(class) {
+			p.cuts += v
+		}
 	}
-	return handshakePoint{at: at, cuts: cuts, connections: m.Connections.Total()}, true
+	reportedFailures := 0
+	for _, line := range strings.Split(text, "\n") {
+		f := strings.Fields(line)
+		if len(f) == 0 || strings.HasPrefix(f[0], "#") {
+			continue
+		}
+		if f[0] == telemt.MetricHandshakeFailures || strings.HasPrefix(f[0], telemt.MetricHandshakeFailures+"{") {
+			reportedFailures++
+			if len(f) < 2 {
+				return handshakePoint{}, false
+			}
+			v, e := strconv.ParseFloat(f[1], 64)
+			if e != nil || !validCounter(v) {
+				return handshakePoint{}, false
+			}
+		}
+		if f[0] == "telemt_telemetry_core_enabled" || f[0] == "telemt_uptime_seconds" {
+			if len(f) < 2 {
+				return handshakePoint{}, false
+			}
+			v, e := strconv.ParseFloat(f[1], 64)
+			if e != nil || !validCounter(v) {
+				return handshakePoint{}, false
+			}
+			if f[0] == "telemt_telemetry_core_enabled" && v != 1 {
+				return handshakePoint{}, false
+			}
+			if f[0] == "telemt_uptime_seconds" {
+				p.uptime = &v
+			}
+		}
+	}
+	return p, validCounter(p.cuts) && reportedFailures == len(m.HandshakeFailures.Values)
+}
+
+// blockingProbeEvidence stores only the identities of authenticated checks that
+// actually ran. This survives panel restarts; evidence rows are excluded from
+// aggregate notification health, so their age cannot create a notification.
+func (s *Stats) blockingProbeEvidence(ctx context.Context, n db.Node) (failed, healthy bool) {
+	if len(s.probeLocations) == 0 {
+		return false, false
+	}
+	now := s.clock()
+	rows, e := s.st.Pool.Query(ctx, `SELECT report FROM probe_reports WHERE node_id=$1`, n.ID)
+	if e != nil {
+		return false, false
+	}
+	reports := map[string]reliability.ProbeReport{}
+	for rows.Next() {
+		var raw []byte
+		if rows.Scan(&raw) != nil {
+			rows.Close()
+			return false, false
+		}
+		var p reliability.ProbeReport
+		if json.Unmarshal(raw, &p) == nil {
+			reports[p.Location] = p
+		}
+	}
+	err := rows.Err()
+	rows.Close()
+	if err != nil {
+		return false, false
+	}
+	checks := map[string]reliability.ProbeCheck{}
+	healthy = true
+	for _, loc := range s.probeLocations {
+		p, ok := reports[loc]
+		if !ok || now.Sub(p.At) > reliabilityFreshness || p.At.Sub(now) > 30*time.Second {
+			healthy = false
+			continue
+		}
+		executed := false
+		for key, c := range map[string]reliability.ProbeCheck{"faketls": p.FakeTLS, "web": p.WEB} {
+			if c.Method != reliability.AuthenticatedMTProto || (c.Status != "ok" && c.Status != "failed") {
+				continue
+			}
+			executed = true
+			id := loc + "|" + key
+			checks[id] = c
+			failed = failed || c.Status == "failed"
+			if _, e = s.st.Pool.Exec(ctx, `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,'blocking_evidence',$2,false,true,$3) ON CONFLICT(node_id,kind) DO UPDATE SET observed_at=excluded.observed_at`, n.ID, id, now); e != nil {
+				return false, false
+			}
+		}
+		if !executed {
+			healthy = false
+		}
+	}
+	rows, e = s.st.Pool.Query(ctx, `SELECT kind FROM notification_findings WHERE node_id=$1 AND source='blocking_evidence'`, n.ID)
+	if e != nil {
+		return false, false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if rows.Scan(&id) != nil {
+			return false, false
+		}
+		c, ok := checks[id]
+		if !ok || c.Status != "ok" {
+			healthy = false
+		}
+	}
+	if rows.Err() != nil {
+		return false, false
+	}
+	return failed, healthy && !failed
+}
+
+func (s *Stats) retireBlockingEvidence(ctx context.Context, n db.Node) {
+	sources := make([]string, 0, len(s.probeLocations))
+	for _, loc := range s.probeLocations {
+		sources = append(sources, "probe_"+loc)
+	}
+	_, err := s.st.Pool.Exec(ctx, `DELETE FROM notification_findings WHERE node_id=$1 AND ((source='blocking_evidence' AND split_part(kind,'|',1)<>ALL($2::text[])) OR (source='blocking' AND ($3 OR cardinality($2::text[])=0)) OR (source LIKE 'probe\_%' ESCAPE '\' AND source<>ALL($4::text[])))`, n.ID, append([]string{}, s.probeLocations...), n.Engine != db.NodeEngineTelemt, sources)
+	if err != nil {
+		s.log.Error("retire removed blocking/probe observations", "err", err)
+	}
 }
 
 func (s *Stats) observeBlocking(ctx context.Context, n db.Node, text string) {
-	p, ok := handshakePointFrom(text, s.clock())
-	if !ok {
+	finding := reliability.Finding{Kind: "looks_like_blocking"}
+	var h struct{ Reliability reliability.Report }
+	if json.Unmarshal(n.LastHealth, &h) == nil && h.Reliability.Policy.Maintenance {
+		s.handshakes.forget(n.ID)
+		s.recordFindings(ctx, n, []reliability.Finding{finding})
 		return
 	}
-	v := s.handshakes.observe(n.ID, p)
-	if !v.known {
-		return
+	if len(s.probeLocations) > 0 {
+		p, ok := handshakePointFrom(text, s.clock())
+		if ok {
+			v := s.handshakes.observe(n.ID, p)
+			if v.known {
+				failed, healthy := s.blockingProbeEvidence(ctx, n)
+				finding.Known = healthy || (v.failed && failed)
+				finding.Failed = v.failed && failed
+				v.failed = finding.Failed
+				finding.Message = blockingMessage(v)
+			}
+		} else {
+			s.handshakes.forget(n.ID)
+		}
+	} else {
+		s.handshakes.forget(n.ID)
 	}
-	s.recordFindings(ctx, n, []reliability.Finding{{
-		Kind: "looks_like_blocking", Message: blockingMessage(v), Failed: v.failed, Known: true,
-	}})
+	s.recordFindings(ctx, n, []reliability.Finding{finding})
 }
 
 func blockingMessage(v blockingVerdict) string {
 	if !v.failed {
-		return "TLS handshakes are completing again"
+		return "Authenticated proxy checks are working again"
 	}
-	return fmt.Sprintf("Most new connections are cut during the TLS handshake (%.0f cut, %.0f connected over %.0f min). This is what blocking the server looks like.",
-		v.cuts, v.conns, v.minutes)
+	return fmt.Sprintf("%.0f interrupted handshakes among %.0f accepted connections over %.0f min, with an authenticated external proxy check failing. Possible network filtering or a server/configuration problem.", v.cuts, v.conns, v.minutes)
 }

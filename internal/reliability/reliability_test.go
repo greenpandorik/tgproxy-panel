@@ -57,3 +57,25 @@ func TestProbeRejectsReplayAndUnknownStatus(t *testing.T) {
 		t.Fatal("unknown accepted")
 	}
 }
+
+func TestProbeMethodAcceptsLegacyAndRejectsInvalidClaims(t *testing.T) {
+	now := time.Now()
+	ok := ProbeCheck{Status: "ok"}
+	p := ProbeReport{At: now, Location: "isp", TLS: ok, HTTP: ok, FakeTLS: ok, WEB: ok}
+	if e := p.Validate(now); e != nil {
+		t.Fatalf("legacy report rejected: %v", e)
+	}
+	p.FakeTLS.Method = AuthenticatedMTProto
+	if e := p.Validate(now); e != nil {
+		t.Fatalf("authenticated marker rejected: %v", e)
+	}
+	p.FakeTLS.Status = "not_run"
+	if e := p.Validate(now); e == nil {
+		t.Fatal("unexecuted check claimed a method")
+	}
+	p.FakeTLS.Status = "ok"
+	p.FakeTLS.Method = "public_tls"
+	if e := p.Validate(now); e == nil {
+		t.Fatal("unknown method accepted")
+	}
+}

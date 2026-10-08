@@ -25,7 +25,9 @@ func (s *Stats) observeFindings(ctx context.Context, n db.Node, findings []relia
 		return
 	}
 	source := "health"
-	if strings.HasPrefix(findings[0].Kind, "probe_") {
+	if findings[0].Kind == "looks_like_blocking" {
+		source = "blocking"
+	} else if strings.HasPrefix(findings[0].Kind, "probe_") {
 		source = strings.TrimSuffix(findings[0].Kind, "_stale")
 	}
 	tx, err := s.st.Pool.Begin(ctx)
@@ -44,7 +46,7 @@ func (s *Stats) observeFindings(ctx context.Context, n db.Node, findings []relia
 			}
 			continue
 		}
-		if _, err = tx.Exec(ctx, `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(node_id,kind) DO UPDATE SET failed=excluded.failed,known=excluded.known,observed_at=excluded.observed_at`, n.ID, source, f.Kind, f.Failed, f.Known, s.clock()); err != nil {
+		if _, err = tx.Exec(ctx, `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(node_id,kind) DO UPDATE SET source=excluded.source,failed=excluded.failed,known=excluded.known,observed_at=excluded.observed_at`, n.ID, source, f.Kind, f.Failed, f.Known, s.clock()); err != nil {
 			return
 		}
 	}
@@ -72,7 +74,7 @@ func (a *Alerts) observeReliability(ctx context.Context, n db.Node, known bool, 
 		return false
 	}
 	var bad, unknown, any bool
-	if err := a.pool.QueryRow(ctx, `SELECT COALESCE(bool_or(failed AND known AND observed_at >= $2),false), COALESCE(bool_or(NOT known OR observed_at < $2),false),count(*)>0 FROM notification_findings WHERE node_id=$1`, n.ID, now.Add(-reliabilityFreshness)).Scan(&bad, &unknown, &any); err != nil {
+	if err := a.pool.QueryRow(ctx, `SELECT COALESCE(bool_or(failed AND known AND observed_at >= $2),false), COALESCE(bool_or(NOT known OR observed_at < $2),false),count(*)>0 FROM notification_findings WHERE node_id=$1 AND source<>'blocking_evidence'`, n.ID, now.Add(-reliabilityFreshness)).Scan(&bad, &unknown, &any); err != nil {
 		a.log.Error("notification findings read", "err", err)
 		return false
 	}
@@ -117,14 +119,18 @@ func (a *Alerts) sendReliability(ctx context.Context, n db.Node) {
 			// A channel that recovered can open a new episode even when another
 			// channel's previous recovery is still awaiting delivery. Existing
 			// acknowledgements suppress repeats for unrecovered channels.
+			var blocking bool
+			if err := a.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM notification_findings WHERE node_id=$1 AND source='blocking' AND kind='looks_like_blocking' AND failed AND known AND observed_at >= $2)`, n.ID, now.Add(-reliabilityFreshness)).Scan(&blocking); err != nil {
+				return
+			}
 			state.Pending = true
-			a.sendProblem(ctx, n.ID.String(), "server_reliability", alerttext.Default().Reliability(a.lang(ctx), textNode(n), false, a.PanelURL), state)
+			a.sendProblem(ctx, n.ID.String(), "server_reliability", alerttext.Default().Reliability(a.lang(ctx), textNode(n), false, a.PanelURL, blocking), state)
 		case "healthy":
 			if now.Sub(since) < reliabilityRecoveryDelay {
 				return
 			}
 			state.Pending = false
-			a.sendRecovery(ctx, n.ID.String(), "server_reliability", alerttext.Default().Reliability(a.lang(ctx), textNode(n), true, a.PanelURL), state)
+			a.sendRecovery(ctx, n.ID.String(), "server_reliability", alerttext.Default().Reliability(a.lang(ctx), textNode(n), true, a.PanelURL, false), state)
 			if !state.Telegram && !state.Webhook {
 				state.LastProblem = time.Time{}
 			}

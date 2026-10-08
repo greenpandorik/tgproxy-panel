@@ -136,6 +136,7 @@ func Check(ctx context.Context, host string, c Config) Result {
 		check := reliability.ProbeCheck{Status: "failed"}
 
 		if validHost(host) && c.validate() == nil {
+			check.Method = reliability.AuthenticatedMTProto
 			timeout := c.TimeoutSeconds
 			if timeout == 0 {
 				timeout = 15

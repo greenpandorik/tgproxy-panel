@@ -55,7 +55,7 @@ tgwp-probe --host proxy.example.com \
   --protocol-config /private/path/protocol.json --check-only
 ```
 
-This prints the two sanitized status/latency objects and does not contact the panel.
+This prints the two sanitized status/latency/method objects and does not contact the panel.
 A completed check may print `failed` while exiting successfully; inspect the JSON
 status. Configuration or execution errors exit unsuccessfully. For normal reports,
 use the existing `--panel`, `--node`, `--location`, and `TGWP_PROBE_TOKEN` settings.
@@ -65,6 +65,28 @@ its original stdin, JSON, 4096-byte output limit and 45-second timeout. It is
 mutually exclusive with `--protocol-config`/`TGWP_PROBE_CONFIG`. Without either
 option, both authenticated checks remain `not_run`. Existing custom checkers should
 keep their own private credential-file arrangement.
+
+Executed bundled FakeTLS/WEB checks include `"method":"authenticated_mtproto"`.
+The marker describes an actual attempt at the authenticated proxy exchange, whether
+it succeeds or fails; omitted transports remain `not_run` without a method. Public
+TLS/HTTP checks and a failed custom checker process do not receive this marker.
+Custom checkers must include it themselves only after attempting the real exchange:
+
+```json
+{"faketls":{"status":"failed","latency_ms":15000,"method":"authenticated_mtproto"},"web":{"status":"not_run","latency_ms":0}}
+```
+
+Legacy objects without `method` remain valid for existing probe diagnostics, but
+cannot corroborate possible network filtering. The panel needs fresh marked
+checks plus an interruption window; it does not infer successful clients from
+`telemt_connections_total`, which includes unauthenticated accepted connections.
+Previously executed marked locations/transports remain required across panel
+restarts. Missing, stale, unmarked and `not_run` results leave an existing incident
+unconfirmed rather than recovering it. Remove a location from `PROBE_LOCATIONS`
+when deliberately retiring that external monitor; its observations then stop
+participating in the aggregate notification episode without claiming that its
+old detailed incident recovered. Previously run transports disappearing while the
+location remains configured continue to be unknown.
 
 ## Verification
 

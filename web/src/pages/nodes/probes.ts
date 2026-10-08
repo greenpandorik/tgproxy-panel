@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 
 export interface ProbeCheck {
   status: 'ok' | 'failed' | 'not_run';
+  method?: 'authenticated_mtproto';
   latency_ms: number;
 }
 
