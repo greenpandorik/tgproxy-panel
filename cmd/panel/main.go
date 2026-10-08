@@ -409,8 +409,8 @@ func serve(ctx context.Context, cfg config.Config, st *store.Store, log *slog.Lo
 		alerts.Webhook = &notify.Webhook{URL: cfg.AlertWebhookURL, Secret: cfg.AlertWebhookSecret}
 	}
 	applyW.SetAlerts(alerts)
-	go srv.RunOperations(ctx, alerts)
 	statsW.SetAlerts(alerts)
+	go srv.RunOperations(ctx, alerts)
 	statsW.SetProbeLocations(cfg.ProbeLocations)
 	stopWorkers := worker.Start(ctx, applyW, worker.NewExpiry(st, keySvc, log), statsW, worker.NewBackup(st, backupRunner, log))
 	go worker.NewBlocklists(st, driver, log).Run(ctx, time.Minute)

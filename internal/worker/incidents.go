@@ -3,7 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"time"
+	"strings"
 
 	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/nodedriver"
@@ -16,14 +16,12 @@ func (s *Stats) collectIncidents(ctx context.Context, n db.Node) {
 	if json.Unmarshal(n.LastHealth, &h) != nil {
 		return
 	}
+	if !freshNotificationHealth(n, s.clock()) {
+		return
+	}
 	var r reliability.Report
-	if json.Unmarshal(h.Reliability, &r) != nil || r.Version == 0 || time.Since(r.At) > 2*time.Minute {
-		return
-	}
-	if r.Policy.Maintenance {
-		return
-	}
-	findings := reliability.Findings(r, time.Now())
+	_ = json.Unmarshal(h.Reliability, &r)
+	findings := reliability.Findings(r, s.clock())
 	findings = append(findings, reliability.Finding{Kind: "disk_pressure", Message: "Server disk is at least 90% full", Failed: h.DiskUsedPercent >= 90, Known: true}, reliability.Finding{Kind: "memory_pressure", Message: "Server memory is at least 95% full", Failed: h.MemUsedPercent >= 95, Known: true}, reliability.Finding{Kind: "engine_unready", Message: "Proxy engine is not ready", Failed: !h.Readyz || !h.Healthz, Known: true})
 	if h.Web != nil && h.Web.Runtime != nil && h.Web.Runtime.Lifecycle != nil {
 		findings = append(findings, reliability.Finding{Kind: "web_admission_closed", Message: "WEB admission is closed; inspect maintenance or pause state", Failed: !h.Web.Runtime.Lifecycle.AdmissionOpen, Known: true})
@@ -57,6 +55,7 @@ func (s *Stats) findingRun(key string, failed bool) int {
 }
 
 func (s *Stats) recordFindings(ctx context.Context, n db.Node, findings []reliability.Finding) {
+	s.observeFindings(ctx, n, findings)
 	for _, f := range findings {
 		if !f.Known {
 			continue
@@ -67,18 +66,14 @@ func (s *Stats) recordFindings(ctx context.Context, n db.Node, findings []reliab
 		}
 		if f.Failed {
 			// One stats sweep owns a node. Persisted incidents survive process restarts.
-			tag, e := s.st.Pool.Exec(ctx, `INSERT INTO alerts(node_id,kind,message) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND kind=$2 AND resolved_at IS NULL)`, n.ID, kind, f.Message)
-			if e == nil && tag.RowsAffected() > 0 {
-				s.notify(context.WithoutCancel(ctx), func(ctx context.Context) {
-					s.alerts.Incident(ctx, n, alerttext.Incident{Kind: kind, Message: f.Message})
-				})
+			_, e := s.st.Pool.Exec(ctx, `INSERT INTO alerts(node_id,kind,message) SELECT $1,$2,$3 WHERE NOT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND kind=$2 AND resolved_at IS NULL)`, n.ID, kind, f.Message)
+			if e != nil {
+				s.log.Error("insert reliability incident", "err", e)
 			}
 		} else {
-			rows, e := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: kind})
-			if e == nil && rows > 0 {
-				s.notify(context.WithoutCancel(ctx), func(ctx context.Context) {
-					s.alerts.Incident(ctx, n, alerttext.Incident{Kind: kind, Message: f.Message, Recovered: true})
-				})
+			_, e := s.st.Q.ResolveNodeAlerts(ctx, db.ResolveNodeAlertsParams{NodeID: nullUUID(n.ID), Kind: kind})
+			if e != nil {
+				s.log.Error("resolve reliability incident", "err", e)
 			}
 		}
 	}
@@ -86,6 +81,10 @@ func (s *Stats) recordFindings(ctx context.Context, n db.Node, findings []reliab
 
 func (a *Alerts) Incident(ctx context.Context, n db.Node, in alerttext.Incident) {
 	if a == nil {
+		return
+	}
+	// Persisted panel incidents are included in the next server summary sweep.
+	if a.pool != nil && (strings.HasPrefix(in.Kind, "reliability_") || strings.HasPrefix(in.Kind, "diagnostic_")) {
 		return
 	}
 	msg := alerttext.Default().Incident(a.lang(ctx), textNode(n), in, a.PanelURL)
