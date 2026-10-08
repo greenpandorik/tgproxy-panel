@@ -1213,7 +1213,20 @@ Work from the person towards the server.
    window says the link cannot be shown, an earlier version of the panel issued it: press "Issue a
    new link" and send the new one.
 4. If people on one provider or in one region cannot connect while others can, the provider is
-   probably blocking the Fake-TLS domain or port. What you can do:
+   probably blocking the Fake-TLS domain or port. On a telemt server the panel raises
+   a possible-filtering incident when at least 40 handshakes are interrupted and their
+   approximate share of accepted connections reaches 50% over a valid 3–12 minute window,
+   corroborated by a fresh failed authenticated external FakeTLS or WEB check. Scanner
+   traffic alone cannot trigger it. Public TLS/HTTP checks and unmarked legacy reports
+   cannot corroborate it; without authenticated probes this detector remains unknown.
+   Missing, stale, reset or disabled metrics and disappeared checks never count as recovery.
+   Recovery requires a fresh successful authenticated check at every configured probe
+   location and for every previously executed transport. Public-only or legacy-only
+   locations must gain authenticated checks or be deliberately retired from
+   `PROBE_LOCATIONS`; missing checks stay unknown. Recovery can occur while scanners
+   continue. Notifications
+   join the existing server episode (5 bad minutes, 10 healthy minutes), with no separate spam.
+   Filtering is one possible cause; inspect server and probe configuration too. What you can do:
    - add "Backup masking domains" on the server's Settings tab, in the "Addresses and Fake-TLS"
      card. Every user gets extra Fake-TLS links with other domains, and links already issued keep
      working. The next apply restarts telemt;

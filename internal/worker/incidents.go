@@ -58,6 +58,9 @@ func (s *Stats) recordFindings(ctx context.Context, n db.Node, findings []reliab
 	s.observeFindings(ctx, n, findings)
 	for _, f := range findings {
 		if !f.Known {
+			s.findingMu.Lock()
+			delete(s.findingStreak, n.ID.String()+"|reliability_"+f.Kind)
+			s.findingMu.Unlock()
 			continue
 		}
 		kind := "reliability_" + f.Kind

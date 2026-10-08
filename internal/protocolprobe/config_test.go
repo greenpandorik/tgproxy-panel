@@ -1,6 +1,8 @@
 package protocolprobe
 
 import (
+	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,5 +63,19 @@ func TestUnconfiguredTransportsStayNotRun(t *testing.T) {
 	result := Check(t.Context(), "127.0.0.1", Config{})
 	if result.FakeTLS.Status != "not_run" || result.WEB.Status != "not_run" {
 		t.Fatalf("%+v", result)
+	}
+}
+
+func TestAuthenticatedAttemptsMarkMethodButInvalidConfigurationDoesNot(t *testing.T) {
+	cfg := Config{FakeTLS: &Transport{Secret: "00112233445566778899aabbccddeeff", SNI: "example.org", Port: 1}, TimeoutSeconds: 1}
+	result := Check(context.Background(), "127.0.0.1", cfg)
+	raw, _ := json.Marshal(result)
+	if !strings.Contains(string(raw), `"method":"authenticated_mtproto"`) {
+		t.Fatalf("actual configured attempt lacks marker: %s", raw)
+	}
+	result = Check(context.Background(), "invalid/host", cfg)
+	raw, _ = json.Marshal(result)
+	if strings.Contains(string(raw), `"method"`) {
+		t.Fatalf("invalid local configuration marked as a protocol attempt: %s", raw)
 	}
 }

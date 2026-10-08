@@ -81,3 +81,77 @@ func TestFleetRolloutPersistenceAndStop(t *testing.T) {
 		t.Fatalf("durable stop: %s %v", status, e)
 	}
 }
+
+func TestProbeIngestionRetainsAuthenticatedHistoryBeforeWorkerPoll(t *testing.T) {
+	h := apitest.New(t, func(d *api.Deps) {
+		d.Cfg.ProbeToken = strings.Repeat("x", 32)
+		d.Cfg.ProbeLocations = []string{"isp-a"}
+	})
+	h.CreateAdmin("root", "pass-123456", "owner")
+	owner := h.Login("root", "pass-123456")
+	node, _ := createNode(t, owner, "history.test")
+	anon := h.Anonymous()
+	anon.Headers.Set("Authorization", "Bearer "+strings.Repeat("x", 32))
+	marked := reliability.ProbeCheck{Status: "ok", Method: reliability.AuthenticatedMTProto}
+	notRun := reliability.ProbeCheck{Status: "not_run"}
+	p := reliability.ProbeReport{NodeID: node.ID.String(), Location: "isp-a", At: time.Now().UTC(), TLS: marked, HTTP: marked, FakeTLS: marked, WEB: marked}
+	if code := statusOf(t, anon.Post("/api/v1/probes/report", p)); code != 202 {
+		t.Fatalf("first report: %d", code)
+	}
+	p.At = p.At.Add(time.Second)
+	p.FakeTLS = notRun
+	p.WEB.Status = "failed"
+	if code := statusOf(t, anon.Post("/api/v1/probes/report", p)); code != 202 {
+		t.Fatalf("replacement: %d", code)
+	}
+	var count int
+	if e := h.Store.Pool.QueryRow(t.Context(), `SELECT count(*) FROM notification_findings WHERE node_id=$1 AND source='blocking_evidence' AND kind=ANY($2::text[])`, node.ID, []string{"isp-a|faketls", "isp-a|web"}).Scan(&count); e != nil {
+		t.Fatal(e)
+	}
+	if count != 2 {
+		t.Fatalf("replacement before poll lost authenticated history: %d", count)
+	}
+	if e := h.Store.Pool.QueryRow(t.Context(), `SELECT count(*) FROM notification_findings WHERE node_id=$1 AND source='blocking_evidence'`, node.ID).Scan(&count); e != nil {
+		t.Fatal(e)
+	}
+	if count != 2 {
+		t.Fatalf("public checks became authenticated history: %d", count)
+	}
+}
+
+func TestReplayedMarkedProbeDoesNotCreateAuthenticatedHistory(t *testing.T) {
+	h := apitest.New(t, func(d *api.Deps) {
+		d.Cfg.ProbeToken = strings.Repeat("x", 32)
+		d.Cfg.ProbeLocations = []string{"isp-a"}
+	})
+	h.CreateAdmin("root", "pass-123456", "owner")
+	owner := h.Login("root", "pass-123456")
+	node, _ := createNode(t, owner, "replay-history.test")
+	anon := h.Anonymous()
+	anon.Headers.Set("Authorization", "Bearer "+strings.Repeat("x", 32))
+	marked := reliability.ProbeCheck{Status: "ok", Method: reliability.AuthenticatedMTProto}
+	notRun := reliability.ProbeCheck{Status: "not_run"}
+	p := reliability.ProbeReport{NodeID: node.ID.String(), Location: "isp-a", At: time.Now().UTC(), TLS: notRun, HTTP: notRun, FakeTLS: notRun, WEB: marked}
+	if code := statusOf(t, anon.Post("/api/v1/probes/report", p)); code != 202 {
+		t.Fatal(code)
+	}
+	p.At = p.At.Add(-time.Minute)
+	p.FakeTLS = marked
+	p.WEB = notRun
+	if code := statusOf(t, anon.Post("/api/v1/probes/report", p)); code != 202 {
+		t.Fatal(code)
+	}
+	var count int
+	if e := h.Store.Pool.QueryRow(t.Context(), `SELECT count(*) FROM notification_findings WHERE node_id=$1 AND source='blocking_evidence' AND kind='isp-a|faketls'`, node.ID).Scan(&count); e != nil {
+		t.Fatal(e)
+	}
+	if count != 0 {
+		t.Fatal("replay added authenticated history")
+	}
+	if e := h.Store.Pool.QueryRow(t.Context(), `SELECT count(*) FROM notification_findings WHERE node_id=$1 AND source='blocking_evidence' AND kind='isp-a|web'`, node.ID).Scan(&count); e != nil {
+		t.Fatal(e)
+	}
+	if count != 1 {
+		t.Fatal("newer report did not retain WEB history")
+	}
+}

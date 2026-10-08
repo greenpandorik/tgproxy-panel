@@ -43,6 +43,8 @@ func TestAgentLinkAndItsRecovery(t *testing.T) {
 func TestReliabilityAndProbeKindsLoseTheirPrefix(t *testing.T) {
 	c := Default()
 	contains(t, c.Incident(RU, node, Incident{Kind: "reliability_disk_pressure"}, "").HTML, "Заканчивается место на диске", "90%", "Сообщает агент")
+	contains(t, c.Incident(RU, node, Incident{Kind: "reliability_looks_like_blocking"}, "").HTML, "Обрывы рукопожатий", "сетевая фильтрация", "Сообщает агент")
+	contains(t, c.Incident(EN, node, Incident{Kind: "reliability_looks_like_blocking", Recovered: true}, "").HTML, "back to normal", "possible filtering")
 	contains(t, c.Incident(RU, node, Incident{Kind: "reliability_dc_2"}, "").HTML, "Датацентр Telegram 2", "нет ни одного рабочего соединения")
 	contains(t, c.Incident(EN, node, Incident{Kind: "reliability_probe_ams_stale"}, "").HTML, "ams", "Check from another network")
 	contains(t, c.Incident(EN, node, Incident{Kind: "reliability_probe_ams_faketls"}, "").HTML, "ams", "may be blocked there")

@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
+const AuthenticatedMTProto = "authenticated_mtproto"
+
 type ProbeCheck struct {
+	Method    string `json:"method,omitempty"`
 	Status    string `json:"status"`
 	LatencyMS int64  `json:"latency_ms"`
 }
@@ -30,6 +33,12 @@ func (p ProbeReport) Validate(now time.Time) error {
 		return errors.New("probe timestamp is outside the allowed clock window")
 	}
 	for _, c := range []ProbeCheck{p.TLS, p.HTTP, p.FakeTLS, p.WEB} {
+		if c.Method != "" && c.Method != AuthenticatedMTProto {
+			return errors.New("invalid probe method")
+		}
+		if c.Method != "" && c.Status == "not_run" {
+			return errors.New("unexecuted probe cannot specify a method")
+		}
 		if c.Status != "ok" && c.Status != "failed" && c.Status != "not_run" {
 			return errors.New("invalid probe status")
 		}

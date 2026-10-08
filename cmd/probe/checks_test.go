@@ -9,7 +9,7 @@ import (
 
 func TestAuthenticatedChecksUnconfigured(t *testing.T) {
 	r, e := authenticatedChecks(t.Context(), "127.0.0.1", "", "")
-	if e != nil || r.FakeTLS.Status != "not_run" || r.WEB.Status != "not_run" {
+	if e != nil || r.FakeTLS.Status != "not_run" || r.WEB.Status != "not_run" || r.FakeTLS.Method != "" || r.WEB.Method != "" {
 		t.Fatalf("%+v %v", r, e)
 	}
 }
@@ -20,7 +20,7 @@ func TestCustomCheckerCompatibility(t *testing.T) {
 		t.Fatal(e)
 	}
 	r, e := authenticatedChecks(context.Background(), "proxy.example.com", "", path)
-	if e != nil || r.FakeTLS.Status != "ok" || r.FakeTLS.LatencyMS != 123 || r.WEB.Status != "not_run" {
+	if e != nil || r.FakeTLS.Status != "ok" || r.FakeTLS.LatencyMS != 123 || r.WEB.Status != "not_run" || r.FakeTLS.Method != "" || r.WEB.Method != "" {
 		t.Fatalf("%+v %v", r, e)
 	}
 }
@@ -28,5 +28,16 @@ func TestCustomCheckerCompatibility(t *testing.T) {
 func TestCheckerConfigAndCustomRunnerConflict(t *testing.T) {
 	if _, e := authenticatedChecks(t.Context(), "127.0.0.1", "config.json", "/bin/true"); e == nil {
 		t.Fatal("ambiguous checker accepted")
+	}
+}
+
+func TestCustomCheckerProcessFailureDoesNotClaimAuthenticatedAttempt(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fail.sh")
+	if e := os.WriteFile(path, []byte("#!/bin/sh\nexit 1\n"), 0o700); e != nil {
+		t.Fatal(e)
+	}
+	r, e := authenticatedChecks(t.Context(), "proxy.example.com", "", path)
+	if e != nil || r.FakeTLS.Status != "failed" || r.WEB.Status != "failed" || r.FakeTLS.Method != "" || r.WEB.Method != "" {
+		t.Fatalf("process error mislabeled authenticated attempt: %+v err=%v", r, e)
 	}
 }

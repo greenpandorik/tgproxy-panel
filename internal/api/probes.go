@@ -48,8 +48,32 @@ func (s *Server) handleProbeReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b, _ := json.Marshal(p)
-	_, e = s.store.Pool.Exec(r.Context(), `INSERT INTO probe_reports(node_id,location,measured_at,report) VALUES($1,$2,$3,$4) ON CONFLICT(node_id,location) DO UPDATE SET measured_at=EXCLUDED.measured_at,report=EXCLUDED.report WHERE EXCLUDED.measured_at>probe_reports.measured_at`, id, p.Location, p.At, b)
+	tx, e := s.store.Pool.Begin(r.Context())
 	if e != nil {
+		internal(w)
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	tag, e := tx.Exec(r.Context(), `INSERT INTO probe_reports(node_id,location,measured_at,report) VALUES($1,$2,$3,$4) ON CONFLICT(node_id,location) DO UPDATE SET measured_at=EXCLUDED.measured_at,report=EXCLUDED.report WHERE EXCLUDED.measured_at>probe_reports.measured_at`, id, p.Location, p.At, b)
+	if e != nil {
+		internal(w)
+		return
+	}
+	// Retain executed authenticated identities as reports arrive: the next report
+	// may replace a transport before the worker polls, or before metrics warm up.
+	// A replay cannot add identities that the newer accepted report never ran.
+	if tag.RowsAffected() > 0 {
+		for name, check := range map[string]reliability.ProbeCheck{"faketls": p.FakeTLS, "web": p.WEB} {
+			if check.Method != reliability.AuthenticatedMTProto || (check.Status != "ok" && check.Status != "failed") {
+				continue
+			}
+			if _, e = tx.Exec(r.Context(), `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,'blocking_evidence',$2,false,true,$3) ON CONFLICT(node_id,kind) DO UPDATE SET observed_at=GREATEST(notification_findings.observed_at,excluded.observed_at)`, id, p.Location+"|"+name, p.At); e != nil {
+				internal(w)
+				return
+			}
+		}
+	}
+	if e = tx.Commit(r.Context()); e != nil {
 		internal(w)
 		return
 	}
