@@ -371,7 +371,7 @@ func TestAPITokenPasswordRotationRejectsQueuedOldSessionIssuance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer lock.Rollback(ctx)
+	defer func() { _ = lock.Rollback(ctx) }()
 	if _, err := lock.Exec(ctx, "SELECT id FROM admin_users WHERE id=$1 FOR UPDATE", owner); err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func TestAPITokenQueuedIssuanceUsesCurrentAccountRole(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer lock.Rollback(ctx)
+	defer func() { _ = lock.Rollback(ctx) }()
 	if _, err := lock.Exec(ctx, "UPDATE admin_users SET role='viewer' WHERE id=$1", owner); err != nil {
 		t.Fatal(err)
 	}
