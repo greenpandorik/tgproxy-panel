@@ -71,7 +71,7 @@ code, pre, .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, 
 
 .eye { display: inline-block; width: 13px; height: 9px; border-radius: 50%; background: var(--eye); flex: none; }
 
-.hero { display: grid; gap: 56px; align-items: center; padding-top: 40px; padding-bottom: 24px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 56px; align-items: center; padding-top: 40px; padding-bottom: 24px; }
 @media (min-width: 1000px) { .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 64px; padding-top: 56px; } }
 h1 { font-size: clamp(2.2rem, 4.3vw, 3.45rem); line-height: 1.04; letter-spacing: -0.035em; font-weight: 700; margin: 0 0 24px; text-wrap: balance; }
 .lead { font-size: clamp(1.05rem, 1.5vw, 1.18rem); color: var(--mute); margin: 0 0 32px; max-width: 54ch; text-wrap: pretty; }
@@ -171,3 +171,43 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: 
 footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 footer a { color: var(--mute); }
 footer a:hover { color: var(--ink); }
+
+.guide-links { display: grid; gap: 28px; max-width: 860px; }
+.top { flex-wrap: wrap; }
+@media (max-width: 820px) { .nav { gap: 16px; } .nav a:not(.gh, .lang) { display: none; } }
+@media (min-width: 820px) { .guide-links { grid-template-columns: 1fr 1fr; gap: 56px; } }
+.guide-links a { text-decoration: none; }
+.guide-links h3 { color: var(--accent); }
+.guide-links a:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
+.guide-links p { color: var(--mute); margin: 0; }
+.skip-link { position: absolute; top: -100px; left: 16px; z-index: 10; padding: 12px 20px; background: var(--button); color: var(--button-ink); border-radius: 8px; }
+.skip-link:focus { top: 12px; }
+.guide { padding-top: 32px; }
+.breadcrumbs { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 0.9rem; color: var(--mute); }
+.guide-header { max-width: 820px; margin: 48px 0; }
+.guide-header h1 { font-size: clamp(2rem, 4vw, 3.2rem); }
+.guide-header .lead { max-width: 64ch; margin-bottom: 20px; }
+.updated { font-size: 0.88rem; color: var(--mute); }
+.guide-layout { display: grid; grid-template-columns: 200px minmax(0, 760px); gap: 56px; align-items: start; }
+.toc { position: sticky; top: 24px; display: grid; gap: 12px; font-size: 0.92rem; }
+.toc p { font-weight: 650; margin: 0 0 4px; }
+.toc a { color: var(--mute); text-decoration: none; }
+.toc a:hover { color: var(--accent); text-decoration: underline; }
+.guide-body { min-width: 0; font-size: 1.04rem; line-height: 1.75; }
+.guide-body p { max-width: 72ch; margin-bottom: 20px; }
+.guide-body section { padding-top: 48px; scroll-margin-top: 24px; }
+.guide-body h2 { font-size: clamp(1.45rem, 2.8vw, 1.95rem); line-height: 1.25; }
+.guide-body ul { padding-left: 1.25em; }
+.guide-body li { margin-bottom: 10px; }
+.guide-body code { overflow-wrap: anywhere; }
+.table-scroll { max-width: 100%; overflow-x: auto; margin: 24px 0; }
+.guide-body table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.94rem; line-height: 1.55; text-align: left; }
+.guide-body th, .guide-body td { vertical-align: top; padding: 14px 12px; border-bottom: 1px solid var(--line); }
+.guide-body thead th { color: var(--ink); background: var(--surface); font-weight: 650; }
+.guide-body tbody th { font-weight: 600; }
+@media (max-width: 900px) {
+  .guide-layout { grid-template-columns: 1fr; gap: 36px; }
+  .toc { position: static; display: flex; flex-wrap: wrap; gap: 10px 20px; }
+  .toc p { width: 100%; }
+  .guide-header { margin: 36px 0; }
+}

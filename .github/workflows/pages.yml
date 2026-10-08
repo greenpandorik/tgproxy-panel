@@ -10,6 +10,8 @@ on:
       - docs/screenshots/ru/dashboard.png
       - docs/screenshots/ru/key-link-dialog.png
       - .github/workflows/pages.yml
+      - scripts/build-site.sh
+      - scripts/check-site.py
   workflow_dispatch:
 
 permissions:
@@ -31,11 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Assemble the site
-        run: |
-          mkdir -p _site/img _site/en/img
-          cp -R site/. _site/
-          cp docs/screenshots/ru/dashboard.png docs/screenshots/ru/key-link-dialog.png _site/img/
-          cp docs/screenshots/dashboard.png docs/screenshots/key-link-dialog.png _site/en/img/
+        run: bash scripts/build-site.sh
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
