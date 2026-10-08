@@ -42,4 +42,18 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/guides/mtproxy-faketls-web/"/>
   </url>
+  <url>
+    <loc>https://tgproxypanel.com/api/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/api/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/api/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/api/"/>
+  </url>
+  <url>
+    <loc>https://tgproxypanel.com/en/api/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/api/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/api/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/api/"/>
+  </url>
 </urlset>

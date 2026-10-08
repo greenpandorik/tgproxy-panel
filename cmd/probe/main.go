@@ -14,11 +14,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"tgwebproxy/internal/protocolprobe"
 	"tgwebproxy/internal/reliability"
 )
 
@@ -35,7 +34,30 @@ func run() error {
 	node := flag.String("node", "", "node UUID")
 	location := flag.String("location", "", "configured probe location")
 	runner := flag.String("client-check", "", "optional absolute executable that tests authenticated FakeTLS and WEB and returns JSON")
+	configPath := flag.String("protocol-config", os.Getenv("TGWP_PROBE_CONFIG"), "private JSON file for bundled authenticated checks")
+	checkOnly := flag.Bool("check-only", false, "print authenticated check results without reporting to panel")
 	flag.Parse()
+	if *checkOnly {
+		if *host == "" {
+			return errors.New("--host is required")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 65*time.Second)
+		defer cancel()
+		checks, e := authenticatedChecks(ctx, *host, *configPath, *runner)
+		if e != nil {
+			return e
+		}
+		return json.NewEncoder(os.Stdout).Encode(checks)
+	}
+	if *configPath != "" && *runner != "" {
+		return errors.New("--protocol-config and --client-check are mutually exclusive")
+	}
+	if *configPath != "" {
+		if _, e := protocolprobe.LoadConfig(*configPath); e != nil {
+			return e
+		}
+	}
+
 	u, e := url.Parse(*panel)
 	if e != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return errors.New("--panel must be an HTTPS URL")
@@ -69,34 +91,13 @@ func run() error {
 			p.HTTP.Status = "ok"
 		}
 	}
-	if *runner != "" {
-		if !filepath.IsAbs(*runner) {
-			return errors.New("--client-check must be an absolute executable path")
-		}
-		cctx, stop := context.WithTimeout(ctx, 45*time.Second)
-		cmd := exec.CommandContext(cctx, *runner)
-		cmd.Stdin = bytes.NewBufferString(*host + "\n")
-		var output boundedBuffer
-		cmd.Stdout = &output
-		cmd.Stderr = io.Discard
-		// Credentials belong in a mode-0600 file read by the local checker, never its output or command arguments.
-		e = cmd.Run()
-		stop()
-		if e != nil {
-			p.FakeTLS.Status = "failed"
-			p.WEB.Status = "failed"
-		} else {
-			var result struct {
-				FakeTLS reliability.ProbeCheck `json:"faketls"`
-				WEB     reliability.ProbeCheck `json:"web"`
-			}
-			if e = json.Unmarshal(output.Bytes(), &result); e != nil {
-				return errors.New("client checker returned invalid JSON")
-			}
-			p.FakeTLS = result.FakeTLS
-			p.WEB = result.WEB
-		}
+	checks, e := authenticatedChecks(ctx, *host, *configPath, *runner)
+	if e != nil {
+		return e
 	}
+	p.FakeTLS = checks.FakeTLS
+	p.WEB = checks.WEB
+
 	p.At = time.Now().UTC()
 	if e = p.Validate(p.At); e != nil {
 		return e

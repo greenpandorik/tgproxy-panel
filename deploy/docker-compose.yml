@@ -65,15 +65,15 @@ services:
         condition: service_healthy
 
   # Demo node running the real telemt binary (profile dev-telemt, driven by deploy/run-e2e-telemt.sh).
-  # telemt ships x86_64 Linux builds only, so the container is amd64 and is emulated on an
+  # This bench tests the panel's x86_64 Linux pin, so it is amd64 and is emulated on an
   # arm64 host; the agent inside it is cross-compiled by the build stage.
   fakenode-telemt:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.fakenode-telemt
       args:
-        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.9}
-        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-309aa7dedc99fd3b36324175ef4f64fe1012f2d6565ffb53f2874f14dadb9007}
+        TELEMT_VERSION: ${TELEMT_VERSION:-3.5.14}
+        TELEMT_SHA256_MUSL_X86_64: ${TELEMT_SHA256_MUSL_X86_64:-71c1454f79cf755edea0985500629daba553002f9863be754e8e38a418822773}
     platform: linux/amd64
     profiles: [dev-telemt]
     environment:

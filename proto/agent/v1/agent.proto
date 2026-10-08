@@ -204,6 +204,9 @@ message Profile {
   uint32 max_tcp_conns = 14;
   int64 expires_at_unix = 15;
   bool enabled = 16;
+  // Start of the current quota period. When it moves forward the agent resets the user's
+  // consumed quota once; zero means the quota never resets.
+  int64 quota_reset_unix = 17;
 }
 
 message ProfilesFile { repeated Profile profiles = 1; }

@@ -65,6 +65,8 @@ type Profile struct {
 	Telemt    *domain.TelemtLimits
 	ExpiresAt *time.Time
 	Enabled   bool
+	// QuotaResetAt is the start of the current quota period; nil when the quota never resets.
+	QuotaResetAt *time.Time
 }
 
 type SiteBundle struct{ Files map[string][]byte }

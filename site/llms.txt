@@ -20,6 +20,20 @@ user proxy traffic goes through the nodes, not through the panel.
 - [MTProxy, Fake-TLS и WEB](https://tgproxypanel.com/guides/mtproxy-faketls-web/): protocols, masking domains, links and client compatibility.
 - [MTProxy, Fake-TLS and WEB](https://tgproxypanel.com/en/guides/mtproxy-faketls-web/): English protocol comparison and usage guidance.
 
+## Management API
+
+- [API — Русский](https://tgproxypanel.com/api/): персональные Bearer-токены, разрешения, примеры curl и Python, пагинация и ошибки.
+- [API — English](https://tgproxypanel.com/en/api/): personal Bearer tokens, scope/role intersection, examples, queued changes and endpoint catalog.
+- [OpenAPI 3.0.3](https://tgproxypanel.com/api/openapi.json): downloadable route contract generated from the backend's explicit personal-token policy.
+- [API guide — Русский](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/api.ru.md)
+- [API guide — English](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/api.md)
+
+API requests go to the operator's own installed panel at https://<panel-domain>/api/v1,
+not to tgproxypanel.com. Token access is the intersection of its scopes and the account's
+current role. Token management, account security, administrators, backups and subscription-service
+credentials require a browser session. Agent, probe, metrics and subscription-service credentials
+remain separate from personal tokens.
+
 ## Authoritative project documentation
 
 - [Full setup — Русский](https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md)
