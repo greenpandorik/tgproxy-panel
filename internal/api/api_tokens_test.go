@@ -42,6 +42,7 @@ func issueToken(t *testing.T, c *apitest.Client, scopes ...string) tokenIssued {
 	c.JSON(resp, &out)
 	return out
 }
+
 func tokenStatus(t *testing.T, resp *http.Response, want int) {
 	t.Helper()
 	if got := statusOf(t, resp); got != want {
@@ -267,7 +268,6 @@ func TestAPITokenEveryManagementRouteDeniesInsufficientScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestAPITokenReadResponsesHideSecretsAndWriteGETs(t *testing.T) {

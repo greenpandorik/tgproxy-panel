@@ -12,6 +12,8 @@ on:
       - .github/workflows/pages.yml
       - scripts/build-site.sh
       - scripts/check-site.py
+      - scripts/render_api_docs.py
+      - docs/api/openapi.json
   workflow_dispatch:
 
 permissions:

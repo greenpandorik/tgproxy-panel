@@ -14,7 +14,7 @@ Management and creation of personal tokens require a browser session and CSRF. T
 
 Session-only endpoints under `/api/v1`: GET `/api-tokens`, POST `/api-tokens`, DELETE `/api-tokens/{id}`, GET `/api-tokens/scopes`. Listings contain only the current account's records.
 
-POST body: `{ "name": "Service Bot", "expires_in_days": 30, "scopes": ["nodes:read"] }`. Names are trimmed, 1–80 Unicode characters; duration is an integer 1–365 days; at least one recognized scope is required; duplicate scopes normalize. Maximum 50 unrevoked, unexpired tokens per account, enforced under an account row lock. Successful POST returns 201 `{ "token": "tgwp_...", "api_token": <metadata> }` and Cache-Control no-store. DELETE is idempotent for an owned token and returns 204; foreign IDs appear absent.
+POST body: `{ "name": "Service Bot", "expires_in_days": 30, "scopes": ["nodes:read"] }`. Names are trimmed, 1–80 Unicode characters; duration is an integer 1–365 days; at least one recognized scope is required; duplicate scopes normalize. Maximum 50 unrevoked, unexpired tokens per account, enforced under an account row lock. Successful POST returns 201 `{ "token": "tgwp_...", "api_token": <metadata> }` and Cache-Control no-store. GET returns `{ "items": [<metadata>], "total": 1 }`, consistent with existing panel lists. DELETE is idempotent for an owned token and returns 204; foreign IDs appear absent.
 
 Metadata: `id`, `name`, `prefix`, `scopes`, `created_at`, `expires_at`, nullable `last_used_at`, nullable `revoked_at`. GET scopes returns `{ "scopes": [{ "id": "nodes:read", "resource": "nodes", "action": "read" }], "max_expires_in_days": 365, "max_tokens": 50 }`; unavailable scopes for a viewer are omitted.
 

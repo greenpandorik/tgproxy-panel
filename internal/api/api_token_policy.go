@@ -1,11 +1,12 @@
 package api
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"net/http"
 	"slices"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 // APIRoute is the explicit automation policy and public documentation catalog.
@@ -154,51 +155,67 @@ func enforceAPITokenPolicy(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
 func (r managementPolicyRouter) With(m ...func(http.Handler) http.Handler) chi.Router {
 	return managementPolicyRouter{r.Router.With(m...)}
 }
+
 func (r managementPolicyRouter) Route(pattern string, fn func(chi.Router)) chi.Router {
 	sub := r.Router.Route(pattern, func(child chi.Router) { fn(managementPolicyRouter{child}) })
 	return managementPolicyRouter{sub}
 }
+
 func (r managementPolicyRouter) Group(fn func(chi.Router)) chi.Router {
 	sub := r.Router.Group(func(child chi.Router) { fn(managementPolicyRouter{child}) })
 	return managementPolicyRouter{sub}
 }
+
 func (r managementPolicyRouter) Method(method, pattern string, h http.Handler) {
 	r.Router.With(enforceAPITokenPolicy).Method(method, pattern, h)
 }
+
 func (r managementPolicyRouter) MethodFunc(method, pattern string, h http.HandlerFunc) {
 	r.Method(method, pattern, h)
 }
+
 func (r managementPolicyRouter) Handle(pattern string, h http.Handler) {
 	r.Router.With(enforceAPITokenPolicy).Handle(pattern, h)
 }
+
 func (r managementPolicyRouter) HandleFunc(pattern string, h http.HandlerFunc) { r.Handle(pattern, h) }
+
 func (r managementPolicyRouter) Get(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodGet, pattern, h)
 }
+
 func (r managementPolicyRouter) Post(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodPost, pattern, h)
 }
+
 func (r managementPolicyRouter) Put(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodPut, pattern, h)
 }
+
 func (r managementPolicyRouter) Patch(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodPatch, pattern, h)
 }
+
 func (r managementPolicyRouter) Delete(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodDelete, pattern, h)
 }
+
 func (r managementPolicyRouter) Head(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodHead, pattern, h)
 }
+
 func (r managementPolicyRouter) Options(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodOptions, pattern, h)
 }
+
 func (r managementPolicyRouter) Connect(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodConnect, pattern, h)
 }
+
 func (r managementPolicyRouter) Trace(pattern string, h http.HandlerFunc) {
 	r.Method(http.MethodTrace, pattern, h)
 }

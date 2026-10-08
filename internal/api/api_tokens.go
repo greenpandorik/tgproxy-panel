@@ -16,8 +16,10 @@ import (
 	"tgwebproxy/internal/store/db"
 )
 
-const maxAPITokens = 50
-const maxAPITokenDays = 365
+const (
+	maxAPITokens    = 50
+	maxAPITokenDays = 365
+)
 
 var errAPITokenLimit = errors.New("API token limit reached")
 
