@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -85,33 +86,87 @@ func TestBrandingUpload(t *testing.T) {
 	}
 }
 
-func TestBrandingUploadRefusesAnOversizedFileWithoutSpooling(t *testing.T) {
+func TestBrandingUploadSizeLimitAndTempCleanup(t *testing.T) {
+	h, c, _ := ownerWithNode(t)
 	tmp := t.TempDir()
 	t.Setenv("TMPDIR", tmp)
-	_, c, _ := ownerWithNode(t)
+	token := issueToken(t, c, "branding:write").Token
 	var list struct {
 		Items []struct {
 			ID uuid.UUID `json:"id"`
 		} `json:"items"`
 	}
 	c.JSON(c.Get("/api/v1/branding/profiles"), &list)
-
-	var body bytes.Buffer
-	mw := multipart.NewWriter(&body)
-	fw, _ := mw.CreateFormFile("file", "logo.png")
-	_, _ = fw.Write(bytes.Repeat([]byte{0x89}, 3<<20))
-	_ = mw.Close()
-	resp := c.PostRaw("/api/v1/branding/profiles/"+list.Items[0].ID.String()+"/upload?kind=logo", mw.FormDataContentType(), body.Bytes())
-	if resp.StatusCode != http.StatusUnprocessableEntity {
-		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("oversized upload: %d %s, want 422", resp.StatusCode, b)
-	}
-	left, err := os.ReadDir(tmp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(left) != 0 {
-		t.Fatalf("the upload left %d file(s) in the temp dir", len(left))
+	id := list.Items[0].ID
+	// A PNG signature with trailing bytes tests the exact allowed size and forces a temp file.
+	valid := append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{0}, (2<<20)-8)...)
+	for _, tc := range []struct {
+		name   string
+		size   int
+		fields int
+		want   int
+		query  string
+	}{
+		{"exactly 2 MiB", 2 << 20, 1, 200, ""},
+		{"one byte too big", (2 << 20) + 1, 1, 422, ""},
+		{"body exceeds cap", 3 << 20, 1, 422, ""},
+		{"multiple files exceed body cap", 1 << 20, 3, 422, ""},
+		{"malformed query after spooling", 2 << 20, 1, 400, "&bad=%zz"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var body bytes.Buffer
+			mw := multipart.NewWriter(&body)
+			for i := range tc.fields {
+				field := "file"
+				if i > 0 {
+					field = "extra"
+				}
+				fw, err := mw.CreateFormFile(field, "logo.png")
+				if err != nil {
+					t.Fatal(err)
+				}
+				var data []byte
+				if tc.size <= len(valid) {
+					data = valid[:tc.size]
+				} else {
+					data = append(append([]byte{}, valid...), bytes.Repeat([]byte{0}, tc.size-len(valid))...)
+				}
+				if _, err := fw.Write(data); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := mw.Close(); err != nil {
+				t.Fatal(err)
+			}
+			initialSize := body.Len()
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/branding/profiles/"+id.String()+"/upload?kind=logo"+tc.query, &body)
+			req.Header.Set("Content-Type", mw.FormDataContentType())
+			req.Header.Set("Authorization", "Bearer "+token)
+			recorder := httptest.NewRecorder()
+			// Serve the router directly: net/http's automatic multipart cleanup cannot hide a handler leak.
+			h.Router().ServeHTTP(recorder, req)
+			if recorder.Code != tc.want {
+				t.Fatalf("upload status = %d, want %d: %s", recorder.Code, tc.want, recorder.Body.String())
+			}
+			if consumed := initialSize - body.Len(); consumed > (2<<20)+(64<<10)+1 {
+				t.Fatalf("read %d bytes before rejecting oversized multipart body", consumed)
+			}
+			left, err := os.ReadDir(tmp)
+			if err != nil || len(left) != 0 {
+				t.Fatalf("multipart temp files left: %v, err=%v", left, err)
+			}
+			// Rejected uploads must preserve the previously accepted file and database path.
+			var pub struct {
+				LogoURL string `json:"logo_url"`
+			}
+			h.Anonymous().JSON(h.Anonymous().Get("/api/v1/branding"), &pub)
+			resp := h.Anonymous().Get(pub.LogoURL)
+			data, err := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if resp.StatusCode != 200 || err != nil || !bytes.Equal(data, valid) {
+				t.Fatalf("stored asset altered: status=%d bytes=%d err=%v", resp.StatusCode, len(data), err)
+			}
+		})
 	}
 }
 

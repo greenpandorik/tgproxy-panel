@@ -2,6 +2,8 @@ package api_test
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -10,10 +12,12 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"tgwebproxy/internal/api"
 	"tgwebproxy/internal/api/apitest"
 	"tgwebproxy/internal/config"
+	"tgwebproxy/internal/crypto"
 )
 
 func TestInstallScriptAndRegister(t *testing.T) {
@@ -70,38 +74,132 @@ func TestInstallTokenRegistersOnlyOnceUnderConcurrency(t *testing.T) {
 	h := apitest.New(t)
 	h.CreateAdmin("root", "pass-123456", "owner")
 	c := h.Login("root", "pass-123456")
-	_, cmd := createNode(t, c, "n1.test")
+	n, cmd := createNode(t, c, "n1.test")
 	token := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)[1]
-
-	const callers = 20
-	codes := make(chan int, callers)
+	// Lock the row so every request completes the initial token lookup before any UPDATE wins.
+	lock, err := h.Store.Pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lock.Rollback(t.Context()) }()
+	if _, err := lock.Exec(t.Context(), "SELECT id FROM nodes WHERE id=$1 FOR UPDATE", n.ID); err != nil {
+		t.Fatal(err)
+	}
+	type result struct {
+		status          int
+		token, publicIP string
+		err             error
+	}
+	const callers = 2
+	results := make(chan result, callers)
 	start := make(chan struct{})
 	var wg sync.WaitGroup
-	for i := 0; i < callers; i++ {
+	for i := range callers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			<-start
-			resp := h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"hostname": "n1.test", "public_ip": "203.0.113.4"})
+			publicIP := fmt.Sprintf("203.0.113.%d", i+1)
+			resp := h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"hostname": "n1.test", "public_ip": publicIP, "agent_version": publicIP})
+			var body struct {
+				Token string `json:"token"`
+			}
+			err := json.NewDecoder(resp.Body).Decode(&body)
 			_ = resp.Body.Close()
-			codes <- resp.StatusCode
+			results <- result{resp.StatusCode, body.Token, publicIP, err}
 		}()
 	}
 	close(start)
+	// pg_stat_activity confirms the real requests are blocked inside the atomic registration UPDATE.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var count int
+		if err := h.Store.Pool.QueryRow(t.Context(), "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%RegisterNode%'").Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count == callers {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("only %d/%d registrations reached the locked UPDATE", count, callers)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := lock.Commit(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	wg.Wait()
-	close(codes)
-	ok := 0
-	for code := range codes {
-		switch code {
+	close(results)
+	var winner result
+	successes := 0
+	for r := range results {
+		if r.err != nil {
+			t.Errorf("decode response: %v", r.err)
+		}
+		switch r.status {
 		case 200:
-			ok++
+			successes++
+			winner = r
 		case 404:
+			if r.token != "" {
+				t.Error("losing request received a token")
+			}
 		default:
-			t.Errorf("unexpected status %d", code)
+			t.Errorf("unexpected status %d", r.status)
 		}
 	}
-	if ok != 1 {
-		t.Fatalf("%d registrations got an agent token from one install token, want 1", ok)
+	if successes != 1 {
+		t.Fatalf("%d registrations succeeded, want 1", successes)
+	}
+	got, err := h.Store.Q.GetNode(t.Context(), n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PublicIp != winner.publicIP || got.AgentVersion != winner.publicIP || got.AgentTokenHash == nil || *got.AgentTokenHash != crypto.HashToken(winner.token) || got.InstallTokenHash != nil || got.InstallTokenExpires != nil {
+		t.Fatalf("stored identity/IP do not belong to sole winner: node=%+v winner=%+v", got, winner)
+	}
+	if id, err := h.Presence.NodeByToken(t.Context(), winner.token); err != nil || id != n.ID {
+		t.Fatalf("winning agent token is invalid: %v %v", id, err)
+	}
+	// A reused token must not change the winner's address.
+	if status := statusOf(t, h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"public_ip": "198.51.100.100"})); status != 404 {
+		t.Fatalf("reused token: %d", status)
+	}
+	got, err = h.Store.Q.GetNode(t.Context(), n.ID)
+	if err != nil || got.PublicIp != winner.publicIP {
+		t.Fatalf("reused token changed public IP: %q err=%v", got.PublicIp, err)
+	}
+}
+
+func TestInstallExpiredTokenDoesNotRegister(t *testing.T) {
+	h, c, _ := ownerWithNode(t)
+	n, cmd := createNode(t, c, "expired.test")
+	token := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)[1]
+	if _, err := h.Store.Pool.Exec(t.Context(), "UPDATE nodes SET install_token_expires=now()-interval '1 second' WHERE id=$1", n.ID); err != nil {
+		t.Fatal(err)
+	}
+	if status := statusOf(t, h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"public_ip": "203.0.113.3"})); status != 404 {
+		t.Fatalf("expired token: %d", status)
+	}
+	got, err := h.Store.Q.GetNode(t.Context(), n.ID)
+	if err != nil || got.AgentTokenHash != nil || got.PublicIp != "" || got.InstallTokenHash == nil {
+		t.Fatalf("expired registration changed node: %+v err=%v", got, err)
+	}
+}
+
+func TestInstallRegistrationKeepsConfiguredPublicIP(t *testing.T) {
+	h, c, _ := ownerWithNode(t)
+	n, cmd := createNode(t, c, "configured.test")
+	token := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)[1]
+	if _, err := h.Store.Pool.Exec(t.Context(), "UPDATE nodes SET public_ip='198.51.100.2' WHERE id=$1", n.ID); err != nil {
+		t.Fatal(err)
+	}
+	if status := statusOf(t, h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"public_ip": "203.0.113.3"})); status != 200 {
+		t.Fatalf("register: %d", status)
+	}
+	got, err := h.Store.Q.GetNode(t.Context(), n.ID)
+	if err != nil || got.PublicIp != "198.51.100.2" {
+		t.Fatalf("configured IP overwritten: %q err=%v", got.PublicIp, err)
 	}
 }
 
@@ -222,5 +320,86 @@ func TestInstallScriptUnpinnedTelemtIsLogged(t *testing.T) {
 	got := logs.String()
 	if !strings.Contains(got, "install script render") || !strings.Contains(got, n.ID.String()) {
 		t.Fatalf("render failure not logged with the node id:\n%s", got)
+	}
+}
+
+func TestInstallRegistrationRechecksTokenAfterLookup(t *testing.T) {
+	for _, change := range []struct{ name, query string }{
+		{"expired", "UPDATE nodes SET install_token_expires=now()-interval '1 second' WHERE id=$1"},
+		{"reissued", "UPDATE nodes SET install_token_hash='replacement-install-hash' WHERE id=$1"},
+	} {
+		t.Run(change.name, func(t *testing.T) {
+			h, c, _ := ownerWithNode(t)
+			n, cmd := createNode(t, c, "changed.test")
+			token := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)[1]
+			lock, err := h.Store.Pool.Begin(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = lock.Rollback(t.Context()) }()
+			if _, err := lock.Exec(t.Context(), change.query, n.ID); err != nil {
+				t.Fatal(err)
+			}
+			done := make(chan int, 1)
+			go func() {
+				done <- statusOf(t, h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"public_ip": "203.0.113.3"}))
+			}()
+			waitForAPITokenBlockedQuery(t, h, "RegisterNode")
+			if err := lock.Commit(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			if status := <-done; status != 404 {
+				t.Fatalf("token invalidated after lookup: %d, want 404", status)
+			}
+			got, err := h.Store.Q.GetNode(t.Context(), n.ID)
+			if err != nil || got.AgentTokenHash != nil || got.PublicIp != "" || got.InstallTokenHash == nil {
+				t.Fatalf("failed registration changed node: %+v err=%v", got, err)
+			}
+		})
+	}
+}
+
+func TestInstallRegistrationExpiresWhileWaitingForUnchangedRowLock(t *testing.T) {
+	h, c, _ := ownerWithNode(t)
+	n, cmd := createNode(t, c, "waiting.test")
+	token := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)[1]
+	var expires time.Time
+	if err := h.Store.Pool.QueryRow(t.Context(), "UPDATE nodes SET install_token_expires=clock_timestamp()+interval '2 seconds' WHERE id=$1 RETURNING install_token_expires", n.ID).Scan(&expires); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := h.Store.Pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lock.Rollback(t.Context()) }()
+	// The holder does not change the tuple, so PostgreSQL cannot rely on an UPDATE recheck.
+	if _, err := lock.Exec(t.Context(), "SELECT id FROM nodes WHERE id=$1 FOR UPDATE", n.ID); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan int, 1)
+	go func() {
+		done <- statusOf(t, h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"public_ip": "203.0.113.3"}))
+	}()
+	waitForAPITokenBlockedQuery(t, h, "RegisterNode")
+	// Wait against the database clock instead of assuming clocks on the host and DB agree.
+	for {
+		var expired bool
+		if err := h.Store.Pool.QueryRow(t.Context(), "SELECT clock_timestamp()>$1::timestamptz", expires).Scan(&expired); err != nil {
+			t.Fatal(err)
+		}
+		if expired {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := lock.Commit(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if status := <-done; status != 404 {
+		t.Fatalf("expired while waiting for row lock: %d, want 404", status)
+	}
+	got, err := h.Store.Q.GetNode(t.Context(), n.ID)
+	if err != nil || got.AgentTokenHash != nil || got.PublicIp != "" || got.InstallTokenHash == nil {
+		t.Fatalf("expired registration changed node: %+v err=%v", got, err)
 	}
 }

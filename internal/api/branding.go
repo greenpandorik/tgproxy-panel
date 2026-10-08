@@ -333,6 +333,12 @@ func (s *Server) handleUploadBrandingAsset(w http.ResponseWriter, r *http.Reques
 	// Without the cap ParseMultipartForm spools any size of upload to temp files before the size
 	// check below ever runs.
 	r.Body = http.MaxBytesReader(w, r.Body, maxBrandingAssetSize+(64<<10))
+	// ParseMultipartForm can populate MultipartForm and still return an earlier ParseForm error.
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
@@ -341,9 +347,6 @@ func (s *Server) handleUploadBrandingAsset(w http.ResponseWriter, r *http.Reques
 		}
 		badRequest(w, "invalid multipart form")
 		return
-	}
-	if r.MultipartForm != nil {
-		defer func() { _ = r.MultipartForm.RemoveAll() }()
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {

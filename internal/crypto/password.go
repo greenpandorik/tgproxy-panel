@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"runtime"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -26,9 +25,10 @@ const (
 
 // argonSlots bounds how many argon2 computations run at once. Each one allocates its memory
 // parameter (64 MiB for our hashes) and the login endpoint is unauthenticated, so without a bound
-// a burst of parallel logins could take the panel down for lack of memory. Callers over the bound
+// a burst of parallel logins could take the panel down for lack of memory. Two slots keep normal
+// hashes within 128 MiB regardless of the CPU count. Callers over the bound
 // wait for a slot instead.
-var argonSlots = make(chan struct{}, max(2, runtime.NumCPU()))
+var argonSlots = make(chan struct{}, 2)
 
 // argon2Key is argon2.IDKey, replaceable in tests.
 var argon2Key = argon2.IDKey

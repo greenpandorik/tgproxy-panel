@@ -56,6 +56,7 @@ func TestPasswordHashingIsBoundedInParallel(t *testing.T) {
 		t.Fatal(err)
 	}
 	var running, peak atomic.Int32
+	entered := make(chan struct{}, 8)
 	release := make(chan struct{})
 	orig := argon2Key
 	argon2Key = func(password, salt []byte, iterations, memory uint32, threads uint8, keyLen uint32) []byte {
@@ -66,32 +67,37 @@ func TestPasswordHashingIsBoundedInParallel(t *testing.T) {
 				break
 			}
 		}
+		entered <- struct{}{}
 		<-release
 		running.Add(-1)
 		return orig(password, salt, 1, 8, 1, keyLen)
 	}
-	t.Cleanup(func() { argon2Key = orig })
-
-	callers := 3 * cap(argonSlots)
 	var wg sync.WaitGroup
-	for i := 0; i < callers; i++ {
+	defer func() { close(release); wg.Wait(); argon2Key = orig }()
+	for i := range 8 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = VerifyPassword("wrong", h)
+			if i%2 == 0 {
+				_, _ = HashPassword("new password")
+			} else {
+				_, _ = VerifyPassword("wrong", h)
+			}
 		}()
 	}
-	deadline := time.Now().Add(2 * time.Second)
-	for running.Load() < int32(cap(argonSlots)) && time.Now().Before(deadline) {
-		time.Sleep(5 * time.Millisecond)
+	for range 2 {
+		select {
+		case <-entered:
+		case <-time.After(2 * time.Second):
+			t.Fatal("two computations did not start")
+		}
 	}
-	time.Sleep(50 * time.Millisecond)
-	if got := running.Load(); got != int32(cap(argonSlots)) {
-		t.Fatalf("%d argon2 computations running at once, want %d", got, cap(argonSlots))
+	select {
+	case <-entered:
+		t.Fatal("more than two password computations ran before a slot was released")
+	case <-time.After(100 * time.Millisecond):
 	}
-	close(release)
-	wg.Wait()
-	if p := peak.Load(); p > int32(cap(argonSlots)) {
-		t.Fatalf("peak of %d parallel argon2 computations, bound is %d", p, cap(argonSlots))
+	if p := peak.Load(); p != 2 {
+		t.Fatalf("peak = %d, want 2", p)
 	}
 }

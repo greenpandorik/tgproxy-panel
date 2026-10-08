@@ -519,12 +519,17 @@ func (q *Queries) MarkStaleNodesOffline(ctx context.Context, lastSeenAt *time.Ti
 }
 
 const registerNode = `-- name: RegisterNode :execrows
-UPDATE nodes SET agent_token_hash = $1,
+WITH locked_node AS MATERIALIZED (
+  SELECT source.id, source.install_token_hash, source.install_token_expires FROM nodes source
+  WHERE source.id = $6 FOR UPDATE
+)
+UPDATE nodes n SET agent_token_hash = $1,
   install_token_hash = NULL, install_token_expires = NULL,
   tproxy_version = $2, agent_version = $3, status = 'offline',
-  public_ip = CASE WHEN public_ip = '' THEN $4::text ELSE public_ip END
-WHERE id = $5 AND install_token_hash = $6::text
-  AND install_token_expires > now()
+  public_ip = CASE WHEN n.public_ip = '' THEN $4::text ELSE n.public_ip END
+FROM locked_node
+WHERE n.id = locked_node.id AND locked_node.install_token_hash = $5::text
+  AND locked_node.install_token_expires > clock_timestamp()
 `
 
 type RegisterNodeParams struct {
@@ -532,23 +537,22 @@ type RegisterNodeParams struct {
 	TproxyVersion    string    `json:"tproxy_version"`
 	AgentVersion     string    `json:"agent_version"`
 	PublicIp         string    `json:"public_ip"`
-	ID               uuid.UUID `json:"id"`
 	InstallTokenHash string    `json:"install_token_hash"`
+	ID               uuid.UUID `json:"id"`
 }
 
-// RegisterNode consumes the install token and issues the agent token in one statement. The
-// token is checked again here, not only when the node was looked up: two concurrent
-// registrations with one token would otherwise both get an agent token, and the last write would
-// take over the node. Zero rows means the token was already spent or has expired. public_ip is
-// filled in only when the panel did not have one.
+// RegisterNode locks the node before consuming its install token and issuing the agent token.
+// The final checks depend on the locked tuple, so the token and wall-clock expiry are checked
+// after a lock wait even when the lock holder did not change the row. Zero rows means the token
+// was already spent, reissued, or expired. public_ip is filled only when the panel has none.
 func (q *Queries) RegisterNode(ctx context.Context, arg RegisterNodeParams) (int64, error) {
 	result, err := q.db.Exec(ctx, registerNode,
 		arg.AgentTokenHash,
 		arg.TproxyVersion,
 		arg.AgentVersion,
 		arg.PublicIp,
-		arg.ID,
 		arg.InstallTokenHash,
+		arg.ID,
 	)
 	if err != nil {
 		return 0, err
