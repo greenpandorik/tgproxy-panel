@@ -15,6 +15,8 @@ import (
 
 // allowedForViewer lists the mutating routes a viewer may legitimately call.
 var allowedForViewer = map[string]bool{
+	"POST /api/v1/api-tokens":        true,
+	"DELETE /api/v1/api-tokens/{id}": true,
 	"POST /api/v1/auth/logout":       true,
 	"POST /api/v1/me/password":       true,
 	"POST /api/v1/auth/totp/setup":   true,

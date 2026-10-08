@@ -152,7 +152,10 @@ func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, x
 			out.SubscriptionShortURL = &u
 		}
 	}
-	if withSecret && k.Status != db.KeyStatusRevoked {
+	if p, ok := PrincipalFrom(r.Context()); ok && p.APITokenID != uuid.Nil && !principalCanWrite(r, "users") {
+		out.SubSlug = nil
+	}
+	if withSecret && k.Status != db.KeyStatusRevoked && isWriter(r) {
 		out.Secret, _ = s.keys.Secret(r.Context(), k)
 		out.Links, _ = s.keys.Links(r.Context(), k.ID)
 	}
@@ -258,8 +261,7 @@ func (s *Server) trafficByKey(ctx context.Context, ks []db.AccessKey) map[uuid.U
 }
 
 func isWriter(r *http.Request) bool {
-	p, _ := PrincipalFrom(r.Context())
-	return p.Role == RoleOwner || p.Role == RoleAdmin
+	return principalCanWrite(r, "users")
 }
 
 func (s *Server) keysErr(w http.ResponseWriter, err error) {

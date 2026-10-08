@@ -444,6 +444,19 @@ type Alert struct {
 	ReadAt     *time.Time    `json:"read_at"`
 }
 
+type ApiToken struct {
+	ID          uuid.UUID  `json:"id"`
+	AdminUserID uuid.UUID  `json:"admin_user_id"`
+	Name        string     `json:"name"`
+	Prefix      string     `json:"prefix"`
+	TokenHash   []byte     `json:"token_hash"`
+	Scopes      []string   `json:"scopes"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ExpiresAt   time.Time  `json:"expires_at"`
+	LastUsedAt  *time.Time `json:"last_used_at"`
+	RevokedAt   *time.Time `json:"revoked_at"`
+}
+
 type ApplyJob struct {
 	ID         uuid.UUID   `json:"id"`
 	NodeID     uuid.UUID   `json:"node_id"`
@@ -629,6 +642,28 @@ type NodeStatsSnapshot struct {
 	CpuUtilisationPercent              pgtype.Float4 `json:"cpu_utilisation_percent"`
 	LoadAverage1                       pgtype.Float4 `json:"load_average_1"`
 	PeopleOnline                       pgtype.Int4   `json:"people_online"`
+}
+
+type NotificationCandidate struct {
+	NodeID     uuid.UUID `json:"node_id"`
+	Phase      string    `json:"phase"`
+	Since      time.Time `json:"since"`
+	ObservedAt time.Time `json:"observed_at"`
+}
+
+type NotificationFinding struct {
+	NodeID     uuid.UUID `json:"node_id"`
+	Source     string    `json:"source"`
+	Kind       string    `json:"kind"`
+	Failed     bool      `json:"failed"`
+	Known      bool      `json:"known"`
+	ObservedAt time.Time `json:"observed_at"`
+}
+
+type NotificationState struct {
+	NodeID uuid.UUID `json:"node_id"`
+	Kind   string    `json:"kind"`
+	State  []byte    `json:"state"`
 }
 
 type ProbeReport struct {

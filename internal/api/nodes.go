@@ -100,7 +100,7 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 		}
 	}
 	if len(n.LastCheck) > 0 {
-		out.LastCheck = redactLastCheck(n.LastCheck, isWriter(r))
+		out.LastCheck = redactLastCheck(n.LastCheck, principalCanWrite(r, "nodes"))
 	}
 	return out
 }

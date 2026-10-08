@@ -135,7 +135,12 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	if err := s.store.Q.UpdateAdminPassword(r.Context(), db.UpdateAdminPasswordParams{ID: p.UserID, PasswordHash: hash}); err != nil {
+	if err := s.store.Tx(r.Context(), func(q *db.Queries) error {
+		if err := q.UpdateAdminPassword(r.Context(), db.UpdateAdminPasswordParams{ID: p.UserID, PasswordHash: hash}); err != nil {
+			return err
+		}
+		return q.RevokeAdminAPITokens(r.Context(), p.UserID)
+	}); err != nil {
 		internal(w)
 		return
 	}
