@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src https://gateway.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="google-site-verification" content="7W_vbByQP82tpJH83rRbAkgH6utltVfZGRO__ocN-X4">
+<title>API TGProxy Panel: токены, права и примеры | TGProxy Panel</title>
+<meta name="description" content="Автоматизация своей TGProxy Panel через персональные Bearer-токены: права, примеры curl и Python, пагинация, ошибки и спецификация OpenAPI.">
+<link rel="canonical" href="https://tgproxypanel.com/api/">
+<link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/api/">
+<link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/api/">
+<link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/api/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#171b21">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:site_name" content="TGProxy Panel">
+<meta property="og:title" content="API TGProxy Panel: токены, права и примеры">
+<meta property="og:description" content="Автоматизация своей TGProxy Panel через персональные Bearer-токены: права, примеры curl и Python, пагинация, ошибки и спецификация OpenAPI.">
+<meta property="og:url" content="https://tgproxypanel.com/api/">
+<meta property="og:image" content="https://tgproxypanel.com/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://tgproxypanel.com/api/#article",
+      "headline": "API TGProxy Panel: токены, права и примеры",
+      "description": "Автоматизация своей TGProxy Panel через персональные Bearer-токены: права, примеры curl и Python, пагинация, ошибки и спецификация OpenAPI.",
+      "url": "https://tgproxypanel.com/api/",
+      "mainEntityOfPage": "https://tgproxypanel.com/api/",
+      "inLanguage": "ru",
+      "dateModified": "2026-10-08",
+      "isAccessibleForFree": true,
+      "isPartOf": {
+        "@id": "https://tgproxypanel.com/#website"
+      },
+      "about": {
+        "@id": "https://tgproxypanel.com/#application"
+      },
+      "image": "https://tgproxypanel.com/og.png"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "TGProxy Panel",
+          "item": "https://tgproxypanel.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Документация API",
+          "item": "https://tgproxypanel.com/api/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script defer src="/vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="tgproxypanel.com,www.tgproxypanel.com"></script>
+</head>
+<body>
+<a class="skip-link" href="#article">К содержанию</a>
+<header class="wrap top">
+<a class="brand" href="/" aria-label="TGProxy Panel, на главную">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/></svg>
+    TGProxy Panel
+  </a>
+<nav class="nav" aria-label="Навигация сайта">
+<a href="/#guides">Руководства</a>
+<a class="lang" href="/en/api/" hreflang="en" lang="en">English</a>
+<a class="gh" href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
+</nav>
+</header>
+<main class="wrap guide api-guide" id="article">
+<nav class="breadcrumbs" aria-label="Путь страницы"><a href="/">Главная</a><span aria-hidden="true">/</span><span>Документация API</span></nav>
+<div class="guide-header"><h1>API TGProxy Panel: токены, права и примеры</h1><p class="lead">Автоматизация своей TGProxy Panel через персональные Bearer-токены: права, примеры curl и Python, пагинация, ошибки и спецификация OpenAPI.</p><p class="updated">Обновлено 8 октября 2026 · Документация открытого проекта</p></div>
+<div class="guide-layout">
+<nav class="toc" aria-label="Содержание"><p>Содержание</p><a href="#authentication">Авторизация</a><a href="#scopes">Права доступа</a><a href="#curl">Примеры curl</a><a href="#python">Пример Python</a><a href="#pagination">Списки и фильтры</a><a href="#jobs">Применение изменений</a><a href="#errors">Ошибки</a><a href="#routes">Каталог методов</a></nav>
+<article class="guide-body" aria-label="Документация API">
+<p>API управления позволяет автоматизировать свою панель через скрипты, ботов и интеграции. Пользователи в API называются ключами: раздел «Пользователи» соответствует <code>/api/v1/keys</code>.</p>
+<section id="authentication"><h2>Создайте персональный API-токен</h2>
+<p>Войдите в свою панель и откройте «Настройки» → «API-токены». Укажите имя, срок действия и права, необходимые интеграции. Срок по умолчанию — 30 дней; можно выбрать целое число от 1 до 365 дней. У каждой учётной записи может быть до 50 действующих токенов. Наблюдатели могут создавать токены только для чтения.</p>
+<p>Скопируйте секрет <code>tgwp_…</code> до закрытия окна создания: он показывается только один раз. Панель хранит его хеш SHA-256 и открытый префикс, поэтому восстановить секрет из списка токенов нельзя. Храните его в хранилище секретов интеграции или переменной окружения; не добавляйте в исходный код, логи и общедоступные снимки экрана.</p>
+<p>Отправляйте запросы по HTTPS на адрес <strong>своей установленной панели</strong>, например <code>https://panel.example.com/api/v1</code>. На <code>tgproxypanel.com</code> находится документация, а не API управления вашей панелью.</p>
+<p>Передавайте один заголовок <code>Authorization: Bearer &lt;токен&gt;</code>. После проверки персонального Bearer-токена cookie и <code>X-CSRF-Token</code> не нужны. Некорректный или повторяющийся заголовок Authorization не заменяется авторизацией через браузерный сеанс. Поддержка токенов не меняет политику CORS панели; эти примеры запускаются на сервере или в командной строке.</p>
+<p>Отзовите ненужный токен в «Настройки» → «API-токены». Просроченные и отозванные токены перестают работать. Смена пароля отзывает все ваши персональные токены; удаление учётной записи делает её токены недействительными. Список показывает срок действия и последнее использование; время использования обновляется не чаще раза в минуту.</p>
+</section>
+<section id="scopes"><h2>Права токена и роль учётной записи</h2>
+<p>Каждый запрос должны разрешать и права токена, и текущая роль учётной записи. Права записи не включают права чтения автоматически. Изменение роли действует на последующие запросы. Наборы «Только чтение» и «Полные права» выбирают разрешения; полные права всё равно ограничены ролью учётной записи и каталогом методов ниже.</p>
+<div class="table-scroll" role="region" aria-label="Права токена и роль учётной записи" tabindex="0"><table><thead><tr><th>Ресурс</th><th>Разрешения</th><th>Что входит</th></tr></thead><tbody><tr><td><code>nodes</code></td><td><code>nodes:read</code><br><code>nodes:write</code></td><td>Серверы, настройки, установка и применение</td></tr><tr><td><code>users</code></td><td><code>users:read</code><br><code>users:write</code></td><td>Пользователи, привязки и ссылки подписки; адреса используют /keys</td></tr><tr><td><code>monitoring</code></td><td><code>monitoring:read</code><br><code>monitoring:write</code></td><td>Обзор, мониторинг и оповещения</td></tr><tr><td><code>sites</code></td><td><code>sites:read</code><br><code>sites:write</code></td><td>Сайты-прикрытия</td></tr><tr><td><code>branding</code></td><td><code>branding:read</code><br><code>branding:write</code></td><td>Оформление панели и страниц подписки</td></tr><tr><td><code>settings</code></td><td><code>settings:read</code><br><code>settings:write</code></td><td>Настройки автоматизации в пределах роли учётной записи</td></tr><tr><td><code>audit</code></td><td><code>audit:read</code></td><td>Журнал действий</td></tr></tbody></table></div><p>Чтение чувствительных данных требует права записи даже для метода GET: это секреты пользователей, ссылки прокси и QR-коды, команды установки серверов и секреты регистрации. Право чтения не даёт доступа к этим значениям. Нужное разрешение для каждого адреса указано в каталоге.</p>
+<p>Создание, просмотр и отзыв токенов, управление учётными записями, смена пароля и 2FA, резервные копии и реквизиты сервиса страниц подписки требуют браузерного сеанса. Персональный токен не может выпустить другой токен или управлять этими операциями. Токены агентов, внешних проверок, метрик и сервиса подписки имеют отдельное назначение и не заменяются персональным токеном.</p>
+<p>В журнале изменений идентификатор персонального токена записывается в <code>api_token_id</code>: это позволяет узнать, какая интеграция внесла изменение, не сохраняя секрет в журнале.</p>
+</section>
+<section id="curl"><h2>curl: чтение сервера и управление пользователями</h2>
+<p>Замените адрес и UUID на значения из своей панели. Загрузите токен из хранилища секретов; значение ниже — пример для замены. Чтение сервера и списка пользователей требует <code>nodes:read</code> и <code>users:read</code>. Создание, приостановка и возобновление доступа требуют <code>users:write</code> и роли владельца или администратора.</p>
+<h3>Задайте параметры подключения</h3>
+<div class="cmd" data-command="api-setup"><pre><code>export TGWP_PANEL_URL=&#x27;https://panel.example.com&#x27;
+export TGWP_API_TOKEN=&#x27;tgwp_replace_with_your_token&#x27;
+export TGWP_NODE_ID=&#x27;replace-with-node-uuid&#x27;
+export TGWP_KEY_ID=&#x27;replace-with-user-uuid&#x27;</code></pre></div>
+<h3>Прочитайте сервер и список активных пользователей</h3>
+<div class="cmd" data-command="api-read"><pre><code>curl --fail-with-body --silent --show-error \
+  -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/nodes/$TGWP_NODE_ID&quot;
+
+curl --fail-with-body --silent --show-error \
+  -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/keys?state=active&amp;page=1&amp;per_page=50&quot;</code></pre></div>
+<h3>Создайте личный доступ</h3>
+<div class="cmd" data-command="api-create"><pre><code>curl --fail-with-body --silent --show-error \
+  -X POST &quot;$TGWP_PANEL_URL/api/v1/keys&quot; \
+  -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  -H &#x27;Content-Type: application/json&#x27; \
+  --data &quot;{\&quot;label\&quot;:\&quot;Automation example\&quot;,\&quot;type\&quot;:\&quot;PERSONAL\&quot;,\&quot;node_ids\&quot;:[\&quot;$TGWP_NODE_ID\&quot;],\&quot;expires_at\&quot;:null}&quot;</code></pre></div>
+<p>Обязательны <code>label</code>, <code>type</code> и хотя бы один UUID в <code>node_ids</code>. Тип задаётся в верхнем регистре: <code>PERSONAL</code> или <code>SHARED</code>. <code>expires_at: null</code> означает отсутствие срока доступа пользователя; для ограничения укажите будущую дату в формате RFC 3339. Это отдельный срок, не срок действия API-токена. Ответ — HTTP 201 с объектом пользователя; скопируйте его <code>id</code> в <code>TGWP_KEY_ID</code>. Ответ создания может содержать секреты и ссылки пользователя: сохраняйте их конфиденциально.</p>
+<h3>Приостановите и возобновите доступ</h3>
+<div class="cmd" data-command="api-toggle"><pre><code>curl --fail-with-body --silent --show-error \
+  -X POST -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/keys/$TGWP_KEY_ID/disable&quot;
+
+curl --fail-with-body --silent --show-error \
+  -X POST -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/keys/$TGWP_KEY_ID/enable&quot;</code></pre></div>
+<p>Оба запроса возвращают HTTP 200 с обновлённым пользователем. После этих примеров доступ включён. Возобновление не продлевает истёкший срок и не отменяет отзыв доступа.</p>
+</section>
+<section id="python"><h2>Python без внешних библиотек</h2>
+<p>Скрипт использует те же переменные окружения и права, что и примеры curl. Он читает сервер, проходит по страницам активных пользователей, затем создаёт пользователя с доступом на семь дней, приостанавливает и возобновляет его доступ. Сохраните код в <code>example.py</code> и запустите <code>python3 example.py</code>. Скрипт печатает идентификаторы и состояние вместо полного ответа создания.</p>
+<div class="cmd" data-command="api-python"><pre><code>import json
+import os
+from datetime import datetime, timedelta, timezone
+from urllib.error import HTTPError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+base = os.environ[&quot;TGWP_PANEL_URL&quot;].rstrip(&quot;/&quot;) + &quot;/api/v1&quot;
+token = os.environ[&quot;TGWP_API_TOKEN&quot;]
+node_id = os.environ[&quot;TGWP_NODE_ID&quot;]
+if not base.startswith(&quot;https://&quot;):
+    raise ValueError(&quot;Use the HTTPS address of your own panel&quot;)
+
+def api(method, path, body=None):
+    headers = {&quot;Authorization&quot;: &quot;Bearer &quot; + token}
+    data = None
+    if body is not None:
+        headers[&quot;Content-Type&quot;] = &quot;application/json&quot;
+        data = json.dumps(body).encode(&quot;utf-8&quot;)
+    req = Request(base + path, data=data, headers=headers, method=method)
+    try:
+        with urlopen(req, timeout=30) as response:
+            raw = response.read()
+            return json.loads(raw) if raw else None
+    except HTTPError as exc:
+        raw = exc.read()
+        try:
+            error = json.loads(raw).get(&quot;error&quot;, {})
+        except (ValueError, AttributeError):
+            error = {&quot;code&quot;: &quot;http_error&quot;, &quot;message&quot;: &quot;Non-JSON response&quot;}
+        raise RuntimeError(
+            f&quot;HTTP {exc.code}: {error.get(&#x27;code&#x27;)}: &quot;
+            f&quot;{error.get(&#x27;message&#x27;)}; fields={error.get(&#x27;fields&#x27;, {})}&quot;
+        ) from None
+
+node = api(&quot;GET&quot;, &quot;/nodes/&quot; + node_id)
+print(node[&quot;name&quot;], node[&quot;status&quot;])
+page = 1
+while True:
+    result = api(&quot;GET&quot;, &quot;/keys?&quot; + urlencode({
+        &quot;state&quot;: &quot;active&quot;, &quot;page&quot;: page, &quot;per_page&quot;: 50
+    }))
+    for user in result[&quot;items&quot;]:
+        print(user[&quot;id&quot;], user[&quot;label&quot;], user[&quot;state&quot;])
+    if not result[&quot;items&quot;] or page * result[&quot;per_page&quot;] &gt;= result[&quot;total&quot;]:
+        break
+    page += 1
+
+expires = datetime.now(timezone.utc) + timedelta(days=7)
+user = api(&quot;POST&quot;, &quot;/keys&quot;, {
+    &quot;label&quot;: &quot;Automation example&quot;, &quot;type&quot;: &quot;PERSONAL&quot;,
+    &quot;node_ids&quot;: [node_id], &quot;expires_at&quot;: expires.isoformat()
+})
+print(&quot;Created user:&quot;, user[&quot;id&quot;])
+api(&quot;POST&quot;, &quot;/keys/&quot; + user[&quot;id&quot;] + &quot;/disable&quot;)
+api(&quot;POST&quot;, &quot;/keys/&quot; + user[&quot;id&quot;] + &quot;/enable&quot;)</code></pre></div></section>
+<section id="pagination"><h2>Списки, фильтры и пагинация</h2>
+<p>Ответы списков содержат <code>items</code>; параметры пагинации зависят от конкретного метода.</p>
+<div class="table-scroll" role="region" aria-label="Списки, фильтры и пагинация" tabindex="0"><table><thead><tr><th>Адрес / параметр</th><th>Поведение</th></tr></thead><tbody><tr><td><code>/keys: page</code></td><td>Начиная с 1; по умолчанию 1.</td></tr><tr><td><code>/keys: per_page</code></td><td>1–200; по умолчанию 50. Значения вне диапазона заменяются на 50.</td></tr><tr><td><code>/keys: q</code></td><td>Поиск по имени, владельцу, заметке и короткому адресу подписки.</td></tr><tr><td><code>/keys: type</code></td><td>PERSONAL или SHARED.</td></tr><tr><td><code>/keys: status</code></td><td>Состояние в базе: pending, active или revoked.</td></tr><tr><td><code>/keys: state</code></td><td>active, pending, expiring, expired, disabled или revoked. expiring — срок истекает в ближайшие семь дней.</td></tr><tr><td><code>/keys: node</code></td><td>Фильтр по UUID сервера; параметр называется node, не node_id.</td></tr><tr><td><code>/nodes</code></td><td>Возвращает {items, total}; параметров page и per_page нет.</td></tr><tr><td><code>/nodes/{id}/jobs: limit</code></td><td>1–100; по умолчанию 20. Значения вне диапазона заменяются на 20.</td></tr></tbody></table></div><p><code>GET /keys</code> возвращает <code>{items, total, page, per_page}</code>. Запрашивайте страницы до достижения <code>total</code> или пустого массива <code>items</code>. Список может измениться во время обхода; не меняйте отфильтрованных пользователей посреди чтения страниц.</p>
+</section>
+<section id="jobs"><h2>Применение изменений и повтор запросов</h2>
+<p>Создание и изменение пользователя ставит изменения конфигурации его серверов в очередь; успешный HTTP-ответ ещё не означает, что прокси их применил. Проверяйте <code>nodes[].profile_sync</code> пользователя, поля <code>dirty</code>, <code>last_apply_at</code> сервера и <code>GET /nodes/{id}/jobs</code>. История заданий требует <code>nodes:write</code>, поскольку содержит исходные логи и ошибки. У заданий есть <code>status</code>, <code>started_at</code>, <code>finished_at</code> и <code>error</code>; состояния — <code>queued</code>, <code>running</code>, <code>ok</code>, <code>failed</code> и <code>rolled_back</code>.</p>
+<p><code>POST /nodes/{id}/apply</code> требует <code>nodes:write</code> и отвечает HTTP 202 с <code>{"queued": true}</code>. Идентификатор задания в ответе отсутствует. Проверяйте сервер и последние задания с разумным интервалом, например пять секунд, и общим ограничением времени. При ошибке задания изучите её причину: повторная постановка в очередь сама по себе её не объяснит.</p>
+<p>Ограничивайте время запроса. Повторяйте чтение после временных сетевых или серверных ошибок с ограниченной задержкой. Не повторяйте вслепую создание пользователей, смену секретов и другие изменения: потерянный ответ может следовать за успешной операцией. Сначала проверьте результат, чтобы избежать дубликатов или нежелательных изменений.</p>
+</section>
+<section id="errors"><h2>HTTP-статусы и ответы об ошибках</h2>
+<p>Успешный ответ может содержать JSON или другой описанный формат, например PNG или текст Prometheus. У HTTP 204 тела ответа нет. Ошибки используют такой JSON; <code>fields</code> присутствует при ошибках проверки полей:</p>
+<div class="cmd" data-command="api-error"><pre><code>{
+  &quot;error&quot;: {
+    &quot;code&quot;: &quot;validation&quot;,
+    &quot;message&quot;: &quot;invalid input&quot;,
+    &quot;fields&quot;: {
+      &quot;node_ids&quot;: &quot;bind at least one node&quot;
+    }
+  }
+}</code></pre></div><div class="table-scroll" role="region" aria-label="HTTP-статусы и ответы об ошибках" tabindex="0"><table><thead><tr><th>Статус</th><th>Значение</th></tr></thead><tbody><tr><td>200 / 201 / 202 / 204</td><td>Чтение или изменение успешно / ресурс создан / поставлено в очередь / успех без тела ответа.</td></tr><tr><td>400</td><td>Некорректный запрос или JSON; неизвестные поля JSON отклоняются.</td></tr><tr><td>401</td><td>Нет реквизитов доступа, либо они неверны, просрочены или отозваны.</td></tr><tr><td>403</td><td>Права токена, текущая роль или требование браузерного сеанса запрещают операцию.</td></tr><tr><td>404</td><td>Ресурс отсутствует или идентификатор недоступен вызывающему.</td></tr><tr><td>409</td><td>Конфликт с текущим состоянием; перечитайте ресурс перед изменением.</td></tr><tr><td>422</td><td>Ошибка проверки данных; смотрите error.fields.</td></tr><tr><td>500 / 502 / 503</td><td>Внутренняя ошибка, сбой операции на сервере или сервер не в сети; проверьте код ошибки и состояние.</td></tr></tbody></table></div></section>
+<section id="routes"><h2>Каталог методов и разрешений</h2>
+<p>Каждый адрес ниже отсчитывается от домена вашей панели и включает <code>/api/v1</code>. Каталог и <a href="/api/openapi.json" download>спецификация OpenAPI 3.0.3 для скачивания</a> формируются из явной политики доступа персональных токенов в серверном коде. Адреса вне каталога недоступны персональным токенам. Ограничение «только владелец» действует дополнительно к разрешениям.</p>
+<!-- API_ROUTES_START -->
+<!-- API_ROUTES_END -->
+</section>
+<p>Для установки откройте <a href="/guides/install-telemt/">руководство по панели и telemt</a>. В <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/api.ru.md">руководстве API в репозитории</a> также описано управление токенами через браузерный сеанс.</p>
+</article>
+</div>
+</main>
+<footer><div class="wrap"><span>TGProxy Panel · AGPL-3.0</span><nav aria-label="Ссылки проекта"><a href="/">Главная</a><a href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a><a href="/api/" aria-current="page">API</a><a href="https://github.com/greenpandorik/tgproxy-panel/releases">Релизы</a><a href="https://github.com/greenpandorik/tgproxy-panel/discussions">Обсуждения</a></nav></div></footer>
+<script defer src="/copy.js"></script>
+</body>
+</html>

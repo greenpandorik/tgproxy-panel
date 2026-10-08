@@ -731,7 +731,7 @@ leave the server.
 |---|---|
 | `owner` | Everything, including panel settings, the Telegram test message, accounts and backups |
 | `admin` | Everything else: servers, users, cover sites, applies, checks, updates, resolving problems, branding |
-| `viewer` | Only look. The viewer cannot see users' subscription links, direct links or secrets, and the API does not send them to this role. The viewer can change only their own password and second factor |
+| `viewer` | Only look. The viewer cannot see users' subscription links, direct links or secrets, and the API does not send them to this role. The viewer can change their own password and second factor and manage their read-only personal API tokens |
 
 The installer creates the first account with the `owner` role. Other accounts are added under
 Settings → Accounts, with a password of at least 10 characters.
@@ -765,12 +765,13 @@ The runbook describes it: [Two-factor authentication lockout](runbook.md#two-fac
 - User and profile secrets, subscription links, TOTP secrets and the Telegram bot token are
   encrypted in the database with `MASTER_KEY` (AES-256-GCM). Without this key they cannot be
   decrypted, not even from a backup.
-- Agent tokens, install tokens and the subscription page service token are stored only as SHA-256
-  hashes. The token itself is shown
+- Personal API tokens, agent tokens, install tokens and the subscription page service token are
+  stored only as SHA-256 hashes. The token itself is shown
   once, so a copy of the database gives no working token. A subscription link also has its hash
   stored next to the encrypted copy: the panel uses it to find the user when the page is opened.
-- Session cookies are signed with `SESSION_SECRET` and are `HttpOnly`. Every change needs the
-  `X-CSRF-Token` header to match the CSRF cookie.
+- Session cookies are signed with `SESSION_SECRET` and are `HttpOnly`. Changes authenticated by a
+  browser session need `X-CSRF-Token` matching the CSRF cookie. Validated personal Bearer tokens
+  do not require CSRF; changing a password revokes all personal tokens.
 - `/metrics` shows server UUIDs and counts of servers and users. It is protected by
   `METRICS_TOKEN`, which is required when `NODE_DRIVER=gateway`. Give the token only to your
   Prometheus.
@@ -1102,9 +1103,18 @@ The panel installer. Every option can also be given as an environment variable `
 
 ## API for scripts
 
-The web interface uses the same HTTP API as scripts. Requests go to `/api/v1/…` with the
-session cookie that `POST /api/v1/auth/login` sets, and every change needs the `X-CSRF-Token`
-header equal to the `tgwp_csrf` cookie. Some routes are useful on their own:
+The web interface and scripts use `/api/v1/…` on your own installed panel. Create a personal
+API token in Settings → API tokens and send `Authorization: Bearer <token>` over HTTPS.
+The secret appears once; the default expiry is 30 days, with 1–365 days allowed. Token access
+is limited by both its scopes and your current account role. Read the [API guide](api.md)
+for curl/Python examples and the [public endpoint catalog](https://tgproxypanel.com/en/api/#routes)
+and [OpenAPI specification](https://tgproxypanel.com/api/openapi.json) for permitted routes.
+
+A validated personal Bearer token needs no CSRF header. Browser-session requests use the
+cookie set by `POST /api/v1/auth/login`; changes still need `X-CSRF-Token` equal to `tgwp_csrf`.
+Token management, passwords/2FA, administrators, backups and subscription-service credentials
+remain session-only. Agent, metrics and subscription-service authentication is separate.
+The routes below include these other authentication types as well as automation endpoints:
 
 | Route | Access | What it returns |
 |---|---|---|

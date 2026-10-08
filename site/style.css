@@ -211,3 +211,10 @@ footer a:hover { color: var(--ink); }
   .toc p { width: 100%; }
   .guide-header { margin: 36px 0; }
 }
+
+/* API examples retain indentation and scroll within the guide on small screens. */
+.api-guide .cmd pre { white-space: pre; word-break: normal; overflow-x: auto; }
+.api-guide .cmd pre::before { content: none; }
+.api-guide .cmd code { overflow-wrap: normal; background: none; padding: 0; color: inherit; }
+.api-guide h3 { margin-top: 24px; }
+.api-guide .api-routes td:nth-child(3) code { white-space: nowrap; overflow-wrap: normal; }
