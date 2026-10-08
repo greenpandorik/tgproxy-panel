@@ -8,6 +8,10 @@ import (
 // csrfCheck enforces double-submit: cookie value must equal X-CSRF-Token header on unsafe methods.
 func csrfCheck(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p, ok := PrincipalFrom(r.Context()); ok && p.APITokenID != [16]byte{} {
+			next.ServeHTTP(w, r)
+			return
+		}
 		switch r.Method {
 		case http.MethodGet, http.MethodHead, http.MethodOptions:
 			next.ServeHTTP(w, r)

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src https://gateway.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="google-site-verification" content="7W_vbByQP82tpJH83rRbAkgH6utltVfZGRO__ocN-X4">
+<title>Как установить Telegram-прокси с telemt и TGProxy Panel | TGProxy Panel</title>
+<meta name="description" content="Установка TGProxy Panel и telemt на двух VPS: требования, DNS, порты, подключение сервера, первый пользователь и проверка Telegram.">
+<link rel="canonical" href="https://tgproxypanel.com/guides/install-telemt/">
+<link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/guides/install-telemt/">
+<link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/guides/install-telemt/">
+<link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/guides/install-telemt/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#171b21">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:site_name" content="TGProxy Panel">
+<meta property="og:title" content="Как установить Telegram-прокси с telemt и TGProxy Panel">
+<meta property="og:description" content="Установка TGProxy Panel и telemt на двух VPS: требования, DNS, порты, подключение сервера, первый пользователь и проверка Telegram.">
+<meta property="og:url" content="https://tgproxypanel.com/guides/install-telemt/">
+<meta property="og:image" content="https://tgproxypanel.com/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://tgproxypanel.com/guides/install-telemt/#article",
+      "headline": "Как установить Telegram-прокси с telemt и TGProxy Panel",
+      "description": "Установка TGProxy Panel и telemt на двух VPS: требования, DNS, порты, подключение сервера, первый пользователь и проверка Telegram.",
+      "url": "https://tgproxypanel.com/guides/install-telemt/",
+      "mainEntityOfPage": "https://tgproxypanel.com/guides/install-telemt/",
+      "inLanguage": "ru",
+      "dateModified": "2026-10-08",
+      "isAccessibleForFree": true,
+      "isPartOf": {
+        "@id": "https://tgproxypanel.com/#website"
+      },
+      "about": {
+        "@id": "https://tgproxypanel.com/#application"
+      },
+      "image": "https://tgproxypanel.com/og.png"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "TGProxy Panel",
+          "item": "https://tgproxypanel.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Установка панели и telemt",
+          "item": "https://tgproxypanel.com/guides/install-telemt/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script defer src="/vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="tgproxypanel.com,www.tgproxypanel.com"></script>
+</head>
+<body>
+<a class="skip-link" href="#article">К содержанию</a>
+<header class="wrap top">
+<a class="brand" href="/" aria-label="TGProxy Panel, на главную">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/></svg>
+    TGProxy Panel
+  </a>
+<nav class="nav" aria-label="Навигация сайта">
+<a href="/#guides">Руководства</a>
+<a href="/api/">API</a>
+<a class="lang" href="/en/guides/install-telemt/" hreflang="en" lang="en">English</a>
+<a class="gh" href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
+</nav>
+</header>
+<main class="wrap guide" id="article">
+<nav class="breadcrumbs" aria-label="Путь страницы"><a href="/">Главная</a><span aria-hidden="true">/</span><span>Установка панели и telemt</span></nav>
+<div class="guide-header"><h1>Как установить Telegram-прокси с telemt и TGProxy Panel</h1><p class="lead">Установка TGProxy Panel и telemt на двух VPS: требования, DNS, порты, подключение сервера, первый пользователь и проверка Telegram.</p><p class="updated">Обновлено 8 октября 2026 · Документация открытого проекта</p></div>
+<div class="guide-layout">
+<nav class="toc" aria-label="Содержание"><p>Содержание</p><a href="#requirements">Что подготовить</a><a href="#panel">Установка панели</a><a href="#node">Прокси-сервер</a><a href="#user">Первый пользователь</a><a href="#checks">Проверки и обновления</a><a href="#troubleshooting">Если не подключается</a></nav>
+<article class="guide-body" aria-label="Как установить Telegram-прокси с telemt и TGProxy Panel">
+<p>TGProxy Panel помогает управлять собственными Telegram-прокси: создавать пользователей, выдавать ссылки подписки, применять лимиты и проверять состояние серверов. Панель работает на одном VPS, а telemt — на отдельном прокси-сервере. Клиентский трафик проходит через telemt, а не через панель.</p>
+<section id="requirements"><h2>Что подготовить</h2>
+<p>Этот порядок рассчитан на установку с доменами и HTTPS. Если вы впервые арендуете VPS, начните с <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/start.ru.md">инструкции «С нуля»</a>.</p>
+<div class="table-scroll" role="region" aria-label="Требования к серверам" tabindex="0"><table><thead><tr><th>Параметр</th><th>Сервер панели</th><th>Прокси-сервер</th></tr></thead><tbody>
+<tr><th>Система</th><td>Ubuntu 22.04+ или Debian 12+</td><td>Ubuntu 22.04+ или Debian 12+, x86_64</td></tr>
+<tr><th>Ресурсы</th><td>От 1 CPU и 1 ГБ RAM</td><td>От 1 CPU и 1 ГБ RAM; размер зависит от нагрузки</td></tr>
+<tr><th>Адрес</th><td>Домен с A-записью на VPS</td><td>Публичный IPv4 и отдельный домен с A-записью</td></tr>
+<tr><th>Входящие TCP-порты</th><td>22, 80, 443</td><td>22, 80, 443 и порт Fake-TLS — по умолчанию 8443</td></tr>
+</tbody></table></div>
+<p>Порты 80 и 443 должны быть свободны до установки. Разрешите их в файрволе VPS и сетевом фильтре хостинга: установщик сам порты не открывает. Прокси-серверу нужен исходящий доступ к панели, GitHub и датацентрам Telegram. Проверьте, что DNS уже указывает на нужные серверы.</p></section>
+<section id="panel"><h2>1. Установите панель</h2>
+<p>Подключитесь по SSH к серверу панели и выполните команду с правами root. Она загружает установщик из официального репозитория; перед запуском можно <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/install.sh">прочитать его код</a>.</p>
+<div class="cmd" data-command="install"><pre><code>curl -fsSL https://raw.githubusercontent.com/greenpandorik/tgproxy-panel/main/install.sh | sudo bash</code></pre></div>
+<p>Укажите домен панели, e-mail для сертификата и данные администратора. Скрипт установит Docker при необходимости, запустит панель, PostgreSQL и Caddy. После завершения откройте выданный HTTPS-адрес и войдите в панель.</p></section>
+<section id="node"><h2>2. Подключите сервер с telemt</h2>
+<p>Откройте «Серверы → Добавить сервер». Укажите имя, домен прокси и e-mail. Для новой установки выберите telemt: он обслуживает Fake-TLS, WEB-прокси и сайт-прикрытие.</p>
+<p>Панель выдаст команду с одноразовым токеном, действительным 24 часа. Выполните именно эту команду на прокси-сервере. Токен регистрации не публикуйте и не отправляйте посторонним. Установщик проверит DNS и порты, установит движок и агента, получит сертификат и зарегистрирует сервер после проверки готовности.</p>
+<p>Дождитесь статуса «На связи». Если регистрация не завершилась, сохраните текст ошибки и откройте <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/runbook.ru.md">руководство по устранению неполадок</a>.</p></section>
+<section id="user"><h2>3. Создайте пользователя и проверьте подключение</h2>
+<p>В разделе «Пользователи» создайте пользователя, назначьте срок доступа и прокси-сервер. Скопируйте ссылку подписки: она открывает страницу с инструкциями для устройства, Fake-TLS и WEB-ссылками.</p>
+<p>Доступ начинает работать после применения настроек на сервере, обычно в течение минуты. Для первого теста откройте Fake-TLS-ссылку в Telegram и подтвердите подключение. Затем проверьте WEB, если ваш клиент поддерживает его. У каждого пользователя собственный секрет: для отзыва доступа используйте управление пользователем в панели.</p></section>
+<section id="checks"><h2>4. Проверьте сервер и сохраните доступ к панели</h2>
+<p>На странице сервера запустите «Проверку с панели» и «Полную проверку сервера». Посмотрите DNS, сертификат, порты, состояние telemt и соединения с Telegram. Работоспособность из сети панели не гарантирует доступность у каждого провайдера — проверьте подключение с устройства пользователя.</p>
+<p>Включите двухфакторный вход, настройте резервные копии и Telegram-уведомления. Для обновления панели используйте <code>sudo /opt/tgproxy-panel/install.sh --update</code>, для обновления агента и telemt — <code>tgwp-agent upgrade</code>. Команда использует версии, закреплённые панелью. Если нужно обновить только агент, используйте <code>tgwp-agent upgrade --agent</code>. Перед обновлением просмотрите план командой <code>tgwp-agent upgrade --check</code>.</p></section>
+<section id="troubleshooting"><h2>Если Telegram не подключается</h2>
+<ul><li>Проверьте, что сервер на связи и изменения пользователя уже применены.</li><li>Сверьте адрес и порт из ссылки; отдельно проверьте порт Fake-TLS в файрволе.</li><li>Проверьте срок доступа и лимит трафика пользователя.</li><li>Сравните подключение через мобильную сеть и Wi-Fi, затем Fake-TLS и WEB.</li><li>Проверьте маршрут прокси-сервера к Telegram. Запасной домен может помочь при блокировке основного имени, но не исправит остановленный движок или недоступный датацентр.</li></ul>
+<p>Детальные команды и проверяемые пути доступны в <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/setup.ru.md">полной инструкции по установке</a>. Для выбора транспорта прочитайте <a href="/guides/mtproxy-faketls-web/">сравнение MTProxy, Fake-TLS и WEB</a>.</p></section>
+<p>Для автоматизации пользователей и серверов используйте <a href="/api/">API управления</a>: персональные токены, права доступа и готовые примеры.</p>
+</article>
+</div>
+</main>
+<footer><div class="wrap"><span>TGProxy Panel · AGPL-3.0</span><nav aria-label="Ссылки проекта"><a href="/">Главная</a><a href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a><a href="/api/">API</a><a href="https://github.com/greenpandorik/tgproxy-panel/releases">Релизы</a><a href="https://github.com/greenpandorik/tgproxy-panel/discussions">Обсуждения</a></nav></div></footer>
+<script defer src="/copy.js"></script>
+</body>
+</html>

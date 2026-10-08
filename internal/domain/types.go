@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -136,6 +137,47 @@ type TelemtLimits struct {
 	RateLimitDownBps int64 `json:"rate_limit_down_bps,omitempty"`
 	MaxUniqueIPs     int   `json:"max_unique_ips,omitempty"`
 	MaxTCPConns      int   `json:"max_tcp_conns,omitempty"`
+	// DataQuotaPeriod resets the consumed quota at the start of every calendar period (UTC).
+	// Empty means the quota is a lifetime total.
+	DataQuotaPeriod QuotaPeriod `json:"data_quota_period,omitempty"`
+}
+
+type QuotaPeriod string
+
+const (
+	QuotaPeriodNone  QuotaPeriod = ""
+	QuotaPeriodWeek  QuotaPeriod = "week"
+	QuotaPeriodMonth QuotaPeriod = "month"
+)
+
+func (p QuotaPeriod) Valid() bool {
+	return p == QuotaPeriodNone || p == QuotaPeriodWeek || p == QuotaPeriodMonth
+}
+
+// Start returns the beginning of the period containing t, in UTC: Monday 00:00 for a week, the
+// 1st at 00:00 for a month. The zero time means the period never resets.
+func (p QuotaPeriod) Start(t time.Time) time.Time {
+	t = t.UTC()
+	day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+	switch p {
+	case QuotaPeriodWeek:
+		return day.AddDate(0, 0, -((int(day.Weekday()) + 6) % 7))
+	case QuotaPeriodMonth:
+		return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+	}
+	return time.Time{}
+}
+
+// Next returns the start of the period after the one containing t.
+func (p QuotaPeriod) Next(t time.Time) time.Time {
+	start := p.Start(t)
+	switch p {
+	case QuotaPeriodWeek:
+		return start.AddDate(0, 0, 7)
+	case QuotaPeriodMonth:
+		return start.AddDate(0, 1, 0)
+	}
+	return time.Time{}
 }
 
 func (l TelemtLimits) Validate() error {
@@ -160,6 +202,12 @@ func (l TelemtLimits) Validate() error {
 		if v > MaxTelemtCounter {
 			return fmt.Errorf("%s must not exceed %d", name, MaxTelemtCounter)
 		}
+	}
+	if !l.DataQuotaPeriod.Valid() {
+		return errors.New("data_quota_period must be empty, week or month")
+	}
+	if l.DataQuotaPeriod != QuotaPeriodNone && l.DataQuotaBytes == 0 {
+		return errors.New("data_quota_period needs data_quota_bytes")
 	}
 	return nil
 }

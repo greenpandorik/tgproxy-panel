@@ -2,10 +2,13 @@ import { useTranslation } from 'react-i18next';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-import { MAX_TELEMT_COUNTER } from '@/lib/units';
+import { MAX_TELEMT_COUNTER, nextQuotaReset, parseAmount } from '@/lib/units';
 
+import type { QuotaPeriod } from '@/api/types';
 import type { TelemtLimitsForm } from '@/lib/units';
 
 /** The five limits, in the order an operator sets them: how much, how fast, how many. */
@@ -84,7 +87,49 @@ export function TelemtLimitsFields({ value, onChange, errors, disabled, classNam
             </div>
           );
         })}
+        <QuotaPeriodField value={value} onChange={onChange} disabled={disabled} />
       </div>
+    </div>
+  );
+}
+
+const QUOTA_PERIODS = ['none', 'week', 'month'] as const;
+type QuotaPeriodChoice = (typeof QUOTA_PERIODS)[number];
+
+function QuotaPeriodField({ value, onChange, disabled }: Pick<TelemtLimitsFieldsProps, 'value' | 'onChange' | 'disabled'>) {
+  const { t, i18n } = useTranslation();
+  const noQuota = parseAmount(value.quota_gb) === 0;
+  const period = noQuota ? '' : value.quota_period;
+  const label = (p: QuotaPeriodChoice) => t(`keys.telemt_quota_period_${p}`);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="telemt-limit-quota-period" className="font-normal text-mute">
+        {t('keys.telemt_quota_period')}
+      </Label>
+      <Select
+        value={period || 'none'}
+        onValueChange={(v) => onChange({ ...value, quota_period: !v || v === 'none' ? '' : (v as QuotaPeriod) })}
+        disabled={disabled || noQuota}
+      >
+        <SelectTrigger id="telemt-limit-quota-period" className="w-full">
+          <SelectValue>{(v: QuotaPeriodChoice | null) => label(v ?? 'none')}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {QUOTA_PERIODS.map((p) => (
+            <SelectItem key={p} value={p}>
+              {label(p)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-label text-mute">
+        {noQuota
+          ? t('keys.telemt_quota_period_needs_quota')
+          : period
+            ? t('keys.telemt_quota_period_next', { date: formatDate(nextQuotaReset(period), i18n.language) })
+            : t('keys.telemt_quota_period_lifetime')}
+      </p>
     </div>
   );
 }

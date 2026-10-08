@@ -140,7 +140,12 @@ func (s *Server) Handler() chi.Router {
 		r.Get("/branding", s.handleGetActiveBranding)
 		r.Get("/branding/assets/{id}/{file}", s.handleBrandingAsset)
 		r.Group(func(r chi.Router) {
-			r.Use(requireAuth, csrfCheck)
+			r.Use(s.authenticateManagement, csrfCheck)
+			r = managementPolicyRouter{Router: r}
+			r.Get("/api-tokens", s.handleListAPITokens)
+			r.Get("/api-tokens/scopes", s.handleAPITokenScopes)
+			r.Post("/api-tokens", s.handleCreateAPIToken)
+			r.Delete("/api-tokens/{id}", s.handleRevokeAPIToken)
 			r.Get("/auth/me", s.handleMe)
 			r.Get("/status/public", s.handlePublicStatus)
 			r.Post("/auth/logout", s.handleLogout)

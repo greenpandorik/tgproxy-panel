@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"tgwebproxy/internal/alerttext"
 	"tgwebproxy/internal/notify"
 	"tgwebproxy/internal/store/db"
@@ -31,36 +33,17 @@ type Alerts struct {
 	tg       Sender
 	log      *slog.Logger
 
-	mu     sync.Mutex
-	sent   map[string]time.Time // key: "<nodeID>|<kind>"
-	pushed map[string]bool      // problems whose message went out and whose recovery has not
+	mu            sync.Mutex
+	pool          *pgxpool.Pool
+	states        map[string]*notificationState
+	locks         map[string]*sync.Mutex
+	deliverySlots chan struct{}
+	now           func() time.Time
 }
 
 // NewAlerts builds an Alerts notifier.
 func NewAlerts(src func(context.Context) (bool, string, string, error), tg Sender, log *slog.Logger) *Alerts {
-	return &Alerts{src: src, tg: tg, log: log, sent: map[string]time.Time{}, pushed: map[string]bool{}}
-}
-
-func (a *Alerts) allow(key string, cooldown time.Duration) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	last, ok := a.sent[key]
-	return !ok || time.Since(last) >= cooldown
-}
-
-func (a *Alerts) markPushed(key string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.sent[key] = time.Now()
-	a.pushed[key] = true
-}
-
-func (a *Alerts) takePushed(key string) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	was := a.pushed[key]
-	delete(a.pushed, key)
-	return was
+	return &Alerts{src: src, tg: tg, log: log, states: map[string]*notificationState{}, locks: map[string]*sync.Mutex{}, deliverySlots: make(chan struct{}, 2)}
 }
 
 func (a *Alerts) lang(ctx context.Context) alerttext.Lang {
@@ -76,45 +59,27 @@ func textNode(n db.Node) alerttext.Node {
 
 // problem sends a problem at most once per cooldown for the same node and kind.
 func (a *Alerts) problem(ctx context.Context, nodeID, kind string, cooldown time.Duration, msg alerttext.Message) {
-	key := nodeID + "|" + kind
-	if !a.allow(key, cooldown) {
-		return
-	}
-	if a.deliver(ctx, nodeID, kind, msg) {
-		a.markPushed(key)
-	}
-}
-
-// recovered sends a recovery only for a problem whose message went out.
-func (a *Alerts) recovered(ctx context.Context, nodeID, kind string, msg alerttext.Message) {
-	if !a.takePushed(nodeID + "|" + kind) {
-		return
-	}
-	a.deliver(ctx, nodeID, kind+"_recovered", msg)
-}
-
-func (a *Alerts) deliver(ctx context.Context, nodeID, kind string, msg alerttext.Message) bool {
-	delivered := false
-	if a.Webhook != nil {
-		if err := a.Webhook.Send(ctx, nodeID, kind, msg.Plain); err != nil {
-			a.log.Warn("webhook delivery", "kind", kind, "err", err)
-		} else {
-			delivered = true
+	a.withState(ctx, nodeID, kind, func(state *notificationState) {
+		if !state.Pending && !state.LastProblem.IsZero() && time.Since(state.LastProblem) < cooldown {
+			return
 		}
-	}
-	enabled, token, chatID, err := a.src(ctx)
-	if err != nil {
-		a.log.Error("telegram config", "err", err)
-		return delivered
-	}
-	if !enabled || token == "" || chatID == "" {
-		return delivered
-	}
-	if err := a.tg.SendWith(ctx, token, chatID, msg.HTML); err != nil {
-		a.log.Warn("telegram send failed", "err", err, "kind", kind)
-		return delivered
-	}
-	return true
+		// Apply/legacy incident reminders start a new delivery period after their
+		// cooldown. An offline outage keeps one announcement until its recovery.
+		if !state.Pending && kind != "node_offline" {
+			state.Telegram = false
+			state.Webhook = false
+		}
+		state.Pending = true
+		a.sendProblem(ctx, nodeID, kind, msg, state)
+	})
+}
+
+// recovered retains each successful problem destination until its recovery succeeds.
+func (a *Alerts) recovered(ctx context.Context, nodeID, kind string, msg alerttext.Message) {
+	a.withState(ctx, nodeID, kind, func(state *notificationState) {
+		state.Pending = false
+		a.sendRecovery(ctx, nodeID, kind, msg, state)
+	})
 }
 
 // NodeOffline notifies that node stopped sending heartbeats.

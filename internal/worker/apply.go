@@ -30,6 +30,7 @@ type Apply struct {
 	mu           sync.Mutex
 	inFlight     map[uuid.UUID]bool
 	wg           sync.WaitGroup
+	schedule     applySchedule
 
 	runStarted atomic.Bool
 	runDone    chan struct{}
@@ -75,14 +76,16 @@ func (a *Apply) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case id := <-a.trigger:
-			a.spawn(applyCtx, id)
+			if n, err := a.st.Q.GetNode(ctx, id); err == nil {
+				a.spawn(applyCtx, n)
+			}
 		case <-t.C:
 			nodes, err := a.st.Q.ListDirtyNodesAny(ctx)
 			if err != nil {
 				a.log.Error("list dirty nodes", "err", err)
 			} else {
 				for _, n := range nodes {
-					a.spawn(applyCtx, n.ID)
+					a.spawn(applyCtx, n)
 				}
 			}
 			if a.intervalFunc != nil {
@@ -96,13 +99,21 @@ func (a *Apply) Run(ctx context.Context) {
 }
 
 // spawn runs one apply in a tracked goroutine so Stop can wait for it.
-func (a *Apply) spawn(ctx context.Context, id uuid.UUID) {
+func (a *Apply) spawn(ctx context.Context, node db.Node) {
+	id := node.ID
+	if !a.driver.Online(id) || !a.schedule.claim(id, node.DirtySeq, time.Now()) {
+		return
+	}
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
 		ctx, cancel := context.WithTimeout(ctx, applyTimeout)
 		defer cancel()
-		a.applyLogged(ctx, id)
+		err := a.ApplyNode(ctx, id)
+		a.schedule.finish(id, node.DirtySeq, time.Now(), err != nil && !errors.Is(err, nodedriver.ErrOffline))
+		if err != nil {
+			a.log.Warn("apply failed", "node", id, "err", err)
+		}
 	}()
 }
 
@@ -127,12 +138,6 @@ func (a *Apply) Stop(ctx context.Context) error {
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("in-flight applies did not finish within %s: %w", stopTimeout, ctx.Err())
-	}
-}
-
-func (a *Apply) applyLogged(ctx context.Context, id uuid.UUID) {
-	if err := a.ApplyNode(ctx, id); err != nil {
-		a.log.Warn("apply failed", "node", id, "err", err)
 	}
 }
 
@@ -196,7 +201,7 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		}
 		return fmt.Errorf("apply: %w", applyErr)
 	}
-	return a.st.Tx(ctx, func(q *db.Queries) error {
+	err = a.st.Tx(ctx, func(q *db.Queries) error {
 		if err := q.FinishApplyJob(ctx, db.FinishApplyJobParams{ID: job.ID, Status: db.ApplyStatusOk, Log: res.Log}); err != nil {
 			return err
 		}
@@ -227,6 +232,10 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		}
 		return q.ActivatePendingKeysForNode(ctx)
 	})
+	if err == nil {
+		a.schedule.forget(nodeID)
+	}
+	return err
 }
 
 // recordDeferred raises an alert for config the node persisted without activating. The apply

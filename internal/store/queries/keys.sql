@@ -11,7 +11,7 @@ WHERE (sqlc.narg('type')::key_type IS NULL OR k.type = sqlc.narg('type'))
   AND (sqlc.narg('status')::key_status IS NULL OR k.status = sqlc.narg('status'))
   AND (sqlc.narg('node_id')::uuid IS NULL OR EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = k.id AND b.node_id = sqlc.narg('node_id')))
   AND (sqlc.narg('q')::text IS NULL OR k.label ILIKE '%' || sqlc.narg('q') || '%' OR k.owner_label ILIKE '%' || sqlc.narg('q') || '%'
-    OR k.note ILIKE '%' || sqlc.narg('q') || '%' OR k.sub_slug ILIKE '%' || sqlc.narg('q') || '%')
+    OR k.note ILIKE '%' || sqlc.narg('q') || '%' OR (sqlc.arg('search_sub_slug')::boolean AND k.sub_slug ILIKE '%' || sqlc.narg('q') || '%'))
   AND (sqlc.narg('state')::text IS NULL OR CASE sqlc.narg('state')::text
     WHEN 'revoked' THEN k.status = 'revoked'
     WHEN 'disabled' THEN k.status <> 'revoked' AND k.disabled_at IS NOT NULL
@@ -28,7 +28,7 @@ WHERE (sqlc.narg('type')::key_type IS NULL OR k.type = sqlc.narg('type'))
   AND (sqlc.narg('status')::key_status IS NULL OR k.status = sqlc.narg('status'))
   AND (sqlc.narg('node_id')::uuid IS NULL OR EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = k.id AND b.node_id = sqlc.narg('node_id')))
   AND (sqlc.narg('q')::text IS NULL OR k.label ILIKE '%' || sqlc.narg('q') || '%' OR k.owner_label ILIKE '%' || sqlc.narg('q') || '%'
-    OR k.note ILIKE '%' || sqlc.narg('q') || '%' OR k.sub_slug ILIKE '%' || sqlc.narg('q') || '%')
+    OR k.note ILIKE '%' || sqlc.narg('q') || '%' OR (sqlc.arg('search_sub_slug')::boolean AND k.sub_slug ILIKE '%' || sqlc.narg('q') || '%'))
   AND (sqlc.narg('state')::text IS NULL OR CASE sqlc.narg('state')::text
     WHEN 'revoked' THEN k.status = 'revoked'
     WHEN 'disabled' THEN k.status <> 'revoked' AND k.disabled_at IS NOT NULL

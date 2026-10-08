@@ -72,6 +72,7 @@ describe('SettingsPage tabs', () => {
       'Резервные копии',
       'Мой интерфейс',
       'Пароль и 2FA',
+      'API-токены',
     ]);
   });
 
@@ -82,6 +83,13 @@ describe('SettingsPage tabs', () => {
     expect(await screen.findByRole('heading', { name: 'Интеграции' })).toBeInTheDocument();
     expect(tabNames()).not.toContain('Учётные записи');
     expect(tabNames()).not.toContain('Резервные копии');
+  });
+
+  it('opens personal API tokens for a viewer', async () => {
+    mockApi('viewer', { alert_webhook_configured: false, metrics_token_set: false });
+    renderPage('/settings?section=api_tokens');
+    expect(await screen.findByRole('heading', { name: 'API-токены' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Документация API' })).toHaveAttribute('href', 'https://tgproxypanel.com/api/');
   });
 
   it('says what is set up and how to export metrics and alerts', async () => {

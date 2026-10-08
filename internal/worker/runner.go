@@ -14,6 +14,7 @@ func nullUUID(id uuid.UUID) uuid.NullUUID { return uuid.NullUUID{UUID: id, Valid
 func Start(ctx context.Context, a *Apply, e *Expiry, s *Stats, b *Backup) func(context.Context) error {
 	go a.Run(ctx)
 	go e.Run(ctx, time.Minute)
+	go NewQuotaReset(e.st.Q, e.log).Run(ctx, time.Minute)
 	go s.Run(ctx, time.Minute)
 	if b != nil {
 		go b.Run(ctx, backupTick)

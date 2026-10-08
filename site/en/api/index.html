@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src https://gateway.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="google-site-verification" content="7W_vbByQP82tpJH83rRbAkgH6utltVfZGRO__ocN-X4">
+<title>TGProxy Panel API: tokens, scopes and examples | TGProxy Panel</title>
+<meta name="description" content="Automate your own TGProxy Panel with personal Bearer tokens: permissions, curl and Python examples, pagination, errors and downloadable OpenAPI.">
+<link rel="canonical" href="https://tgproxypanel.com/en/api/">
+<link rel="alternate" hreflang="ru" href="https://tgproxypanel.com/api/">
+<link rel="alternate" hreflang="en" href="https://tgproxypanel.com/en/api/">
+<link rel="alternate" hreflang="x-default" href="https://tgproxypanel.com/en/api/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#171b21">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="TGProxy Panel">
+<meta property="og:title" content="TGProxy Panel API: tokens, scopes and examples">
+<meta property="og:description" content="Automate your own TGProxy Panel with personal Bearer tokens: permissions, curl and Python examples, pagination, errors and downloadable OpenAPI.">
+<meta property="og:url" content="https://tgproxypanel.com/en/api/">
+<meta property="og:image" content="https://tgproxypanel.com/en/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://tgproxypanel.com/en/api/#article",
+      "headline": "TGProxy Panel API: tokens, scopes and examples",
+      "description": "Automate your own TGProxy Panel with personal Bearer tokens: permissions, curl and Python examples, pagination, errors and downloadable OpenAPI.",
+      "url": "https://tgproxypanel.com/en/api/",
+      "mainEntityOfPage": "https://tgproxypanel.com/en/api/",
+      "inLanguage": "en",
+      "dateModified": "2026-10-08",
+      "isAccessibleForFree": true,
+      "isPartOf": {
+        "@id": "https://tgproxypanel.com/#website"
+      },
+      "about": {
+        "@id": "https://tgproxypanel.com/#application"
+      },
+      "image": "https://tgproxypanel.com/en/og.png"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "TGProxy Panel",
+          "item": "https://tgproxypanel.com/en/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "API documentation",
+          "item": "https://tgproxypanel.com/en/api/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script defer src="/vendor/umami/script.js" data-website-id="f666539c-ffab-4859-93e1-6b18aea7da78" data-domains="tgproxypanel.com,www.tgproxypanel.com"></script>
+</head>
+<body>
+<a class="skip-link" href="#article">Skip to content</a>
+<header class="wrap top">
+<a class="brand" href="/en/" aria-label="TGProxy Panel, home">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.6 9.7c0-1.9 1.4-2.9 3.2-2.9h12.4c1.8 0 3.2 1 3.2 2.9 0 4.2-2.4 7.6-5.5 7.6-1.9 0-3-1.3-3.9-2.8-.9 1.5-2 2.8-3.9 2.8-3.1 0-5.5-3.4-5.5-7.6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="8.1" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/><ellipse cx="15.9" cy="11.5" rx="1.9" ry="1.4" fill="#3fc0d6"/></svg>
+    TGProxy Panel
+  </a>
+<nav class="nav" aria-label="Site navigation">
+<a href="/en/#guides">Guides</a>
+<a class="lang" href="/api/" hreflang="ru" lang="ru">Русский</a>
+<a class="gh" href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a>
+</nav>
+</header>
+<main class="wrap guide api-guide" id="article">
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/en/">Home</a><span aria-hidden="true">/</span><span>API documentation</span></nav>
+<div class="guide-header"><h1>TGProxy Panel API: tokens, scopes and examples</h1><p class="lead">Automate your own TGProxy Panel with personal Bearer tokens: permissions, curl and Python examples, pagination, errors and downloadable OpenAPI.</p><p class="updated">Updated October 8, 2026 · Open-source project documentation</p></div>
+<div class="guide-layout">
+<nav class="toc" aria-label="Contents"><p>Contents</p><a href="#authentication">Authentication</a><a href="#scopes">Permissions</a><a href="#curl">curl examples</a><a href="#python">Python example</a><a href="#pagination">Lists and filters</a><a href="#jobs">Applying changes</a><a href="#errors">Errors</a><a href="#routes">Endpoint catalog</a></nav>
+<article class="guide-body" aria-label="API documentation">
+<p>Use the management API to automate your own panel from scripts, bots and integrations. Users are called keys in the API: the Users screen corresponds to <code>/api/v1/keys</code>.</p>
+<section id="authentication"><h2>Create a personal API token</h2>
+<p>Sign in to your panel and open Settings → API tokens. Choose a name, an expiry and the permissions your integration needs. The default duration is 30 days; you can choose an integer from 1 to 365 days. Each account can have up to 50 active tokens. Viewers can create read-only tokens.</p>
+<p>Copy the <code>tgwp_…</code> secret before closing the creation dialog: it appears only once. The panel stores its SHA-256 digest and a public prefix, so the token list cannot recover it. Store the secret in your integration’s secret manager or environment; avoid source code, logs and shared screenshots.</p>
+<p>Send requests over HTTPS to <strong>your installed panel</strong>, for example <code>https://panel.example.com/api/v1</code>. <code>tgproxypanel.com</code> hosts this documentation and is not your management API endpoint.</p>
+<p>Use one <code>Authorization: Bearer &lt;token&gt;</code> header. A validated personal Bearer token does not need cookies or <code>X-CSRF-Token</code>. Invalid or duplicate Authorization headers do not fall back to a signed-in browser session. Token support does not change the panel’s CORS policy; use these examples from a server or command line.</p>
+<p>Revoke a token in Settings → API tokens when it is no longer needed. Expired and revoked tokens stop working. Changing your password revokes all your personal tokens; deleting the account invalidates its tokens. The token list shows expiry and last use; last-use timestamps update at most once per minute.</p>
+</section>
+<section id="scopes"><h2>Permissions and account roles</h2>
+<p>Every request must be allowed by both the token’s scopes and the account’s current role. Write scopes do not automatically include read scopes. Role changes take effect on subsequent requests. Read-only and full-rights presets select scopes; full rights still follows the account’s role and the endpoint catalog below.</p>
+<div class="table-scroll" role="region" aria-label="Permissions and account roles" tabindex="0"><table><thead><tr><th>Resource</th><th>Scopes</th><th>What it covers</th></tr></thead><tbody><tr><td><code>nodes</code></td><td><code>nodes:read</code><br><code>nodes:write</code></td><td>Servers, configuration, installation and applies</td></tr><tr><td><code>users</code></td><td><code>users:read</code><br><code>users:write</code></td><td>Users, bindings and subscription links; routes use /keys</td></tr><tr><td><code>monitoring</code></td><td><code>monitoring:read</code><br><code>monitoring:write</code></td><td>Dashboard, monitoring and alerts</td></tr><tr><td><code>sites</code></td><td><code>sites:read</code><br><code>sites:write</code></td><td>Cover websites</td></tr><tr><td><code>branding</code></td><td><code>branding:read</code><br><code>branding:write</code></td><td>Panel and subscription page appearance</td></tr><tr><td><code>settings</code></td><td><code>settings:read</code><br><code>settings:write</code></td><td>Automation settings allowed by the account role</td></tr><tr><td><code>audit</code></td><td><code>audit:read</code></td><td>Activity log</td></tr></tbody></table></div><p>Reading sensitive values requires write permission even when the HTTP method is GET: this includes user secrets, proxy links and QR codes, node installation commands and registration secrets. A read scope does not grant these values. Use the catalog to check the scope for each route.</p>
+<p>Token creation, listing and revocation, account administration, password and 2FA changes, backups and subscription-service credentials require a browser session. A personal token cannot create another token or manage these operations. Agent, probe, metrics and subscription-service tokens have separate purposes and cannot be replaced by a personal token.</p>
+<p>Mutation audit entries include the personal token’s ID in <code>api_token_id</code>, so you can identify the integration that made a change without storing its secret in the audit log.</p>
+</section>
+<section id="curl"><h2>curl: read a server and manage users</h2>
+<p>Replace the example address and UUIDs with values from your panel. Load your token from your secret store; the value below is a placeholder. Reading a node and listing users requires <code>nodes:read</code> and <code>users:read</code>. Creating, disabling and enabling users requires <code>users:write</code> and an owner or admin account.</p>
+<h3>Set the connection values</h3>
+<div class="cmd" data-command="api-setup"><pre><code>export TGWP_PANEL_URL=&#x27;https://panel.example.com&#x27;
+export TGWP_API_TOKEN=&#x27;tgwp_replace_with_your_token&#x27;
+export TGWP_NODE_ID=&#x27;replace-with-node-uuid&#x27;
+export TGWP_KEY_ID=&#x27;replace-with-user-uuid&#x27;</code></pre></div>
+<h3>Read a node and list active users</h3>
+<div class="cmd" data-command="api-read"><pre><code>curl --fail-with-body --silent --show-error \
+  -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/nodes/$TGWP_NODE_ID&quot;
+
+curl --fail-with-body --silent --show-error \
+  -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/keys?state=active&amp;page=1&amp;per_page=50&quot;</code></pre></div>
+<h3>Create personal access</h3>
+<div class="cmd" data-command="api-create"><pre><code>curl --fail-with-body --silent --show-error \
+  -X POST &quot;$TGWP_PANEL_URL/api/v1/keys&quot; \
+  -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  -H &#x27;Content-Type: application/json&#x27; \
+  --data &quot;{\&quot;label\&quot;:\&quot;Automation example\&quot;,\&quot;type\&quot;:\&quot;PERSONAL\&quot;,\&quot;node_ids\&quot;:[\&quot;$TGWP_NODE_ID\&quot;],\&quot;expires_at\&quot;:null}&quot;</code></pre></div>
+<p><code>label</code>, <code>type</code> and at least one <code>node_ids</code> UUID are required. <code>type</code> is uppercase <code>PERSONAL</code> or <code>SHARED</code>. <code>expires_at: null</code> means no user access expiry; supply a future RFC 3339 timestamp for a time limit. This is separate from the API token’s expiry. The response is HTTP 201 with a user object; copy its <code>id</code> into <code>TGWP_KEY_ID</code>. Creation responses can contain user secrets and links: handle them privately.</p>
+<h3>Pause and resume access</h3>
+<div class="cmd" data-command="api-toggle"><pre><code>curl --fail-with-body --silent --show-error \
+  -X POST -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/keys/$TGWP_KEY_ID/disable&quot;
+
+curl --fail-with-body --silent --show-error \
+  -X POST -H &quot;Authorization: Bearer $TGWP_API_TOKEN&quot; \
+  &quot;$TGWP_PANEL_URL/api/v1/keys/$TGWP_KEY_ID/enable&quot;</code></pre></div>
+<p>Both calls return HTTP 200 with the updated user. These examples leave the user enabled. Resuming access does not remove an expired access date or undo revocation.</p>
+</section>
+<section id="python"><h2>Python without external packages</h2>
+<p>This script uses the same environment variables and permissions as the curl examples. It reads a node, paginates through active users, then creates a user with seven days of access and disables and enables that new user. Save it as <code>example.py</code> and run <code>python3 example.py</code>. It prints identifiers and state rather than the complete creation response.</p>
+<div class="cmd" data-command="api-python"><pre><code>import json
+import os
+from datetime import datetime, timedelta, timezone
+from urllib.error import HTTPError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+base = os.environ[&quot;TGWP_PANEL_URL&quot;].rstrip(&quot;/&quot;) + &quot;/api/v1&quot;
+token = os.environ[&quot;TGWP_API_TOKEN&quot;]
+node_id = os.environ[&quot;TGWP_NODE_ID&quot;]
+if not base.startswith(&quot;https://&quot;):
+    raise ValueError(&quot;Use the HTTPS address of your own panel&quot;)
+
+def api(method, path, body=None):
+    headers = {&quot;Authorization&quot;: &quot;Bearer &quot; + token}
+    data = None
+    if body is not None:
+        headers[&quot;Content-Type&quot;] = &quot;application/json&quot;
+        data = json.dumps(body).encode(&quot;utf-8&quot;)
+    req = Request(base + path, data=data, headers=headers, method=method)
+    try:
+        with urlopen(req, timeout=30) as response:
+            raw = response.read()
+            return json.loads(raw) if raw else None
+    except HTTPError as exc:
+        raw = exc.read()
+        try:
+            error = json.loads(raw).get(&quot;error&quot;, {})
+        except (ValueError, AttributeError):
+            error = {&quot;code&quot;: &quot;http_error&quot;, &quot;message&quot;: &quot;Non-JSON response&quot;}
+        raise RuntimeError(
+            f&quot;HTTP {exc.code}: {error.get(&#x27;code&#x27;)}: &quot;
+            f&quot;{error.get(&#x27;message&#x27;)}; fields={error.get(&#x27;fields&#x27;, {})}&quot;
+        ) from None
+
+node = api(&quot;GET&quot;, &quot;/nodes/&quot; + node_id)
+print(node[&quot;name&quot;], node[&quot;status&quot;])
+page = 1
+while True:
+    result = api(&quot;GET&quot;, &quot;/keys?&quot; + urlencode({
+        &quot;state&quot;: &quot;active&quot;, &quot;page&quot;: page, &quot;per_page&quot;: 50
+    }))
+    for user in result[&quot;items&quot;]:
+        print(user[&quot;id&quot;], user[&quot;label&quot;], user[&quot;state&quot;])
+    if not result[&quot;items&quot;] or page * result[&quot;per_page&quot;] &gt;= result[&quot;total&quot;]:
+        break
+    page += 1
+
+expires = datetime.now(timezone.utc) + timedelta(days=7)
+user = api(&quot;POST&quot;, &quot;/keys&quot;, {
+    &quot;label&quot;: &quot;Automation example&quot;, &quot;type&quot;: &quot;PERSONAL&quot;,
+    &quot;node_ids&quot;: [node_id], &quot;expires_at&quot;: expires.isoformat()
+})
+print(&quot;Created user:&quot;, user[&quot;id&quot;])
+api(&quot;POST&quot;, &quot;/keys/&quot; + user[&quot;id&quot;] + &quot;/disable&quot;)
+api(&quot;POST&quot;, &quot;/keys/&quot; + user[&quot;id&quot;] + &quot;/enable&quot;)</code></pre></div></section>
+<section id="pagination"><h2>Lists, filters and pagination</h2>
+<p>List responses use <code>items</code>; do not assume that every list accepts the same pagination parameters.</p>
+<div class="table-scroll" role="region" aria-label="Lists, filters and pagination" tabindex="0"><table><thead><tr><th>Route / parameter</th><th>Behavior</th></tr></thead><tbody><tr><td><code>/keys: page</code></td><td>Starts at 1; default 1.</td></tr><tr><td><code>/keys: per_page</code></td><td>1–200; default 50. Values outside that range use 50.</td></tr><tr><td><code>/keys: q</code></td><td>Personal tokens without <code>users:write</code> search only <code>label</code>, <code>owner_label</code> and <code>note</code>; hidden subscription slugs are excluded. Tokens with <code>users:write</code> and browser sessions also search subscription slugs.</td></tr><tr><td><code>/keys: type</code></td><td>PERSONAL or SHARED.</td></tr><tr><td><code>/keys: status</code></td><td>Stored status: pending, active or revoked.</td></tr><tr><td><code>/keys: state</code></td><td>active, pending, expiring, expired, disabled or revoked. expiring means within seven days.</td></tr><tr><td><code>/keys: node</code></td><td>Filter by a node UUID; the parameter is node, not node_id.</td></tr><tr><td><code>/nodes</code></td><td>Returns {items, total}; no page or per_page parameters.</td></tr><tr><td><code>/nodes/{id}/jobs: limit</code></td><td>1–100; default 20. Values outside that range use 20.</td></tr></tbody></table></div><p><code>GET /keys</code> returns <code>{items, total, page, per_page}</code>. Fetch pages until you reach <code>total</code> or receive an empty <code>items</code> array. Lists can change while you paginate; avoid changing the filtered users in the middle of a scan.</p>
+</section>
+<section id="jobs"><h2>Applying changes and retrying requests</h2>
+<p>Creating or changing a user schedules configuration changes on its nodes; a successful HTTP response does not mean that the proxy has applied them yet. Inspect the user’s <code>nodes[].profile_sync</code>, and the node’s <code>dirty</code>, <code>last_apply_at</code> and <code>GET /nodes/{id}/jobs</code>. Job history requires <code>nodes:write</code> because it includes raw logs and errors. Jobs include <code>status</code>, <code>started_at</code>, <code>finished_at</code> and <code>error</code>; statuses are <code>queued</code>, <code>running</code>, <code>ok</code>, <code>failed</code> and <code>rolled_back</code>.</p>
+<p><code>POST /nodes/{id}/apply</code> requires <code>nodes:write</code> and returns HTTP 202 with <code>{"queued": true}</code>. It does not return a job ID. Poll the node and recent jobs with a reasonable delay, such as five seconds, and an overall timeout. A failed job needs inspection; repeatedly queuing applies will not explain the failure.</p>
+<p>Use request timeouts. Retry reads after transient network or server failures with a bounded delay. Do not blindly retry user creation, secret rotation or other mutations: a lost response can follow a successful operation. Check the resulting state first to avoid duplicate users or unintended changes.</p>
+</section>
+<section id="errors"><h2>HTTP statuses and error responses</h2>
+<p>Successful responses can be JSON or another documented format, such as a PNG or Prometheus text. HTTP 204 has no response body. Errors use this JSON envelope; <code>fields</code> is present for field validation errors:</p>
+<div class="cmd" data-command="api-error"><pre><code>{
+  &quot;error&quot;: {
+    &quot;code&quot;: &quot;validation&quot;,
+    &quot;message&quot;: &quot;invalid input&quot;,
+    &quot;fields&quot;: {
+      &quot;node_ids&quot;: &quot;bind at least one node&quot;
+    }
+  }
+}</code></pre></div><div class="table-scroll" role="region" aria-label="HTTP statuses and error responses" tabindex="0"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody><tr><td>200 / 201 / 202 / 204</td><td>Read or update succeeded / resource created / queued / success without a body.</td></tr><tr><td>400</td><td>Malformed request or JSON; unknown JSON fields are rejected.</td></tr><tr><td>401</td><td>Missing, invalid, expired or revoked credentials.</td></tr><tr><td>403</td><td>Scope, current role or session-only route denies the operation.</td></tr><tr><td>404</td><td>Resource absent, or identifier not visible to the caller.</td></tr><tr><td>409</td><td>Conflict with existing state; reread before changing it.</td></tr><tr><td>422</td><td>Validation failed; inspect error.fields.</td></tr><tr><td>500 / 502 / 503</td><td>Internal error, node operation failure or offline node; inspect the error code and state.</td></tr></tbody></table></div></section>
+<section id="routes"><h2>Endpoint and scope catalog</h2>
+<p>Each path below is relative to your panel origin and includes <code>/api/v1</code>. The catalog and <a href="/api/openapi.json" download>downloadable OpenAPI 3.0.3 specification</a> come from the backend’s explicit personal-token route policy. Unlisted routes are unavailable to personal tokens. Owner-only restrictions apply in addition to scopes.</p>
+<!-- API_ROUTES_START -->
+<!-- API_ROUTES_END -->
+</section>
+<p>For installation, use the <a href="/en/guides/install-telemt/">panel and telemt guide</a>. The repository’s <a href="https://github.com/greenpandorik/tgproxy-panel/blob/main/docs/api.md">API guide</a> also describes browser-session token management.</p>
+</article>
+</div>
+</main>
+<footer><div class="wrap"><span>TGProxy Panel · AGPL-3.0</span><nav aria-label="Project links"><a href="/en/">Home</a><a href="https://github.com/greenpandorik/tgproxy-panel">GitHub</a><a href="/en/api/" aria-current="page">API</a><a href="https://github.com/greenpandorik/tgproxy-panel/releases">Releases</a><a href="https://github.com/greenpandorik/tgproxy-panel/discussions">Discussions</a></nav></div></footer>
+<script defer src="/copy.js"></script>
+</body>
+</html>

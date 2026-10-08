@@ -152,7 +152,10 @@ func (s *Server) keyJSONWith(r *http.Request, k db.AccessKey, withSecret bool, x
 			out.SubscriptionShortURL = &u
 		}
 	}
-	if withSecret && k.Status != db.KeyStatusRevoked {
+	if p, ok := PrincipalFrom(r.Context()); ok && p.APITokenID != uuid.Nil && !principalCanWrite(r, "users") {
+		out.SubSlug = nil
+	}
+	if withSecret && k.Status != db.KeyStatusRevoked && isWriter(r) {
 		out.Secret, _ = s.keys.Secret(r.Context(), k)
 		out.Links, _ = s.keys.Links(r.Context(), k.ID)
 	}
@@ -258,8 +261,7 @@ func (s *Server) trafficByKey(ctx context.Context, ks []db.AccessKey) map[uuid.U
 }
 
 func isWriter(r *http.Request) bool {
-	p, _ := PrincipalFrom(r.Context())
-	return p.Role == RoleOwner || p.Role == RoleAdmin
+	return principalCanWrite(r, "users")
 }
 
 func (s *Server) keysErr(w http.ResponseWriter, err error) {
@@ -405,13 +407,15 @@ func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("state"); v != "" {
 		state = &v
 	}
-	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
+	p, _ := PrincipalFrom(r.Context())
+	searchSubSlug := p.APITokenID == uuid.Nil || principalCanWrite(r, "users")
+	rows, err := s.store.Q.ListKeys(r.Context(), db.ListKeysParams{SearchSubSlug: searchSubSlug, Limit: int32(per), Offset: int32((page - 1) * per), Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
 	if err != nil {
 		s.log.Error("list keys", "err", err)
 		internal(w)
 		return
 	}
-	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
+	total, _ := s.store.Q.CountKeys(r.Context(), db.CountKeysParams{SearchSubSlug: searchSubSlug, Type: typ, Status: status, NodeID: nodeID, Q: search, State: state})
 	extras := s.extrasFor(r.Context(), rows)
 	items := make([]keyJSON, 0, len(rows))
 	for _, k := range rows {

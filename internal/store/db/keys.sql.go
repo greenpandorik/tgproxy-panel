@@ -29,8 +29,8 @@ WHERE ($1::key_type IS NULL OR k.type = $1)
   AND ($2::key_status IS NULL OR k.status = $2)
   AND ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = k.id AND b.node_id = $3))
   AND ($4::text IS NULL OR k.label ILIKE '%' || $4 || '%' OR k.owner_label ILIKE '%' || $4 || '%'
-    OR k.note ILIKE '%' || $4 || '%' OR k.sub_slug ILIKE '%' || $4 || '%')
-  AND ($5::text IS NULL OR CASE $5::text
+    OR k.note ILIKE '%' || $4 || '%' OR ($5::boolean AND k.sub_slug ILIKE '%' || $4 || '%'))
+  AND ($6::text IS NULL OR CASE $6::text
     WHEN 'revoked' THEN k.status = 'revoked'
     WHEN 'disabled' THEN k.status <> 'revoked' AND k.disabled_at IS NOT NULL
     WHEN 'expired' THEN k.status <> 'revoked' AND k.disabled_at IS NULL AND k.expires_at <= now()
@@ -41,11 +41,12 @@ WHERE ($1::key_type IS NULL OR k.type = $1)
 `
 
 type CountKeysParams struct {
-	Type   NullKeyType   `json:"type"`
-	Status NullKeyStatus `json:"status"`
-	NodeID uuid.NullUUID `json:"node_id"`
-	Q      *string       `json:"q"`
-	State  *string       `json:"state"`
+	Type          NullKeyType   `json:"type"`
+	Status        NullKeyStatus `json:"status"`
+	NodeID        uuid.NullUUID `json:"node_id"`
+	Q             *string       `json:"q"`
+	SearchSubSlug bool          `json:"search_sub_slug"`
+	State         *string       `json:"state"`
 }
 
 func (q *Queries) CountKeys(ctx context.Context, arg CountKeysParams) (int64, error) {
@@ -54,6 +55,7 @@ func (q *Queries) CountKeys(ctx context.Context, arg CountKeysParams) (int64, er
 		arg.Status,
 		arg.NodeID,
 		arg.Q,
+		arg.SearchSubSlug,
 		arg.State,
 	)
 	var count int64
@@ -521,8 +523,8 @@ WHERE ($3::key_type IS NULL OR k.type = $3)
   AND ($4::key_status IS NULL OR k.status = $4)
   AND ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = k.id AND b.node_id = $5))
   AND ($6::text IS NULL OR k.label ILIKE '%' || $6 || '%' OR k.owner_label ILIKE '%' || $6 || '%'
-    OR k.note ILIKE '%' || $6 || '%' OR k.sub_slug ILIKE '%' || $6 || '%')
-  AND ($7::text IS NULL OR CASE $7::text
+    OR k.note ILIKE '%' || $6 || '%' OR ($7::boolean AND k.sub_slug ILIKE '%' || $6 || '%'))
+  AND ($8::text IS NULL OR CASE $8::text
     WHEN 'revoked' THEN k.status = 'revoked'
     WHEN 'disabled' THEN k.status <> 'revoked' AND k.disabled_at IS NOT NULL
     WHEN 'expired' THEN k.status <> 'revoked' AND k.disabled_at IS NULL AND k.expires_at <= now()
@@ -534,13 +536,14 @@ ORDER BY k.created_at DESC, k.label LIMIT $1 OFFSET $2
 `
 
 type ListKeysParams struct {
-	Limit  int32         `json:"limit"`
-	Offset int32         `json:"offset"`
-	Type   NullKeyType   `json:"type"`
-	Status NullKeyStatus `json:"status"`
-	NodeID uuid.NullUUID `json:"node_id"`
-	Q      *string       `json:"q"`
-	State  *string       `json:"state"`
+	Limit         int32         `json:"limit"`
+	Offset        int32         `json:"offset"`
+	Type          NullKeyType   `json:"type"`
+	Status        NullKeyStatus `json:"status"`
+	NodeID        uuid.NullUUID `json:"node_id"`
+	Q             *string       `json:"q"`
+	SearchSubSlug bool          `json:"search_sub_slug"`
+	State         *string       `json:"state"`
 }
 
 func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]AccessKey, error) {
@@ -551,6 +554,7 @@ func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]AccessKey
 		arg.Status,
 		arg.NodeID,
 		arg.Q,
+		arg.SearchSubSlug,
 		arg.State,
 	)
 	if err != nil {

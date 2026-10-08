@@ -40,7 +40,7 @@ func TestLoadDefaultsAndDecodesKeys(t *testing.T) {
 	if cfg.TProxyCommit != "52a5feb7fac38f68da5afef9cedd9b3bfc8473ca" {
 		t.Fatalf("bad tproxy commit default: %s", cfg.TProxyCommit)
 	}
-	if cfg.TelemtVersion != DefaultTelemtVersion || cfg.TelemtSHA256 != testTelemtSHA {
+	if cfg.TelemtVersion != "3.5.14" || cfg.TelemtSHA256 != testTelemtSHA {
 		t.Fatalf("bad telemt pin: %s %s", cfg.TelemtVersion, cfg.TelemtSHA256)
 	}
 }

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Search and user-requested retrieval; no separate training policy is introduced.
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+Sitemap: https://tgproxypanel.com/sitemap.xml

@@ -43,7 +43,7 @@ func (s *Stats) collectProbes(ctx context.Context, n db.Node) {
 	if err != nil {
 		return
 	}
-	now := time.Now()
+	now := s.clock()
 	for _, loc := range s.probeLocations {
 		p, ok := reports[loc]
 		stale := !ok || now.Sub(p.At) > 3*time.Minute
