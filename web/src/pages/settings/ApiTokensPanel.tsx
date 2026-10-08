@@ -24,7 +24,17 @@ function tokenStatus(token: ApiToken) {
   return new Date(token.expires_at).getTime() <= Date.now() ? 'expired' : 'active';
 }
 
-function CreateTokenDialog({ catalog, isWriter, onClose }: { catalog: ApiTokenScopes; isWriter: boolean; onClose: () => void }) {
+function CreateTokenDialog({
+  administratorId,
+  catalog,
+  isWriter,
+  onClose,
+}: {
+  administratorId: string;
+  catalog: ApiTokenScopes;
+  isWriter: boolean;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const available = catalog.scopes.filter((scope) => isWriter || scope.action === 'read');
   const maxDays = Math.min(365, catalog.max_expires_in_days);
@@ -35,7 +45,7 @@ function CreateTokenDialog({ catalog, isWriter, onClose }: { catalog: ApiTokenSc
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [secret, setSecret] = useState<string | null>(null);
-  const create = useCreateApiToken(setSecret);
+  const create = useCreateApiToken(administratorId, setSecret);
   const resources = [...new Set(available.map((scope) => scope.resource))];
   const readScopes = available.filter((scope) => scope.action === 'read').map((scope) => scope.id);
   const isReadOnly = scopes.length === readScopes.length && readScopes.every((id) => scopes.includes(id));
@@ -297,11 +307,16 @@ function TokenRow({ token, onRevoke }: { token: ApiToken; onRevoke: () => void }
 }
 
 export function ApiTokensPanel() {
+  const { user } = useAuth();
+  return <AccountApiTokensPanel key={user?.id ?? 'anonymous'} administratorId={user?.id} />;
+}
+
+function AccountApiTokensPanel({ administratorId }: { administratorId: string | undefined }) {
   const { t, i18n } = useTranslation();
   const { isWriter, loading } = useAuth();
-  const tokens = useApiTokens();
-  const scopes = useApiTokenScopes();
-  const revoke = useRevokeApiToken();
+  const tokens = useApiTokens(administratorId);
+  const scopes = useApiTokenScopes(administratorId);
+  const revoke = useRevokeApiToken(administratorId);
   const [createOpen, setCreateOpen] = useState(false);
   const [target, setTarget] = useState<ApiToken | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
@@ -354,7 +369,7 @@ export function ApiTokensPanel() {
             void scopes.refetch();
           }}
         />
-      ) : tokens.isLoading || scopes.isLoading ? (
+      ) : loading || !administratorId || tokens.isLoading || scopes.isLoading ? (
         <Skeleton className="h-48 w-full rounded-surface" />
       ) : items.length ? (
         <Panel>
@@ -383,8 +398,13 @@ export function ApiTokensPanel() {
       ) : (
         <EmptyState icon={KeyRound} title={t('api_tokens.empty_title')} description={t('api_tokens.empty_description')} />
       )}
-      {createOpen && scopes.data && (
-        <CreateTokenDialog catalog={scopes.data} isWriter={isWriter} onClose={() => setCreateOpen(false)} />
+      {createOpen && scopes.data && administratorId && (
+        <CreateTokenDialog
+          administratorId={administratorId}
+          catalog={scopes.data}
+          isWriter={isWriter}
+          onClose={() => setCreateOpen(false)}
+        />
       )}
       <Dialog
         open={!!target}

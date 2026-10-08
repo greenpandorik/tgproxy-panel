@@ -28,39 +28,47 @@ export interface CreateApiTokenInput {
   scopes: string[];
 }
 export const apiTokenKeys = {
-  list: ['api-tokens', 'list'] as const,
-  scopes: ['api-tokens', 'scopes'] as const,
+  list: (administratorId: string | undefined) => ['api-tokens', 'list', administratorId] as const,
+  scopes: (administratorId: string | undefined) => ['api-tokens', 'scopes', administratorId] as const,
 };
-export const useApiTokens = () =>
+export const useApiTokens = (administratorId: string | undefined) =>
   useQuery({
-    queryKey: apiTokenKeys.list,
+    queryKey: apiTokenKeys.list(administratorId),
+    enabled: !!administratorId,
     queryFn: () => api.get<{ items: ApiToken[]; total: number }>('/api/v1/api-tokens'),
   });
-export const useApiTokenScopes = () =>
+export const useApiTokenScopes = (administratorId: string | undefined) =>
   useQuery({
-    queryKey: apiTokenKeys.scopes,
+    queryKey: apiTokenKeys.scopes(administratorId),
+    enabled: !!administratorId,
     queryFn: () => api.get<ApiTokenScopes>('/api/v1/api-tokens/scopes'),
   });
 
 /** Deliver the one-time secret directly to volatile UI state; cache metadata only. */
-export function useCreateApiToken(onSecret: (secret: string) => void) {
+export function useCreateApiToken(administratorId: string, onSecret: (secret: string) => void) {
   const qc = useQueryClient();
   return useMutation({
     gcTime: 0,
     mutationFn: async (input: CreateApiTokenInput) => {
+      const ownerId = administratorId;
       const result = await api.post<{ token: string; api_token: ApiToken }>('/api/v1/api-tokens', input, { cache: 'no-store' });
       onSecret(result.token);
-      return result.api_token;
+      return { api_token: result.api_token, ownerId };
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: apiTokenKeys.list });
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: apiTokenKeys.list(result.ownerId), exact: true });
     },
   });
 }
-export function useRevokeApiToken() {
+export function useRevokeApiToken(administratorId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.del<void>(`/api/v1/api-tokens/${encodeURIComponent(id)}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: apiTokenKeys.list }),
+    mutationFn: async (id: string) => {
+      if (!administratorId) throw new Error('Administrator identity is required');
+      const ownerId = administratorId;
+      await api.del<void>(`/api/v1/api-tokens/${encodeURIComponent(id)}`);
+      return ownerId;
+    },
+    onSuccess: (ownerId) => qc.invalidateQueries({ queryKey: apiTokenKeys.list(ownerId), exact: true }),
   });
 }

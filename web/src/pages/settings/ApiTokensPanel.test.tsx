@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -36,8 +36,7 @@ let records: ApiToken[] = [TOKEN];
 let createdBody: unknown;
 let revoked = false;
 let createError = false;
-function mount() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function mount(qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   const view = render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
@@ -50,7 +49,8 @@ function mount() {
   return { qc, ...view };
 }
 async function openCreate() {
-  await userEvent.click(await screen.findByRole('button', { name: 'Create token' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create token' })).toBeEnabled());
+  await userEvent.click(screen.getByRole('button', { name: 'Create token' }));
   return within(screen.getByRole('dialog', { name: 'Create API token' }));
 }
 async function submitCreate() {
@@ -95,6 +95,146 @@ describe('ApiTokensPanel', () => {
         return json({ error: { code: 'not_found', message: 'Unknown endpoint' } }, 404);
       }),
     );
+  });
+
+  it('isolates fresh cached metadata and scope catalogs when the administrator changes', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const owner = { id: 'a1', username: 'owner-a', role: 'owner', totp_enabled: false, features: { totp: true } };
+    const catalog = { scopes: SCOPES, max_expires_in_days: 365, max_tokens: 50 };
+    qc.setQueryData(['auth', 'me'], owner);
+    qc.setQueryData(['api-tokens', 'list'], { items: [TOKEN], total: 1 });
+    qc.setQueryData(['api-tokens', 'scopes'], catalog);
+    qc.setQueryData(['api-tokens', 'list', 'a1'], { items: [TOKEN], total: 1 });
+    qc.setQueryData(['api-tokens', 'scopes', 'a1'], catalog);
+    mount(qc);
+    expect(await screen.findByText('Service Bot')).toBeInTheDocument();
+    let deliverList: (response: Response) => void = () => {
+      throw new Error('B list not requested');
+    };
+    const requested: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const path = String(input);
+        requested.push(path);
+        if (path.endsWith('/api-tokens/scopes')) return json({ scopes: [SCOPES[4]], max_expires_in_days: 365, max_tokens: 50 });
+        if (path.endsWith('/api-tokens'))
+          return new Promise<Response>((resolve) => {
+            deliverList = resolve;
+          });
+        return json(owner);
+      }),
+    );
+    await act(async () => {
+      qc.setQueryData(['auth', 'me'], { ...owner, id: 'b1', username: 'owner-b' });
+    });
+    await waitFor(() => expect(screen.queryByText('Service Bot')).not.toBeInTheDocument());
+    await waitFor(() => expect(requested).toEqual(expect.arrayContaining(['/api/v1/api-tokens', '/api/v1/api-tokens/scopes'])));
+    await act(async () => {
+      deliverList(
+        new Response(JSON.stringify({ items: [{ ...TOKEN, id: 'b-token', name: 'B automation' }], total: 1 }), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    });
+    expect(await screen.findByText('B automation')).toBeInTheDocument();
+    expect(screen.queryByText('Service Bot')).not.toBeInTheDocument();
+    const dialog = await openCreate();
+    expect(dialog.getAllByRole('checkbox')).toHaveLength(1);
+    expect(dialog.getByText('Audit log')).toBeInTheDocument();
+    expect(dialog.queryByText('Servers')).not.toBeInTheDocument();
+  });
+
+  it('removes the one-time secret immediately when the administrator changes', async () => {
+    const { qc } = mount();
+    await submitCreate();
+    expect(screen.getByText(SECRET)).toBeInTheDocument();
+    await act(async () => {
+      qc.setQueryData(['auth', 'me'], {
+        id: 'b1',
+        username: 'account-b',
+        role: 'viewer',
+        totp_enabled: false,
+        features: { totp: true },
+      });
+    });
+    await waitFor(() => expect(screen.queryByText(SECRET)).not.toBeInTheDocument());
+    expect(screen.queryByRole('dialog', { name: 'Save your API token' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a pending creation tied to its initiating account after an account switch', async () => {
+    const { qc } = mount(new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } }));
+    const dialog = await openCreate();
+    qc.setQueryData(['api-tokens', 'list', 'a1'], { items: [TOKEN], total: 1 });
+    qc.setQueryData(['api-tokens', 'list', 'b1'], { items: [], total: 0 });
+    let completeCreation: (response: Response) => void = () => {
+      throw new Error('creation not requested');
+    };
+    let otherAccountListRequests = 0;
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith('/api-tokens') && init?.method === 'POST')
+          return new Promise<Response>((resolve) => {
+            completeCreation = resolve;
+          });
+        if (String(input).endsWith('/api-tokens')) otherAccountListRequests += 1;
+        return originalFetch(input, init);
+      }),
+    );
+    await userEvent.type(dialog.getByLabelText('Name'), 'Pending Bot');
+    await userEvent.click(dialog.getByRole('button', { name: 'Create token' }));
+    await act(async () => {
+      qc.setQueryData(['auth', 'me'], {
+        id: 'b1',
+        username: 'account-b',
+        role: 'viewer',
+        totp_enabled: false,
+        features: { totp: true },
+      });
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Create API token' })).not.toBeInTheDocument());
+    await act(async () => {
+      completeCreation(
+        new Response(JSON.stringify({ token: SECRET, api_token: { ...TOKEN, name: 'Pending Bot' } }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    });
+    await waitFor(() =>
+      expect(
+        qc
+          .getMutationCache()
+          .getAll()
+          .every((mutation) => mutation.state.status !== 'pending'),
+      ).toBe(true),
+    );
+    expect(screen.queryByText(SECRET)).not.toBeInTheDocument();
+    expect(qc.getQueryState(['api-tokens', 'list', 'a1'])?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(['api-tokens', 'list', 'b1'])?.isInvalidated).toBe(false);
+    expect(otherAccountListRequests).toBe(0);
+  });
+
+  it('does not request personal tokens before the administrator identity is known', async () => {
+    const requested: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const path = String(input);
+        requested.push(path);
+        if (path.endsWith('/auth/me')) return new Promise<Response>(() => {});
+        return json({ items: [TOKEN], total: 1 });
+      }),
+    );
+    mount();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(requested).toEqual(['/api/v1/auth/me']);
+    expect(screen.queryByText('Service Bot')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create token' })).toBeDisabled();
   });
 
   it('lists only public metadata and derives active, expired and revoked states', async () => {
