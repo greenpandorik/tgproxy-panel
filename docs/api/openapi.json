@@ -10449,13 +10449,27 @@
               "application/json": {
                 "schema": {
                   "properties": {
+                    "advanced_supported": {
+                      "type": "boolean"
+                    },
+                    "applied_base_path": {
+                      "type": "string"
+                    },
                     "default": {
                       "properties": {
+                        "base_path": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "carrier": {
                           "type": "string"
                         },
                         "carrier_learning": {
                           "type": "boolean"
+                        },
+                        "carrier_method": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "carrier_negotiation_aggressiveness": {
                           "type": "string"
@@ -10465,6 +10479,14 @@
                             "type": "string"
                           },
                           "type": "array"
+                        },
+                        "conveyor": {
+                          "nullable": true,
+                          "type": "boolean"
+                        },
+                        "decoy_resolve": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "overload": {
                           "properties": {
@@ -10520,11 +10542,19 @@
                     },
                     "policy": {
                       "properties": {
+                        "base_path": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "carrier": {
                           "type": "string"
                         },
                         "carrier_learning": {
                           "type": "boolean"
+                        },
+                        "carrier_method": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "carrier_negotiation_aggressiveness": {
                           "type": "string"
@@ -10534,6 +10564,14 @@
                             "type": "string"
                           },
                           "type": "array"
+                        },
+                        "conveyor": {
+                          "nullable": true,
+                          "type": "boolean"
+                        },
+                        "decoy_resolve": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "overload": {
                           "properties": {
@@ -10793,13 +10831,27 @@
               "application/json": {
                 "schema": {
                   "properties": {
+                    "advanced_supported": {
+                      "type": "boolean"
+                    },
+                    "applied_base_path": {
+                      "type": "string"
+                    },
                     "default": {
                       "properties": {
+                        "base_path": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "carrier": {
                           "type": "string"
                         },
                         "carrier_learning": {
                           "type": "boolean"
+                        },
+                        "carrier_method": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "carrier_negotiation_aggressiveness": {
                           "type": "string"
@@ -10809,6 +10861,14 @@
                             "type": "string"
                           },
                           "type": "array"
+                        },
+                        "conveyor": {
+                          "nullable": true,
+                          "type": "boolean"
+                        },
+                        "decoy_resolve": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "overload": {
                           "properties": {
@@ -10864,11 +10924,19 @@
                     },
                     "policy": {
                       "properties": {
+                        "base_path": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "carrier": {
                           "type": "string"
                         },
                         "carrier_learning": {
                           "type": "boolean"
+                        },
+                        "carrier_method": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "carrier_negotiation_aggressiveness": {
                           "type": "string"
@@ -10878,6 +10946,14 @@
                             "type": "string"
                           },
                           "type": "array"
+                        },
+                        "conveyor": {
+                          "nullable": true,
+                          "type": "boolean"
+                        },
+                        "decoy_resolve": {
+                          "nullable": true,
+                          "type": "string"
                         },
                         "overload": {
                           "properties": {
