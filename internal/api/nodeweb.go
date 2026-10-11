@@ -54,7 +54,8 @@ func (s *Server) handlePutNodeWebPolicy(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	current := nodesvc.WebPolicyOf(n.TelemtWebPolicy)
-	policy := current
+	// Decode into an independent policy: JSON can reuse pointers and slice storage.
+	policy := nodesvc.WebPolicyOf(n.TelemtWebPolicy)
 	if err := decodeJSON(r, &policy); err != nil {
 		badRequest(w, err.Error())
 		return

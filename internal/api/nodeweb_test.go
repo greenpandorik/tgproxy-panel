@@ -1,11 +1,21 @@
 package api_test
 
 import (
+	"context"
+	"encoding/json"
+	"log/slog"
+	"reflect"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"tgwebproxy/internal/api/apitest"
 	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/nodedriver"
 	"tgwebproxy/internal/store/db"
+	"tgwebproxy/internal/worker"
 )
 
 type webPolicyResp struct {
@@ -186,4 +196,134 @@ func TestHTTPDecoyHostnameAssignmentRequiresStartupOptIn(t *testing.T) {
 		t.Fatal("startup enabled public literal origin")
 	}
 	_ = resp.Body.Close()
+}
+
+type policyPrefixAckDriver struct{ *nodedriver.Mock }
+
+func (d policyPrefixAckDriver) Apply(ctx context.Context, id uuid.UUID, req nodedriver.ApplyRequest) (nodedriver.ApplyResult, error) {
+	res, err := d.Mock.Apply(ctx, id, req)
+	if req.WebPolicy != nil {
+		res.AppliedWebBasePath = req.WebPolicy.BasePath
+	}
+	return res, err
+}
+
+// JSON decoding must not mutate the snapshot used to detect an unchanged PUT.
+func TestWebPolicyRepeatedPutPersistsFalseRootAndStartup(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	ctx := t.Context()
+	_, err := h.Store.Pool.Exec(ctx, `UPDATE nodes SET telemt_version='3.5.14',agent_version='2.17.0',telemt_capabilities='{"HttpUpstreamDecoy":true}' WHERE id=$1`, n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := "/api/v1/nodes/" + n.ID.String() + "/web-policy"
+	resp := c.Put(path, map[string]any{"carrier_method": "put", "conveyor": true, "base_path": "old/web", "decoy_resolve": "never"})
+	if resp.StatusCode != 200 {
+		t.Fatalf("first PUT %d", resp.StatusCode)
+	}
+	_ = resp.Body.Close()
+	var key struct {
+		ID uuid.UUID `json:"id"`
+	}
+	c.JSON(c.Post("/api/v1/keys", map[string]any{"label": "prefix", "type": "PERSONAL", "carrier_mode": "https", "node_ids": []string{n.ID.String()}}), &key)
+	h.Mock.SetOnline(n.ID, true)
+	apply := worker.NewApply(h.Store, h.Box, policyPrefixAckDriver{h.Mock}, time.Hour, slog.New(slog.DiscardHandler))
+	if err := apply.ApplyNode(ctx, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	before, err := h.Store.Q.GetNode(ctx, n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got webPolicyResp
+	c.JSON(c.Put(path, map[string]any{"carrier_method": "post", "conveyor": false, "base_path": "", "decoy_resolve": "startup"}), &got)
+	if got.Policy.CarrierMethod == nil || *got.Policy.CarrierMethod != "post" || got.Policy.Conveyor == nil || *got.Policy.Conveyor || got.Policy.BasePath == nil || *got.Policy.BasePath != "" || got.Policy.DecoyResolve == nil || *got.Policy.DecoyResolve != "startup" {
+		t.Fatalf("second PUT ignored pointer changes: %+v", got.Policy)
+	}
+	stored, err := h.Store.Q.GetNode(ctx, n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var overrides map[string]any
+	if err := json.Unmarshal(stored.TelemtWebPolicy, &overrides); err != nil {
+		t.Fatal(err)
+	}
+	if overrides["carrier_method"] != "post" || overrides["conveyor"] != false || overrides["base_path"] != "" || overrides["decoy_resolve"] != "startup" {
+		t.Fatalf("second PUT not persisted: %s", stored.TelemtWebPolicy)
+	}
+	if !stored.Dirty || stored.DirtySeq <= before.DirtySeq {
+		t.Fatal("changed policy did not schedule apply")
+	}
+	links, err := h.Deps.Keys.NodeLinks(ctx, key.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(links[0].Links[0].TMe, "server=n1.test%2Fold%2Fweb") {
+		t.Fatal("desired root reset changed links before apply")
+	}
+	if err := apply.ApplyNode(ctx, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	links, err = h.Deps.Keys.NodeLinks(ctx, key.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(links[0].Links[0].TMe, "server=n1.test&secret=") {
+		t.Fatalf("applied root reset did not restore root link: %+v", links)
+	}
+	c.JSON(c.Get(path), &got)
+	if got.Policy.BasePath == nil || *got.Policy.BasePath != "" || got.Policy.Conveyor == nil || *got.Policy.Conveyor {
+		t.Fatal("GET did not retain reset values")
+	}
+	resp = c.Post("/api/v1/nodes/"+n.ID.String()+"/site/upstream", map[string]any{"origin": "http://origin.internal:8080"})
+	if resp.StatusCode != 200 {
+		t.Fatalf("persisted startup did not allow hostname origin: %d", resp.StatusCode)
+	}
+	_ = resp.Body.Close()
+}
+
+func TestWebPolicyDeadlinePutUsesIndependentCurrentSnapshot(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	path := "/api/v1/nodes/" + n.ID.String() + "/web-policy"
+	for _, deadlines := range [][]int{{4, 6, 9, 13}, {5, 7, 10, 14}} {
+		var got webPolicyResp
+		c.JSON(c.Put(path, map[string]any{"timeouts": map[string]any{"carrier_negotiation_deadlines_secs": deadlines}}), &got)
+		if !reflect.DeepEqual(got.Policy.Timeouts.NegotiationDeadlinesSecs, deadlines) {
+			t.Fatalf("valid deadline edit was treated as unchanged: %v", got.Policy.Timeouts.NegotiationDeadlinesSecs)
+		}
+		c.JSON(c.Get(path), &got)
+		if !reflect.DeepEqual(got.Policy.Timeouts.NegotiationDeadlinesSecs, deadlines) {
+			t.Fatal("deadline edit not persisted")
+		}
+	}
+}
+
+func TestWebPolicyPutDistinguishesNullFromOmittedFields(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	path := "/api/v1/nodes/" + n.ID.String() + "/web-policy"
+	_, err := h.Store.Pool.Exec(t.Context(), `UPDATE nodes SET telemt_version='3.5.14',agent_version='2.17.0' WHERE id=$1`, n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got webPolicyResp
+	c.JSON(c.Put(path, map[string]any{"carrier_method": "put", "conveyor": true, "base_path": "keep/web", "decoy_resolve": "never"}), &got)
+	got = webPolicyResp{}
+	c.JSON(c.Put(path, map[string]any{"conveyor": nil}), &got)
+	if got.Policy.Conveyor != nil || got.Policy.CarrierMethod == nil || *got.Policy.CarrierMethod != "put" || got.Policy.BasePath == nil || *got.Policy.BasePath != "keep/web" || got.Policy.DecoyResolve == nil || *got.Policy.DecoyResolve != "never" {
+		t.Fatalf("null/omitted semantics changed: %+v", got.Policy)
+	}
+	got = webPolicyResp{}
+	c.JSON(c.Get(path), &got)
+	if got.Policy.Conveyor != nil || got.Policy.BasePath == nil || *got.Policy.BasePath != "keep/web" {
+		t.Fatal("null or omitted policy not persisted")
+	}
 }
