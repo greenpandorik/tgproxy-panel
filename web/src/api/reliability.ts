@@ -35,6 +35,28 @@ export interface ReliabilityReport {
   active_egress: string;
   events: RecoveryState['events'];
   policy: RecoveryPolicy;
+  me_pool?: MePoolReport | null;
+}
+export interface MePoolReport {
+  at: string;
+  enabled: boolean;
+  reason?: string;
+  state: {
+    active_generation: number;
+    pending_generation: number;
+    pending_age_seconds: number | null;
+    hardswap_enabled: boolean;
+    pending: boolean;
+    pending_map_current: boolean | null;
+    pending_writers: number | null;
+    writer_deficit: number | null;
+    missing_dc_groups: number | null;
+    orphan_warm_writers: number | null;
+    replacement_preparing: number | null;
+    replacement_retiring: number | null;
+    orphan_observed_seconds: number | null;
+    replacement_observed_seconds: number | null;
+  } | null;
 }
 export const useReliability = (id: string, enabled = true) =>
   useQuery({

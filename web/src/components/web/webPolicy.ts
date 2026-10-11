@@ -8,6 +8,10 @@ export interface WebPolicy {
   carriers: string[] | false;
   carrier_learning: boolean;
   carrier_negotiation_aggressiveness: string;
+  carrier_method?: 'post' | 'put' | null;
+  conveyor?: boolean | null;
+  base_path?: string | null;
+  decoy_resolve?: 'never' | 'startup' | null;
   overload: { preset: 'balanced' | 'high_load' | 'custom'; connection_capacity_action: 'drop' | 'wait' | 'respond' };
   timeouts: {
     carrier_negotiation_deadlines_secs: number[];
@@ -23,6 +27,8 @@ export interface PolicyResponse {
   policy: WebPolicy;
   default: WebPolicy;
   overridden: boolean;
+  applied_base_path?: string;
+  advanced_supported?: boolean;
 }
 
 export const webPolicyKey = (nodeId: string) => ['web-policy', nodeId] as const;

@@ -209,7 +209,12 @@
     "alert_fd_pressure": "telemt is running out of file descriptors",
     "alert_conntrack_pressure": "The connection table is filling up",
     "alert_inode_pressure": "The disk is running out of inodes",
-    "alert_looks_like_blocking": "Handshake interruptions and failed authenticated checks: possible filtering"
+    "alert_looks_like_blocking": "Handshake interruptions and failed authenticated checks: possible filtering",
+    "alert_me_hardswap_pending": "ME pool transition is taking too long",
+    "alert_me_hardswap_deficit": "The new ME pool lacks Telegram connections",
+    "alert_me_hardswap_stale_map": "The new ME pool is waiting for a current DC map",
+    "alert_me_orphan_warm_writers": "ME orphan connection backlog persists",
+    "alert_me_replacement_busy": "ME replacement connection backlog persists"
   },
   "nodes": {
     "verdict_ok": "All good",
@@ -810,7 +815,7 @@
     "upstream_action": "HTTP website",
     "upstream_origin": "Origin URL",
     "upstream_hint": "Telemt serves the local application's response as the decoy website. The agent checks the origin on the server before switching; a failure leaves the current configuration in place.",
-    "upstream_security": "Only http:// with a loopback or private IP is allowed. Public addresses, hostnames, credentials and redirects are rejected.",
+    "upstream_security": "Only http:// with a loopback or private IP is allowed by default. Hostnames require the WEB DNS mode “Resolve on startup”; Telemt validates and pins private addresses before activation. Credentials and redirects are rejected.",
     "upstream_unsupported": "This server has not confirmed HTTP upstream support. Update Telemt and wait for a fresh capability check.",
     "upstream_test_apply": "Test and apply",
     "upstream_queued": "Origin saved. The server is checking it and applying the website.",
@@ -1085,7 +1090,24 @@
     "capability_unsupported_title_fleet": "No server supports {{feature}}",
     "capability_unsupported_description_fleet": "The servers answered that their telemt versions lack this feature. This is not an error.",
     "capability_undetermined_title_fleet": "Not known yet whether the servers support {{feature}}",
-    "capability_undetermined_description_fleet": "The panel finds out once the servers' agents connect."
+    "capability_undetermined_description_fleet": "The panel finds out once the servers' agents connect.",
+    "http_options": "HTTP transport and WEB path",
+    "setting_unmanaged": "Keep the Telemt setting",
+    "http_method": "HTTP method",
+    "http_method_hint": "Method used by HTTPS carriers. Keep POST unless your TLS terminator requires PUT.",
+    "conveyor": "HTTP pipelining",
+    "conveyor_hint": "Allow negotiated bounded pipelining for new HTTP sessions.",
+    "decoy_resolve": "Decoy hostname resolution",
+    "decoy_resolve_never": "IP addresses only",
+    "decoy_resolve_startup": "Resolve while preparing the configuration",
+    "decoy_resolve_hint": "Applies to HTTP upstream decoys. DNS answers are pinned for the prepared configuration, not resolved for each request.",
+    "path_mode": "WEB path mode",
+    "path_manage": "Set WEB path",
+    "base_path": "WEB base path",
+    "base_path_hint": "Optional prefix without surrounding slashes, up to 128 characters. Leave empty to use the root path. Preserve this prefix in your TLS terminator.",
+    "applied_base_path": "Applied WEB path: {{path}}",
+    "path_cutover_hint": "New links will be issued only after the agent confirms the path change. Previously issued links will stop working after cutover. Update external WEB probe configurations too.",
+    "advanced_requires_update": "These options require Telemt 3.5.14 or later and agent 2.17.0 or later. Existing transport settings remain available."
   },
   "audit": {
     "title": "Activity log",
@@ -2821,7 +2843,12 @@
       "engine_unready": "The proxy fails its readiness check, so people may not be able to connect.",
       "web_admission_closed": "The proxy is not accepting new WEB sessions. This happens during an update or maintenance.",
       "probe_stale": "The check from another network hasn't reported for a while. The check itself may be broken.",
-      "probe_failed": "The server failed a check from another network. It may be blocked there."
+      "probe_failed": "The server failed a check from another network. It may be blocked there.",
+      "me_hardswap_pending": "A pool transition has been pending for at least 25 minutes. Inspect Telemt pool state and routes before restarting the engine.",
+      "me_hardswap_deficit": "A transition older than five minutes still lacks writers or DC groups according to the current pool map.",
+      "me_hardswap_stale_map": "A transition older than five minutes has no current DC map. Missing observations cannot confirm recovery.",
+      "me_orphan_warm_writers": "Orphan warm writers have been observed continuously for at least five minutes. This indicates a backlog, not that a specific writer is stuck.",
+      "me_replacement_busy": "Preparing or retiring replacement writers have been observed continuously for at least five minutes. Inspect the backlog and Telegram routes."
     },
     "value_dc": "Connections now: {{alive}} of {{required}}",
     "reliability_blocking_reason": "Handshake interruptions coincide with failed authenticated proxy checks. Possible network filtering or a server/probe configuration problem; check from another network."
@@ -3155,5 +3182,22 @@
       "settings": "Settings",
       "audit": "Audit log"
     }
+  },
+  "me_pool": {
+    "title": "Middle Proxy pool",
+    "transition": "Pool transition in progress",
+    "no_transition": "No pool transition in progress",
+    "stale": "The pool reading is stale. Wait for a fresh agent report.",
+    "unavailable": "Middle Proxy diagnostics are unavailable on this node.",
+    "stale_map": "The pending pool targets an outdated Telegram endpoint map. Coverage counters are unavailable for this transition.",
+    "active_generation": "Active generation",
+    "pending_age": "Transition age",
+    "pending_writers": "Pending writers",
+    "writer_deficit": "Writer deficit",
+    "missing_dc_groups": "Missing DC groups",
+    "orphan_writers": "Unassigned warm writers",
+    "replacement_preparing": "Replacements preparing",
+    "replacement_retiring": "Replacements retiring",
+    "hint": "Short pool transitions and writer replacements are normal. Diagnostics flag prolonged transitions and sustained deficits; missing data does not confirm recovery."
   }
 }
