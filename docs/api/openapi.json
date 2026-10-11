@@ -10744,7 +10744,8 @@
                     "description": "HTTP bridge carrier method; null leaves the engine setting unmanaged.",
                     "enum": [
                       "post",
-                      "put"
+                      "put",
+                      null
                     ],
                     "nullable": true,
                     "type": "string"
@@ -10767,7 +10768,8 @@
                     "description": "Startup resolves and pins validated private DNS addresses before activation; never requires a literal private/loopback IP. Null leaves it unmanaged.",
                     "enum": [
                       "never",
-                      "startup"
+                      "startup",
+                      null
                     ],
                     "nullable": true,
                     "type": "string"

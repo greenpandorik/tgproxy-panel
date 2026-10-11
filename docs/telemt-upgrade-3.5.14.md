@@ -47,6 +47,11 @@ installed: its best-effort empty-chain creation supports nodes still on 3.5.9 an
 rollback. Removing it is unnecessary for the pin upgrade. The drop-in does not
 append filtering rules or change listener configuration.
 
+The disposable node also runs a small HTTPS front with a fresh private test CA.
+That CA is trusted only inside the node container; production certificate checks
+are unchanged. The front preserves the WEB prefix and forwards to the private
+listener without logging capability URLs.
+
 The unprivileged Docker bench disables the listener SYN limiter and TLS fingerprint
 emulation because it has no netfilter capability and uses a synthetic domain. It
 does not exercise production systemd drop-ins or production firewall permissions.
@@ -68,7 +73,10 @@ The smoke exercises the real engine and real agent, including:
   quota period by one week, then no repeated reset on reapply;
 - agent reconnect after a panel restart, proven by a fresh heartbeat;
 - readiness and persisted user/quota state after a telemt process restart;
-- backup TLS-domain apply and restart-free key revocation.
+- backup TLS-domain apply and restart-free key revocation;
+- confirmed WEB prefix publication and explicit root/false resets;
+- startup resolution of a private hostname origin and its HTTPS decoy check;
+- authoritative ME snapshot availability (including an explicit unavailable pool).
 
 Each apply waits for a newly created job; a previous successful job cannot satisfy
 the check. The quota-period simulation changes only bench state and does not wait

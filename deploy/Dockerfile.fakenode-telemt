@@ -11,7 +11,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN v="$(sed -n 's/^var Version = "\(.*\)"$/\1/p' internal/version/version.go)"; \
-	CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags "-X tgwebproxy/internal/agent.Version=$v" -o /out/tgwp-agent ./cmd/agent
+	CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags "-X tgwebproxy/internal/agent.Version=$v" -o /out/tgwp-agent ./cmd/agent \
+ && CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -o /out/bench-tls-front ./deploy/fakenode-telemt/tlsfront
 
 FROM debian:bookworm-slim
 # Same release the panel pins for real nodes (TELEMT_VERSION), but the musl asset: it is
@@ -35,7 +36,7 @@ RUN set -eux; \
 # The unprivileged account the systemctl shim drops to, matching the install script and the
 # unit init-node writes.
 RUN useradd --system --home /var/lib/telemt --shell /usr/sbin/nologin telemt
-COPY --from=build /out/tgwp-agent /usr/local/bin/
+COPY --from=build /out/tgwp-agent /out/bench-tls-front /usr/local/bin/
 COPY deploy/fakenode/systemctl deploy/fakenode/journalctl /usr/local/bin/
 COPY deploy/fakenode-telemt/entrypoint.sh /entrypoint.sh
 # /var/lib/telemt/public is deliberately NOT created here. The agent's site deploy renames the
