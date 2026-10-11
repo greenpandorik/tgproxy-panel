@@ -24,6 +24,7 @@ type Handler struct {
 	fwApplyErr       string
 	fwRunErr         string
 	connections      connectionSampler
+	mePool           mePoolSampler
 	recoveryMu       sync.Mutex
 	recoveryPolicy   reliability.Policy
 	recoveryEvents   []reliability.Event
