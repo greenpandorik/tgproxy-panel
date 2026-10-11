@@ -3,8 +3,13 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"tgwebproxy/internal/sitekit"
 
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodedriver"
@@ -224,5 +229,322 @@ func TestTelemtWebPolicyRollsBackWhenALaterStepFails(t *testing.T) {
 	web := ft.section("web")
 	if web["carrier_negotiation_aggressiveness"] != "conservative" {
 		t.Fatalf("the previous policy must be restored: %v", web)
+	}
+}
+
+func TestWebAdvancedOptionsReachTelemt(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	p := domain.DefaultWebPolicy()
+	if err := json.Unmarshal([]byte(`{"carrier_method":"put","conveyor":true}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	res := h.Apply(context.Background(), webPolicyRequest(p))
+	if !res.Ok {
+		t.Fatal(res.Log)
+	}
+	web := ft.section("web")
+	if web["carrier_method"] != "put" || web["conveyor"] != true {
+		t.Fatalf("advanced options lost: %v", web)
+	}
+}
+
+func TestWebBasePathApplyPreservesUnrelatedVhosts(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	ft.mu.Lock()
+	web := ft.config["web"].(map[string]any)
+	vs := web["vhosts"].([]any)
+	vs[0].(map[string]any)["future_field"] = "keep"
+	web["vhosts"] = append(vs, map[string]any{"host": "other.test", "base_path": "untouched", "decoy": map[string]any{"mode": "http_upstream", "upstream": "http://127.0.0.1:99", "resolve": "startup"}})
+	ft.mu.Unlock()
+	p := domain.DefaultWebPolicy()
+	if err := json.Unmarshal([]byte(`{"base_path":"telegram/web"}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	res := h.Apply(context.Background(), req)
+	if !res.Ok {
+		t.Fatal(res.Log)
+	}
+	if res.AppliedWebBasePath == nil || *res.AppliedWebBasePath != "telegram/web" {
+		t.Fatalf("missing verified path: %+v", res)
+	}
+	raw := ft.section("web")["vhosts"].([]any)
+	v := []map[string]any{raw[0].(map[string]any), raw[1].(map[string]any)}
+	if v[0]["base_path"] != "telegram/web" || v[0]["future_field"] != "keep" || v[1]["base_path"] != "untouched" {
+		t.Fatalf("vhosts corrupted: %v", v)
+	}
+}
+
+func TestWebAdvancedOptionsRefuseOldEngine(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	p := domain.DefaultWebPolicy()
+	if err := json.Unmarshal([]byte(`{"carrier_method":"put"}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	res := h.Apply(context.Background(), webPolicyRequest(p))
+	if res.Ok {
+		t.Fatal("old engine silently accepted advanced options")
+	}
+	if ft.section("web")["carrier_method"] != nil {
+		t.Fatal("unsupported config was patched")
+	}
+}
+
+func TestWebBasePathRollbackKeepsPreviousPrefix(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	ft.mu.Lock()
+	v := ft.config["web"].(map[string]any)["vhosts"].([]any)[0].(map[string]any)
+	v["base_path"] = "old"
+	v["future_field"] = "preserved"
+	ft.mu.Unlock()
+	ft.reloadStates = []string{"failed"}
+	p := domain.DefaultWebPolicy()
+	if err := json.Unmarshal([]byte(`{"base_path":"new"}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	res := h.Apply(context.Background(), req)
+	if res.Ok || res.AppliedWebBasePath != nil {
+		t.Fatalf("failed cutover advertised new path: %+v", res)
+	}
+	v = ft.section("web")["vhosts"].([]any)[0].(map[string]any)
+	if v["base_path"] != "old" || v["future_field"] != "preserved" {
+		t.Fatalf("rollback lost prefix or fields: %v", v)
+	}
+}
+
+func TestWebDecoyResolvePreservesUpstreamAndUnknownSettings(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	ft.mu.Lock()
+	v := ft.config["web"].(map[string]any)["vhosts"].([]any)[0].(map[string]any)
+	v["decoy"] = map[string]any{"mode": "http_upstream", "upstream": "http://example.internal:8080", "future": "keep"}
+	ft.mu.Unlock()
+	p := domain.DefaultWebPolicy()
+	if err := json.Unmarshal([]byte(`{"decoy_resolve":"startup"}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	res := h.Apply(context.Background(), req)
+	if !res.Ok {
+		t.Fatal(res.Log)
+	}
+	d := ft.section("web")["vhosts"].([]any)[0].(map[string]any)["decoy"].(map[string]any)
+	if d["resolve"] != "startup" || d["upstream"] != "http://example.internal:8080" || d["future"] != "keep" {
+		t.Fatalf("decoy corrupted: %v", d)
+	}
+}
+
+// Hostname origins must only be contacted by Telemt after its DNS validation and pinning.
+type rejectDirectDNSOrigin struct {
+	t      *testing.T
+	target string
+	calls  []string
+}
+
+func (r *rejectDirectDNSOrigin) RoundTrip(req *http.Request) (*http.Response, error) {
+	r.calls = append(r.calls, req.URL.Hostname())
+	if req.URL.Hostname() == "origin.internal" {
+		return nil, fmt.Errorf("direct DNS origin bypassed Telemt validation")
+	}
+	return (decoyRoundTripper{target: r.target}).RoundTrip(req)
+}
+
+func TestWebHostnameOriginUsesEngineValidatedDecoyRoute(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = fmt.Fprint(w, "private website") }))
+	defer origin.Close()
+	rt := &rejectDirectDNSOrigin{t: t, target: origin.URL}
+	h.decoyHTTP = &http.Client{Transport: rt}
+	p := domain.DefaultWebPolicy()
+	if err := json.Unmarshal([]byte(`{"decoy_resolve":"startup"}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	req.Site = &agentv1.SiteBundle{Files: []*agentv1.SiteFile{{Path: sitekit.UpstreamMarkerPath, Content: []byte("http://origin.internal:8080")}}}
+	res := h.Apply(context.Background(), req)
+	if !res.Ok {
+		t.Fatal(res.Log)
+	}
+	for _, host := range rt.calls {
+		if host == "origin.internal" {
+			t.Fatal("agent re-resolved pinned origin")
+		}
+	}
+	d := ft.section("web")["vhosts"].([]any)[0].(map[string]any)["decoy"].(map[string]any)
+	if d["resolve"] != "startup" || d["upstream"] != "http://origin.internal:8080" {
+		t.Fatalf("DNS opt-in omitted: %v", d)
+	}
+}
+
+func TestWebRejectedHostnameCandidateKeepsOldDecoy(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	ft.failOn = "PATCH /v1/config"
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = fmt.Fprint(w, "website") }))
+	defer origin.Close()
+	rt := &rejectDirectDNSOrigin{t: t, target: origin.URL}
+	h.decoyHTTP = &http.Client{Transport: rt}
+	p := domain.DefaultWebPolicy()
+	if err := json.Unmarshal([]byte(`{"decoy_resolve":"startup"}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	req.Site = &agentv1.SiteBundle{Files: []*agentv1.SiteFile{{Path: sitekit.UpstreamMarkerPath, Content: []byte("http://origin.internal:8080")}}}
+	res := h.Apply(context.Background(), req)
+	if res.Ok || res.AppliedWebBasePath != nil {
+		t.Fatalf("rejected origin activated: %+v", res)
+	}
+	if len(rt.calls) != 0 {
+		t.Fatal("agent probed unvalidated candidate")
+	}
+	d := ft.section("web")["vhosts"].([]any)[0].(map[string]any)["decoy"].(map[string]any)
+	if d["mode"] != "static_directory" || d["resolve"] != nil {
+		t.Fatalf("failed candidate changed decoy: %v", d)
+	}
+}
+
+func TestWebPrefixReadbackMismatchRollsBackWithoutAcknowledgment(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	ft.ignoreBasePath = true
+	ft.mu.Lock()
+	v := ft.config["web"].(map[string]any)["vhosts"].([]any)[0].(map[string]any)
+	v["base_path"] = "previous"
+	ft.mu.Unlock()
+	p := domain.DefaultWebPolicy()
+	path := "next"
+	p.BasePath = &path
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	res := h.Apply(context.Background(), req)
+	if res.Ok || res.AppliedWebBasePath != nil || !res.RolledBack {
+		t.Fatalf("ignored prefix acknowledged: %+v", res)
+	}
+	v = ft.section("web")["vhosts"].([]any)[0].(map[string]any)
+	if v["base_path"] != "previous" {
+		t.Fatalf("previous prefix lost: %v", v)
+	}
+}
+
+func TestWebRootResetAcknowledgesExplicitEmptyPath(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	ft.mu.Lock()
+	ft.config["web"].(map[string]any)["vhosts"].([]any)[0].(map[string]any)["base_path"] = "previous"
+	ft.mu.Unlock()
+	p := domain.DefaultWebPolicy()
+	path := ""
+	p.BasePath = &path
+	res := h.Apply(context.Background(), webPolicyRequest(p))
+	if !res.Ok || res.AppliedWebBasePath == nil || *res.AppliedWebBasePath != "" {
+		t.Fatalf("explicit root ACK absent: %+v", res)
+	}
+}
+
+func TestUnmanagedPrefixAcknowledgmentRequiresReloadBoundary(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	settleWebPolicy(ft, domain.DefaultWebPolicy())
+	ft.mu.Lock()
+	ft.config["web"].(map[string]any)["vhosts"].([]any)[0].(map[string]any)["base_path"] = "saved/not-yet-active"
+	ft.mu.Unlock()
+	req := webPolicyRequest(domain.DefaultWebPolicy())
+	req.ManagedWebHost = "n1.example.com"
+	res := h.Apply(context.Background(), req)
+	if !res.Ok {
+		t.Fatal(res.Log)
+	}
+	_, _, _, reloads := ft.snapshot()
+	if reloads == 0 {
+		t.Fatal("persisted source prefix acknowledged without runtime reload")
+	}
+	if res.AppliedWebBasePath == nil || *res.AppliedWebBasePath != "saved/not-yet-active" {
+		t.Fatalf("effective prefix ACK missing: %+v", res)
+	}
+}
+
+func TestManagedHostApplyPreservesOtherVhostAndUsers(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	ft.mu.Lock()
+	web := ft.config["web"].(map[string]any)
+	managed := web["vhosts"].([]any)[0]
+	other := map[string]any{"host": "other.test", "base_path": "other/path", "public_addr": "203.0.113.9:443", "profiles": []any{map[string]any{"user": "outside", "secret_mode": "dd"}}, "decoy": map[string]any{"mode": "http_upstream", "upstream": "http://127.0.0.1:88", "resolve": "startup"}, "future": "keep"}
+	web["vhosts"] = []any{other, managed}
+	ft.users["outside"] = "0123456789abcdef0123456789abcdef"
+	ft.attrs["outside"] = map[string]any{}
+	ft.mu.Unlock()
+	p := domain.DefaultWebPolicy()
+	path := "managed/path"
+	p.BasePath = &path
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	req.PublicIp = "203.0.113.8"
+	res := h.Apply(context.Background(), req)
+	if !res.Ok {
+		t.Fatal(res.Log)
+	}
+	vs := ft.section("web")["vhosts"].([]any)
+	v := vs[0].(map[string]any)
+	if v["base_path"] != "other/path" || v["public_addr"] != "203.0.113.9:443" || v["future"] != "keep" || v["profiles"].([]any)[0].(map[string]any)["user"] != "outside" {
+		t.Fatalf("unrelated vhost changed: %v", v)
+	}
+	v = vs[1].(map[string]any)
+	if v["base_path"] != "managed/path" || v["public_addr"] != "203.0.113.8:443" || v["profiles"].([]any)[0].(map[string]any)["user"] != "node" {
+		t.Fatalf("managed vhost not applied: %v", v)
+	}
+	users, _, _, _ := ft.snapshot()
+	if _, ok := users["outside"]; !ok {
+		t.Fatal("unmanaged vhost user deleted")
+	}
+}
+
+func TestMissingOrAmbiguousManagedHostRefusedBeforeMutation(t *testing.T) {
+	for _, host := range []string{"missing.test", "n1.example.com"} {
+		t.Run(host, func(t *testing.T) {
+			h, _, ft := telemtHandler(t, &fakeExec{})
+			if host == "n1.example.com" {
+				ft.mu.Lock()
+				web := ft.config["web"].(map[string]any)
+				web["vhosts"] = append(web["vhosts"].([]any), map[string]any{"host": "n1.example.com"})
+				ft.mu.Unlock()
+			}
+			req := webPolicyRequest(domain.DefaultWebPolicy())
+			req.ManagedWebHost = host
+			res := h.Apply(context.Background(), req)
+			if res.Ok {
+				t.Fatalf("missing/ambiguous managed host accepted: %+v", res)
+			}
+			_, writes, _, _ := ft.snapshot()
+			if len(writes) != 0 {
+				t.Fatalf("invalid target mutated node: %v", writes)
+			}
+		})
+	}
+}
+
+func TestWebPrefixAcknowledgmentRejectsSourceRevisionChangedAfterReload(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	settleWebPolicy(ft, domain.DefaultWebPolicy())
+	ft.mu.Lock()
+	ft.config["web"].(map[string]any)["vhosts"].([]any)[0].(map[string]any)["base_path"] = "loaded"
+	ft.editAfterReload = "edited-after-reload"
+	ft.mu.Unlock()
+	req := webPolicyRequest(domain.DefaultWebPolicy())
+	req.ManagedWebHost = "n1.example.com"
+	res := h.Apply(context.Background(), req)
+	if res.Ok || res.AppliedWebBasePath != nil {
+		t.Fatalf("disk revision confused with runtime: %+v", res)
 	}
 }

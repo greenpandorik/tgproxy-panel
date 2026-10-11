@@ -373,22 +373,23 @@ func (q *Queries) ListActiveSubscriptions(ctx context.Context, keyIds []uuid.UUI
 }
 
 const listBindingsForKeys = `-- name: ListBindingsForKeys :many
-SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
+SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, n.telemt_web_applied_base_path, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
 WHERE b.access_key_id = ANY($1::uuid[]) ORDER BY b.access_key_id, n.sort_order, n.created_at
 `
 
 type ListBindingsForKeysRow struct {
-	AccessKeyID uuid.UUID  `json:"access_key_id"`
-	NodeID      uuid.UUID  `json:"node_id"`
-	ProfileID   uuid.UUID  `json:"profile_id"`
-	NodeName    string     `json:"node_name"`
-	Hostname    string     `json:"hostname"`
-	Engine      NodeEngine `json:"engine"`
-	TlsDomain   string     `json:"tls_domain"`
-	TlsDomains  []string   `json:"tls_domains"`
-	ClassicPort int32      `json:"classic_port"`
-	SyncState   SyncState  `json:"sync_state"`
+	AccessKeyID              uuid.UUID  `json:"access_key_id"`
+	NodeID                   uuid.UUID  `json:"node_id"`
+	ProfileID                uuid.UUID  `json:"profile_id"`
+	NodeName                 string     `json:"node_name"`
+	Hostname                 string     `json:"hostname"`
+	Engine                   NodeEngine `json:"engine"`
+	TlsDomain                string     `json:"tls_domain"`
+	TlsDomains               []string   `json:"tls_domains"`
+	ClassicPort              int32      `json:"classic_port"`
+	TelemtWebAppliedBasePath string     `json:"telemt_web_applied_base_path"`
+	SyncState                SyncState  `json:"sync_state"`
 }
 
 // ListBindingsForKeys is ListKeyBindings for a whole page of keys at once, so
@@ -412,6 +413,7 @@ func (q *Queries) ListBindingsForKeys(ctx context.Context, keyIds []uuid.UUID) (
 			&i.TlsDomain,
 			&i.TlsDomains,
 			&i.ClassicPort,
+			&i.TelemtWebAppliedBasePath,
 			&i.SyncState,
 		); err != nil {
 			return nil, err
@@ -468,22 +470,23 @@ func (q *Queries) ListExpiredActiveKeys(ctx context.Context) ([]AccessKey, error
 }
 
 const listKeyBindings = `-- name: ListKeyBindings :many
-SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, p.sync_state FROM key_bindings b
+SELECT b.access_key_id, b.node_id, b.profile_id, n.name AS node_name, n.hostname, n.engine, n.tls_domain, n.tls_domains, n.classic_port, n.telemt_web_applied_base_path, p.sync_state FROM key_bindings b
 JOIN nodes n ON n.id = b.node_id JOIN profiles p ON p.id = b.profile_id
 WHERE b.access_key_id = $1 ORDER BY n.sort_order, n.created_at
 `
 
 type ListKeyBindingsRow struct {
-	AccessKeyID uuid.UUID  `json:"access_key_id"`
-	NodeID      uuid.UUID  `json:"node_id"`
-	ProfileID   uuid.UUID  `json:"profile_id"`
-	NodeName    string     `json:"node_name"`
-	Hostname    string     `json:"hostname"`
-	Engine      NodeEngine `json:"engine"`
-	TlsDomain   string     `json:"tls_domain"`
-	TlsDomains  []string   `json:"tls_domains"`
-	ClassicPort int32      `json:"classic_port"`
-	SyncState   SyncState  `json:"sync_state"`
+	AccessKeyID              uuid.UUID  `json:"access_key_id"`
+	NodeID                   uuid.UUID  `json:"node_id"`
+	ProfileID                uuid.UUID  `json:"profile_id"`
+	NodeName                 string     `json:"node_name"`
+	Hostname                 string     `json:"hostname"`
+	Engine                   NodeEngine `json:"engine"`
+	TlsDomain                string     `json:"tls_domain"`
+	TlsDomains               []string   `json:"tls_domains"`
+	ClassicPort              int32      `json:"classic_port"`
+	TelemtWebAppliedBasePath string     `json:"telemt_web_applied_base_path"`
+	SyncState                SyncState  `json:"sync_state"`
 }
 
 func (q *Queries) ListKeyBindings(ctx context.Context, accessKeyID uuid.UUID) ([]ListKeyBindingsRow, error) {
@@ -505,6 +508,7 @@ func (q *Queries) ListKeyBindings(ctx context.Context, accessKeyID uuid.UUID) ([
 			&i.TlsDomain,
 			&i.TlsDomains,
 			&i.ClassicPort,
+			&i.TelemtWebAppliedBasePath,
 			&i.SyncState,
 		); err != nil {
 			return nil, err

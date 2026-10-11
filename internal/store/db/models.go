@@ -586,6 +586,7 @@ type Node struct {
 	TlsDomains                  []string   `json:"tls_domains"`
 	SortOrder                   int32      `json:"sort_order"`
 	DirtySince                  *time.Time `json:"dirty_since"`
+	TelemtWebAppliedBasePath    string     `json:"telemt_web_applied_base_path"`
 }
 
 type NodeBlocklist struct {

@@ -346,3 +346,83 @@ func TestRenderTelemtConfigRefusesAPolicyTelemtWouldRefuse(t *testing.T) {
 		t.Fatal("a config telemt refuses must not be written to the node")
 	}
 }
+
+func TestRenderTelemtConfigOptionalWebAdvancedOptions(t *testing.T) {
+	p := telemtParams(t)
+	p.WebPolicy = domain.DefaultWebPolicy()
+	method := domain.WebCarrierMethod("put")
+	conveyor := false
+	path := "telegram/web"
+	p.WebPolicy.CarrierMethod = &method
+	p.WebPolicy.Conveyor = &conveyor
+	p.WebPolicy.BasePath = &path
+	raw, err := RenderTelemtConfig(p, "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`carrier_method = "put"`, `conveyor = false`, `base_path = "telegram/web"`} {
+		if !strings.Contains(string(raw), want) {
+			t.Fatalf("option missing %s", want)
+		}
+	}
+}
+
+func TestRenderTelemtConfigKeepsAdvancedOptionsWithDisabledNegotiation(t *testing.T) {
+	p := telemtParams(t)
+	p.WebPolicy = domain.DefaultWebPolicy()
+	p.WebPolicy.Carriers = nil
+	method := domain.WebCarrierMethod("put")
+	conveyor := false
+	path := "telegram/web"
+	p.WebPolicy.CarrierMethod = &method
+	p.WebPolicy.Conveyor = &conveyor
+	p.WebPolicy.BasePath = &path
+	raw, err := RenderTelemtConfig(p, "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`carriers = false`, `carrier_method = "put"`, `conveyor = false`, `base_path = "telegram/web"`} {
+		if !strings.Contains(string(raw), want) {
+			t.Fatalf("disabled negotiation lost option %s", want)
+		}
+	}
+}
+
+type initVersionExec struct {
+	*fakeExec
+	output string
+}
+
+func (e initVersionExec) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
+	if len(args) == 1 && args[0] == "--version" {
+		return []byte(e.output), nil
+	}
+	return e.fakeExec.Run(ctx, name, args...)
+}
+
+func TestInitTelemtAdvancedPolicyChecksBinaryVersionBeforeWriting(t *testing.T) {
+	for _, v := range []string{"telemt 3.5.13", "unknown", "telemt 3.5.14"} {
+		t.Run(v, func(t *testing.T) {
+			p := telemtParams(t)
+			p.WebPolicy = domain.DefaultWebPolicy()
+			path := "telegram/web"
+			p.WebPolicy.BasePath = &path
+			_, err := InitTelemtNode(context.Background(), initVersionExec{&fakeExec{}, v}, p)
+			if v == "telemt 3.5.14" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err == nil {
+					t.Fatal("unsupported init silently accepted advanced config")
+				}
+				if _, err := os.Stat(p.ConfigPath); !os.IsNotExist(err) {
+					t.Fatal("unsupported init wrote config")
+				}
+				if _, err := os.Stat(p.TokenPath); !os.IsNotExist(err) {
+					t.Fatal("unsupported init wrote token")
+				}
+			}
+		})
+	}
+}

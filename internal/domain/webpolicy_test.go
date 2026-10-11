@@ -1,6 +1,10 @@
 package domain
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
 
 func TestDefaultWebPolicyIsAccepted(t *testing.T) {
 	if err := DefaultWebPolicy().Validate(); err != nil {
@@ -55,5 +59,18 @@ func TestProfileLimitsMayNotExceedTheNodeCeiling(t *testing.T) {
 func TestUnsetProfileLimitIsNotAViolation(t *testing.T) {
 	if err := (WebProfileLimits{}).Validate(DefaultWebGlobalLimits()); err != nil {
 		t.Fatalf("no limits set at all is the default case: %v", err)
+	}
+}
+
+// Invalid prefixes must fail before a route migration is scheduled.
+func TestWebAdvancedValidation(t *testing.T) {
+	for _, raw := range []string{`{"carrier_method":"patch"}`, `{"decoy_resolve":"always"}`, `{"base_path":"/web"}`, `{"base_path":"web/"}`, `{"base_path":"a//b"}`, `{"base_path":"a/%2f"}`, `{"base_path":"_web"}`, `{"base_path":"é"}`, `{"base_path":"` + strings.Repeat("a", 129) + `"}`} {
+		p := DefaultWebPolicy()
+		if err := json.Unmarshal([]byte(raw), &p); err != nil {
+			t.Fatal(err)
+		}
+		if err := p.Validate(); err == nil {
+			t.Errorf("accepted invalid advanced policy %s", raw)
+		}
 	}
 }

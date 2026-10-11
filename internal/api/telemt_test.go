@@ -2,12 +2,15 @@ package api_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"io"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"tgwebproxy/internal/qrlink"
 
 	"github.com/google/uuid"
 
@@ -86,7 +89,7 @@ func TestCreateNodeEngineValidation(t *testing.T) {
 			t.Errorf("%s: status %d, want 422 (%s)", name, resp.StatusCode, b)
 			continue
 		}
-		resp.Body.Close() //nolint:errcheck
+		_ = resp.Body.Close() //nolint:errcheck
 	}
 }
 
@@ -141,14 +144,14 @@ func TestPatchNodePublicIPValidatesAndMarksDirty(t *testing.T) {
 		if resp.StatusCode != 422 {
 			t.Fatalf("%s: expected 422, got %d", name, resp.StatusCode)
 		}
-		resp.Body.Close() //nolint:errcheck
+		_ = resp.Body.Close() //nolint:errcheck
 	}
 	// The same rule on create.
 	resp := c.Post("/api/v1/nodes", map[string]any{"name": "x", "hostname": "e9.test", "acme_email": "a@b.co", "public_ip": "not-an-ip"})
 	if resp.StatusCode != 422 {
 		t.Fatalf("create with a bad public_ip expected 422, got %d", resp.StatusCode)
 	}
-	resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck
 	// Clearing it is still allowed (the installer fills it in again).
 	c.JSON(c.Patch("/api/v1/nodes/"+n.ID.String(), map[string]any{"public_ip": ""}), &got)
 	if got.PublicIP != "" {
@@ -179,14 +182,14 @@ func TestRegisterStoresPublicIPAndRequiresItForTelemt(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		t.Fatalf("register without public_ip: %d %s", resp.StatusCode, b)
 	}
-	resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck
 
 	resp = anon.Post("/api/v1/install/"+token+"/register", map[string]string{"hostname": "n1.test", "agent_version": "0.1.0", "public_ip": "203.0.113.9"})
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
 		t.Fatalf("register with public_ip: %d %s", resp.StatusCode, b)
 	}
-	resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck
 	var got engineNodeResp
 	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &got)
 	if got.PublicIP != "203.0.113.9" {
@@ -205,7 +208,7 @@ func TestRegisterTProxyNodeWithoutPublicIP(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		t.Fatalf("tproxy register: %d %s", resp.StatusCode, b)
 	}
-	resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck
 }
 
 func TestRegisterKeepsExistingPublicIP(t *testing.T) {
@@ -218,7 +221,7 @@ func TestRegisterKeepsExistingPublicIP(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Fatalf("register %d", resp.StatusCode)
 	}
-	resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck
 	var got engineNodeResp
 	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()), &got)
 	if got.PublicIP != "198.51.100.1" {
@@ -317,7 +320,7 @@ func TestKeyTelemtLimitsRoundTripAndValidation(t *testing.T) {
 			b, _ := io.ReadAll(resp.Body)
 			t.Errorf("%s: create status %d, want 422 (%s)", name, resp.StatusCode, b)
 		} else {
-			resp.Body.Close() //nolint:errcheck
+			_ = resp.Body.Close() //nolint:errcheck
 		}
 		if resp := c.Patch("/api/v1/keys/"+k.ID.String(), map[string]any{"telemt_limits": bad}); resp.StatusCode != 422 {
 			t.Errorf("%s: patch status %d, want 422", name, resp.StatusCode)
@@ -563,7 +566,7 @@ func TestPatchNodeExtraTLSDomains(t *testing.T) {
 		if resp.StatusCode != 422 {
 			t.Errorf("%s: expected 422, got %d", name, resp.StatusCode)
 		}
-		resp.Body.Close() //nolint:errcheck
+		_ = resp.Body.Close() //nolint:errcheck
 	}
 
 	c.JSON(c.Patch(path, map[string]any{"tls_domain": "alt.example.org"}), &got)
@@ -589,7 +592,7 @@ func TestPatchNodeExtraTLSDomains(t *testing.T) {
 	if resp.StatusCode != 422 {
 		t.Fatalf("a tproxy node has no Fake-TLS listener; got %d", resp.StatusCode)
 	}
-	resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck
 }
 
 func TestKeyLinksCarryOneFakeTLSLinkPerDomain(t *testing.T) {
@@ -601,7 +604,7 @@ func TestKeyLinksCarryOneFakeTLSLinkPerDomain(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Fatalf("set extra domains: %d", resp.StatusCode)
 	}
-	resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck
 
 	var k keyTelemtResp
 	resp = c.Post("/api/v1/keys", map[string]any{"label": "Ivan", "type": "PERSONAL", "carrier_mode": "https", "node_ids": []string{tel.ID.String()}})
@@ -634,9 +637,70 @@ func TestKeyLinksCarryOneFakeTLSLinkPerDomain(t *testing.T) {
 
 	for q, want := range map[string]int{"&kind=tls": 200, "&kind=tls&domain=alt.example.org": 200, "&kind=tls&domain=ALT.example.org": 200, "&kind=tls&domain=gone.example.org": 404} {
 		resp := c.Get("/api/v1/keys/" + k.ID.String() + "/qr?node=" + tel.ID.String() + q)
-		resp.Body.Close() //nolint:errcheck
+		_ = resp.Body.Close() //nolint:errcheck
 		if resp.StatusCode != want {
 			t.Errorf("qr%s: %d, want %d", q, resp.StatusCode, want)
 		}
+	}
+}
+
+func TestAppliedWebPrefixFlowsThroughKeySubscriptionAndQR(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createEngineNode(t, c, map[string]any{"name": "tel", "hostname": "tel.test", "acme_email": "a@b.co"})
+	var k keyTelemtResp
+	c.JSON(c.Post("/api/v1/keys", map[string]any{"label": "path", "type": "PERSONAL", "carrier_mode": "https", "node_ids": []string{n.ID.String()}}), &k)
+	_, err := h.Store.Pool.Exec(t.Context(), `UPDATE nodes SET telemt_web_applied_base_path='applied/web',telemt_web_policy='{"base_path":"pending/web"}' WHERE id=$1`, n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.JSON(c.Get("/api/v1/keys/"+k.ID.String()), &k)
+	link := ""
+	for _, l := range k.Links {
+		if l.Kind == "web" {
+			link = l.TMe
+		}
+	}
+	raw, _ := hex.DecodeString(k.Secret)
+	want := "https://t.me/webproxy?server=tel.test%2Fapplied%2Fweb&secret=" + base64.RawURLEncoding.EncodeToString(append([]byte{0x70}, raw...))
+	if link != want {
+		t.Fatalf("key link uses unverified prefix: %s", link)
+	}
+	var sub struct {
+		URL string `json:"url"`
+	}
+	c.JSON(c.Post("/api/v1/keys/"+k.ID.String()+"/subscription", nil), &sub)
+	i := strings.Index(sub.URL, "/s/")
+	if i < 0 {
+		t.Fatal(sub.URL)
+	}
+	token := sub.URL[i+3:]
+	anon := h.Anonymous()
+	var out struct {
+		Locations []struct {
+			TMe   string         `json:"tme"`
+			Links []linkKindJSON `json:"links"`
+		} `json:"locations"`
+	}
+	anon.JSON(anon.Get("/s/"+token+".json"), &out)
+	if len(out.Locations) != 1 || out.Locations[0].TMe != want || out.Locations[0].Links[0].TMe != want {
+		t.Fatalf("subscription link differs: %+v", out)
+	}
+	resp := anon.Get("/s/" + token)
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if !strings.Contains(string(body), "server=tel.test%2Fapplied%2Fweb") || strings.Contains(string(body), "pending%2Fweb") {
+		t.Fatal("subscription page prefix wrong")
+	}
+	resp = c.Get("/api/v1/keys/" + k.ID.String() + "/qr?node=" + n.ID.String())
+	body, _ = io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	wantPNG, err := qrlink.PNG(want, 256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(body, wantPNG) {
+		t.Fatal("QR encoded a different WEB link")
 	}
 }

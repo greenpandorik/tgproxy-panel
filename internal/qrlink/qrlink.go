@@ -10,11 +10,13 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 )
 
-func TMe(host, secret string) string {
+func TMe(host, secret string, basePath ...string) string {
+	host, secret = webLinkParts(host, secret, basePath)
 	return "https://t.me/webproxy?server=" + url.QueryEscape(host) + "&secret=" + url.QueryEscape(secret)
 }
 
-func Tg(host, secret string) string {
+func Tg(host, secret string, basePath ...string) string {
+	host, secret = webLinkParts(host, secret, basePath)
 	return "tg://webproxy?server=" + url.QueryEscape(host) + "&secret=" + url.QueryEscape(secret)
 }
 
@@ -45,4 +47,15 @@ func TgProxy(host string, port int, secret string) string {
 
 func proxyQuery(host string, port int, secret string) string {
 	return "server=" + url.QueryEscape(host) + "&port=" + strconv.Itoa(port) + "&secret=" + url.QueryEscape(secret)
+}
+
+func webLinkParts(host, secret string, basePath []string) (string, string) {
+	if len(basePath) == 0 || basePath[0] == "" {
+		return host, secret
+	}
+	raw, err := hex.DecodeString(secret)
+	if err != nil {
+		return host, secret
+	}
+	return host + "/" + basePath[0], base64.RawURLEncoding.EncodeToString(append([]byte{0x70}, raw...))
 }

@@ -125,3 +125,65 @@ func TestNodeWebPolicyRejectsWhatTelemtWouldRefuse(t *testing.T) {
 		t.Fatalf("a refused policy must not be stored: %+v", got)
 	}
 }
+
+func TestWebAdvancedPolicyRequiresSupportedEngineAndAgent(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	path := "/api/v1/nodes/" + n.ID.String() + "/web-policy"
+	for _, versions := range [][2]string{{"3.5.13", "2.17.0"}, {"3.5.14", "2.16.1"}, {"", ""}, {"3.5.14", "2.17.0"}} {
+		_, err := h.Store.Pool.Exec(t.Context(), `UPDATE nodes SET telemt_version=$2,agent_version=$3 WHERE id=$1`, n.ID, versions[0], versions[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp := c.Put(path, map[string]any{"base_path": "telegram/web"})
+		want := 422
+		if versions[0] == "3.5.14" && versions[1] == "2.17.0" {
+			want = 200
+		}
+		if resp.StatusCode != want {
+			t.Fatalf("versions %v: status %d want %d", versions, resp.StatusCode, want)
+		}
+		_ = resp.Body.Close()
+	}
+}
+
+func TestHTTPDecoyHostnameAssignmentRequiresStartupOptIn(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	n, _ := createNode(t, c, "n1.test")
+	_, err := h.Store.Pool.Exec(t.Context(), `UPDATE nodes SET telemt_version='3.5.14',agent_version='2.17.0',telemt_capabilities='{"HttpUpstreamDecoy":true}' WHERE id=$1`, n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := "/api/v1/nodes/" + n.ID.String() + "/site/upstream"
+	resp := c.Post(path, map[string]any{"origin": "http://origin.internal:8080"})
+	if resp.StatusCode != 422 {
+		t.Fatalf("implicit hostname DNS status %d", resp.StatusCode)
+	}
+	_ = resp.Body.Close()
+	resp = c.Put("/api/v1/nodes/"+n.ID.String()+"/web-policy", map[string]any{"decoy_resolve": "startup"})
+	if resp.StatusCode != 200 {
+		t.Fatalf("startup policy status %d", resp.StatusCode)
+	}
+	_ = resp.Body.Close()
+	resp = c.Post(path, map[string]any{"origin": "http://origin.internal:8080"})
+	if resp.StatusCode != 200 {
+		t.Fatalf("startup assignment status %d", resp.StatusCode)
+	}
+	_ = resp.Body.Close()
+	var site struct {
+		Origin string `json:"origin"`
+	}
+	c.JSON(c.Get("/api/v1/nodes/"+n.ID.String()+"/site"), &site)
+	if site.Origin != "http://origin.internal:8080" {
+		t.Fatalf("hostname origin lost: %+v", site)
+	}
+	resp = c.Post(path, map[string]any{"origin": "http://8.8.8.8:8080"})
+	if resp.StatusCode != 422 {
+		t.Fatal("startup enabled public literal origin")
+	}
+	_ = resp.Body.Close()
+}

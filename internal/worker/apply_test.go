@@ -663,3 +663,91 @@ func TestApplySuccessDoesNotSyncAProfileEditedMidApply(t *testing.T) {
 		t.Fatal("the rotated secret would never reach the node")
 	}
 }
+
+// A successful reply from an old agent must never publish an unacknowledged prefix.
+type webAckDriver struct {
+	*nodedriver.Mock
+	path *string
+}
+
+func (d webAckDriver) Apply(ctx context.Context, id uuid.UUID, req nodedriver.ApplyRequest) (nodedriver.ApplyResult, error) {
+	res, err := d.Mock.Apply(ctx, id, req)
+	res.AppliedWebBasePath = d.path
+	return res, err
+}
+
+func TestWebPrefixLinksPublishOnlyVerifiedApply(t *testing.T) {
+	for _, ack := range []string{"new/path", "wrong", "<missing>", "<failed>"} {
+		t.Run(ack, func(t *testing.T) {
+			f := newTelemtFixture(t)
+			ctx := context.Background()
+			_, err := f.st.Pool.Exec(ctx, `UPDATE nodes SET telemt_version='3.5.14',agent_version='2.17.0' WHERE id=$1`, f.node.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			k, err := f.keys.Create(ctx, keys.CreateInput{Label: "path", Type: domain.KeyPersonal, CarrierMode: "https", NodeIDs: []uuid.UUID{f.node.ID}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = f.st.Q.SetNodeWebPolicy(ctx, db.SetNodeWebPolicyParams{ID: f.node.ID, TelemtWebPolicy: []byte(`{"base_path":"new/path"}`)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			links, err := f.keys.NodeLinks(ctx, k.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(links[0].Links[0].TMe, "%2F") {
+				t.Fatal("desired edit prematurely changed links")
+			}
+			mock := nodedriver.NewMock()
+			mock.SetOnline(f.node.ID, true)
+			if ack == "<failed>" {
+				mock.FailNextApply(f.node.ID, "engine rejected cutover")
+			}
+			var path *string
+			if ack != "<missing>" {
+				path = &ack
+			}
+			a := worker.NewApply(f.st, f.box, webAckDriver{mock, path}, time.Hour, slog.New(slog.DiscardHandler))
+			err = a.ApplyNode(ctx, f.node.ID)
+			links, e := f.keys.NodeLinks(ctx, k.ID)
+			if e != nil {
+				t.Fatal(e)
+			}
+			if ack == "new/path" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(links[0].Links[0].TMe, "server=n.test%2Fnew%2Fpath&secret=c") {
+					t.Fatalf("verified prefix absent: %+v", links)
+				}
+			} else {
+				if err == nil {
+					t.Fatal("missing/mismatched ACK accepted")
+				}
+				if strings.Contains(links[0].Links[0].TMe, "%2F") {
+					t.Fatal("unverified prefix published")
+				}
+			}
+		})
+	}
+}
+
+func TestWebAdvancedApplyRefusesOldAgentBeforeDispatch(t *testing.T) {
+	f := newTelemtFixture(t)
+	ctx := context.Background()
+	_, err := f.st.Pool.Exec(ctx, `UPDATE nodes SET telemt_version='3.5.14',agent_version='2.16.1',telemt_web_policy='{"base_path":"new"}' WHERE id=$1`, f.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mock := nodedriver.NewMock()
+	mock.SetOnline(f.node.ID, true)
+	a := worker.NewApply(f.st, f.box, mock, time.Hour, slog.New(slog.DiscardHandler))
+	if err := a.ApplyNode(ctx, f.node.ID); err == nil {
+		t.Fatal("old agent dispatched advanced policy")
+	}
+	if len(mock.Applied(f.node.ID)) != 0 {
+		t.Fatal("unsupported request reached agent")
+	}
+}

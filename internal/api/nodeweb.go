@@ -11,14 +11,17 @@ import (
 )
 
 type webPolicyResp struct {
-	Policy     domain.WebPolicy `json:"policy"`
-	Default    domain.WebPolicy `json:"default"`
-	Overridden bool             `json:"overridden"`
+	Policy            domain.WebPolicy `json:"policy"`
+	Default           domain.WebPolicy `json:"default"`
+	Overridden        bool             `json:"overridden"`
+	AppliedBasePath   string           `json:"applied_base_path"`
+	AdvancedSupported bool             `json:"advanced_supported"`
 }
 
 func webPolicyJSON(n db.Node) webPolicyResp {
 	return webPolicyResp{
-		Policy:     nodesvc.WebPolicyOf(n.TelemtWebPolicy),
+		Policy:          nodesvc.WebPolicyOf(n.TelemtWebPolicy),
+		AppliedBasePath: n.TelemtWebAppliedBasePath, AdvancedSupported: nodesvc.WebAdvancedSupported(n),
 		Default:    domain.DefaultWebPolicy(),
 		Overridden: len(n.TelemtWebPolicy) > 0 && string(n.TelemtWebPolicy) != "{}",
 	}
@@ -61,6 +64,10 @@ func (s *Server) handlePutNodeWebPolicy(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := policy.Validate(); err != nil {
 		validation(w, webPolicyFields(err))
+		return
+	}
+	if policy.HasAdvancedOptions() && !nodesvc.WebAdvancedSupported(n) {
+		validation(w, map[string]string{"policy": "advanced WEB options require Telemt 3.5.14 and agent 2.17.0 or newer"})
 		return
 	}
 	if reflect.DeepEqual(policy, current) {

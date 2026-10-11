@@ -92,7 +92,7 @@ func (s *Server) handleSubscriptionPreview(w http.ResponseWriter, r *http.Reques
 	for _, n := range nodes {
 		locations = append(locations, keys.LinksFor(keys.LinkTarget{
 			NodeID: n.ID, NodeName: n.Name, Hostname: n.Hostname, Engine: n.Engine,
-			TLSDomain: n.TlsDomain, TLSDomains: n.TlsDomains, ClassicPort: int(n.ClassicPort),
+			TLSDomain: n.TlsDomain, TLSDomains: n.TlsDomains, ClassicPort: int(n.ClassicPort), WebBasePath: n.TelemtWebAppliedBasePath,
 		}, previewSecret))
 	}
 	lang := subscription.PageLang(q.Get("lang"), settings.Language, r.Header.Get("Accept-Language"))

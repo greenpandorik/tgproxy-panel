@@ -136,7 +136,8 @@ func WebPolicyToProto(p *domain.WebPolicy) *agentv1.WebPolicy {
 		return nil
 	}
 	out := &agentv1.WebPolicy{
-		Carrier:                  string(p.Carrier),
+		Carrier:  string(p.Carrier),
+		Conveyor: p.Conveyor, BasePath: p.BasePath,
 		CarrierLearning:          p.CarrierLearning,
 		Aggressiveness:           string(p.Aggressiveness),
 		ConnectionCapacityAction: string(p.Overload.ConnectionCapacityAction),
@@ -147,6 +148,14 @@ func WebPolicyToProto(p *domain.WebPolicy) *agentv1.WebPolicy {
 			BridgeRetrySecs:     int32(p.Timeouts.BridgeRetrySecs),
 			ProbeCoalesceMs:     int32(p.Timeouts.ProbeCoalesceMs),
 		},
+	}
+	if p.CarrierMethod != nil {
+		v := string(*p.CarrierMethod)
+		out.CarrierMethod = &v
+	}
+	if p.DecoyResolve != nil {
+		v := string(*p.DecoyResolve)
+		out.DecoyResolve = &v
 	}
 	for _, c := range p.Carriers {
 		out.Carriers = append(out.Carriers, string(c))
@@ -168,7 +177,8 @@ func WebPolicyFromProto(p *agentv1.WebPolicy) *domain.WebPolicy {
 		capacityAction = domain.DefaultWebPolicy().Overload.ConnectionCapacityAction
 	}
 	out := &domain.WebPolicy{
-		Preset:          domain.PresetCustom,
+		Preset:   domain.PresetCustom,
+		Conveyor: p.Conveyor, BasePath: p.BasePath,
 		Carrier:         domain.Carrier(p.GetCarrier()),
 		CarrierLearning: p.GetCarrierLearning(),
 		Aggressiveness:  domain.Aggressiveness(p.GetAggressiveness()),
@@ -183,6 +193,14 @@ func WebPolicyFromProto(p *agentv1.WebPolicy) *domain.WebPolicy {
 			BridgeRetrySecs:     int(t.GetBridgeRetrySecs()),
 			ProbeCoalesceMs:     int(t.GetProbeCoalesceMs()),
 		},
+	}
+	if p.CarrierMethod != nil {
+		v := domain.WebCarrierMethod(*p.CarrierMethod)
+		out.CarrierMethod = &v
+	}
+	if p.DecoyResolve != nil {
+		v := domain.WebDecoyResolve(*p.DecoyResolve)
+		out.DecoyResolve = &v
 	}
 	for _, c := range p.GetCarriers() {
 		out.Carriers = append(out.Carriers, domain.Carrier(c))

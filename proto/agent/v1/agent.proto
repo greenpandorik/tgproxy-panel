@@ -231,6 +231,10 @@ message WebPolicy {
   string aggressiveness = 4;
   WebTimeouts timeouts = 5;
   string connection_capacity_action = 6;
+  optional string carrier_method = 7;
+  optional bool conveyor = 8;
+  optional string base_path = 9;
+  optional string decoy_resolve = 10;
 }
 
 message SiteFile { string path = 1; bytes content = 2; }
@@ -272,6 +276,7 @@ message ApplyRequest {
   string public_ip = 7;
   string ad_tag = 8;
   WebPolicy web_policy = 9;   // nil = leave the node's WEB policy untouched
+  string managed_web_host = 11;
   repeated string tls_domains = 10;   // extra Fake-TLS domains; reconciled only when tls_domain is set
 }
 // UpdateTelemtRequest asks the node to replace its telemt binary with the build the panel
@@ -350,6 +355,7 @@ message ApplyResult {
   // than acted on: a proxy node is not restarted behind the operator's back.
   repeated string deferred_fields = 6;
   bool restart_required = 7;
+  optional string applied_web_base_path = 8;
 }
 message MetricsText { string text = 1; }
 message StatsMap { map<string, string> values = 1; }

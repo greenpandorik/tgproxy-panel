@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 )
 
 type Carrier string
@@ -92,7 +93,17 @@ type WebTimeouts struct {
 	ProbeCoalesceMs          int   `json:"carrier_probe_coalesce_ms"`
 }
 
+type (
+	WebCarrierMethod string
+	WebDecoyResolve  string
+)
+
+// Optional settings leave upstream configuration untouched when absent.
 type WebPolicy struct {
+	CarrierMethod   *WebCarrierMethod `json:"carrier_method,omitempty"`
+	Conveyor        *bool             `json:"conveyor,omitempty"`
+	BasePath        *string           `json:"base_path,omitempty"`
+	DecoyResolve    *WebDecoyResolve  `json:"decoy_resolve,omitempty"`
 	Preset          WebPreset         `json:"preset"`
 	Carrier         Carrier           `json:"carrier"`
 	Carriers        CarrierList       `json:"carriers"`
@@ -160,7 +171,31 @@ func (t WebTimeouts) Validate() error {
 	return nil
 }
 
+var webBasePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*(/[A-Za-z0-9][A-Za-z0-9_-]*)*$`)
+
+func ValidateWebBasePath(path string) error {
+	if path != "" && (len(path) > 128 || !webBasePathPattern.MatchString(path)) {
+		return errors.New("base_path: must be empty or at most 128 ASCII bytes in slash-separated alphanumeric, underscore or hyphen segments without surrounding slashes")
+	}
+	return nil
+}
+
+func (p WebPolicy) HasAdvancedOptions() bool {
+	return p.CarrierMethod != nil || p.Conveyor != nil || p.BasePath != nil || p.DecoyResolve != nil
+}
+
 func (p WebPolicy) Validate() error {
+	if p.CarrierMethod != nil && *p.CarrierMethod != "post" && *p.CarrierMethod != "put" {
+		return errors.New("carrier_method: must be post or put")
+	}
+	if p.DecoyResolve != nil && *p.DecoyResolve != "never" && *p.DecoyResolve != "startup" {
+		return errors.New("decoy_resolve: must be never or startup")
+	}
+	if p.BasePath != nil {
+		if err := ValidateWebBasePath(*p.BasePath); err != nil {
+			return err
+		}
+	}
 	if !p.Carrier.Valid() {
 		return fmt.Errorf("carrier %q is not one of https, https-lanes, websocket, websocket-lanes", p.Carrier)
 	}

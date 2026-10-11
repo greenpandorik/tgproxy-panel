@@ -17,3 +17,25 @@ func TestValidateHTTPUpstream(t *testing.T) {
 		}
 	}
 }
+
+func TestHTTPUpstreamHostnameRequiresExplicitStartupResolution(t *testing.T) {
+	if _, err := UpstreamBundle("http://origin.internal:8080"); err == nil {
+		t.Fatal("implicit DNS accepted")
+	}
+	bundle, err := UpstreamBundle("http://origin.internal:8080", "startup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok, err := UpstreamFromBundle(bundle, "startup")
+	if err != nil || !ok || got != "http://origin.internal:8080" {
+		t.Fatalf("hostname bundle lost: %s %v", got, err)
+	}
+	if _, _, err := UpstreamFromBundle(bundle); err == nil {
+		t.Fatal("bundle bypassed DNS opt-in")
+	}
+	for _, host := range []string{"http://origin_internal:8080", "http://127.0.0.1.example.com/path", "http://a:0"} {
+		if _, err := UpstreamBundle(host, "startup"); err == nil {
+			t.Fatalf("invalid origin accepted: %s", host)
+		}
+	}
+}

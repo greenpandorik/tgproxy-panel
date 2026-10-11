@@ -284,3 +284,9 @@ func compareVersion(a, b [3]int) int {
 	}
 	return 0
 }
+
+// VersionAtLeast returns false for an unknown version, keeping advanced edits opt-in.
+func VersionAtLeast(raw string, minimum [3]int) bool {
+	v, ok := ParseVersion(raw)
+	return ok && compareVersion(v, minimum) >= 0
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"tgwebproxy/internal/crypto"
+	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodedriver"
 	"tgwebproxy/internal/store"
 	"tgwebproxy/internal/store/db"
@@ -172,6 +173,20 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		return err
 	}
 	res, applyErr := a.driver.Apply(ctx, nodeID, des.Req)
+	if applyErr == nil && des.Req.WebPolicy != nil {
+		p := des.Req.WebPolicy
+		if p.HasAdvancedOptions() && res.AppliedWebBasePath == nil {
+			applyErr = errors.New("agent did not acknowledge effective WEB base_path")
+		}
+		if res.AppliedWebBasePath != nil {
+			if e := domain.ValidateWebBasePath(*res.AppliedWebBasePath); e != nil {
+				applyErr = e
+			}
+			if p.BasePath != nil && *p.BasePath != *res.AppliedWebBasePath {
+				applyErr = errors.New("agent acknowledged a different WEB base_path")
+			}
+		}
+	}
 	if applyErr != nil {
 		status := db.ApplyStatusFailed
 		if res.RolledBack {
@@ -218,6 +233,11 @@ func (a *Apply) ApplyNode(ctx context.Context, nodeID uuid.UUID) error {
 		if des.Req.Site != nil {
 			hash := des.SiteHash
 			if err := q.SetNodeSiteDeployed(ctx, db.SetNodeSiteDeployedParams{NodeID: nodeID, Hash: &hash}); err != nil {
+				return err
+			}
+		}
+		if res.AppliedWebBasePath != nil {
+			if err := q.SetNodeWebAppliedBasePath(ctx, db.SetNodeWebAppliedBasePathParams{ID: nodeID, TelemtWebAppliedBasePath: *res.AppliedWebBasePath}); err != nil {
 				return err
 			}
 		}

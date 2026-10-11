@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"tgwebproxy/internal/nodesvc"
 	"tgwebproxy/internal/sitekit"
 	"tgwebproxy/internal/store/db"
 )
@@ -325,7 +326,16 @@ func (s *Server) handleAssignUpstreamSite(w http.ResponseWriter, r *http.Request
 		badRequest(w, err.Error())
 		return
 	}
-	bundle, err := sitekit.UpstreamBundle(in.Origin)
+	policy := nodesvc.WebPolicyOf(n.TelemtWebPolicy)
+	resolve := "never"
+	if policy.DecoyResolve != nil {
+		resolve = string(*policy.DecoyResolve)
+	}
+	if resolve == "startup" && !nodesvc.WebAdvancedSupported(n) {
+		validation(w, map[string]string{"origin": "hostname resolution requires Telemt 3.5.14 and agent 2.17.0"})
+		return
+	}
+	bundle, err := sitekit.UpstreamBundle(in.Origin, resolve)
 	if err != nil {
 		validation(w, map[string]string{"origin": err.Error()})
 		return
@@ -360,7 +370,7 @@ func (s *Server) handleGetNodeSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bundle, _ := sitekit.BundleFromJSON(site.Bundle)
-	origin, upstream, _ := sitekit.UpstreamFromBundle(bundle)
+	origin, upstream, _ := sitekit.UpstreamFromBundle(bundle, "startup")
 	mode := "static"
 	files := bundle.Paths()
 	if upstream {
@@ -385,7 +395,7 @@ func (s *Server) handleSitePreview(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	if _, upstream, _ := sitekit.UpstreamFromBundle(bundle); upstream {
+	if _, upstream, _ := sitekit.UpstreamFromBundle(bundle, "startup"); upstream {
 		writeError(w, http.StatusConflict, "upstream_preview", "the upstream website is previewed at the node's public URL", nil)
 		return
 	}
@@ -412,7 +422,7 @@ func (s *Server) NodeSiteFiles(ctx context.Context, nodeID uuid.UUID) (map[strin
 	if err != nil {
 		return nil, err
 	}
-	if _, upstream, err := sitekit.UpstreamFromBundle(b); err != nil {
+	if _, upstream, err := sitekit.UpstreamFromBundle(b, "startup"); err != nil {
 		return nil, err
 	} else if upstream {
 		// The initial installer still needs a static fallback. The first agent apply

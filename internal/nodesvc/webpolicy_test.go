@@ -74,3 +74,32 @@ func TestWebPolicyOverridesStoreOnlyWhatMoved(t *testing.T) {
 		t.Fatalf("round trip: %+v", back)
 	}
 }
+
+func TestWebPolicyLegacyDefaultsLeaveAdvancedFieldsUnmanaged(t *testing.T) {
+	p := nodesvc.WebPolicyOf([]byte(`{"timeouts":{"carrier_health_secs":45}}`))
+	if p.HasAdvancedOptions() {
+		t.Fatal("legacy policy acquired advanced settings")
+	}
+	raw, err := json.Marshal(domain.DefaultWebPolicy())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"carrier_method", "conveyor", "base_path", "decoy_resolve"} {
+		if _, ok := fields[key]; ok {
+			t.Fatalf("default forces %s", key)
+		}
+	}
+	p = nodesvc.WebPolicyOf([]byte(`{"carrier_method":"post","conveyor":false,"base_path":"","decoy_resolve":"never"}`))
+	raw, err = nodesvc.WebPolicyOverrides(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back := nodesvc.WebPolicyOf(raw)
+	if back.BasePath == nil || *back.BasePath != "" || back.Conveyor == nil || *back.Conveyor {
+		t.Fatalf("explicit root/false lost: %s", raw)
+	}
+}
