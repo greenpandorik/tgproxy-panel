@@ -124,7 +124,11 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 		req.TLSDomains = node.TlsDomains
 		req.AdTag = node.AdTag
 		policy := nodesvc.WebPolicyOf(node.TelemtWebPolicy)
+		if policy.HasAdvancedOptions() && !nodesvc.WebAdvancedSupported(node) {
+			return Desired{}, errors.New("advanced WEB options require Telemt 3.5.14 and agent 2.17.0 or newer")
+		}
 		req.WebPolicy = &policy
+		req.ManagedWebHost = node.Hostname
 	}
 	seen := map[string]bool{}
 	now := time.Now()

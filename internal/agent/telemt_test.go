@@ -21,23 +21,27 @@ import (
 )
 
 type fakeTelemt struct {
-	mu           sync.Mutex
-	users        map[string]string // username -> secret
-	attrs        map[string]map[string]any
-	userWrites   map[string][]string // username -> raw bodies of POST/PATCH for that user
-	config       map[string]any
-	writes       []string // "METHOD path" of every mutating call, in order
-	patches      []string // raw bodies of PATCH /v1/config
-	reloads      int
-	reloadStates []string
-	deferFields  []string // deferred_process_fields the next PATCH /v1/config reports
-	ready        bool
-	failOn       string // "METHOD path" prefix that must answer 500
-	upstreams    map[string]any
-	metricsText  string
-	webStatus    map[string]any
-	authSeen     map[string]bool
-	srv          *httptest.Server
+	configRevision  string
+	editAfterReload string
+	version         string
+	ignoreBasePath  bool
+	mu              sync.Mutex
+	users           map[string]string // username -> secret
+	attrs           map[string]map[string]any
+	userWrites      map[string][]string // username -> raw bodies of POST/PATCH for that user
+	config          map[string]any
+	writes          []string // "METHOD path" of every mutating call, in order
+	patches         []string // raw bodies of PATCH /v1/config
+	reloads         int
+	reloadStates    []string
+	deferFields     []string // deferred_process_fields the next PATCH /v1/config reports
+	ready           bool
+	failOn          string // "METHOD path" prefix that must answer 500
+	upstreams       map[string]any
+	metricsText     string
+	webStatus       map[string]any
+	authSeen        map[string]bool
+	srv             *httptest.Server
 }
 
 func newFakeTelemt(t *testing.T, decoyDir string) *fakeTelemt {
@@ -78,7 +82,12 @@ func newFakeTelemt(t *testing.T, decoyDir string) *fakeTelemt {
 
 func (f *fakeTelemt) ok(w http.ResponseWriter, data any) {
 	raw, _ := json.Marshal(data)
-	_, _ = w.Write([]byte(`{"ok":true,"data":` + string(raw) + `,"revision":"rev"}`))
+	revision := f.configRevision
+	if revision == "" {
+		revision = "rev"
+	}
+	encoded, _ := json.Marshal(revision)
+	_, _ = w.Write([]byte(`{"ok":true,"data":` + string(raw) + `,"revision":` + string(encoded) + `}`))
 }
 
 func (f *fakeTelemt) fail(w http.ResponseWriter, status int, code, msg string) {
@@ -112,7 +121,11 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 		}
 		f.ok(w, map[string]any{"ready": true, "status": "ready", "admission_open": true})
 	case route == "GET /v1/system/info":
-		f.ok(w, map[string]any{"version": "3.5.5", "config_hash": "rev", "uptime_seconds": 42.0})
+		v := f.version
+		if v == "" {
+			v = "3.5.5"
+		}
+		f.ok(w, map[string]any{"version": v, "config_hash": "rev", "uptime_seconds": 42.0})
 	case route == "GET /v1/users":
 		out := []any{}
 		for name := range f.users {
@@ -214,7 +227,23 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 				cur = map[string]any{}
 				f.config[section] = cur
 			}
+			var oldPaths []any
+			if f.ignoreBasePath && section == "web" {
+				vs, _ := cur["vhosts"].([]any)
+				for _, raw := range vs {
+					v, _ := raw.(map[string]any)
+					oldPaths = append(oldPaths, v["base_path"])
+				}
+			}
 			mergePatch(cur, body)
+			if f.ignoreBasePath && section == "web" {
+				vs, _ := cur["vhosts"].([]any)
+				for i, raw := range vs {
+					if i < len(oldPaths) {
+						raw.(map[string]any)["base_path"] = oldPaths[i]
+					}
+				}
+			}
 			changed = append(changed, section)
 		}
 		reloadRequired, _ := f.config["__force_runtime_reload"].(bool)
@@ -227,8 +256,17 @@ func (f *fakeTelemt) handle(w http.ResponseWriter, r *http.Request) {
 	case route == "POST /v1/system/reload":
 		f.reloads++
 		w.WriteHeader(http.StatusAccepted)
-		f.ok(w, map[string]any{"reload_id": 1, "state": "accepted", "mode": "drain"})
+		rev := f.configRevision
+		if rev == "" {
+			rev = "rev"
+		}
+		f.ok(w, map[string]any{"reload_id": 1, "state": "accepted", "mode": "drain", "config_revision": rev})
 	case strings.HasPrefix(r.URL.Path, "/v1/system/reload/"):
+		if f.editAfterReload != "" {
+			f.config["web"].(map[string]any)["vhosts"].([]any)[0].(map[string]any)["base_path"] = f.editAfterReload
+			f.configRevision = "edited"
+			f.editAfterReload = ""
+		}
 		state := f.reloadStates[0]
 		if len(f.reloadStates) > 1 {
 			f.reloadStates = f.reloadStates[1:]

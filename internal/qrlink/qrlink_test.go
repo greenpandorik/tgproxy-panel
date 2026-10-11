@@ -59,3 +59,17 @@ func TestProxyLinks(t *testing.T) {
 		t.Fatalf("host must be query escaped: %s", TMeProxy("a b", 443, "s"))
 	}
 }
+
+func TestPathLinksUseTelegramDesktopMarker(t *testing.T) {
+	const secret = "000102030405060708090a0b0c0d0e0f"
+	want := "https://t.me/webproxy?server=proxy.example.com%2Ftelegram%2Fweb&secret=cAABAgMEBQYHCAkKCwwNDg8"
+	if got := TMe("proxy.example.com", secret, "telegram/web"); got != want {
+		t.Fatalf("path link %s", got)
+	}
+	if got := Tg("proxy.example.com", "dd"+secret, "telegram/web"); got != "tg://webproxy?server=proxy.example.com%2Ftelegram%2Fweb&secret=cN0AAQIDBAUGBwgJCgsMDQ4P" {
+		t.Fatalf("dd link %s", got)
+	}
+	if TMe("proxy.example.com", secret, "") != TMe("proxy.example.com", secret) {
+		t.Fatal("root format changed")
+	}
+}

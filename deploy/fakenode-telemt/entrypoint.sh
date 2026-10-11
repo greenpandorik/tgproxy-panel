@@ -2,9 +2,9 @@
 # Entry point for the fakenode-telemt image: brings up the REAL telemt binary under the
 # systemctl/journalctl shims and registers the container with the panel as a telemt node.
 #
-# There is no Caddy here. On a real node Caddy only terminates TLS on 443 and forwards to
-# telemt's loopback WEB listener; the panel never talks to it, and the e2e drives the node
-# through the agent, so the container would gain nothing but a certificate it cannot get.
+# A test-only Go HTTPS front supplies the public decoy check using a private CA
+# trusted only in this disposable container. Production nodes still use Caddy and
+# publicly trusted certificates. It forwards to the same private WEB listener.
 #
 # The node's first profile secret is the one the panel already baked into the install script,
 # so instead of inventing one the entrypoint fetches GET /api/v1/install/<token>.sh and reads
@@ -140,6 +140,20 @@ TGWP_TOKEN=$TOKEN
 TGWP_ENGINE=telemt
 EOF
 umask 022
+
+# The HTTPS check must resolve and validate the disposable hostname just like a
+# production site, without relaxing the agent's normal certificate checks.
+bench-tls-front --host "$NODE_HOSTNAME" --prepare
+update-ca-certificates >/dev/null
+printf '127.0.0.1 %s\n' "$NODE_HOSTNAME" >> /etc/hosts
+bench-tls-front --host "$NODE_HOSTNAME" > /var/log/fake/tls-front.log 2>&1 &
+for _ in $(seq 1 30); do
+	if curl --connect-timeout 2 --max-time 5 -fsS "https://$NODE_HOSTNAME/" >/dev/null 2>&1; then
+		break
+	fi
+	sleep 1
+done
+curl --connect-timeout 2 --max-time 5 -fsS "https://$NODE_HOSTNAME/" >/dev/null
 
 echo "fakenode-telemt: starting tgwp-agent"
 set -a

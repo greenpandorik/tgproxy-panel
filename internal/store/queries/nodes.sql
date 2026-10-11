@@ -159,3 +159,7 @@ WITH listed AS (
   FROM nodes n LEFT JOIN listed l ON l.id = n.id
 )
 UPDATE nodes n SET sort_order = r.pos FROM ranked r WHERE n.id = r.id AND n.sort_order <> r.pos;
+
+-- Record only the prefix the agent acknowledged after verification; desired policy is separate.
+-- name: SetNodeWebAppliedBasePath :exec
+UPDATE nodes SET telemt_web_applied_base_path = $2 WHERE id = $1;

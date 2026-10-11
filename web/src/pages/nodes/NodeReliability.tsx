@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { NodeMePool } from './NodeMePool';
 
 function PolicyForm({ node, state }: { node: Node; state: RecoveryState }) {
   const { t } = useTranslation();
@@ -257,25 +258,30 @@ export function ReliabilityResources({ report }: { report?: ReliabilityReport | 
 /** Whether each route to Telegram the agent watches is working. */
 export function ReliabilityRoutes({ report }: { report?: ReliabilityReport | null }) {
   const { t } = useTranslation();
-  if (!report || report.routes.length === 0) return null;
+  if (!report) return null;
   return (
-    <SubSection title={t('reliability.routes')}>
-      <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
-        {report.routes.map((r, index) => {
-          const state = r.age_seconds > 120 ? 'stale' : r.healthy ? 'healthy' : 'failed';
-          return (
-            <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-2.5">
-              <dt className="text-label text-mute">{t(`reliability.${r.kind}`, r.kind)}</dt>
-              <dd className="inline-flex items-center gap-2 text-label">
-                <span className={cn('size-[7px] shrink-0 rounded-pill', ROUTE_DOT[state])} aria-hidden="true" />
-                <span className={state === 'failed' ? 'text-err' : state === 'stale' ? 'text-mute' : 'text-foreground'}>
-                  {t(`reliability.${state}`)}
-                </span>
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-    </SubSection>
+    <>
+      <NodeMePool snapshot={report.me_pool} />
+      {report.routes.length > 0 && (
+        <SubSection title={t('reliability.routes')}>
+          <dl className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+            {report.routes.map((r, index) => {
+              const state = r.age_seconds > 120 ? 'stale' : r.healthy ? 'healthy' : 'failed';
+              return (
+                <div key={`${r.kind}-${index}`} className="flex flex-wrap justify-between gap-2 border-b border-hairline py-2.5">
+                  <dt className="text-label text-mute">{t(`reliability.${r.kind}`, r.kind)}</dt>
+                  <dd className="inline-flex items-center gap-2 text-label">
+                    <span className={cn('size-[7px] shrink-0 rounded-pill', ROUTE_DOT[state])} aria-hidden="true" />
+                    <span className={state === 'failed' ? 'text-err' : state === 'stale' ? 'text-mute' : 'text-foreground'}>
+                      {t(`reliability.${state}`)}
+                    </span>
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </SubSection>
+      )}
+    </>
   );
 }

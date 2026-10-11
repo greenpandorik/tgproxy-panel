@@ -90,9 +90,37 @@ type DC struct {
 	Alive    int `json:"alive_writers"`
 	Required int `json:"required_writers"`
 }
+
+// MEPool preserves the control API source timestamp independently of the heartbeat.
+// A missing source/state is unknown; counters are pointers for older API payloads.
+type MEPool struct {
+	At      time.Time    `json:"at"`
+	Enabled bool         `json:"enabled"`
+	Reason  string       `json:"reason,omitempty"`
+	State   *MEPoolState `json:"state"`
+}
+
+type MEPoolState struct {
+	ActiveGeneration           uint64  `json:"active_generation"`
+	PendingGeneration          uint64  `json:"pending_generation"`
+	PendingAgeSeconds          *uint64 `json:"pending_age_seconds"`
+	HardswapEnabled            bool    `json:"hardswap_enabled"`
+	Pending                    bool    `json:"pending"`
+	PendingMapCurrent          *bool   `json:"pending_map_current"`
+	PendingWriters             *uint64 `json:"pending_writers"`
+	WriterDeficit              *uint64 `json:"writer_deficit"`
+	MissingDCGroups            *uint64 `json:"missing_dc_groups"`
+	OrphanWarmWriters          *uint64 `json:"orphan_warm_writers"`
+	ReplacementPreparing       *uint64 `json:"replacement_preparing"`
+	ReplacementRetiring        *uint64 `json:"replacement_retiring"`
+	OrphanObservedSeconds      *uint64 `json:"orphan_observed_seconds"`
+	ReplacementObservedSeconds *uint64 `json:"replacement_observed_seconds"`
+}
+
 type Report struct {
 	Version             int       `json:"version"`
 	At                  time.Time `json:"at"`
+	MEPool              *MEPool   `json:"me_pool,omitempty"`
 	Connections         *Window   `json:"connections"`
 	Routes              []Route   `json:"routes"`
 	Resources           Resources `json:"resources"`

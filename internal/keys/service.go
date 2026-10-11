@@ -475,7 +475,7 @@ func (s *Service) NodeLinks(ctx context.Context, keyID uuid.UUID) ([]NodeLinks, 
 	for _, b := range bindings {
 		out = append(out, LinksFor(LinkTarget{
 			NodeID: b.NodeID, NodeName: b.NodeName, Hostname: b.Hostname, Engine: b.Engine,
-			TLSDomain: b.TlsDomain, TLSDomains: b.TlsDomains, ClassicPort: int(b.ClassicPort),
+			TLSDomain: b.TlsDomain, TLSDomains: b.TlsDomains, ClassicPort: int(b.ClassicPort), WebBasePath: b.TelemtWebAppliedBasePath,
 		}, secret))
 	}
 	return out, nil
@@ -490,13 +490,14 @@ type LinkTarget struct {
 	TLSDomain   string
 	TLSDomains  []string
 	ClassicPort int
+	WebBasePath string
 }
 
 // LinksFor builds every link a secret gets on one server: WEB first, then Fake-TLS per domain.
 func LinksFor(b LinkTarget, secret string) NodeLinks {
 	item := NodeLinks{
 		NodeID: b.NodeID, NodeName: b.NodeName, Hostname: b.Hostname, Engine: string(b.Engine),
-		Links: []KindLink{{Kind: LinkWeb, TMe: qrlink.TMe(b.Hostname, secret), Tg: qrlink.Tg(b.Hostname, secret)}},
+		Links: []KindLink{{Kind: LinkWeb, TMe: qrlink.TMe(b.Hostname, secret, b.WebBasePath), Tg: qrlink.Tg(b.Hostname, secret, b.WebBasePath)}},
 	}
 	if b.Engine == db.NodeEngineTelemt && b.TLSDomain != "" {
 		domains := []string{b.TLSDomain}

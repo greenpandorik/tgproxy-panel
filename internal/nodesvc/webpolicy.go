@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/store/db"
+	"tgwebproxy/internal/telemt"
 )
 
 // WebPolicyOf returns the WEB policy a node should be running: the panel default with
@@ -25,6 +27,18 @@ func WebPolicyOf(raw []byte) domain.WebPolicy {
 func WebPolicyOverrides(p domain.WebPolicy) ([]byte, error) {
 	d := domain.DefaultWebPolicy()
 	out := map[string]any{}
+	if p.CarrierMethod != nil {
+		out["carrier_method"] = *p.CarrierMethod
+	}
+	if p.Conveyor != nil {
+		out["conveyor"] = *p.Conveyor
+	}
+	if p.BasePath != nil {
+		out["base_path"] = *p.BasePath
+	}
+	if p.DecoyResolve != nil {
+		out["decoy_resolve"] = *p.DecoyResolve
+	}
 	if p.Preset != d.Preset {
 		out["preset"] = p.Preset
 	}
@@ -89,4 +103,8 @@ func sameInts(a, b []int) bool {
 		}
 	}
 	return true
+}
+
+func WebAdvancedSupported(n db.Node) bool {
+	return n.Engine == db.NodeEngineTelemt && telemt.VersionAtLeast(n.TelemtVersion, [3]int{3, 5, 14}) && telemt.VersionAtLeast(n.AgentVersion, [3]int{2, 17, 0})
 }

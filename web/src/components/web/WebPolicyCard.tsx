@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { useWebPolicy, webPolicyKey } from './webPolicy';
+import { WebAdvancedOptions } from './WebAdvancedOptions';
 
 import type { CapabilityState } from './capability';
 import type { PolicyResponse, WebPolicy } from './webPolicy';
@@ -54,6 +55,10 @@ function PolicyForm({ nodeId, data, capability }: { nodeId: string; data: Policy
       return;
     }
     const next = structuredClone(data.default);
+    next.carrier_method = policy.carrier_method;
+    next.conveyor = policy.conveyor;
+    next.base_path = policy.base_path;
+    next.decoy_resolve = policy.decoy_resolve;
     next.preset = preset;
     if (preset === 'compatibility') {
       next.carriers = ['https-lanes', 'websocket', 'websocket-lanes'];
@@ -89,6 +94,16 @@ function PolicyForm({ nodeId, data, capability }: { nodeId: string; data: Policy
       }}
     >
       <p className="max-w-[72ch] text-label text-mute">{t('web.policy_hint')}</p>
+      {data.applied_base_path !== undefined && (
+        <p className="text-label text-mute">
+          {t('web.applied_base_path', { path: data.applied_base_path ? `/${data.applied_base_path}/` : '/' })}
+        </p>
+      )}
+      {policy.base_path != null && policy.base_path !== data.applied_base_path && (
+        <p role="status" className="max-w-[72ch] text-label text-warn">
+          {t('web.path_cutover_hint')}
+        </p>
+      )}
       {!enabled && (
         <p role="status" className="flex max-w-[72ch] items-start gap-2 text-label text-warn">
           <span className="mt-1.5 size-[7px] shrink-0 rounded-pill bg-warn" aria-hidden="true" />
@@ -117,6 +132,11 @@ function PolicyForm({ nodeId, data, capability }: { nodeId: string; data: Policy
         </p>
         <AdvancedSettings label={t('web.policy_advanced')}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <WebAdvancedOptions
+              policy={policy}
+              supported={data.advanced_supported === true}
+              change={(patch) => setPolicy({ ...policy, preset: 'custom', ...patch })}
+            />
             <section className="space-y-3 rounded-control border border-hairline bg-background p-3 sm:col-span-2 xl:col-span-3">
               <div>
                 <p className="text-label font-medium text-foreground">{t('web.overload_title')}</p>

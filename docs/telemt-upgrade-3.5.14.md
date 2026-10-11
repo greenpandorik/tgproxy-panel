@@ -47,6 +47,11 @@ installed: its best-effort empty-chain creation supports nodes still on 3.5.9 an
 rollback. Removing it is unnecessary for the pin upgrade. The drop-in does not
 append filtering rules or change listener configuration.
 
+The disposable node also runs a small HTTPS front with a fresh private test CA.
+That CA is trusted only inside the node container; production certificate checks
+are unchanged. The front preserves the WEB prefix and forwards to the private
+listener without logging capability URLs.
+
 The unprivileged Docker bench disables the listener SYN limiter and TLS fingerprint
 emulation because it has no netfilter capability and uses a synthetic domain. It
 does not exercise production systemd drop-ins or production firewall permissions.
@@ -68,7 +73,10 @@ The smoke exercises the real engine and real agent, including:
   quota period by one week, then no repeated reset on reapply;
 - agent reconnect after a panel restart, proven by a fresh heartbeat;
 - readiness and persisted user/quota state after a telemt process restart;
-- backup TLS-domain apply and restart-free key revocation.
+- backup TLS-domain apply and restart-free key revocation;
+- confirmed WEB prefix publication and explicit root/false resets;
+- startup resolution of a private hostname origin and its HTTPS decoy check;
+- authoritative ME snapshot availability (including an explicit unavailable pool).
 
 Each apply waits for a newly created job; a previous successful job cannot satisfy
 the check. The quota-period simulation changes only bench state and does not wait
@@ -105,3 +113,46 @@ engine update journal and backup for rollback. Existing maintenance and pause
 settings still apply.
 
 No production node was upgraded as part of this source change.
+
+## Panel 2.17: released WEB options and ME pool diagnostics
+
+Telemt 3.5.14 remains the pinned engine. Panel and agent 2.17 add support for
+features already released in 3.5.14; they do not apply settings from unreleased PRs.
+Update the agent before using the new WEB controls. Unknown or older engine/agent
+versions leave those controls unavailable while existing carrier settings remain usable.
+
+The node's WEB transport settings now expose:
+
+- `carrier_method`: `post` or `put`, selecting the bridge's HTTP carrier method;
+- `conveyor`: optional HTTP request sequencing, enabled or disabled explicitly;
+- `base_path`: a canonical path such as `relay/telegram`, without leading/trailing
+  slashes. An empty string explicitly selects the root. Omitted or null settings
+  leave the existing engine configuration unmanaged;
+- `decoy_resolve`: `never` for literal private/loopback origins, or `startup` to
+  resolve a hostname while Telemt prepares configuration. Every DNS answer must
+  remain private/loopback; Telemt captures the validated addresses before activation.
+  The agent does not independently resolve or directly probe hostname origins.
+
+Carrier presets preserve these independently selected options. Applies select the
+panel-managed hostname and preserve other vhosts. A new path is published in user
+links only after the agent has completed reload and confirmed the applied path;
+failed applies retain the previously published path. WEB links with a prefix use
+`server=HOST/PATH` and the path-aware upstream secret format. Empty-root links keep
+their existing format. Changing paths invalidates old WEB links: redistribute links,
+preserve the prefix in the HTTPS reverse proxy, and update external probe
+`web.base_path` to match. The applied path is shown separately from the desired one.
+
+The server overview reads `/v1/runtime/me-pool-state`, including generation,
+pending age, current-map writer deficit, missing DC groups, orphan warm writers and
+replacement backlogs. Missing endpoints on older engines, disabled sources, stale
+snapshots and missing counters are unavailable observations, rather than zero or
+proof of recovery. Routine pool transitions do not create incidents. A transition
+older than five minutes can report a current-map deficit or an obsolete map; a
+pending transition older than 25 minutes gets a timeout warning. Orphan/replacement
+backlogs require five minutes of continuous fresh observations.
+
+These findings enter the existing aggregated notification episode with its quiet
+period and recovery confirmation. They do not add individual Telegram messages or
+automatic engine restarts. See the released [ME pool API contract](https://github.com/telemt/telemt/blob/3.5.14/docs/Architecture/API/API.md),
+[WEB tuning reference](https://github.com/telemt/telemt/blob/3.5.14/docs/Advanced_settings/TUNING.ru.md)
+and [authenticated probe guide](authenticated-probes.md).

@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -13,19 +15,15 @@ import (
 
 // verifyDecoy checks both Telemt's private listener and the public TLS front, without
 // credentials. A successful control API check alone does not prove the website is served.
-func (h *Handler) verifyDecoy(ctx context.Context, index []byte) error {
+func (h *Handler) verifyDecoy(ctx context.Context, index []byte, managedHosts ...string) error {
 	cfg, _, err := h.tm.GetConfig(ctx)
 	if err != nil {
 		return err
 	}
-	hosts, err := telemtVhosts(cfg)
+	vhost, err := managedVhost(cfg, optionalHost(managedHosts))
 	if err != nil {
 		return err
 	}
-	if len(hosts) == 0 {
-		return fmt.Errorf("decoy has no configured virtual host")
-	}
-	vhost, _ := hosts[0].(map[string]any)
 	host, _ := vhost["host"].(string)
 	if host == "" {
 		return fmt.Errorf("decoy virtual host is missing")
@@ -97,19 +95,18 @@ func (h *Handler) probeHTTPWebsite(ctx context.Context, endpoint, host string) e
 	return nil
 }
 
-func (h *Handler) verifyUpstreamDecoy(ctx context.Context, origin string) error {
-	if err := h.probeHTTPWebsite(ctx, origin, ""); err != nil {
+func (h *Handler) verifyUpstreamDecoy(ctx context.Context, origin string, managedHosts ...string) error {
+	if err := h.probeLiteralHTTPOrigin(ctx, origin); err != nil {
 		return fmt.Errorf("origin check %s: %w", origin, err)
 	}
 	cfg, _, err := h.tm.GetConfig(ctx)
 	if err != nil {
 		return err
 	}
-	hosts, err := telemtVhosts(cfg)
-	if err != nil || len(hosts) == 0 {
-		return fmt.Errorf("decoy has no configured virtual host")
+	vhost, err := managedVhost(cfg, optionalHost(managedHosts))
+	if err != nil {
+		return err
 	}
-	vhost, _ := hosts[0].(map[string]any)
 	host, _ := vhost["host"].(string)
 	if host == "" {
 		return fmt.Errorf("decoy virtual host is missing")
@@ -148,4 +145,18 @@ func (h *Handler) verifyConfiguredDecoy(ctx context.Context) error {
 	default:
 		return fmt.Errorf("unsupported decoy mode %q", mode)
 	}
+}
+
+// Hostname decoys are resolved, validated and pinned by Telemt. A direct agent
+// probe would perform another DNS lookup and bypass that configuration snapshot.
+func httpOriginHostname(origin string) bool {
+	u, err := url.Parse(origin)
+	return err == nil && net.ParseIP(u.Hostname()) == nil
+}
+
+func (h *Handler) probeLiteralHTTPOrigin(ctx context.Context, origin string) error {
+	if httpOriginHostname(origin) {
+		return nil
+	}
+	return h.probeHTTPWebsite(ctx, origin, "")
 }

@@ -225,3 +225,15 @@ Successful responses can be JSON or another documented format, such as a PNG or 
 Each path below is relative to your panel origin and includes `/api/v1`. The catalog and [downloadable OpenAPI 3.0.3 specification](https://tgproxypanel.com/api/openapi.json) come from the backend’s explicit personal-token route policy. Unlisted routes are unavailable to personal tokens. Owner-only restrictions apply in addition to scopes.
 
 See the [generated endpoint catalog](https://tgproxypanel.com/en/api/#routes).
+
+## WEB policy and confirmed paths
+
+`GET /nodes/{id}/web-policy` includes `advanced_supported` and `applied_base_path`.
+Advanced options require Telemt 3.5.14 and agent 2.17.0 or newer. `PUT` accepts optional
+`carrier_method` (`post`/`put`), `conveyor` (boolean), `base_path` (canonical path or
+empty root) and `decoy_resolve` (`never`/`startup`). Omitted options preserve the current policy. Null leaves the corresponding
+engine setting unmanaged. Explicit `false` and `""` are meaningful values.
+Saving policy queues an apply; it does not immediately change issued links. Read
+`applied_base_path` and the new terminal apply job before redistributing links.
+A path change also requires reverse-proxy and authenticated-probe configuration to
+preserve the new prefix. See [engine integration notes](telemt-upgrade-3.5.14.md#panel-217-released-web-options-and-me-pool-diagnostics).

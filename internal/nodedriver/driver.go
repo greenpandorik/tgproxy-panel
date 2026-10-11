@@ -85,7 +85,8 @@ type ApplyRequest struct {
 	AdTag string
 	// WebPolicy is telemt's carrier policy; nil means the panel has no opinion and the
 	// node's WEB config is left alone.
-	WebPolicy *domain.WebPolicy
+	WebPolicy      *domain.WebPolicy
+	ManagedWebHost string
 }
 
 type ApplyResult struct {
@@ -93,8 +94,9 @@ type ApplyResult struct {
 	Log                                              string
 	// DeferredFields are config keys the node persisted without activating, and
 	// RestartRequired says it wants a process restart before they take effect.
-	DeferredFields  []string
-	RestartRequired bool
+	DeferredFields     []string
+	RestartRequired    bool
+	AppliedWebBasePath *string
 }
 
 type LogLine struct {

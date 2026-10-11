@@ -136,6 +136,10 @@ func (h *Handler) reliabilityHealth(ctx context.Context, rep *agentv1.HealthRepo
 		}
 	}
 	if h.tm != nil {
+		if pool, e := h.tm.MEPoolState(ctx); e == nil {
+			out.MEPool = pool
+		}
+		h.mePool.sample(out.MEPool, time.Now().UTC())
 		if d, e := h.tm.DCStats(ctx); e == nil && d.MiddleProxyEnabled {
 			out.DCs = d.DCs
 		}

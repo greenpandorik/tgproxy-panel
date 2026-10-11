@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/nodedriver"
 	"tgwebproxy/internal/sitekit"
 	"tgwebproxy/internal/telemt"
 	agentv1 "tgwebproxy/proto/agent/v1"
@@ -487,7 +488,11 @@ func (h *Handler) reconcileTelemtPublicAddr(ctx context.Context, lg *applyLog, r
 	if len(vhosts) == 0 {
 		return false, errors.New("telemt config has no web vhost")
 	}
-	vhost, _ := vhosts[0].(map[string]any)
+	idx, err := webVhostIndex(web, req.ManagedWebHost)
+	if err != nil {
+		return false, err
+	}
+	vhost, _ := vhosts[idx].(map[string]any)
 	cur, _ := vhost["public_addr"].(string)
 	if cur == want {
 		return false, nil
@@ -500,7 +505,7 @@ func (h *Handler) reconcileTelemtPublicAddr(ctx context.Context, lg *applyLog, r
 	if err != nil {
 		return false, err
 	}
-	target, _ := next[0].(map[string]any)
+	target, _ := next[idx].(map[string]any)
 	target["public_addr"] = want
 	if rb.prevVhosts == nil {
 		rb.prevVhosts = prev
@@ -562,7 +567,24 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	if h.tm == nil {
 		return fail(errors.New("telemt engine is not configured"))
 	}
+	if p := webPolicyFromProto(req.GetWebPolicy()); p != nil {
+		if err := p.Validate(); err != nil {
+			return fail(err)
+		}
+		if err := h.checkWebAdvanced(ctx, *p); err != nil {
+			return fail(err)
+		}
+	}
 
+	if req.ManagedWebHost != "" {
+		cfg, _, err := h.tm.GetConfig(ctx)
+		if err != nil {
+			return fail(err)
+		}
+		if _, err := managedVhost(cfg, req.ManagedWebHost); err != nil {
+			return fail(err)
+		}
+	}
 	var desired []telemtDesired
 	if req.ApplyProfiles {
 		var err error
@@ -574,15 +596,19 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		lg.f("note: telemt serves Fake-TLS from the same users; mtproxy secrets ignored")
 	}
 
-	sitePlan, err := h.telemtSitePlan(req)
+	sitePlan, err := h.telemtSitePlan(ctx, req)
 	if err != nil {
 		return fail(err)
 	}
 	if sitePlan.upstream != "" {
-		if err := h.probeHTTPWebsite(ctx, sitePlan.upstream, ""); err != nil {
+		if err := h.probeLiteralHTTPOrigin(ctx, sitePlan.upstream); err != nil {
 			return fail(fmt.Errorf("HTTP website origin %s is not ready: %w; nothing was changed", sitePlan.upstream, err))
 		}
-		lg.f("HTTP website origin reachable: %s", sitePlan.upstream)
+		if httpOriginHostname(sitePlan.upstream) {
+			lg.f("hostname origin will be resolved and validated by Telemt")
+		} else {
+			lg.f("HTTP website origin reachable: %s", sitePlan.upstream)
+		}
 	}
 
 	rb := &telemtRollback{}
@@ -664,7 +690,7 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	changed := false
 	reloadNeeded := false
 	if req.ApplyProfiles {
-		n, reload, err := h.reconcileTelemtUsers(ctx, lg, desired, rb)
+		n, reload, err := h.reconcileTelemtUsers(ctx, lg, desired, req.ManagedWebHost, rb)
 		if err != nil {
 			return rollback(err)
 		}
@@ -716,7 +742,18 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	restartNeeded := listenersChanged || addrChanged || mpRestart
 	changed = changed || restartNeeded || mpChanged || webChanged
 
+	runtimeRevision := ""
+	prefixAckRequired := req.ManagedWebHost != "" || (req.WebPolicy != nil && req.WebPolicy.BasePath != nil)
 	if !changed {
+		if prefixAckRequired {
+			runtimeRevision, err = h.telemtReload(ctx, lg)
+			if err != nil {
+				return rollback(err)
+			}
+			if err := h.waitTelemtReady(ctx); err != nil {
+				return rollback(err)
+			}
+		}
 		if sitePlan.supplied {
 			if err := h.verifyDesiredDecoy(ctx, sitePlan); err != nil {
 				return rollback(err)
@@ -724,6 +761,11 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 			lg.f("decoy verified through its origin and public HTTPS")
 		}
 		lg.f("nothing changed (no restart)")
+		path, err := h.verifiedWebBasePath(ctx, req, runtimeRevision)
+		if err != nil {
+			return rollback(err)
+		}
+		res.AppliedWebBasePath = path
 		res.Ok, res.Log = true, lg.b.String()
 		return res
 	}
@@ -735,9 +777,16 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		}
 		res.RestartedRelay = true
 		lg.f("telemt restarted and ready")
+		if prefixAckRequired {
+			runtimeRevision, err = h.telemtReload(ctx, lg)
+			if err != nil {
+				return rollback(err)
+			}
+		}
 	} else {
-		if reloadNeeded {
-			if err := h.telemtReload(ctx, lg); err != nil {
+		if reloadNeeded || prefixAckRequired {
+			runtimeRevision, err = h.telemtReload(ctx, lg)
+			if err != nil {
 				return rollback(err)
 			}
 		}
@@ -757,6 +806,11 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	} else if n > 0 {
 		lg.f("pruned %d old backup(s), keeping the newest %d", n, keptBackups)
 	}
+	path, err := h.verifiedWebBasePath(ctx, req, runtimeRevision)
+	if err != nil {
+		return rollback(err)
+	}
+	res.AppliedWebBasePath = path
 	res.Ok, res.Log = true, lg.b.String()
 	return res
 }
@@ -764,11 +818,13 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 type telemtDecoyPlan struct {
 	files    map[string][]byte
 	upstream string
+	resolve  *string
+	host     string
 	supplied bool
 }
 
 // telemtSitePlan validates the internal bundle used for either a static or HTTP-upstream decoy.
-func (h *Handler) telemtSitePlan(req *agentv1.ApplyRequest) (telemtDecoyPlan, error) {
+func (h *Handler) telemtSitePlan(ctx context.Context, req *agentv1.ApplyRequest) (telemtDecoyPlan, error) {
 	if req.Site == nil {
 		return telemtDecoyPlan{}, nil
 	}
@@ -785,13 +841,28 @@ func (h *Handler) telemtSitePlan(req *agentv1.ApplyRequest) (telemtDecoyPlan, er
 		site[p] = f.Content
 	}
 	bundle := sitekit.Bundle{Files: site}
-	if upstream, ok, err := sitekit.UpstreamFromBundle(bundle); ok {
-		return telemtDecoyPlan{upstream: upstream, supplied: true}, err
+	resolve := "never"
+	var setting *string
+	if p := req.GetWebPolicy(); p != nil && p.DecoyResolve != nil {
+		resolve = *p.DecoyResolve
+		setting = p.DecoyResolve
+	} else if cfg, _, e := h.tm.GetConfig(ctx); e == nil {
+		web, _ := cfg["web"].(map[string]any)
+		if i, e := webVhostIndex(web, req.ManagedWebHost); e == nil {
+			v := web["vhosts"].([]any)[i].(map[string]any)
+			d, _ := v["decoy"].(map[string]any)
+			if d["resolve"] == "startup" {
+				resolve = "startup"
+			}
+		}
+	}
+	if upstream, ok, err := sitekit.UpstreamFromBundle(bundle, resolve); ok {
+		return telemtDecoyPlan{upstream: upstream, resolve: setting, host: req.ManagedWebHost, supplied: true}, err
 	}
 	if _, ok := site["index.html"]; !ok {
 		return telemtDecoyPlan{}, errors.New("site bundle must contain index.html")
 	}
-	return telemtDecoyPlan{files: site, supplied: true}, nil
+	return telemtDecoyPlan{files: site, host: req.ManagedWebHost, supplied: true}, nil
 }
 
 func (h *Handler) reconcileTelemtDecoy(ctx context.Context, lg *applyLog, plan telemtDecoyPlan, rb *telemtRollback) (bool, error) {
@@ -807,11 +878,24 @@ func (h *Handler) reconcileTelemtDecoy(ctx context.Context, lg *applyLog, plan t
 	if len(vhosts) == 0 {
 		return false, errors.New("telemt config has no web vhost")
 	}
-	current, _ := vhosts[0].(map[string]any)
+	idx, err := webVhostIndex(web, plan.host)
+	if err != nil {
+		return false, err
+	}
+	current, _ := vhosts[idx].(map[string]any)
 	currentDecoy, _ := current["decoy"].(map[string]any)
 	desired := map[string]any{"mode": "static_directory", "directory": h.siteDir(), "index": "index.html"}
 	if plan.upstream != "" {
-		desired = map[string]any{"mode": "http_upstream", "upstream": plan.upstream}
+		desired = map[string]any{}
+		if currentDecoy["mode"] == "http_upstream" {
+			for k, v := range currentDecoy {
+				desired[k] = v
+			}
+		}
+		desired["mode"], desired["upstream"] = "http_upstream", plan.upstream
+		if plan.resolve != nil {
+			desired["resolve"] = *plan.resolve
+		}
 	}
 	if reflect.DeepEqual(currentDecoy, desired) {
 		return false, nil
@@ -824,7 +908,7 @@ func (h *Handler) reconcileTelemtDecoy(ctx context.Context, lg *applyLog, plan t
 	if err != nil {
 		return false, err
 	}
-	target, _ := next[0].(map[string]any)
+	target, _ := next[idx].(map[string]any)
 	target["decoy"] = desired
 	if rb.prevVhosts == nil {
 		rb.prevVhosts = prev
@@ -842,12 +926,12 @@ func (h *Handler) reconcileTelemtDecoy(ctx context.Context, lg *applyLog, plan t
 
 func (h *Handler) verifyDesiredDecoy(ctx context.Context, plan telemtDecoyPlan) error {
 	if plan.upstream != "" {
-		return h.verifyUpstreamDecoy(ctx, plan.upstream)
+		return h.verifyUpstreamDecoy(ctx, plan.upstream, plan.host)
 	}
-	return h.verifyDecoy(ctx, plan.files["index.html"])
+	return h.verifyDecoy(ctx, plan.files["index.html"], plan.host)
 }
 
-func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desired []telemtDesired, rb *telemtRollback) (changed, reload bool, err error) {
+func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desired []telemtDesired, managedHost string, rb *telemtRollback) (changed, reload bool, err error) {
 	users, err := h.tm.ListUsers(ctx)
 	if err != nil {
 		return false, false, err
@@ -857,6 +941,11 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 		return false, false, err
 	}
 	vhosts, err := telemtVhosts(cfg)
+	if err != nil {
+		return false, false, err
+	}
+	web, _ := cfg["web"].(map[string]any)
+	idx, err := webVhostIndex(web, managedHost)
 	if err != nil {
 		return false, false, err
 	}
@@ -967,7 +1056,7 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 	if err != nil {
 		return changed, reload, err
 	}
-	vhost, _ := vhosts[0].(map[string]any)
+	vhost, _ := vhosts[idx].(map[string]any)
 	currentProfiles, _ := vhost["profiles"].([]any)
 	if !reflect.DeepEqual(currentProfiles, normalizedProfiles) {
 		prev, err := copyVhosts(vhosts)
@@ -978,7 +1067,7 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 		if err != nil {
 			return changed, reload, err
 		}
-		target, _ := list[0].(map[string]any)
+		target, _ := list[idx].(map[string]any)
 		target["profiles"] = normalizedProfiles
 		out, err := h.tm.PatchConfig(ctx, map[string]any{"web": map[string]any{"vhosts": list}}, false)
 		if err != nil {
@@ -993,6 +1082,20 @@ func (h *Handler) reconcileTelemtUsers(ctx context.Context, lg *applyLog, desire
 		}
 	}
 
+	if managedHost != "" {
+		for i, raw := range vhosts {
+			if i == idx {
+				continue
+			}
+			v, _ := raw.(map[string]any)
+			profiles, _ := v["profiles"].([]any)
+			for _, profile := range profiles {
+				p, _ := profile.(map[string]any)
+				name, _ := p["user"].(string)
+				wanted[name] = true
+			}
+		}
+	}
 	for _, u := range users {
 		if wanted[u.Username] {
 			continue
@@ -1060,38 +1163,38 @@ func (h *Handler) reloadWait() time.Duration {
 	return DefaultReloadWait
 }
 
-func (h *Handler) telemtReload(ctx context.Context, lg *applyLog) error {
+func (h *Handler) telemtReload(ctx context.Context, lg *applyLog) (string, error) {
 	acc, err := h.tm.Reload(ctx, telemt.ReloadRequest{})
 	if err != nil {
-		return fmt.Errorf("reload: %w", err)
+		return "", fmt.Errorf("reload: %w", err)
 	}
 	budget := h.reloadWait()
 	deadline := time.Now().Add(budget)
 	for {
 		st, err := h.tm.ReloadStatus(ctx, acc.ReloadID)
 		if err != nil {
-			return fmt.Errorf("reload status: %w", err)
+			return "", fmt.Errorf("reload status: %w", err)
 		}
 		if st.Terminal() {
 			if st.State != "succeeded" {
-				return fmt.Errorf("reload %d %s: %s", acc.ReloadID, st.State, st.Error)
+				return "", fmt.Errorf("reload %d %s: %s", acc.ReloadID, st.State, st.Error)
 			}
 			lg.f("runtime reload %d succeeded (drain, no restart)", acc.ReloadID)
 			if len(st.DeferredProcessFields) > 0 {
 				lg.f("warning: telemt deferred %s until a process restart", strings.Join(st.DeferredProcessFields, ", "))
 			}
-			return nil
+			return acc.ConfigRevision, nil
 		}
 		if time.Now().After(deadline) {
 			if st.State == "draining" {
 				lg.f("reload %d still draining after %s, new generation active", acc.ReloadID, budget)
-				return nil
+				return acc.ConfigRevision, nil
 			}
-			return fmt.Errorf("reload %d did not finish in time (state %s)", acc.ReloadID, st.State)
+			return "", fmt.Errorf("reload %d did not finish in time (state %s)", acc.ReloadID, st.State)
 		}
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return "", ctx.Err()
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -1271,34 +1374,7 @@ func webPolicyFromProto(p *agentv1.WebPolicy) *domain.WebPolicy {
 	if p == nil {
 		return nil
 	}
-	t := p.GetTimeouts()
-	capacityAction := domain.WebCapacityAction(p.GetConnectionCapacityAction())
-	if capacityAction == "" {
-		capacityAction = domain.DefaultWebPolicy().Overload.ConnectionCapacityAction
-	}
-	out := &domain.WebPolicy{
-		Carrier:         domain.Carrier(p.GetCarrier()),
-		CarrierLearning: p.GetCarrierLearning(),
-		Aggressiveness:  domain.Aggressiveness(p.GetAggressiveness()),
-		Overload: domain.WebOverloadPolicy{
-			Preset:                   domain.OverloadCustom,
-			ConnectionCapacityAction: capacityAction,
-		},
-		Timeouts: domain.WebTimeouts{
-			CarrierHealthSecs:   int(t.GetCarrierHealthSecs()),
-			CarrierLearningSecs: int(t.GetCarrierLearningSecs()),
-			BridgeRequestSecs:   int(t.GetBridgeRequestSecs()),
-			BridgeRetrySecs:     int(t.GetBridgeRetrySecs()),
-			ProbeCoalesceMs:     int(t.GetProbeCoalesceMs()),
-		},
-	}
-	for _, c := range p.GetCarriers() {
-		out.Carriers = append(out.Carriers, domain.Carrier(c))
-	}
-	for _, d := range t.GetNegotiationDeadlinesSecs() {
-		out.Timeouts.NegotiationDeadlinesSecs = append(out.Timeouts.NegotiationDeadlinesSecs, int(d))
-	}
-	return out
+	return nodedriver.WebPolicyFromProto(p)
 }
 
 func carrierStrings(cs []domain.Carrier) []string {
@@ -1395,6 +1471,14 @@ func carriersSatisfied(cur, want []string, fallback string) bool {
 func telemtWebPolicyPatch(web map[string]any, p domain.WebPolicy) (map[string]any, []string) {
 	patch := map[string]any{}
 	var changes []string
+	if p.CarrierMethod != nil && web["carrier_method"] != string(*p.CarrierMethod) {
+		patch["carrier_method"] = string(*p.CarrierMethod)
+		changes = append(changes, "web.carrier_method updated")
+	}
+	if p.Conveyor != nil && web["conveyor"] != *p.Conveyor {
+		patch["conveyor"] = *p.Conveyor
+		changes = append(changes, "web.conveyor updated")
+	}
 	if cur, _ := web["carrier"].(string); cur != string(p.Carrier) {
 		patch["carrier"] = string(p.Carrier)
 		changes = append(changes, fmt.Sprintf("web.carrier %q -> %q", cur, p.Carrier))
@@ -1467,6 +1551,9 @@ func (h *Handler) reconcileTelemtWebPolicy(ctx context.Context, lg *applyLog, re
 	if err := policy.Validate(); err != nil {
 		return false, false, nil, fmt.Errorf("web policy: %w", err)
 	}
+	if err := h.checkWebAdvanced(ctx, *policy); err != nil {
+		return false, false, nil, err
+	}
 	cfg, _, err := h.tm.GetConfig(ctx)
 	if err != nil {
 		return false, false, nil, err
@@ -1476,11 +1563,32 @@ func (h *Handler) reconcileTelemtWebPolicy(ctx context.Context, lg *applyLog, re
 		return false, false, nil, errors.New("telemt config has no [web] section; run init-node --engine telemt")
 	}
 	patch, changes := telemtWebPolicyPatch(web, *policy)
+	vhosts, err := webVhostPolicyPatch(web, req.ManagedWebHost, *policy)
+	if err != nil {
+		return false, false, nil, err
+	}
+	if vhosts != nil {
+		if patch == nil {
+			patch = map[string]any{}
+		}
+		patch["vhosts"] = vhosts
+		changes = append(changes, "managed WEB vhost options updated")
+	}
 	if patch == nil {
 		return false, false, nil, nil
 	}
 	undo := map[string]any{}
 	for key := range patch {
+		if key == "vhosts" {
+			if rb.prevVhosts == nil {
+				previous, e := copyVhosts(web["vhosts"].([]any))
+				if e != nil {
+					return false, false, nil, e
+				}
+				rb.prevVhosts = previous
+			}
+			continue
+		}
 		if key == "timeouts" {
 			prev, _ := web["timeouts"].(map[string]any)
 			sub := map[string]any{}
@@ -1504,6 +1612,9 @@ func (h *Handler) reconcileTelemtWebPolicy(ctx context.Context, lg *applyLog, re
 	for _, c := range changes {
 		lg.f("%s", c)
 	}
+	if (policy.BasePath != nil || policy.DecoyResolve != nil) && (len(out.DeferredProcessFields) > 0 || out.ProcessRestartRequired) {
+		return true, false, nil, errors.New("WEB vhost changes were not activated")
+	}
 	if len(out.DeferredProcessFields) > 0 || out.ProcessRestartRequired {
 		deferred = out.DeferredProcessFields
 		if len(deferred) == 0 {
@@ -1511,5 +1622,5 @@ func (h *Handler) reconcileTelemtWebPolicy(ctx context.Context, lg *applyLog, re
 		}
 		lg.f("warning: telemt persisted but did not activate %s; a process restart is required", strings.Join(deferred, ", "))
 	}
-	return true, out.RuntimeReloadRequired, deferred, nil
+	return true, out.RuntimeReloadRequired || policy.BasePath != nil || policy.DecoyResolve != nil, deferred, nil
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -11,9 +12,12 @@ import (
 // written into the public website directory.
 const UpstreamMarkerPath = ".tgproxy-http-upstream"
 
+var httpOriginHostPattern = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$`)
+
 // ValidateHTTPUpstream keeps Telemt's decoy proxy away from the public network.
-// Telemt 3.5.7 accepts an IP literal in a loopback/private range for this mode.
-func ValidateHTTPUpstream(raw string) (string, error) {
+// The legacy default requires a private IP literal. Startup resolution allows
+// hostnames; Telemt validates every DNS answer and pins them in its prepared config.
+func ValidateHTTPUpstream(raw string, resolve ...string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "http" || u.User != nil || u.Host == "" {
@@ -23,7 +27,13 @@ func ValidateHTTPUpstream(raw string) (string, error) {
 		return "", errors.New("origin must not contain a path, query, credentials, or fragment")
 	}
 	ip := net.ParseIP(u.Hostname())
-	if ip == nil || ip.IsUnspecified() || (!ip.IsLoopback() && !ip.IsPrivate()) {
+	allowDNS := len(resolve) > 0 && resolve[0] == "startup"
+	if ip == nil && allowDNS {
+		if !httpOriginHostPattern.MatchString(u.Hostname()) || len(u.Hostname()) > 253 {
+			return "", errors.New("origin hostname must be a valid ASCII hostname")
+		}
+	}
+	if (ip == nil && !allowDNS) || (ip != nil && (ip.IsUnspecified() || (!ip.IsLoopback() && !ip.IsPrivate()))) {
 		return "", errors.New("origin host must be a loopback or private IP literal")
 	}
 	if port := u.Port(); port != "" {
@@ -36,15 +46,15 @@ func ValidateHTTPUpstream(raw string) (string, error) {
 	return strings.TrimSuffix(u.String(), "/"), nil
 }
 
-func UpstreamBundle(origin string) (Bundle, error) {
-	origin, err := ValidateHTTPUpstream(origin)
+func UpstreamBundle(origin string, resolve ...string) (Bundle, error) {
+	origin, err := ValidateHTTPUpstream(origin, resolve...)
 	if err != nil {
 		return Bundle{}, err
 	}
 	return Bundle{Files: map[string][]byte{UpstreamMarkerPath: []byte(origin)}}, nil
 }
 
-func UpstreamFromBundle(bundle Bundle) (string, bool, error) {
+func UpstreamFromBundle(bundle Bundle, resolve ...string) (string, bool, error) {
 	raw, ok := bundle.Files[UpstreamMarkerPath]
 	if !ok {
 		return "", false, nil
@@ -52,6 +62,6 @@ func UpstreamFromBundle(bundle Bundle) (string, bool, error) {
 	if len(bundle.Files) != 1 {
 		return "", true, errors.New("an HTTP upstream bundle cannot contain public files")
 	}
-	origin, err := ValidateHTTPUpstream(string(raw))
+	origin, err := ValidateHTTPUpstream(string(raw), resolve...)
 	return origin, true, err
 }

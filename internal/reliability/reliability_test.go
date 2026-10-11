@@ -9,8 +9,13 @@ func TestFindingsUnknownCannotResolve(t *testing.T) {
 	now := time.Now()
 	r := Report{Version: 1, At: now, Routes: []Route{{Healthy: true, Age: 121}}, Connections: &Window{At: now, Success: 0, Failed: 0}, DCs: []DC{{ID: -2, Required: 5, Alive: 0}}}
 	f := Findings(r, now)
-	if len(f) != 2 || f[0].Known || f[1].Kind != "dc_-2" || !f[1].Failed {
+	if len(f) != 7 || f[0].Known || f[1].Kind != "dc_-2" || !f[1].Failed {
 		t.Fatalf("findings: %+v", f)
+	}
+	for _, unknown := range f[2:] {
+		if unknown.Known || unknown.Failed {
+			t.Fatalf("absent ME measurement became known: %+v", unknown)
+		}
 	}
 	r.At = now.Add(-3 * time.Minute)
 	if len(Findings(r, now)) != 0 {

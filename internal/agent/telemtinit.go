@@ -9,12 +9,14 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/telemt"
 )
 
 // Fixed loopback endpoints of a telemt node (spec §5).
@@ -92,7 +94,7 @@ func (p *TelemtInitParams) withDefaults() {
 	if p.TLSDomain == "" {
 		p.TLSDomain = p.Hostname
 	}
-	if len(p.WebPolicy.Carriers) == 0 {
+	if reflect.DeepEqual(p.WebPolicy, domain.WebPolicy{}) {
 		p.WebPolicy = domain.DefaultWebPolicy()
 	}
 }
@@ -182,8 +184,10 @@ unknown_sni_action = "mask"
 {{q .WebUser}} = {{q .WebSecret}}
 [web]
 enabled = true
-carrier = {{q .Carrier}}
-carriers = [{{range $i, $c := .Carriers}}{{if $i}}, {{end}}{{q $c}}{{end}}]
+{{if .CarrierMethod}}carrier_method = {{q .CarrierMethod}}
+{{end}}{{if .ConveyorSet}}conveyor = {{.Conveyor}}
+{{end}}carrier = {{q .Carrier}}
+carriers = {{if .CarriersDisabled}}false{{else}}[{{range $i, $c := .Carriers}}{{if $i}}, {{end}}{{q $c}}{{end}}]{{end}}
 carrier_learning = {{.CarrierLearning}}
 carrier_negotiation_aggressiveness = {{q .Aggressiveness}}
 [web.timeouts]
@@ -195,7 +199,8 @@ bridge_retry_secs = {{.BridgeRetrySecs}}
 carrier_probe_coalesce_ms = {{.ProbeCoalesceMs}}
 [[web.vhosts]]
 host = {{q .Hostname}}
-public_addr = {{q .PublicAddr}}
+{{if .BasePathSet}}base_path = {{q .BasePath}}
+{{end}}public_addr = {{q .PublicAddr}}
 [web.vhosts.decoy]
 mode = "static_directory"
 directory = {{q .SiteDir}}
@@ -272,6 +277,15 @@ func InitTelemtNode(ctx context.Context, ex Exec, p TelemtInitParams) (string, e
 	p.withDefaults()
 	if err := p.validate(); err != nil {
 		return "", err
+	}
+	if p.WebPolicy.HasAdvancedOptions() {
+		raw, err := ex.Run(ctx, p.Binary, "--version")
+		if err != nil {
+			return "", fmt.Errorf("verify advanced WEB support: %w", err)
+		}
+		if !telemt.VersionAtLeast(string(raw), [3]int{3, 5, 14}) {
+			return "", errors.New("advanced WEB options require Telemt 3.5.14 or newer")
+		}
 	}
 	token, err := ensureAPIToken(p.TokenPath)
 	if err != nil {
@@ -385,7 +399,9 @@ func telemtWebPolicyTemplateData(p domain.WebPolicy) map[string]any {
 		carriers = append(carriers, string(c))
 	}
 	return map[string]any{
-		"Carrier": string(p.Carrier), "Carriers": carriers,
+		"Carrier": string(p.Carrier), "Carriers": carriers, "CarriersDisabled": p.Carriers == nil,
+		"CarrierMethod": optionalString(p.CarrierMethod), "ConveyorSet": p.Conveyor != nil, "Conveyor": optionalBool(p.Conveyor),
+		"BasePathSet": p.BasePath != nil, "BasePath": optionalString(p.BasePath),
 		"CarrierLearning": p.CarrierLearning, "Aggressiveness": string(p.Aggressiveness),
 		"NegotiationDeadlines": p.Timeouts.NegotiationDeadlinesSecs,
 		"CarrierHealthSecs":    p.Timeouts.CarrierHealthSecs,
@@ -395,3 +411,11 @@ func telemtWebPolicyTemplateData(p domain.WebPolicy) map[string]any {
 		"ProbeCoalesceMs":      p.Timeouts.ProbeCoalesceMs,
 	}
 }
+
+func optionalString[T ~string](v *T) string {
+	if v == nil {
+		return ""
+	}
+	return string(*v)
+}
+func optionalBool(v *bool) bool { return v != nil && *v }
