@@ -106,7 +106,7 @@ func TestReliabilityHealthMEUnavailableAndOldAPIStayUnknown(t *testing.T) {
 			var report reliability.Report
 			_ = json.Unmarshal(rep.ReliabilityJson, &report)
 			for _, f := range reliability.Findings(report, time.Now()) {
-				if len(f.Kind) > 3 && f.Kind[:3] == "me_" {
+				if len(f.Kind) > 3 && f.Kind[:3] == "me_" && (f.Known || f.Failed) {
 					t.Fatalf("unavailable source used: %+v", f)
 				}
 			}

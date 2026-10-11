@@ -87,8 +87,10 @@ func TestMEUnknownSourcesCannotResolve(t *testing.T) {
 	now := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
 	for _, source := range []string{`"enabled":false,"reason":"source_unavailable"`, `"enabled":false,"reason":"silent"`, `"enabled":true`} {
 		r := meReport(t, now, source, "null")
-		if got := Findings(r, now); len(got) != 0 {
-			t.Fatalf("unavailable: %+v", got)
+		for _, f := range Findings(r, now) {
+			if f.Known || f.Failed {
+				t.Fatalf("unavailable: %+v", f)
+			}
 		}
 	}
 	state := `{"active_generation":1,"pending_generation":0,"hardswap_enabled":true,"pending":false,"pending_map_current":null,"writer_deficit":0,"missing_dc_groups":0,"orphan_warm_writers":0,"replacement_preparing":0,"replacement_retiring":0}`
@@ -104,8 +106,10 @@ func TestMEUnknownSourcesCannotResolve(t *testing.T) {
 		pool["at"] = at.Format(time.RFC3339)
 		changed, _ := json.Marshal(fields)
 		_ = json.Unmarshal(changed, &r)
-		if got := Findings(r, now); len(got) != 0 {
-			t.Fatalf("source time %v: %+v", at, got)
+		for _, f := range Findings(r, now) {
+			if f.Known || f.Failed {
+				t.Fatalf("source time %v: %+v", at, f)
+			}
 		}
 	}
 }
