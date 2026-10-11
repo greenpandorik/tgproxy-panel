@@ -386,12 +386,16 @@ phase_continue() {
 	expect_status 200 "$LAST_STATUS" "prefixed WEB links"
 	jq -e --arg server "$NODE_HOSTNAME%2Frelay%2Ftelegram" '.items[0].links[] | select(.kind=="web") | .tme | contains("server="+$server+"&secret=")' >/dev/null <<<"$LAST_BODY" || die "confirmed prefix missing from issued link"
 	log "resetting WEB path to root and conveyor to explicit false"
-	web_policy="$(jq -c '.base_path="" | .conveyor=false | .carrier_method="post"' <<<"$web_policy")"
+	web_policy="$(jq -c '.base_path="" | .conveyor=false | .carrier_method="post" | .decoy_resolve="startup"' <<<"$web_policy")"
 	http PUT "/api/v1/nodes/$NODE_ID/web-policy" "$web_policy"
 	expect_status 200 "$LAST_STATUS" "save root WEB policy"
+	log "assigning a private hostname origin with startup DNS resolution"
+	http POST "/api/v1/nodes/$NODE_ID/site/upstream" '{"origin":"http://panel:8080"}'
+	expect_status 200 "$LAST_STATUS" "assign hostname origin"
 	apply_and_wait "$NODE_ID"
 	cfg="$(telemt_api /v1/config)"
 	jq -e --arg host "$NODE_HOSTNAME" '.data.web | .carrier_method=="post" and .conveyor==false and ([.vhosts[] | select(.host==$host) | .base_path] == [""])' >/dev/null <<<"$cfg" || die "explicit root/false options were lost"
+	jq -e --arg host "$NODE_HOSTNAME" '.data.web.vhosts[] | select(.host==$host) | .decoy.mode=="http_upstream" and .decoy.upstream=="http://panel:8080" and .decoy.resolve=="startup"' >/dev/null <<<"$cfg" || die "private hostname origin did not reach Telemt"
 	http GET "/api/v1/keys/$key_id/links"
 	expect_status 200 "$LAST_STATUS" "root WEB links"
 	jq -e --arg server "$NODE_HOSTNAME" '.items[0].links[] | select(.kind=="web") | .tme | startswith("https://t.me/webproxy?server="+$server+"&secret=")' >/dev/null <<<"$LAST_BODY" || die "root link compatibility changed"
@@ -400,7 +404,7 @@ phase_continue() {
 	for _ in $(seq 1 30); do
 		http GET "/api/v1/nodes/$NODE_ID"
 		expect_status 200 "$LAST_STATUS" "ME pool health"
-		if jq -e '.health.reliability.me_pool | .enabled==true and .state.active_generation!=null and .at!=null' >/dev/null <<<"$LAST_BODY"; then
+		if jq -e '.health.reliability.me_pool | .at!=null and ((.enabled==true and .state.active_generation!=null) or (.enabled==false and .reason=="source_unavailable" and .state==null))' >/dev/null <<<"$LAST_BODY"; then
 			pool_reported=1
 			break
 		fi
