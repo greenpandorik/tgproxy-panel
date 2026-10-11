@@ -368,6 +368,46 @@ phase_continue() {
 	jq -e 'has("nodes")' >/dev/null <<<"$LAST_BODY" || die "key stats has no nodes field: $LAST_BODY"
 	log "key stats ok"
 
+	log "checking released WEB options and confirmed path publication"
+	http GET "/api/v1/nodes/$NODE_ID/web-policy"
+	expect_status 200 "$LAST_STATUS" "get WEB policy"
+	jq -e '.advanced_supported==true and .applied_base_path==""' >/dev/null <<<"$LAST_BODY" || die "advanced WEB options unavailable or initial path is not root"
+	local web_policy
+	web_policy="$(jq -c '.policy + {carrier_method:"put",conveyor:true,base_path:"relay/telegram",decoy_resolve:"never"}' <<<"$LAST_BODY")"
+	http PUT "/api/v1/nodes/$NODE_ID/web-policy" "$web_policy"
+	expect_status 200 "$LAST_STATUS" "save advanced WEB policy"
+	apply_and_wait "$NODE_ID"
+	cfg="$(telemt_api /v1/config)"
+	jq -e --arg host "$NODE_HOSTNAME" '.data.web | .carrier_method=="put" and .conveyor==true and ([.vhosts[] | select(.host==$host) | .base_path] == ["relay/telegram"])' >/dev/null <<<"$cfg" || die "released WEB options did not reach Telemt"
+	http GET "/api/v1/nodes/$NODE_ID/web-policy"
+	expect_status 200 "$LAST_STATUS" "confirmed WEB policy"
+	jq -e '.applied_base_path=="relay/telegram"' >/dev/null <<<"$LAST_BODY" || die "agent did not confirm the applied prefix"
+	http GET "/api/v1/keys/$key_id/links"
+	expect_status 200 "$LAST_STATUS" "prefixed WEB links"
+	jq -e --arg server "$NODE_HOSTNAME%2Frelay%2Ftelegram" '.items[0].links[] | select(.kind=="web") | .tme | contains("server="+$server+"&secret=")' >/dev/null <<<"$LAST_BODY" || die "confirmed prefix missing from issued link"
+	log "resetting WEB path to root and conveyor to explicit false"
+	web_policy="$(jq -c '.base_path="" | .conveyor=false | .carrier_method="post"' <<<"$web_policy")"
+	http PUT "/api/v1/nodes/$NODE_ID/web-policy" "$web_policy"
+	expect_status 200 "$LAST_STATUS" "save root WEB policy"
+	apply_and_wait "$NODE_ID"
+	cfg="$(telemt_api /v1/config)"
+	jq -e --arg host "$NODE_HOSTNAME" '.data.web | .carrier_method=="post" and .conveyor==false and ([.vhosts[] | select(.host==$host) | .base_path] == [""])' >/dev/null <<<"$cfg" || die "explicit root/false options were lost"
+	http GET "/api/v1/keys/$key_id/links"
+	expect_status 200 "$LAST_STATUS" "root WEB links"
+	jq -e --arg server "$NODE_HOSTNAME" '.items[0].links[] | select(.kind=="web") | .tme | startswith("https://t.me/webproxy?server="+$server+"&secret=")' >/dev/null <<<"$LAST_BODY" || die "root link compatibility changed"
+	log "checking authoritative ME pool telemetry in a fresh heartbeat"
+	local pool_reported=0
+	for _ in $(seq 1 30); do
+		http GET "/api/v1/nodes/$NODE_ID"
+		expect_status 200 "$LAST_STATUS" "ME pool health"
+		if jq -e '.health.reliability.me_pool | .enabled==true and .state.active_generation!=null and .at!=null' >/dev/null <<<"$LAST_BODY"; then
+			pool_reported=1
+			break
+		fi
+		sleep 2
+	done
+	[[ "$pool_reported" == "1" ]] || die "real engine ME pool snapshot absent from agent health"
+
 	log "adding a backup Fake-TLS domain to the node"
 	http PATCH "/api/v1/nodes/$NODE_ID" '{"tls_domains":["backup.example.org"]}'
 	expect_status 200 "$LAST_STATUS" "set backup domain"

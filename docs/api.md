@@ -231,8 +231,8 @@ See the [generated endpoint catalog](https://tgproxypanel.com/en/api/#routes).
 `GET /nodes/{id}/web-policy` includes `advanced_supported` and `applied_base_path`.
 Advanced options require Telemt 3.5.14 and agent 2.17.0 or newer. `PUT` accepts optional
 `carrier_method` (`post`/`put`), `conveyor` (boolean), `base_path` (canonical path or
-empty root) and `decoy_resolve` (`never`/`startup`). Omitted or null options preserve
-unmanaged engine settings. Explicit `false` and `""` are meaningful values.
+empty root) and `decoy_resolve` (`never`/`startup`). Omitted options preserve the current policy. Null leaves the corresponding
+engine setting unmanaged. Explicit `false` and `""` are meaningful values.
 Saving policy queues an apply; it does not immediately change issued links. Read
 `applied_base_path` and the new terminal apply job before redistributing links.
 A path change also requires reverse-proxy and authenticated-probe configuration to

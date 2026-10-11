@@ -140,7 +140,12 @@ func openAPIRequest(route APIRoute) map[string]any {
 		schema = apiObject(map[string]any{"hostname": apiString(), "public_ip": apiString()}, "hostname")
 	case "PUT /nodes/{id}/web-policy":
 		schema = openAPISchema(reflect.TypeOf(domain.WebPolicy{}))
-		schema["description"] = "Partial update: omitted fields preserve the current policy; validation uses the merged policy."
+		schema["description"] = "Partial update: omitted fields preserve the current policy; validation uses the merged policy. Advanced fields require Telemt >=3.5.14 and agent >=2.17.0. Null leaves the corresponding engine setting unmanaged. Links use only the agent-confirmed applied path after successful reload."
+		props := schema["properties"].(map[string]any)
+		props["carrier_method"] = apiSchema{"type": "string", "nullable": true, "enum": []string{"post", "put"}, "description": "HTTP bridge carrier method; null leaves the engine setting unmanaged."}
+		props["conveyor"] = apiSchema{"type": "boolean", "nullable": true, "description": "HTTP request sequencing; explicit false disables it, null leaves it unmanaged."}
+		props["base_path"] = apiSchema{"type": "string", "nullable": true, "maxLength": 128, "pattern": "^([A-Za-z0-9][A-Za-z0-9_-]*(/[A-Za-z0-9][A-Za-z0-9_-]*)*)?$", "description": "Canonical path without edge slashes; empty string explicitly selects root, null leaves it unmanaged. Update HTTPS routing and external probe base_path when changing it."}
+		props["decoy_resolve"] = apiSchema{"type": "string", "nullable": true, "enum": []string{"never", "startup"}, "description": "Startup resolves and pins validated private DNS addresses before activation; never requires a literal private/loopback IP. Null leaves it unmanaged."}
 	case "PUT /nodes/{id}/reliability":
 		schema = openAPISchema(reflect.TypeOf(reliability.Policy{}))
 	case "POST /nodes/{id}/telemt-update":

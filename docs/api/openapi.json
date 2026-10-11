@@ -10687,13 +10687,29 @@
           "content": {
             "application/json": {
               "schema": {
-                "description": "Partial update: omitted fields preserve the current policy; validation uses the merged policy.",
+                "description": "Partial update: omitted fields preserve the current policy; validation uses the merged policy. Advanced fields require Telemt \u003e=3.5.14 and agent \u003e=2.17.0. Null leaves the corresponding engine setting unmanaged. Links use only the agent-confirmed applied path after successful reload.",
                 "properties": {
+                  "base_path": {
+                    "description": "Canonical path without edge slashes; empty string explicitly selects root, null leaves it unmanaged. Update HTTPS routing and external probe base_path when changing it.",
+                    "maxLength": 128,
+                    "nullable": true,
+                    "pattern": "^([A-Za-z0-9][A-Za-z0-9_-]*(/[A-Za-z0-9][A-Za-z0-9_-]*)*)?$",
+                    "type": "string"
+                  },
                   "carrier": {
                     "type": "string"
                   },
                   "carrier_learning": {
                     "type": "boolean"
+                  },
+                  "carrier_method": {
+                    "description": "HTTP bridge carrier method; null leaves the engine setting unmanaged.",
+                    "enum": [
+                      "post",
+                      "put"
+                    ],
+                    "nullable": true,
+                    "type": "string"
                   },
                   "carrier_negotiation_aggressiveness": {
                     "type": "string"
@@ -10703,6 +10719,20 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "conveyor": {
+                    "description": "HTTP request sequencing; explicit false disables it, null leaves it unmanaged.",
+                    "nullable": true,
+                    "type": "boolean"
+                  },
+                  "decoy_resolve": {
+                    "description": "Startup resolves and pins validated private DNS addresses before activation; never requires a literal private/loopback IP. Null leaves it unmanaged.",
+                    "enum": [
+                      "never",
+                      "startup"
+                    ],
+                    "nullable": true,
+                    "type": "string"
                   },
                   "overload": {
                     "properties": {
