@@ -550,3 +550,30 @@ func TestTOTPWhileLockedNeedsAKnownDevice(t *testing.T) {
 		t.Fatalf("owner from a known device while locked: %d, want 200", status)
 	}
 }
+
+func TestTOTPEnableRevokesAPITokens(t *testing.T) {
+	h := apitest.New(t, apitest.WithTOTP())
+	h.CreateAdmin("root", "pass-123456", "owner")
+	h.CreateAdmin("other", "pass-123456", "admin")
+	c := h.Login("root", "pass-123456")
+	mine := issueToken(t, c, "nodes:read")
+	theirs := issueToken(t, h.Login("other", "pass-123456"), "nodes:read")
+	bearer := func(token string) *apitest.Client {
+		b := h.Anonymous().SetHeader("Authorization", "Bearer "+token)
+		b.SendCSRF = false
+		return b
+	}
+	tokenStatus(t, bearer(mine.Token).Get("/api/v1/nodes"), 200)
+
+	enrol(t, c, "pass-123456")
+
+	tokenStatus(t, bearer(mine.Token).Get("/api/v1/nodes"), 401)
+	tokenStatus(t, bearer(theirs.Token).Get("/api/v1/nodes"), 200)
+	var revokedAt *time.Time
+	if err := h.Store.Pool.QueryRow(t.Context(), "SELECT revoked_at FROM api_tokens WHERE id=$1", mine.APIToken.ID).Scan(&revokedAt); err != nil {
+		t.Fatal(err)
+	}
+	if revokedAt == nil {
+		t.Fatal("the token was not marked revoked")
+	}
+}

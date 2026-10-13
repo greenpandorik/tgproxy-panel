@@ -146,6 +146,9 @@ func (s *Server) handleTOTPConfirm(w http.ResponseWriter, r *http.Request) {
 		if err := q.DeleteRecoveryCodes(r.Context(), p.UserID); err != nil {
 			return err
 		}
+		if err := q.RevokeAdminAPITokens(r.Context(), p.UserID); err != nil {
+			return err
+		}
 		for _, c := range codes {
 			if err := q.InsertRecoveryCode(r.Context(), db.InsertRecoveryCodeParams{AdminUserID: p.UserID, CodeHash: crypto.HashToken(c)}); err != nil {
 				return err
