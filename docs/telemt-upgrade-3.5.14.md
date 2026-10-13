@@ -136,8 +136,12 @@ The node's WEB transport settings now expose:
 Carrier presets preserve these independently selected options. Applies select the
 panel-managed hostname and preserve other vhosts. A new path is published in user
 links only after the agent has completed reload and confirmed the applied path;
-failed applies retain the previously published path. WEB links with a prefix use
-`server=HOST/PATH` and the path-aware upstream secret format. Empty-root links keep
+failed applies retain the previously published path. The agent remembers the path the
+running Telemt was last confirmed to serve, so applies that leave the path unchanged
+(key edits, limit changes, quota rollovers, panel restarts) do not reload Telemt and do
+not drop live sessions. A path change, a path edited outside the panel, or the first
+apply after an agent upgrade or a failed apply reloads once. WEB links with a prefix
+use `server=HOST/PATH` and the path-aware upstream secret format. Empty-root links keep
 their existing format. Changing paths invalidates old WEB links: redistribute links,
 preserve the prefix in the HTTPS reverse proxy, and update external probe
 `web.base_path` to match. The applied path is shown separately from the desired one.

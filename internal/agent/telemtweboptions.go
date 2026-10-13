@@ -2,8 +2,11 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/telemt"
@@ -93,7 +96,8 @@ func webVhostPolicyPatch(web map[string]any, host string, p domain.WebPolicy) ([
 	return next, nil
 }
 
-// Only an agent that completed the reload and read the effective config may acknowledge a prefix.
+// Only an agent that completed a reload, or whose runtime was already verified to serve the
+// configured prefix, may acknowledge it.
 func (h *Handler) verifiedWebBasePath(ctx context.Context, req *agentv1.ApplyRequest, runtimeRevision string) (*string, error) {
 	if req.ManagedWebHost == "" && (req.WebPolicy == nil || req.WebPolicy.BasePath == nil) {
 		return nil, nil
@@ -102,7 +106,7 @@ func (h *Handler) verifiedWebBasePath(ctx context.Context, req *agentv1.ApplyReq
 	if err != nil {
 		return nil, err
 	}
-	if runtimeRevision == "" || revision != runtimeRevision {
+	if runtimeRevision != "" && revision != runtimeRevision {
 		return nil, errors.New("WEB config revision differs from the loaded runtime; retry apply")
 	}
 	web, _ := cfg["web"].(map[string]any)
@@ -112,6 +116,12 @@ func (h *Handler) verifiedWebBasePath(ctx context.Context, req *agentv1.ApplyReq
 	}
 	v := web["vhosts"].([]any)[i].(map[string]any)
 	path, _ := v["base_path"].(string)
+	if runtimeRevision == "" {
+		loaded, ok := readWebPrefixes(h.cfg.StateDir)[req.ManagedWebHost]
+		if !ok || loaded != path {
+			return nil, errors.New("WEB config revision differs from the loaded runtime; retry apply")
+		}
+	}
 	if path != "" {
 		info, e := h.tm.SystemInfo(ctx)
 		if e != nil {
@@ -127,7 +137,75 @@ func (h *Handler) verifiedWebBasePath(ctx context.Context, req *agentv1.ApplyReq
 	if p := req.GetWebPolicy(); p != nil && p.BasePath != nil && path != *p.BasePath {
 		return nil, errors.New("WEB base_path verification failed")
 	}
+	if err := h.rememberWebPrefix(req.ManagedWebHost, path); err != nil {
+		return nil, err
+	}
 	return &path, nil
+}
+
+func webPrefixesPath(stateDir string) string {
+	return filepath.Join(stateDir, "telemt-web.json")
+}
+
+// readWebPrefixes returns the base_path the running telemt was last verified to serve, per vhost.
+func readWebPrefixes(stateDir string) map[string]string {
+	out := map[string]string{}
+	raw, err := os.ReadFile(webPrefixesPath(stateDir))
+	if err != nil {
+		return out
+	}
+	var st struct {
+		BasePaths map[string]string `json:"base_paths"`
+	}
+	if json.Unmarshal(raw, &st) != nil || st.BasePaths == nil {
+		return out
+	}
+	return st.BasePaths
+}
+
+func writeWebPrefixes(stateDir string, paths map[string]string) error {
+	raw, err := json.Marshal(map[string]any{"base_paths": paths})
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(stateDir, 0o700); err != nil {
+		return err
+	}
+	return writeAtomic(webPrefixesPath(stateDir), append(raw, '\n'), 0o600)
+}
+
+func (h *Handler) rememberWebPrefix(host, path string) error {
+	paths := readWebPrefixes(h.cfg.StateDir)
+	if cur, ok := paths[host]; ok && cur == path {
+		return nil
+	}
+	paths[host] = path
+	return writeWebPrefixes(h.cfg.StateDir, paths)
+}
+
+func (h *Handler) forgetWebPrefix(host string) error {
+	paths := readWebPrefixes(h.cfg.StateDir)
+	if _, ok := paths[host]; !ok {
+		return nil
+	}
+	delete(paths, host)
+	return writeWebPrefixes(h.cfg.StateDir, paths)
+}
+
+// webPrefixLoaded reports whether the vhost's configured base_path is the one the runtime was
+// last verified to serve, so acknowledging it needs no reload.
+func (h *Handler) webPrefixLoaded(ctx context.Context, host string) (bool, error) {
+	cfg, _, err := h.tm.GetConfig(ctx)
+	if err != nil {
+		return false, err
+	}
+	v, err := managedVhost(cfg, host)
+	if err != nil {
+		return false, err
+	}
+	path, _ := v["base_path"].(string)
+	loaded, ok := readWebPrefixes(h.cfg.StateDir)[host]
+	return ok && loaded == path, nil
 }
 
 func managedVhost(cfg map[string]any, host string) (map[string]any, error) {

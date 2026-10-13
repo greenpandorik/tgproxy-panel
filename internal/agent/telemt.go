@@ -620,6 +620,9 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		defer cancel()
 		lg.f("error: %v", cause)
 		lg.f("rolling back")
+		if err := h.forgetWebPrefix(req.ManagedWebHost); err != nil {
+			lg.f("forget loaded WEB prefix: %v", err)
+		}
 		restored := len(rb.irreversible) == 0
 		if !restored {
 			lg.f("cannot be undone: %s", strings.Join(rb.irreversible, "; "))
@@ -743,9 +746,16 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	changed = changed || restartNeeded || mpChanged || webChanged
 
 	runtimeRevision := ""
-	prefixAckRequired := req.ManagedWebHost != "" || (req.WebPolicy != nil && req.WebPolicy.BasePath != nil)
+	prefixReload := false
+	if req.ManagedWebHost != "" || (req.WebPolicy != nil && req.WebPolicy.BasePath != nil) {
+		loaded, err := h.webPrefixLoaded(ctx, req.ManagedWebHost)
+		if err != nil {
+			return rollback(err)
+		}
+		prefixReload = !loaded
+	}
 	if !changed {
-		if prefixAckRequired {
+		if prefixReload {
 			runtimeRevision, err = h.telemtReload(ctx, lg)
 			if err != nil {
 				return rollback(err)
@@ -777,14 +787,14 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		}
 		res.RestartedRelay = true
 		lg.f("telemt restarted and ready")
-		if prefixAckRequired {
+		if prefixReload {
 			runtimeRevision, err = h.telemtReload(ctx, lg)
 			if err != nil {
 				return rollback(err)
 			}
 		}
 	} else {
-		if reloadNeeded || prefixAckRequired {
+		if reloadNeeded || prefixReload {
 			runtimeRevision, err = h.telemtReload(ctx, lg)
 			if err != nil {
 				return rollback(err)

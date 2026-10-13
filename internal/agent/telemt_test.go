@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/sitekit"
 	agentv1 "tgwebproxy/proto/agent/v1"
 )
@@ -511,6 +512,87 @@ func TestTelemtApplyIsIdempotent(t *testing.T) {
 	_, writes, patches, reloads := ft.snapshot()
 	if len(writes) != 0 || len(patches) != 0 || reloads != 0 {
 		t.Fatalf("second apply wrote: %v %v %d\n%s", writes, patches, reloads, res.Log)
+	}
+}
+
+func TestTelemtApplyWithManagedHostReloadsOnlyOnPrefixChange(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	settleWebPolicy(ft, domain.DefaultWebPolicy())
+	p := domain.DefaultWebPolicy()
+	req := webPolicyRequest(p)
+	req.ManagedWebHost = "n1.example.com"
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("first apply: %s", res.Log)
+	}
+	ft.resetWrites()
+	res := h.Apply(context.Background(), req)
+	if !res.Ok || res.AppliedWebBasePath == nil || *res.AppliedWebBasePath != "" {
+		t.Fatalf("repeat apply: %+v", res)
+	}
+	_, writes, patches, reloads := ft.snapshot()
+	if len(writes) != 0 || len(patches) != 0 || reloads != 0 {
+		t.Fatalf("repeat apply wrote: %v %v %d\n%s", writes, patches, reloads, res.Log)
+	}
+
+	req.Profiles = profiles("node", secretNode, "k1", secretK1)
+	ft.resetWrites()
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("key apply: %s", res.Log)
+	}
+	if _, _, _, reloads := ft.snapshot(); reloads != 0 {
+		t.Fatalf("adding a key reloaded telemt %d time(s)", reloads)
+	}
+
+	path := "telegram/web"
+	p.BasePath = &path
+	req = webPolicyRequest(p)
+	req.Profiles = profiles("node", secretNode, "k1", secretK1)
+	req.ManagedWebHost = "n1.example.com"
+	ft.resetWrites()
+	res = h.Apply(context.Background(), req)
+	if !res.Ok || res.AppliedWebBasePath == nil || *res.AppliedWebBasePath != path {
+		t.Fatalf("prefix change: %+v", res)
+	}
+	if _, _, _, reloads := ft.snapshot(); reloads != 1 {
+		t.Fatalf("prefix change reloaded %d time(s), want 1", reloads)
+	}
+	ft.resetWrites()
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("repeat after prefix change: %s", res.Log)
+	}
+	if _, _, _, reloads := ft.snapshot(); reloads != 0 {
+		t.Fatalf("repeat after prefix change reloaded %d time(s)", reloads)
+	}
+}
+
+func TestTelemtApplyRollbackForgetsTheLoadedPrefix(t *testing.T) {
+	h, _, ft := telemtHandler(t, &fakeExec{})
+	ft.version = "3.5.14"
+	settleWebPolicy(ft, domain.DefaultWebPolicy())
+	req := webPolicyRequest(domain.DefaultWebPolicy())
+	req.ManagedWebHost = "n1.example.com"
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("first apply: %s", res.Log)
+	}
+	ft.mu.Lock()
+	ft.failOn = "POST /v1/users"
+	ft.mu.Unlock()
+	failing := webPolicyRequest(domain.DefaultWebPolicy())
+	failing.ManagedWebHost = "n1.example.com"
+	failing.Profiles = profiles("node", secretNode, "k1", secretK1)
+	if res := h.Apply(context.Background(), failing); res.Ok {
+		t.Fatal("injected failure ignored")
+	}
+	ft.mu.Lock()
+	ft.failOn = ""
+	ft.mu.Unlock()
+	ft.resetWrites()
+	if res := h.Apply(context.Background(), req); !res.Ok {
+		t.Fatalf("apply after rollback: %s", res.Log)
+	}
+	if _, _, _, reloads := ft.snapshot(); reloads != 1 {
+		t.Fatalf("apply after rollback reloaded %d time(s), want 1", reloads)
 	}
 }
 
