@@ -10,7 +10,7 @@ Copy the `tgwp_…` secret before closing the creation dialog: it appears only o
 
 Send requests over HTTPS to **your installed panel**, for example `https://panel.example.com/api/v1`. `tgproxypanel.com` hosts this documentation and is not your management API endpoint.
 
-Use one `Authorization: Bearer <token>` header. A validated personal Bearer token does not need cookies or `X-CSRF-Token`. Invalid or duplicate Authorization headers do not fall back to a signed-in browser session. Token support does not change the panel’s CORS policy; use these examples from a server or command line.
+Use one `Authorization: Bearer <token>` header. A validated personal Bearer token does not need cookies or `X-CSRF-Token`. An invalid or duplicate Bearer header does not fall back to a signed-in browser session. Other schemes, such as the `Basic` credentials a reverse proxy with basic auth makes the browser send, are left alone and the browser session applies. Token support does not change the panel’s CORS policy; use these examples from a server or command line.
 
 Revoke a token in Settings → API tokens when it is no longer needed. Expired and revoked tokens stop working. Changing your password revokes all your personal tokens; deleting the account invalidates its tokens. The token list shows expiry and last use; last-use timestamps update at most once per minute.
 
