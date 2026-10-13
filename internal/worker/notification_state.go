@@ -106,7 +106,7 @@ func (a *Alerts) sendProblem(ctx context.Context, nodeID, kind string, msg alert
 	}
 	if complete && (state.Telegram || state.Webhook) {
 		state.Pending = false
-		state.LastProblem = time.Now()
+		state.LastProblem = a.clock()
 	}
 }
 

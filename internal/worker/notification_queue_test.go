@@ -226,6 +226,7 @@ func TestPartialRecoveryReopensOnlyRecoveredChannel(t *testing.T) {
 	if sender.calls.Load() != 2 {
 		t.Fatal("Telegram problem/recovery pair was not delivered")
 	}
+	now = now.Add(incidentCooldown)
 	for range 6 {
 		tick(true)
 	}
@@ -325,5 +326,67 @@ func TestDisappearedCheckRecoversAndLaterProblemsNotify(t *testing.T) {
 	}
 	if sender.calls.Load() != 3 {
 		t.Fatalf("a later different failure was not announced: %d messages", sender.calls.Load())
+	}
+}
+
+func TestReliabilityFlappingIsCappedByTheCooldown(t *testing.T) {
+	s, a, sender, n, now := reliabilityHarness(t, "flapping")
+	cycle := func() {
+		for i := range 17 {
+			s.recordFindings(t.Context(), n, []reliability.Finding{{Kind: "disk_pressure", Known: true, Failed: i < 6}})
+			if !a.observeReliability(t.Context(), n, true, *now) {
+				t.Fatal("observation failed")
+			}
+			a.sendReliability(t.Context(), n)
+			*now = now.Add(time.Minute)
+		}
+	}
+	for range 10 {
+		cycle()
+	}
+	if got := sender.calls.Load(); got != 2 {
+		t.Fatalf("flapping inside the cooldown sent %d messages, want one problem and one recovery", got)
+	}
+	for range 2 {
+		cycle()
+	}
+	if got := sender.calls.Load(); got != 4 {
+		t.Fatalf("flapping after the cooldown sent %d messages, want a second pair", got)
+	}
+}
+
+func TestLifetimeCounterAlertSendsNoRecovery(t *testing.T) {
+	s, a, sender, n, now := reliabilityHarness(t, "counter")
+	const kind = "diagnostic_telemt_tls_front_errors"
+	if _, err := s.st.Pool.Exec(t.Context(), `INSERT INTO alerts(node_id,kind,message) VALUES($1,$2,'grew')`, n.ID, kind); err != nil {
+		t.Fatal(err)
+	}
+	a.Incident(t.Context(), n, alerttext.Incident{Kind: kind, Message: "grew", Growth: "60"})
+	if sender.calls.Load() != 1 {
+		t.Fatalf("counter growth was not announced: %d", sender.calls.Load())
+	}
+	tick := func() {
+		s.recordFindings(t.Context(), n, []reliability.Finding{{Kind: "disk_pressure", Known: true}})
+		if !a.observeReliability(t.Context(), n, true, *now) {
+			t.Fatal("observation failed")
+		}
+		a.sendReliability(t.Context(), n)
+		*now = now.Add(time.Minute)
+	}
+	for range 15 {
+		tick()
+	}
+	a.Incident(t.Context(), n, alerttext.Incident{Kind: kind, Message: "grew", Growth: "70"})
+	if sender.calls.Load() != 1 {
+		t.Fatalf("open counter alert produced a server summary or a repeat: %d", sender.calls.Load())
+	}
+	if _, err := s.st.Pool.Exec(t.Context(), `UPDATE alerts SET resolved_at=now() WHERE node_id=$1`, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	for range 15 {
+		tick()
+	}
+	if sender.calls.Load() != 1 {
+		t.Fatalf("counter-only problem produced a recovery: %d messages", sender.calls.Load())
 	}
 }

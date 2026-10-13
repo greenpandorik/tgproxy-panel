@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"tgwebproxy/internal/alerttext"
+	"tgwebproxy/internal/nodediag"
 	"tgwebproxy/internal/nodedriver"
 	"tgwebproxy/internal/reliability"
 	"tgwebproxy/internal/store/db"
@@ -81,8 +82,8 @@ func (a *Alerts) observeReliability(ctx context.Context, n db.Node, known bool, 
 		a.log.Error("notification findings read", "err", err)
 		return false
 	}
-	var diagnostic bool
-	if err := a.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM alerts WHERE node_id=$1 AND resolved_at IS NULL AND kind LIKE 'diagnostic\_%' ESCAPE '\')`, n.ID).Scan(&diagnostic); err != nil {
+	diagnostic, err := a.openDiagnostic(ctx, n)
+	if err != nil {
 		return false
 	}
 	bad = bad || diagnostic
@@ -92,7 +93,7 @@ func (a *Alerts) observeReliability(ctx context.Context, n db.Node, known bool, 
 	} else if known && any && !unknown {
 		phase = "healthy"
 	}
-	_, err := a.pool.Exec(ctx, `INSERT INTO notification_candidates(node_id,phase,since,observed_at) VALUES($1,$2,$3,$3) ON CONFLICT(node_id) DO UPDATE SET phase=excluded.phase,since=CASE WHEN notification_candidates.phase != excluded.phase OR notification_candidates.observed_at < $4 OR excluded.phase='unknown' THEN excluded.since ELSE notification_candidates.since END,observed_at=excluded.observed_at`, n.ID, phase, now, now.Add(-reliabilityFreshness))
+	_, err = a.pool.Exec(ctx, `INSERT INTO notification_candidates(node_id,phase,since,observed_at) VALUES($1,$2,$3,$3) ON CONFLICT(node_id) DO UPDATE SET phase=excluded.phase,since=CASE WHEN notification_candidates.phase != excluded.phase OR notification_candidates.observed_at < $4 OR excluded.phase='unknown' THEN excluded.since ELSE notification_candidates.since END,observed_at=excluded.observed_at`, n.ID, phase, now, now.Add(-reliabilityFreshness))
 	if err != nil {
 		a.log.Error("notification candidate save", "err", err)
 		return false
@@ -107,16 +108,16 @@ func (a *Alerts) sendReliability(ctx context.Context, n db.Node) {
 		if err := a.pool.QueryRow(ctx, `SELECT phase,since,observed_at FROM notification_candidates WHERE node_id=$1`, n.ID).Scan(&phase, &since, &now); err != nil {
 			return
 		}
-		deliveryNow := time.Now()
-		if a.now != nil {
-			deliveryNow = a.now()
-		}
+		deliveryNow := a.clock()
 		if deliveryNow.Sub(now) > reliabilityFreshness {
 			return
 		}
 		switch phase {
 		case "bad":
 			if now.Sub(since) < reliabilityProblemDelay {
+				return
+			}
+			if !state.Pending && !state.LastProblem.IsZero() && deliveryNow.Sub(state.LastProblem) < incidentCooldown {
 				return
 			}
 			// A channel that recovered can open a new episode even when another
@@ -134,11 +135,40 @@ func (a *Alerts) sendReliability(ctx context.Context, n db.Node) {
 			}
 			state.Pending = false
 			a.sendRecovery(ctx, n.ID.String(), "server_reliability", alerttext.Default().Reliability(a.lang(ctx), textNode(n), true, a.PanelURL, false), state)
-			if !state.Telegram && !state.Webhook {
-				state.LastProblem = time.Time{}
-			}
 		}
 	})
+}
+
+// openDiagnostic reports an unresolved scheduled-check alert other than a lifetime counter.
+func (a *Alerts) openDiagnostic(ctx context.Context, n db.Node) (bool, error) {
+	rows, err := a.pool.Query(ctx, `SELECT kind FROM alerts WHERE node_id=$1 AND resolved_at IS NULL AND kind LIKE 'diagnostic\_%' ESCAPE '\'`, n.ID)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	open := false
+	for rows.Next() {
+		var kind string
+		if err := rows.Scan(&kind); err != nil {
+			return false, err
+		}
+		open = open || !lifetimeCounterAlert(kind)
+	}
+	return open, rows.Err()
+}
+
+// lifetimeCounterAlert reports whether a diagnostic_<group>_<check> kind names a lifetime counter.
+func lifetimeCounterAlert(kind string) bool {
+	rest, ok := strings.CutPrefix(kind, "diagnostic_")
+	if !ok {
+		return false
+	}
+	for i := range len(rest) {
+		if rest[i] == '_' && nodediag.LifetimeCounter(rest[i+1:]) {
+			return true
+		}
+	}
+	return false
 }
 
 // Tproxy heartbeats predate the versioned Telemt reliability report. Their

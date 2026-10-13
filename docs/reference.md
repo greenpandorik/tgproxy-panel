@@ -700,13 +700,19 @@ empty fields. The token is stored encrypted and never sent back to the browser.
 
 Server health notifications combine datacenter, route and scheduled-check findings into one
 problem episode per server. A problem must persist for 5 minutes before one warning is sent.
-Recovery is sent only after 10 minutes of continuously healthy observations. Missing or stale
+Recovery is sent only after 10 minutes of continuously healthy observations, and only after a
+warning that went out. A server gets at most one warning per 3 hours: a problem that comes back
+within 3 hours of the last warning sends nothing, and neither does its recovery. Missing or stale
 observations do not prove recovery and interrupt the confirmation period. A check the server
 stops reporting for good (for example datacenters after the Middle Proxy is turned off, or a
 transport removed from an external probe) counts as unknown for one hour and is then dropped, so
 the server can recover and later problems are reported again. Details remain in the server's
 Health tab; a failing Middle Proxy writer alone does not prove that Telegram is unavailable,
 because direct routing may still work.
+
+Counters kept since telemt started (TLS handshake failures, carrier failures, rejected WEB
+sessions) are not part of the server warning. They send their own message only when they grew by
+at least 50 between two scheduled checks, at most once per 3 hours, and never a "resolved" one.
 
 The panel stores notification state in PostgreSQL, so restarting it does not start the same
 notification episode again. Telegram and webhook delivery are acknowledged separately; failed

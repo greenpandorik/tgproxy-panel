@@ -1336,7 +1336,9 @@ when checks open or close a problem.
    without it.
 4. Mind the anti-spam limits. Outages shorter than 3 minutes stay silent. Health findings are
    grouped per server: one warning after 5 minutes of persistent problems, then one recovery
-   after 10 minutes of healthy observations. Failed applies are reported at most once per hour.
+   after 10 minutes of healthy observations, and at most one warning per server in 3 hours.
+   Counters kept since telemt started alert only when they grow by at least 50 between two
+   scheduled checks, and never send a recovery. Failed applies are reported at most once per hour.
    Delivery state survives panel restarts. Telegram and webhook retries are tracked separately;
    a failed send does not count as delivered.
 5. If the test works but real alerts never come, look for `telegram config` or

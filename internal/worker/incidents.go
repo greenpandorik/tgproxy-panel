@@ -86,8 +86,8 @@ func (a *Alerts) Incident(ctx context.Context, n db.Node, in alerttext.Incident)
 	if a == nil {
 		return
 	}
-	// Persisted panel incidents are included in the next server summary sweep.
-	if a.pool != nil && (strings.HasPrefix(in.Kind, "reliability_") || strings.HasPrefix(in.Kind, "diagnostic_")) {
+	// Persisted panel incidents other than lifetime counters join the next server summary sweep.
+	if a.pool != nil && !lifetimeCounterAlert(in.Kind) && (strings.HasPrefix(in.Kind, "reliability_") || strings.HasPrefix(in.Kind, "diagnostic_")) {
 		return
 	}
 	msg := alerttext.Default().Incident(a.lang(ctx), textNode(n), in, a.PanelURL)

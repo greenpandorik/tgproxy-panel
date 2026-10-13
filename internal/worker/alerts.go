@@ -53,6 +53,13 @@ func (a *Alerts) lang(ctx context.Context) alerttext.Lang {
 	return alerttext.ParseLang(a.Lang(ctx))
 }
 
+func (a *Alerts) clock() time.Time {
+	if a.now != nil {
+		return a.now()
+	}
+	return time.Now()
+}
+
 func textNode(n db.Node) alerttext.Node {
 	return alerttext.Node{ID: n.ID.String(), Name: n.Name, Hostname: n.Hostname}
 }
@@ -60,7 +67,7 @@ func textNode(n db.Node) alerttext.Node {
 // problem sends a problem at most once per cooldown for the same node and kind.
 func (a *Alerts) problem(ctx context.Context, nodeID, kind string, cooldown time.Duration, msg alerttext.Message) {
 	a.withState(ctx, nodeID, kind, func(state *notificationState) {
-		if !state.Pending && !state.LastProblem.IsZero() && time.Since(state.LastProblem) < cooldown {
+		if !state.Pending && !state.LastProblem.IsZero() && a.clock().Sub(state.LastProblem) < cooldown {
 			return
 		}
 		// Apply/legacy incident reminders start a new delivery period after their
