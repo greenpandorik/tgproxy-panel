@@ -86,7 +86,7 @@ func (h *Harness) Router() chi.Router { return h.router }
 
 func (h *Harness) CreateAdmin(username, password, role string) uuid.UUID {
 	h.T.Helper()
-	hash, err := crypto.HashPassword(password)
+	hash, err := crypto.HashPassword(context.Background(), password)
 	if err != nil {
 		h.T.Fatal(err)
 	}

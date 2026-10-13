@@ -138,7 +138,7 @@ func adminCreate(ctx context.Context, st *store.Store, args []string) error {
 	if len(args[1]) < 10 {
 		return errors.New("the password must be at least 10 characters")
 	}
-	hash, err := crypto.HashPassword(args[1])
+	hash, err := crypto.HashPassword(ctx, args[1])
 	if err != nil {
 		return err
 	}

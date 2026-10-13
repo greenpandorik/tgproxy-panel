@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -43,6 +45,17 @@ func (s *Server) recordLoginFailure(r *http.Request, reason, username, userID st
 	s.Audit(r.Context(), "auth.login_failed", "admin", userID, map[string]any{"reason": reason, "username": name})
 }
 
+// passwordUnavailable answers 503 when the password could not be checked at all: the argon2
+// queue is full or the caller went away while waiting for a slot.
+func passwordUnavailable(w http.ResponseWriter, err error) bool {
+	if !errors.Is(err, crypto.ErrBusy) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	w.Header().Set("Retry-After", "1")
+	writeError(w, 503, "busy", "the server is busy, try again in a moment", nil)
+	return true
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !s.loginLimiter.Allow(loginLimiterKey(r)) {
 		writeError(w, 429, "rate_limited", "too many attempts, try later", nil)
@@ -56,7 +69,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	u, err := s.store.Q.GetAdminByUsername(r.Context(), req.Username)
 	if err != nil {
 		// burn time to keep timing similar
-		_, _ = crypto.VerifyPassword(req.Password, "$argon2id$v=19$m=65536,t=3,p=2$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		_, verr := crypto.VerifyPassword(r.Context(), req.Password, "$argon2id$v=19$m=65536,t=3,p=2$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		if passwordUnavailable(w, verr) {
+			return
+		}
 		s.recordLoginFailure(r, "unknown_user", req.Username, "")
 		writeError(w, 401, "invalid_credentials", "wrong username or password", nil)
 		return
@@ -66,7 +82,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 423, "locked", "account temporarily locked", nil)
 		return
 	}
-	ok, _ := crypto.VerifyPassword(req.Password, u.PasswordHash)
+	ok, err := crypto.VerifyPassword(r.Context(), req.Password, u.PasswordHash)
+	if passwordUnavailable(w, err) {
+		return
+	}
 	if !ok {
 		_ = s.store.Q.RecordFailedLogin(r.Context(), u.ID)
 		s.recordLoginFailure(r, "bad_password", u.Username, u.ID.String())
@@ -134,11 +153,18 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	if ok, _ := crypto.VerifyPassword(req.Current, u.PasswordHash); !ok {
+	ok, err := crypto.VerifyPassword(r.Context(), req.Current, u.PasswordHash)
+	if passwordUnavailable(w, err) {
+		return
+	}
+	if !ok {
 		validation(w, map[string]string{"current": "wrong password"})
 		return
 	}
-	hash, err := crypto.HashPassword(req.New)
+	hash, err := crypto.HashPassword(r.Context(), req.New)
+	if passwordUnavailable(w, err) {
+		return
+	}
 	if err != nil {
 		internal(w)
 		return
@@ -202,7 +228,10 @@ func (s *Server) handleCreateAdmin(w http.ResponseWriter, r *http.Request) {
 		validation(w, fields)
 		return
 	}
-	hash, err := crypto.HashPassword(req.Password)
+	hash, err := crypto.HashPassword(r.Context(), req.Password)
+	if passwordUnavailable(w, err) {
+		return
+	}
 	if err != nil {
 		internal(w)
 		return

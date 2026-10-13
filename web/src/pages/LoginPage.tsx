@@ -38,6 +38,7 @@ const ERROR_KEY: Record<string, string> = {
   challenge_expired: 'auth.error_challenge_expired',
   rate_limited: 'auth.error_rate_limited',
   locked: 'auth.error_locked',
+  busy: 'auth.error_busy',
 };
 
 // The split layout's breakpoint.

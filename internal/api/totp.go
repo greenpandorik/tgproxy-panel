@@ -105,7 +105,11 @@ func (s *Server) handleTOTPConfirm(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
-	if ok, _ := crypto.VerifyPassword(req.Password, row.PasswordHash); !ok {
+	ok, err := crypto.VerifyPassword(r.Context(), req.Password, row.PasswordHash)
+	if passwordUnavailable(w, err) {
+		return
+	}
+	if !ok {
 		validation(w, map[string]string{"password": "wrong password"})
 		return
 	}
@@ -191,7 +195,11 @@ func (s *Server) handleTOTPDisable(w http.ResponseWriter, r *http.Request) {
 		conflict(w, "two-factor authentication is not enabled")
 		return
 	}
-	if ok, _ := crypto.VerifyPassword(req.Password, u.PasswordHash); !ok {
+	ok, err := crypto.VerifyPassword(r.Context(), req.Password, u.PasswordHash)
+	if passwordUnavailable(w, err) {
+		return
+	}
+	if !ok {
 		validation(w, map[string]string{"password": "wrong password"})
 		return
 	}
