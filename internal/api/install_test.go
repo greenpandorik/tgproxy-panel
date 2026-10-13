@@ -203,6 +203,35 @@ func TestInstallRegistrationKeepsConfiguredPublicIP(t *testing.T) {
 	}
 }
 
+func TestInstallRegistrationRejectsInvalidPublicIP(t *testing.T) {
+	h, c, _ := ownerWithNode(t)
+	n, cmd := createNode(t, c, "badip.test")
+	token := regexp.MustCompile(`/install/([^/]+)\.sh`).FindStringSubmatch(cmd)[1]
+	for _, ip := range []string{"not-an-ip", "999.1.1.1", "2001:db8::1", "203.0.113.4; rm -rf /"} {
+		resp := h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"hostname": "badip.test", "public_ip": ip})
+		var body struct {
+			Error struct {
+				Fields map[string]string `json:"fields"`
+			} `json:"error"`
+		}
+		c.JSON(resp, &body)
+		if resp.StatusCode != 422 || !strings.Contains(body.Error.Fields["public_ip"], "IPv4") {
+			t.Fatalf("public_ip %q: %d %+v, want 422 naming IPv4", ip, resp.StatusCode, body)
+		}
+	}
+	got, err := h.Store.Q.GetNode(t.Context(), n.ID)
+	if err != nil || got.PublicIp != "" || got.AgentTokenHash != nil || got.InstallTokenHash == nil {
+		t.Fatalf("a rejected registration changed the node: %+v err=%v", got, err)
+	}
+	if status := statusOf(t, h.Anonymous().Post("/api/v1/install/"+token+"/register", map[string]string{"hostname": "badip.test", "public_ip": " 203.0.113.4 "})); status != 200 {
+		t.Fatalf("register with a valid address after the rejections: %d", status)
+	}
+	got, err = h.Store.Q.GetNode(t.Context(), n.ID)
+	if err != nil || got.PublicIp != "203.0.113.4" {
+		t.Fatalf("stored public IP %q err=%v", got.PublicIp, err)
+	}
+}
+
 func TestInstallUnknownToken(t *testing.T) {
 	h := apitest.New(t)
 	if resp := h.Anonymous().Get("/api/v1/install/nope.sh"); resp.StatusCode != 404 {

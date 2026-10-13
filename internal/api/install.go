@@ -92,6 +92,10 @@ func (s *Server) handleInstallRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	publicIP := strings.TrimSpace(req.PublicIP)
+	if msg := validatePublicIP(publicIP); msg != "" {
+		validation(w, map[string]string{"public_ip": "the reported public_ip must be an " + msg})
+		return
+	}
 	if n.Engine == db.NodeEngineTelemt && n.PublicIp == "" && publicIP == "" {
 		// Refused before the install token is consumed, so the script can retry.
 		validation(w, map[string]string{"public_ip": "required for telemt nodes"})
