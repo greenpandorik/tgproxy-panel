@@ -71,6 +71,8 @@
   .btn.primary { background: var(--primary); color: var(--on-primary); }
   .btn.secondary { border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text); }
   .btn.ghost { border: 1px solid var(--border-2); color: var(--text); background: var(--surface); min-height: 44px; font-weight: 600; font-size: 0.95rem; }
+  .badge { justify-self: start; font-size: 0.78rem; font-weight: 600; line-height: 1; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--border-2); color: var(--text-dim); }
+  .badge.lead { border-color: var(--primary); color: var(--primary); }
   .note { margin: 0; font-size: 0.84rem; color: var(--text-dim); }
 
   details.links { border-top: 1px solid var(--border); padding-top: 4px; }
@@ -148,6 +150,7 @@ var remember = {{if .Preview}}false{{else}}true{{end}};
       <h2>{{.Name}}</h2>
       {{range .Buttons}}
       <div class="way" data-kind="{{.Kind}}">
+        {{if .Badge}}<span class="badge{{if .Primary}} lead{{end}}">{{.Badge}}</span>{{end}}
         <a class="btn {{if .Primary}}primary{{else}}secondary{{end}}" href="{{safeURL .Href}}">{{.Text}}</a>
         {{if .Note}}<p class="note">{{.Note}}</p>{{end}}
       </div>

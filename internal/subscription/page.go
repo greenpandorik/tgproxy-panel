@@ -76,6 +76,7 @@ type Button struct {
 	Note    string
 	Href    string
 	Primary bool
+	Badge   string
 }
 
 // Server is one server a key is bound to: its connect buttons and every link it has.
@@ -154,8 +155,8 @@ func Build(in Input) (Page, error) {
 		page.StatusLabel = t("subpage.status_forever", nil)
 	}
 
-	tlsButton := Button{Kind: keys.LinkTLS, Text: or(tx.tlsButton, "subpage.tls_button"), Note: or(tx.tlsNote, "subpage.tls_note")}
-	webButton := Button{Kind: keys.LinkWeb, Text: or(tx.webButton, "subpage.web_button"), Note: or(tx.webNote, "subpage.web_note")}
+	tlsButton := Button{Kind: keys.LinkTLS, Text: or(tx.tlsButton, "subpage.tls_button"), Note: or(tx.tlsNote, "subpage.tls_note"), Badge: t("subpage.tls_badge", nil)}
+	webButton := Button{Kind: keys.LinkWeb, Text: or(tx.webButton, "subpage.web_button"), Note: or(tx.webNote, "subpage.web_note"), Badge: t("subpage.web_badge", nil)}
 	for _, loc := range in.Locations {
 		if s.hidden(loc.NodeID.String()) {
 			continue
@@ -200,21 +201,21 @@ func Build(in Input) (Page, error) {
 				webLinks = append(webLinks, link)
 			}
 		}
-		if len(tlsLinks) > 0 {
-			b := tlsButton
-			b.Href = tlsLinks[0].TMe
-			server.Buttons = append(server.Buttons, b)
-		}
 		if len(webLinks) > 0 {
 			b := webButton
 			b.Href = webLinks[0].TMe
+			server.Buttons = append(server.Buttons, b)
+		}
+		if len(tlsLinks) > 0 {
+			b := tlsButton
+			b.Href = tlsLinks[0].TMe
 			server.Buttons = append(server.Buttons, b)
 		}
 		if len(server.Buttons) == 0 {
 			continue
 		}
 		server.Buttons[0].Primary = true
-		server.Links = append(tlsLinks, webLinks...)
+		server.Links = append(webLinks, tlsLinks...)
 		page.Servers = append(page.Servers, server)
 	}
 

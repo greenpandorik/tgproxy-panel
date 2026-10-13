@@ -179,8 +179,8 @@ You can leave the other fields alone. Click "Create". The user's window opens wi
 subscription link. The user starts working in under a minute, once the panel sends them to the
 server.
 
-The subscription link leads to a page where every server has "Connect via Fake-TLS" and "Connect
-via WEB" buttons. You can copy it or show it with "QR code". The separate proxy links are under
+The subscription link leads to a page where every server has "Connect via WEB" (the new protocol,
+first) and "Connect via Fake-TLS" (classic) buttons. You can copy it or show it with "QR code". The separate proxy links are under
 "Direct proxy links", and there are two of them:
 
 - Fake-TLS works in every Telegram app. If in doubt, send this one.

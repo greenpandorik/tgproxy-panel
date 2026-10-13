@@ -79,7 +79,7 @@ describe('SubscriptionPageForm', () => {
     expect(screen.getByLabelText('Подпись под кнопкой WEB')).toHaveValue('');
     expect(screen.getByLabelText('Подпись под кнопкой WEB')).toHaveAttribute(
       'placeholder',
-      'Для Telegram на Android и компьютере. Похоже на обычный сайт',
+      'На телефоне нужен Telegram 13.0 или новее, на компьютере — последняя версия.',
     );
 
     await user.click(screen.getByRole('radio', { name: 'На английском' }));

@@ -109,10 +109,10 @@ const PAGE_TEXTS: TextFieldDef[] = [
 ];
 
 const BUTTON_TEXTS: TextFieldDef[] = [
-  { key: 'tls_button', max: 40, label: 'settings.subpage_tls_button', standard: 'subpage.tls_button' },
-  { key: 'tls_note', max: 140, label: 'settings.subpage_tls_note', standard: 'subpage.tls_note' },
   { key: 'web_button', max: 40, label: 'settings.subpage_web_button', standard: 'subpage.web_button' },
   { key: 'web_note', max: 140, label: 'settings.subpage_web_note', standard: 'subpage.web_note' },
+  { key: 'tls_button', max: 40, label: 'settings.subpage_tls_button', standard: 'subpage.tls_button' },
+  { key: 'tls_note', max: 140, label: 'settings.subpage_tls_note', standard: 'subpage.tls_note' },
   { key: 'support_label', max: 40, label: 'settings.subpage_support_label', standard: 'subpage.support' },
 ];
 

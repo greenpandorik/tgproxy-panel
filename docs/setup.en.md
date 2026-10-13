@@ -729,8 +729,8 @@ user with their links and statistics.
 ### The subscription link
 
 Usually one subscription link is all the person needs. It opens a page with a card for every
-server: the card holds "Connect via Fake-TLS" and "Connect via WEB" buttons with a short line under
-each, and its "Links and QR codes" block has the server's direct links, backup addresses and their
+server: the card leads with "Connect via WEB", marked "New protocol · recommended", then "Connect via
+Fake-TLS", marked "Classic", each with a short line under it, and its "Links and QR codes" block has the server's direct links, backup addresses and their
 QR codes. Under the title the page says how long access lasts: "Access is active until …" or
 "Access never expires". The name, contact and note never appear there.
 

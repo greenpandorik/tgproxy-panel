@@ -51,28 +51,31 @@ func buildWith(t *testing.T, s subscription.Settings, l alerttext.Lang, expires 
 	return page, buf.String()
 }
 
-func TestServerCardsOfferFakeTLSFirstThenWeb(t *testing.T) {
+func TestServerCardsOfferWebFirstThenFakeTLS(t *testing.T) {
 	page, out := build(t, subscription.DefaultSettings(), alerttext.RU, nil)
 	if len(page.Servers) != 2 {
 		t.Fatalf("servers: %+v", page.Servers)
 	}
 	ams := page.Servers[0]
-	if len(ams.Buttons) != 2 || ams.Buttons[0].Kind != keys.LinkTLS || !ams.Buttons[0].Primary || ams.Buttons[1].Kind != keys.LinkWeb || ams.Buttons[1].Primary {
-		t.Fatalf("Amsterdam: Fake-TLS first and highlighted, WEB second: %+v", ams.Buttons)
+	if len(ams.Buttons) != 2 || ams.Buttons[0].Kind != keys.LinkWeb || !ams.Buttons[0].Primary || ams.Buttons[1].Kind != keys.LinkTLS || ams.Buttons[1].Primary {
+		t.Fatalf("Amsterdam: WEB first and highlighted, Fake-TLS second: %+v", ams.Buttons)
 	}
-	if len(ams.Links) != 3 || ams.Links[0].Kind != keys.LinkTLS || ams.Links[1].Kind != keys.LinkTLS || ams.Links[2].Kind != keys.LinkWeb {
-		t.Fatalf("Amsterdam links: main Fake-TLS, its backup, then WEB: %+v", ams.Links)
+	if ams.Buttons[0].Badge != "Новый протокол · рекомендуем" || ams.Buttons[1].Badge != "Классический" {
+		t.Fatalf("badges: %q, %q", ams.Buttons[0].Badge, ams.Buttons[1].Badge)
 	}
-	if !strings.Contains(ams.Buttons[0].Href, "secret=ee") || strings.Contains(ams.Buttons[0].Href, "6261636b7570") {
-		t.Fatalf("the Fake-TLS button opens the main domain: %s", ams.Buttons[0].Href)
+	if len(ams.Links) != 3 || ams.Links[0].Kind != keys.LinkWeb || ams.Links[1].Kind != keys.LinkTLS || ams.Links[2].Kind != keys.LinkTLS {
+		t.Fatalf("Amsterdam links: WEB, then main Fake-TLS and its backup: %+v", ams.Links)
+	}
+	if !strings.Contains(ams.Buttons[1].Href, "secret=ee") || strings.Contains(ams.Buttons[1].Href, "6261636b7570") {
+		t.Fatalf("the Fake-TLS button opens the main domain: %s", ams.Buttons[1].Href)
 	}
 	hel := page.Servers[1]
 	if len(hel.Buttons) != 1 || hel.Buttons[0].Kind != keys.LinkWeb || !hel.Buttons[0].Primary {
 		t.Fatalf("a tproxy server offers WEB only, as the main button: %+v", hel.Buttons)
 	}
 	for _, want := range []string{
-		"Подключить через Fake-TLS", "Для всех приложений Telegram, включая iPhone",
-		"Подключить через WEB", "Для Telegram на Android и компьютере. Похоже на обычный сайт",
+		"Подключить через WEB", "Новый протокол · рекомендуем", "На телефоне нужен Telegram 13.0 или новее",
+		"Подключить через Fake-TLS", "Классический", "Работает во всех версиях Telegram, включая iPhone",
 		"Ссылки и QR-коды", "Попробуйте другой сервер", `<h2>Amsterdam</h2>`,
 	} {
 		if !strings.Contains(out, want) {
@@ -91,16 +94,16 @@ func TestOwnButtonTextsReplaceTheStandardOnes(t *testing.T) {
 	s.TLSButtonRU, s.WebNoteRU = "Подключиться", "Работает в браузере Telegram"
 	s.TLSNoteEN = "Works everywhere"
 	_, ru := build(t, s, alerttext.RU, nil)
-	for _, want := range []string{">Подключиться<", "Работает в браузере Telegram", "Для всех приложений Telegram, включая iPhone", "Подключить через WEB"} {
+	for _, want := range []string{">Подключиться<", "Работает в браузере Telegram", "Работает во всех версиях Telegram, включая iPhone", "Подключить через WEB"} {
 		if !strings.Contains(ru, want) {
 			t.Errorf("RU missing %q", want)
 		}
 	}
-	if strings.Contains(ru, "Works everywhere") || strings.Contains(ru, "Похоже на обычный сайт") {
+	if strings.Contains(ru, "Works everywhere") || strings.Contains(ru, "На телефоне нужен Telegram 13.0") {
 		t.Error("the Russian page must use the Russian texts and drop the replaced one")
 	}
 	_, en := build(t, s, alerttext.EN, nil)
-	for _, want := range []string{"Connect via Fake-TLS", "Works everywhere", "Looks like an ordinary website"} {
+	for _, want := range []string{"Connect via Fake-TLS", "Works everywhere", "Needs Telegram 13.0 or newer"} {
 		if !strings.Contains(en, want) {
 			t.Errorf("EN missing %q", want)
 		}
