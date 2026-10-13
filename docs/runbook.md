@@ -34,7 +34,7 @@ Planned work:
 When something is wrong:
 
 - [The panel does not open](#the-panel-does-not-open)
-- [Two-factor authentication lockout](#two-factor-authentication-lockout) and a forgotten password
+- [Two-factor authentication lockout](#two-factor-authentication-lockout), a forgotten password and [too many failed logins](#too-many-failed-logins)
 - [A server is offline](#a-server-is-offline)
 - [A server is degraded](#a-server-is-degraded)
 - [Changes do not reach a server](#changes-do-not-reach-a-server)
@@ -940,6 +940,19 @@ docker compose exec panel /app/panel admin create <new-username> '<new-password>
 Log in with it, open Settings → Accounts and delete the old account. If you want the old username
 back, create it again there. The password from the command stays in the server's command history,
 so change it after logging in: the user menu → "Password and 2FA".
+
+### Too many failed logins
+
+After 20 failed logins in a row, from any addresses, the account is locked for 15 minutes, and
+every further failure moves the end of the lock 15 minutes on. While it is locked the panel
+answers "Wrong username or password" to every attempt, even with the right password, so a
+locked account looks the same as a wrong guess.
+
+A browser that has logged in to this account before still gets in with the right password. On
+each successful login the panel leaves a "known device" cookie in the browser for 90 days.
+Changing the password or turning the second factor on or off retires the cookies of other
+browsers. To log in from a new browser, wait 15 minutes after the last failed attempt. Each
+failure is in the activity log under Login, with the IP it came from.
 
 ## A server is offline
 

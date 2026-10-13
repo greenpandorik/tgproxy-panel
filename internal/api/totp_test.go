@@ -508,3 +508,45 @@ func TestTOTPVerifyRateLimitsIPv6PrefixAcrossLogin(t *testing.T) {
 		t.Fatalf("failed attempts: %d err=%v, want 11", user.FailedLogins, err)
 	}
 }
+
+func TestTOTPWhileLockedNeedsAKnownDevice(t *testing.T) {
+	h := apitest.New(t, apitest.WithTOTP())
+	h.CreateAdmin("root", "pass-123456", "owner")
+	owner := h.Login("root", "pass-123456")
+	secret, _ := enrol(t, owner, "pass-123456")
+	challenge := func(c *apitest.Client) (string, int) {
+		t.Helper()
+		resp := c.Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "pass-123456"})
+		if resp.StatusCode != 200 {
+			return "", resp.StatusCode
+		}
+		var lb loginBody
+		c.JSON(resp, &lb)
+		return lb.Challenge, 200
+	}
+	early := h.Anonymous().SetHeader("X-Forwarded-For", "198.51.100.1")
+	earlyChallenge, status := challenge(early)
+	if earlyChallenge == "" {
+		t.Fatalf("no challenge before the lock: %d", status)
+	}
+	if _, err := h.Store.Pool.Exec(t.Context(), `UPDATE admin_users SET failed_logins = 20, locked_until = now() + interval '15 minutes'`); err != nil {
+		t.Fatal(err)
+	}
+	code, err := otptotp.GenerateCode(secret, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errCode, status := errCodeOf(t, early.Post("/api/v1/auth/totp/verify", map[string]string{"challenge": earlyChallenge, "code": code})); status != 401 || errCode != "invalid_code" {
+		t.Fatalf("right code without a known device while locked: %d %s, want 401 invalid_code", status, errCode)
+	}
+	if _, status := challenge(h.Anonymous().SetHeader("X-Forwarded-For", "198.51.100.2")); status != 401 {
+		t.Fatalf("right password without a known device while locked: %d, want 401", status)
+	}
+	ownerChallenge, status := challenge(owner)
+	if ownerChallenge == "" {
+		t.Fatalf("owner from a known device while locked got no challenge: %d", status)
+	}
+	if status := owner.Post("/api/v1/auth/totp/verify", map[string]string{"challenge": ownerChallenge, "code": code}).StatusCode; status != 200 {
+		t.Fatalf("owner from a known device while locked: %d, want 200", status)
+	}
+}

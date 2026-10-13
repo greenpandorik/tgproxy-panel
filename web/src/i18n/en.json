@@ -89,7 +89,6 @@
     "signing_in": "Signing in…",
     "error_invalid_credentials": "Wrong username or password",
     "error_rate_limited": "Too many attempts. Try again later.",
-    "error_locked": "Account temporarily locked",
     "error_busy": "The server is busy. Try again in a few seconds.",
     "support_link_label": "Need help?",
     "totp_title": "Confirm sign-in",

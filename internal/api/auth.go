@@ -56,6 +56,42 @@ func passwordUnavailable(w http.ResponseWriter, err error) bool {
 	return true
 }
 
+// dummyPasswordHash is checked when there is no password to check, so that an unknown or
+// locked account answers in the same time as a wrong password.
+const dummyPasswordHash = "$argon2id$v=19$m=65536,t=3,p=2$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+// burnPasswordCheck spends the time of a password check without checking anything. It reports
+// whether it already answered because the argon2 queue was unavailable.
+func (s *Server) burnPasswordCheck(w http.ResponseWriter, r *http.Request, password string) bool {
+	_, err := crypto.VerifyPassword(r.Context(), password, dummyPasswordHash)
+	return passwordUnavailable(w, err)
+}
+
+func accountLocked(u db.AdminUser, now time.Time) bool {
+	return u.LockedUntil != nil && u.LockedUntil.After(now)
+}
+
+// lockedOut reports whether the account lock refuses r. A locked account checks no password and
+// no second factor unless the browser carries a current known-device cookie for it.
+func (s *Server) lockedOut(r *http.Request, u db.AdminUser) bool {
+	now := time.Now()
+	return accountLocked(u, now) && !s.knownDevice(r, u, now)
+}
+
+// completeLogin starts a session for u and marks the browser as a known device. A lock in force
+// is left in place: the owner signing in from a known device does not reopen the account to
+// everyone else.
+func (s *Server) completeLogin(w http.ResponseWriter, r *http.Request, u db.AdminUser) error {
+	if !accountLocked(u, time.Now()) {
+		_ = s.store.Q.ResetFailedLogins(r.Context(), u.ID)
+	}
+	if err := s.issueSession(w, r, u.ID); err != nil {
+		return err
+	}
+	s.setKnownDevice(w, u)
+	return nil
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !s.loginLimiter.Allow(loginLimiterKey(r)) {
 		writeError(w, 429, "rate_limited", "too many attempts, try later", nil)
@@ -66,20 +102,23 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, err.Error())
 		return
 	}
+	invalid := func() { writeError(w, 401, "invalid_credentials", "wrong username or password", nil) }
 	u, err := s.store.Q.GetAdminByUsername(r.Context(), req.Username)
 	if err != nil {
-		// burn time to keep timing similar
-		_, verr := crypto.VerifyPassword(r.Context(), req.Password, "$argon2id$v=19$m=65536,t=3,p=2$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-		if passwordUnavailable(w, verr) {
+		if s.burnPasswordCheck(w, r, req.Password) {
 			return
 		}
 		s.recordLoginFailure(r, "unknown_user", req.Username, "")
-		writeError(w, 401, "invalid_credentials", "wrong username or password", nil)
+		invalid()
 		return
 	}
-	if u.LockedUntil != nil && u.LockedUntil.After(time.Now()) {
+	if s.lockedOut(r, u) {
+		if s.burnPasswordCheck(w, r, req.Password) {
+			return
+		}
+		_ = s.store.Q.RecordFailedLogin(r.Context(), u.ID)
 		s.recordLoginFailure(r, "locked", u.Username, u.ID.String())
-		writeError(w, 423, "locked", "account temporarily locked", nil)
+		invalid()
 		return
 	}
 	ok, err := crypto.VerifyPassword(r.Context(), req.Password, u.PasswordHash)
@@ -89,15 +128,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		_ = s.store.Q.RecordFailedLogin(r.Context(), u.ID)
 		s.recordLoginFailure(r, "bad_password", u.Username, u.ID.String())
-		writeError(w, 401, "invalid_credentials", "wrong username or password", nil)
+		invalid()
 		return
 	}
 	if s.cfg.FeatureTOTP && u.TotpEnabled {
 		writeJSON(w, 200, map[string]any{"totp_required": true, "challenge": s.newTOTPChallenge(u.ID, time.Now())})
 		return
 	}
-	_ = s.store.Q.ResetFailedLogins(r.Context(), u.ID)
-	if err := s.issueSession(w, r, u.ID); err != nil {
+	if err := s.completeLogin(w, r, u); err != nil {
 		s.log.Error("issue session", "err", err)
 		internal(w)
 		return
@@ -185,6 +223,7 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
+	s.refreshKnownDevice(w, r, p.UserID)
 	s.Audit(r.Context(), "auth.password_changed", "admin", p.UserID.String(), nil)
 	w.WriteHeader(204)
 }

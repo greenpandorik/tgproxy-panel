@@ -164,6 +164,7 @@ func (s *Server) handleTOTPConfirm(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
+	s.refreshKnownDevice(w, r, p.UserID)
 	s.Audit(r.Context(), "auth.totp_enabled", "admin", p.UserID.String(), nil)
 	// The plaintext codes exist only in this response body; nothing logs them.
 	writeJSON(w, 200, map[string]any{"recovery_codes": codes})
@@ -218,6 +219,7 @@ func (s *Server) handleTOTPDisable(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
+	s.refreshKnownDevice(w, r, p.UserID)
 	s.Audit(r.Context(), "auth.totp_disabled", "admin", p.UserID.String(), nil)
 	w.WriteHeader(204)
 }
@@ -324,24 +326,25 @@ func (s *Server) handleTOTPVerify(w http.ResponseWriter, r *http.Request) {
 		invalid()
 		return
 	}
-	if u.LockedUntil != nil && u.LockedUntil.After(time.Now()) {
-		writeError(w, 423, "locked", "account temporarily locked", nil)
-		return
-	}
 	usedRecovery := strings.TrimSpace(req.RecoveryCode) != ""
-	if !s.acceptSecondFactor(r.Context(), u, strings.TrimSpace(req.Code), strings.TrimSpace(req.RecoveryCode)) {
-		_ = s.store.Q.RecordFailedLogin(r.Context(), u.ID)
-		_ = s.loginLimiter.Allow(ip)
-		reason := "bad_totp_code"
+	reason := ""
+	switch {
+	case s.lockedOut(r, u):
+		reason = "locked"
+	case !s.acceptSecondFactor(r.Context(), u, strings.TrimSpace(req.Code), strings.TrimSpace(req.RecoveryCode)):
+		reason = "bad_totp_code"
 		if usedRecovery {
 			reason = "bad_recovery_code"
 		}
+	}
+	if reason != "" {
+		_ = s.store.Q.RecordFailedLogin(r.Context(), u.ID)
+		_ = s.loginLimiter.Allow(ip)
 		s.recordLoginFailure(r, reason, u.Username, u.ID.String())
 		invalid()
 		return
 	}
-	_ = s.store.Q.ResetFailedLogins(r.Context(), u.ID)
-	if err := s.issueSession(w, r, u.ID); err != nil {
+	if err := s.completeLogin(w, r, u); err != nil {
 		s.log.Error("issue session", "err", err)
 		internal(w)
 		return

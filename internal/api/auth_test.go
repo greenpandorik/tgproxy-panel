@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -126,8 +127,8 @@ func TestLockoutDoesNotRelockAfterExpiry(t *testing.T) {
 	if u.LockedUntil == nil || !u.LockedUntil.After(time.Now()) {
 		t.Fatalf("20 failures should lock the account, locked_until = %v", u.LockedUntil)
 	}
-	if resp := h.Anonymous().Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "pass-123456"}); resp.StatusCode != 423 {
-		t.Fatalf("login while locked: expected 423, got %d", resp.StatusCode)
+	if resp := h.Anonymous().Post("/api/v1/auth/login", map[string]string{"username": "root", "password": "pass-123456"}); resp.StatusCode != 401 {
+		t.Fatalf("login while locked: expected 401, got %d", resp.StatusCode)
 	}
 
 	if _, err := h.Store.Pool.Exec(ctx, `UPDATE admin_users SET locked_until = now() - interval '1 minute' WHERE id = $1`, id); err != nil {
@@ -210,5 +211,79 @@ func TestCannotDeleteLastOwner(t *testing.T) {
 	h.CreateAdmin("third", "pass-123456", "owner")
 	if resp := c.Delete("/api/v1/admins/" + rootID.String()); resp.StatusCode != http.StatusConflict {
 		t.Fatalf("self-delete: expected 409, got %d", resp.StatusCode)
+	}
+}
+
+type loginOutcome struct {
+	status     int
+	body       string
+	retryAfter string
+}
+
+func outcomeOf(t *testing.T, resp *http.Response) loginOutcome {
+	t.Helper()
+	defer resp.Body.Close() //nolint:errcheck
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return loginOutcome{resp.StatusCode, string(b), resp.Header.Get("Retry-After")}
+}
+
+func TestLockoutHoldsUnlessTheBrowserIsAKnownDevice(t *testing.T) {
+	h := apitest.New(t)
+	id := h.CreateAdmin("root", "pass-123456", "owner")
+	login := func(c *apitest.Client, password string) loginOutcome {
+		t.Helper()
+		return outcomeOf(t, c.Post("/api/v1/auth/login", map[string]string{"username": "root", "password": password}))
+	}
+	from := func(addr string) *apitest.Client { return h.Anonymous().SetHeader("X-Forwarded-For", addr) }
+
+	stale := h.Login("root", "pass-123456")
+	owner := h.Login("root", "pass-123456")
+	if code := owner.Post("/api/v1/me/password", map[string]string{"current": "pass-123456", "new": "pass-654321"}).StatusCode; code != 204 {
+		t.Fatalf("change password: %d", code)
+	}
+
+	wrong := login(from("198.51.100.1"), "wrong")
+	if wrong.status != 401 {
+		t.Fatalf("wrong password: %+v", wrong)
+	}
+	for i := range 19 {
+		addr := fmt.Sprintf("198.51.100.%d", 1+(i+1)/10)
+		if got := login(from(addr), "wrong"); got != wrong {
+			t.Fatalf("failure %d from %s: %+v, want %+v", i+2, addr, got, wrong)
+		}
+	}
+	u, err := h.Store.Q.GetAdmin(t.Context(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.LockedUntil == nil || !u.LockedUntil.After(time.Now()) {
+		t.Fatalf("20 failures should lock the account, locked_until = %v", u.LockedUntil)
+	}
+
+	forged := from("203.0.113.7").SetHeader("Cookie", "tgwp_device=device:"+id.String()+"|9999999999.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	for name, c := range map[string]*apitest.Client{
+		"a fresh address":                        from("203.0.113.5"),
+		"a forged device cookie":                 forged,
+		"a device cookie from before the change": stale,
+	} {
+		if got := login(c, "pass-654321"); got != wrong {
+			t.Fatalf("correct password from %s while locked: %+v, want the wrong-password answer %+v", name, got, wrong)
+		}
+		if got := login(c, "still-wrong"); got != wrong {
+			t.Fatalf("wrong password from %s while locked: %+v, want %+v", name, got, wrong)
+		}
+	}
+
+	if got := login(owner, "pass-654321"); got.status != 200 {
+		t.Fatalf("owner from a known device while locked: %+v, want 200", got)
+	}
+	if code := owner.Get("/api/v1/auth/me").StatusCode; code != 200 {
+		t.Fatalf("owner session: %d", code)
+	}
+	if got := login(from("203.0.113.6"), "pass-654321"); got != wrong {
+		t.Fatalf("the owner's sign-in lifted the lock for everyone else: %+v", got)
 	}
 }
