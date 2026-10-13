@@ -33,6 +33,7 @@ type ctxKey int
 const (
 	ctxPrincipal ctxKey = iota
 	ctxIP
+	ctxAccessNote
 )
 
 func PrincipalFrom(ctx context.Context) (Principal, bool) {

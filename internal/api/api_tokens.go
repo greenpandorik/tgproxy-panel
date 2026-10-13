@@ -197,13 +197,20 @@ func (s *Server) handleRevokeAPIToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
-// authenticateManagement gives an Authorization header priority over any cookie.
+func isBearer(value string) bool {
+	scheme, _, _ := strings.Cut(strings.TrimSpace(value), " ")
+	return strings.EqualFold(scheme, "Bearer")
+}
+
+// authenticateManagement gives a Bearer Authorization header priority over any cookie: a bad
+// token is refused and never falls back to the session. Other schemes, such as the Basic
+// credentials a reverse proxy in front of the panel asks for, are left to the cookie session.
 // Only management routes use this middleware: dedicated service/agent credentials
 // retain their independent authentication.
 func (s *Server) authenticateManagement(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		values, present := r.Header["Authorization"]
-		if !present {
+		values := r.Header.Values("Authorization")
+		if !slices.ContainsFunc(values, isBearer) {
 			requireAuth(next).ServeHTTP(w, r)
 			return
 		}
@@ -229,6 +236,7 @@ func (s *Server) authenticateManagement(next http.Handler) http.Handler {
 		}
 		p := Principal{UserID: token.AdminUserID, Username: token.Username, Role: string(token.Role), APITokenID: token.ID, APITokenScopes: token.Scopes}
 		_ = s.store.Q.TouchAPIToken(r.Context(), token.ID)
+		noteAccessPrincipal(r.Context(), p)
 		next.ServeHTTP(w, r.WithContext(withPrincipal(r.Context(), p)))
 	})
 }

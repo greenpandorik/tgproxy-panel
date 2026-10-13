@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"tgwebproxy/internal/api"
 	"tgwebproxy/internal/api/apitest"
 	"tgwebproxy/internal/store/db"
 )
@@ -113,7 +115,7 @@ func TestAPITokenCredentialsNeverFallBackToCookies(t *testing.T) {
 	h.CreateAdmin("root", "pass-123456", "owner")
 	c := h.Login("root", "pass-123456")
 	issued := issueToken(t, c, "nodes:read")
-	for _, headers := range [][]string{{"Bearer invalid"}, {"Bearer"}, {"Basic a"}, {""}, {"Bearer " + issued.Token, "Bearer " + issued.Token}, {"Bearer " + issued.Token + ", Bearer " + issued.Token}} {
+	for _, headers := range [][]string{{"Bearer invalid"}, {"Bearer"}, {"bearer invalid"}, {"Basic a", "Bearer invalid"}, {"Bearer " + issued.Token, "Bearer " + issued.Token}, {"Bearer " + issued.Token + ", Bearer " + issued.Token}} {
 		c.Headers["Authorization"] = headers
 		c.SendCSRF = false
 		tokenStatus(t, c.Get("/api/v1/nodes"), 401)
@@ -124,6 +126,60 @@ func TestAPITokenCredentialsNeverFallBackToCookies(t *testing.T) {
 	c.SetHeader("Authorization", "Bearer "+issued.Token)
 	tokenStatus(t, c.Get("/api/v1/api-tokens"), 403)
 	tokenStatus(t, c.Get("/api/v1/auth/me"), 403)
+}
+
+func TestNonBearerAuthorizationFallsBackToTheSession(t *testing.T) {
+	h := apitest.New(t)
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	for _, header := range []string{"Basic YWRtaW46c2VjcmV0", "Digest username=\"admin\"", ""} {
+		c.SetHeader("Authorization", header)
+		c.SendCSRF = true
+		tokenStatus(t, c.Get("/api/v1/nodes"), 200)
+		tokenStatus(t, c.Get("/api/v1/auth/me"), 200)
+		c.SendCSRF = false
+		tokenStatus(t, c.Post("/api/v1/site-templates", map[string]any{"name": "x", "html": "<html></html>"}), 403)
+
+		anon := h.Anonymous().SetHeader("Authorization", header)
+		resp := anon.Get("/api/v1/nodes")
+		if code, status := errCodeOf(t, resp); status != 401 || code != "unauthorized" {
+			t.Fatalf("%q without a session: %d %s, want 401 unauthorized", header, status, code)
+		}
+	}
+}
+
+func TestAccessLogAttributesTokenRequests(t *testing.T) {
+	logs := &logCapture{}
+	h := apitest.New(t, func(d *api.Deps) {
+		d.Log = slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	})
+	h.CreateAdmin("root", "pass-123456", "owner")
+	c := h.Login("root", "pass-123456")
+	issued := issueToken(t, c, "nodes:read")
+	bearer := h.Anonymous().SetHeader("Authorization", "Bearer "+issued.Token)
+	bearer.SendCSRF = false
+	tokenStatus(t, bearer.Get("/api/v1/nodes"), 200)
+	tokenStatus(t, c.Get("/api/v1/auth/me"), 200)
+
+	var tokenLine, sessionLine map[string]any
+	for line := range strings.SplitSeq(logs.String(), "\n") {
+		var rec map[string]any
+		if json.Unmarshal([]byte(line), &rec) != nil || rec["msg"] != "request" {
+			continue
+		}
+		switch rec["route"] {
+		case "/api/v1/nodes":
+			tokenLine = rec
+		case "/api/v1/auth/me":
+			sessionLine = rec
+		}
+	}
+	if tokenLine == nil || tokenLine["user"] != "root" || tokenLine["api_token_id"] != issued.APIToken.ID.String() {
+		t.Fatalf("token request log line %v, want user root and api_token_id %s", tokenLine, issued.APIToken.ID)
+	}
+	if sessionLine == nil || sessionLine["user"] != "root" || sessionLine["api_token_id"] != nil {
+		t.Fatalf("session request log line %v, want user root and no api_token_id", sessionLine)
+	}
 }
 
 func TestAPITokenRoleExpiryRevocationAndDeletion(t *testing.T) {
