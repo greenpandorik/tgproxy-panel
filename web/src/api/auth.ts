@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 
 import { api, invalidateSessionRequests } from '@/lib/api';
+import { clearAllDrafts } from '@/lib/drafts';
 import { advanceSession, sessionGuard } from '@/lib/session';
 import { brandingKeys } from './branding';
 
@@ -27,6 +28,7 @@ export function forgetSession(qc: QueryClient, refreshBranding = !!qc.getQueryDa
       JSON.stringify(q.queryKey) !== JSON.stringify(brandingKeys.active),
   });
   qc.getMutationCache().clear();
+  clearAllDrafts();
   qc.setQueryData(authKeys.me, null);
   // ThemeProvider survives navigation and must remain attached to this public query.
   if (refreshBranding) void qc.invalidateQueries({ queryKey: brandingKeys.active, exact: true });

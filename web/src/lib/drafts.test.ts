@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_DRAFT_TTL_MS,
   DRAFT_WRITE_DEBOUNCE_MS,
+  clearAllDrafts,
   clearDraft,
   draftStorageKey,
   formatDraftTime,
@@ -80,6 +81,49 @@ describe('draft storage', () => {
     const now = new Date(2026, 8, 6, 12, 30).getTime();
     expect(formatDraftTime(now - 60_000, 'ru', now)).toBe('12:29');
     expect(formatDraftTime(now - 24 * 3_600_000, 'ru', now)).toMatch(/05\.09\.2026.*12:30/);
+  });
+});
+
+describe('clearAllDrafts', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.useFakeTimers();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('removes every draft and nothing else', () => {
+    writeDraft('user:new', { label: 'a', count: 1 });
+    writeDraft('node:n1', { label: 'b', count: 2 });
+    window.localStorage.setItem('tgwp.lang', 'en');
+    clearAllDrafts();
+    expect(stored('user:new')).toBeNull();
+    expect(stored('node:n1')).toBeNull();
+    expect(window.localStorage.getItem('tgwp.lang')).toBe('en');
+  });
+
+  it('drops writes still waiting in a mounted form', () => {
+    const { rerender, unmount } = renderHook(({ current }: { current: Form }) => useDraft('t', current, { initial: INITIAL }), {
+      initialProps: { current: INITIAL },
+    });
+    rerender({ current: { label: 'typed', count: 1 } });
+    clearAllDrafts();
+    act(() => void vi.advanceTimersByTime(DRAFT_WRITE_DEBOUNCE_MS * 2));
+    expect(stored('t')).toBeNull();
+
+    rerender({ current: { label: 'typed again', count: 1 } });
+    clearAllDrafts();
+    unmount();
+    expect(stored('t')).toBeNull();
+  });
+
+  it('lets a form save again after the clear', () => {
+    const { rerender } = renderHook(({ current }: { current: Form }) => useDraft('t', current, { initial: INITIAL }), {
+      initialProps: { current: INITIAL },
+    });
+    clearAllDrafts();
+    rerender({ current: { label: 'new account', count: 1 } });
+    act(() => void vi.advanceTimersByTime(DRAFT_WRITE_DEBOUNCE_MS));
+    expect(stored('t')).toMatchObject({ value: { label: 'new account', count: 1 } });
   });
 });
 

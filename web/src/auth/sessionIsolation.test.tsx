@@ -13,6 +13,7 @@ import { dashboardKeys, useReadAlerts } from '@/api/dashboard';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import type { Me } from '@/api/types';
 import { api, UNAUTHORIZED_EVENT } from '@/lib/api';
+import { readDraft, writeDraft } from '@/lib/drafts';
 import { AuthProvider, useAuth } from './AuthProvider';
 
 const owner: Me = { id: 'owner', username: 'owner', role: 'owner', totp_enabled: false, features: { totp: true } };
@@ -210,6 +211,20 @@ describe('session cache isolation', () => {
     });
     expect(qc.getQueryData(privateKey)).toBeUndefined();
     expect(other.getQueryData(privateKey)).toEqual(secret);
+  });
+
+  it.each(['logout', 'expiry', 'login'] as const)('forgets form drafts on %s', async (transition) => {
+    window.localStorage.clear();
+    writeDraft('user:new', { label: 'previous account' });
+    window.localStorage.setItem('tgwp.lang', 'en');
+    const { result } = mount(useAuth);
+    await act(async () => {
+      if (transition === 'logout') await result.current.logout();
+      else if (transition === 'login') await result.current.login('viewer', 'password');
+      else window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    });
+    expect(readDraft('user:new')).toBeNull();
+    expect(window.localStorage.getItem('tgwp.lang')).toBe('en');
   });
 
   it('does not log out or redirect the next account when an old logout finishes', async () => {

@@ -70,6 +70,25 @@ export function clearDraft(key: string): void {
   }
 }
 
+// Bumped by clearAllDrafts; a write queued under an older epoch is dropped.
+let draftEpoch = 0;
+
+/** Removes every stored draft and drops writes still waiting in mounted forms. */
+export function clearAllDrafts(): void {
+  draftEpoch += 1;
+  try {
+    const storage = window.localStorage;
+    const keys: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
+      const k = storage.key(i);
+      if (k?.startsWith(DRAFT_STORAGE_PREFIX)) keys.push(k);
+    }
+    for (const k of keys) storage.removeItem(k);
+  } catch {
+    // ignore
+  }
+}
+
 export function formatDraftTime(savedAt: number, locale?: string, now = Date.now()): string {
   const d = new Date(savedAt);
   const today = new Date(now);
@@ -96,6 +115,11 @@ export interface UseDraftResult<T> {
 interface Unsaved {
   key: string;
   serialized: string;
+  epoch: number;
+}
+
+function persist(unsaved: Unsaved | null): void {
+  if (unsaved && unsaved.epoch === draftEpoch) writeSerializedDraft(unsaved.key, unsaved.serialized);
 }
 
 export function useDraft<T>(
@@ -132,7 +156,7 @@ export function useDraft<T>(
     const flush = () => {
       const unsaved = unsavedRef.current;
       cancel();
-      if (unsaved) writeSerializedDraft(unsaved.key, unsaved.serialized);
+      persist(unsaved);
     };
 
     if (!open) {
@@ -147,12 +171,12 @@ export function useDraft<T>(
     }
     if (armedForRef.current !== key) return;
 
-    unsavedRef.current = { key, serialized: serializedCurrent };
+    unsavedRef.current = { key, serialized: serializedCurrent, epoch: draftEpoch };
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
       const unsaved = unsavedRef.current;
       unsavedRef.current = null;
-      if (unsaved) writeSerializedDraft(unsaved.key, unsaved.serialized);
+      persist(unsaved);
     }, DRAFT_WRITE_DEBOUNCE_MS);
 
     return () => {
@@ -168,7 +192,7 @@ export function useDraft<T>(
     () => () => {
       const unsaved = unsavedRef.current;
       unsavedRef.current = null;
-      if (unsaved) writeSerializedDraft(unsaved.key, unsaved.serialized);
+      persist(unsaved);
     },
     [],
   );
