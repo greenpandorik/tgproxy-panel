@@ -329,3 +329,31 @@ func TestBlockingWarmupAndMissingMetricsPreserveExecutedTransportHistory(t *test
 		})
 	}
 }
+
+func TestRemovedProbeTransportBlocksRecoveryOnlyUntilRetired(t *testing.T) {
+	f := newBlockingFixture(t)
+	f.web = true
+	for range 9 {
+		f.tick(t, "authenticated_mtproto", "failed")
+	}
+	if f.sender.calls.Load() != 1 {
+		t.Fatalf("corroborated blocking was not announced: %d", f.sender.calls.Load())
+	}
+	f.web = false
+	for range 30 {
+		f.tick(t, "authenticated_mtproto", "ok")
+	}
+	if f.sender.calls.Load() != 1 {
+		t.Fatal("a just-removed WEB check counted as recovery")
+	}
+	for range int((reliabilityUnknownExpiry + reliabilityRecoveryDelay) / time.Minute) {
+		f.tick(t, "authenticated_mtproto", "ok")
+	}
+	var evidence int
+	if e := f.s.st.Pool.QueryRow(t.Context(), `SELECT count(*) FROM notification_findings WHERE node_id=$1 AND kind='isp|web'`, f.n.ID).Scan(&evidence); e != nil {
+		t.Fatal(e)
+	}
+	if evidence != 0 || f.sender.calls.Load() != 2 {
+		t.Fatalf("removed WEB check kept blocking unknown: evidence=%d sends=%d", evidence, f.sender.calls.Load())
+	}
+}

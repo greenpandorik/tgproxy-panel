@@ -16,10 +16,12 @@ const (
 	reliabilityProblemDelay  = 5 * time.Minute
 	reliabilityRecoveryDelay = 10 * time.Minute
 	reliabilityFreshness     = 2 * time.Minute
+	reliabilityUnknownExpiry = time.Hour
 )
 
 // Each complete source snapshot replaces its known findings. Missing previously
-// observed DCs/checks become unknown immediately rather than silently recovering.
+// observed DCs/checks become unknown immediately rather than silently recovering,
+// and are retired once they have stayed unknown for reliabilityUnknownExpiry.
 func (s *Stats) observeFindings(ctx context.Context, n db.Node, findings []reliability.Finding) {
 	if s.alerts == nil || len(findings) == 0 {
 		return
@@ -36,19 +38,20 @@ func (s *Stats) observeFindings(ctx context.Context, n db.Node, findings []relia
 		return
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err = tx.Exec(ctx, `UPDATE notification_findings SET known=false WHERE node_id=$1 AND source=$2`, n.ID, source); err != nil {
+	now := s.clock()
+	if _, err = tx.Exec(ctx, `UPDATE notification_findings SET known=false,observed_at=CASE WHEN known THEN $3 ELSE observed_at END WHERE node_id=$1 AND source=$2`, n.ID, source, now); err != nil {
 		return
 	}
 	for _, f := range findings {
 		if !f.Known {
-			if _, err = tx.Exec(ctx, `UPDATE notification_findings SET known=false,observed_at=$3 WHERE node_id=$1 AND kind=$2`, n.ID, f.Kind, s.clock()); err != nil {
-				return
-			}
 			continue
 		}
-		if _, err = tx.Exec(ctx, `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(node_id,kind) DO UPDATE SET source=excluded.source,failed=excluded.failed,known=excluded.known,observed_at=excluded.observed_at`, n.ID, source, f.Kind, f.Failed, f.Known, s.clock()); err != nil {
+		if _, err = tx.Exec(ctx, `INSERT INTO notification_findings(node_id,source,kind,failed,known,observed_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(node_id,kind) DO UPDATE SET source=excluded.source,failed=excluded.failed,known=excluded.known,observed_at=excluded.observed_at`, n.ID, source, f.Kind, f.Failed, f.Known, now); err != nil {
 			return
 		}
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM notification_findings WHERE node_id=$1 AND source=$2 AND NOT known AND observed_at < $3`, n.ID, source, now.Add(-reliabilityUnknownExpiry)); err != nil {
+		return
 	}
 	if err = tx.Commit(ctx); err != nil {
 		s.log.Error("notification observations save", "err", err)

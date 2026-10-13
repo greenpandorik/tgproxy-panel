@@ -271,3 +271,59 @@ func TestQueuedRecoveryRequiresFreshObservationAtDelivery(t *testing.T) {
 		t.Fatalf("queued stale observation sent recovery: %d messages", sender.calls.Load())
 	}
 }
+
+func reliabilityHarness(t *testing.T, name string) (*Stats, *Alerts, *queuedSender, db.Node, *time.Time) {
+	t.Helper()
+	st := store.OpenTest(t)
+	var id uuid.UUID
+	if err := st.Pool.QueryRow(t.Context(), `INSERT INTO nodes(name,hostname) VALUES($1,$1||'.test') RETURNING id`, name).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	sender := &queuedSender{}
+	a := NewAlerts(func(context.Context) (bool, string, string, error) { return true, "tok", "42", nil }, sender, slog.New(slog.DiscardHandler))
+	s := NewStats(st, nil, time.Hour, slog.New(slog.DiscardHandler))
+	s.SetAlerts(a)
+	now := time.Now()
+	s.SetNow(func() time.Time { return now })
+	return s, a, sender, db.Node{ID: id, Name: name}, &now
+}
+
+func TestDisappearedCheckRecoversAndLaterProblemsNotify(t *testing.T) {
+	s, a, sender, n, now := reliabilityHarness(t, "vanished")
+	start := *now
+	tick := func(dcs []reliability.DC, diskFailed bool) {
+		findings := reliability.Findings(reliability.Report{Version: 1, At: *now, DCs: dcs}, *now)
+		findings = append(findings, reliability.Finding{Kind: "disk_pressure", Known: true, Failed: diskFailed})
+		s.recordFindings(t.Context(), n, findings)
+		if !a.observeReliability(t.Context(), n, true, *now) {
+			t.Fatal("observation failed")
+		}
+		a.sendReliability(t.Context(), n)
+		*now = now.Add(time.Minute)
+	}
+	for range 6 {
+		tick([]reliability.DC{{ID: 2, Alive: 0, Required: 1}}, false)
+	}
+	if sender.calls.Load() != 1 {
+		t.Fatalf("DC failure was not announced: %d", sender.calls.Load())
+	}
+	for range 30 {
+		tick(nil, false)
+	}
+	if sender.calls.Load() != 1 {
+		t.Fatal("a check that just disappeared counted as recovery")
+	}
+	for range int((reliabilityUnknownExpiry + reliabilityRecoveryDelay) / time.Minute) {
+		tick(nil, false)
+	}
+	if sender.calls.Load() != 2 {
+		t.Fatalf("a check that disappeared for good never recovered: %d messages", sender.calls.Load())
+	}
+	*now = start.Add(incidentCooldown)
+	for range 6 {
+		tick(nil, true)
+	}
+	if sender.calls.Load() != 3 {
+		t.Fatalf("a later different failure was not announced: %d messages", sender.calls.Load())
+	}
+}

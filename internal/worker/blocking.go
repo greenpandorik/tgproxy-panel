@@ -184,7 +184,8 @@ func handshakePointFrom(text string, at time.Time) (handshakePoint, bool) {
 
 // blockingProbeEvidence stores only the identities of authenticated checks that
 // actually ran. This survives panel restarts; evidence rows are excluded from
-// aggregate notification health, so their age cannot create a notification.
+// aggregate notification health, so their age cannot create a notification. An
+// identity that fresh reports have stopped running is retired after reliabilityUnknownExpiry.
 func (s *Stats) blockingProbeEvidence(ctx context.Context, n db.Node) (failed, healthy bool) {
 	if len(s.probeLocations) == 0 {
 		return false, false
@@ -212,6 +213,7 @@ func (s *Stats) blockingProbeEvidence(ctx context.Context, n db.Node) (failed, h
 		return false, false
 	}
 	checks := map[string]reliability.ProbeCheck{}
+	var unused []string
 	healthy = true
 	for _, loc := range s.probeLocations {
 		p, ok := reports[loc]
@@ -225,6 +227,9 @@ func (s *Stats) blockingProbeEvidence(ctx context.Context, n db.Node) (failed, h
 		}
 		executed := false
 		for key, c := range map[string]reliability.ProbeCheck{"faketls": p.FakeTLS, "web": p.WEB} {
+			if fresh && c.Status == "not_run" {
+				unused = append(unused, loc+"|"+key)
+			}
 			if c.Method != reliability.AuthenticatedMTProto || (c.Status != "ok" && c.Status != "failed") {
 				continue
 			}
@@ -243,6 +248,9 @@ func (s *Stats) blockingProbeEvidence(ctx context.Context, n db.Node) (failed, h
 		if !executed {
 			healthy = false
 		}
+	}
+	if _, e = s.st.Pool.Exec(ctx, `DELETE FROM notification_findings WHERE node_id=$1 AND source='blocking_evidence' AND kind=ANY($2::text[]) AND observed_at < $3`, n.ID, append([]string{}, unused...), now.Add(-reliabilityUnknownExpiry)); e != nil {
+		return false, false
 	}
 	rows, e = s.st.Pool.Query(ctx, `SELECT kind FROM notification_findings WHERE node_id=$1 AND source='blocking_evidence'`, n.ID)
 	if e != nil {

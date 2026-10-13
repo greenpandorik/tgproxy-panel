@@ -701,9 +701,12 @@ empty fields. The token is stored encrypted and never sent back to the browser.
 Server health notifications combine datacenter, route and scheduled-check findings into one
 problem episode per server. A problem must persist for 5 minutes before one warning is sent.
 Recovery is sent only after 10 minutes of continuously healthy observations. Missing or stale
-observations do not prove recovery and interrupt the confirmation period. Details remain in
-the server's Health tab; a failing Middle Proxy writer alone does not prove that Telegram is
-unavailable, because direct routing may still work.
+observations do not prove recovery and interrupt the confirmation period. A check the server
+stops reporting for good (for example datacenters after the Middle Proxy is turned off, or a
+transport removed from an external probe) counts as unknown for one hour and is then dropped, so
+the server can recover and later problems are reported again. Details remain in the server's
+Health tab; a failing Middle Proxy writer alone does not prove that Telegram is unavailable,
+because direct routing may still work.
 
 The panel stores notification state in PostgreSQL, so restarting it does not start the same
 notification episode again. Telegram and webhook delivery are acknowledged separately; failed
