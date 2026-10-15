@@ -318,7 +318,9 @@ applying changes, the install command and deleting are on the server's page. Ser
 order across the panel: Overview, Monitoring, the server choice for a user and the subscription
 page use it too. Owners and admins drag a row by its handle to change it, or from the keyboard
 press Space on the handle, move with the arrows and press Space again. A new server goes last.
-"Add server" opens a three-step wizard:
+Click a column name to sort the list by it: the first click sorts, the second reverses, the third
+returns to the shared order. While the list is sorted rows cannot be dragged, and the sort is kept
+in the page address. "Add server" opens a three-step wizard:
 
 1. Server: a name, the domain, an e-mail for the Let's Encrypt certificate and, if needed, the
    public IP. "Check DNS" shows where the domain points right now.

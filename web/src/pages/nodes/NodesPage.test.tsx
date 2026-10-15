@@ -279,3 +279,57 @@ describe('NodesPage fleet update', () => {
     expect(screen.getByRole('button', { name: 'Update telemt…' })).toBeInTheDocument();
   });
 });
+
+describe('NodesPage sorting', () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({ isWriter: true } as unknown as ReturnType<typeof useAuth>);
+    setLang('en');
+    vi.mocked(useNodes).mockReturnValue({
+      data: {
+        items: [
+          { ...node('alpha', 'online', health(1, 1)), people_online: 2 },
+          { ...node('bravo', 'online', health(1, 1)), people_online: 40 },
+          { ...node('charlie', 'online', health(1, 1)), people_online: 9 },
+        ],
+        total: 3,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useNodes>);
+  });
+
+  const order = () =>
+    screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => within(r).getAllByRole('cell')[0].textContent ?? '');
+
+  it('sorts by a column on click, reverses on the second click and returns to the shared order on the third', async () => {
+    render(wrap(<NodesPage />));
+    const header = screen.getByRole('columnheader', { name: 'People online' });
+    const button = within(header).getByRole('button');
+
+    await userEvent.click(button);
+    expect(header).toHaveAttribute('aria-sort', 'descending');
+    expect(screen.queryByRole('button', { name: /^Move/ })).toBeNull();
+    expect(screen.getAllByRole('row').slice(1).map((r) => r.textContent)).toEqual([
+      expect.stringContaining('bravo'),
+      expect.stringContaining('charlie'),
+      expect.stringContaining('alpha'),
+    ]);
+
+    await userEvent.click(button);
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    expect(order()[0]).toContain('alpha');
+
+    await userEvent.click(button);
+    expect(header).toHaveAttribute('aria-sort', 'none');
+    expect(screen.getByRole('button', { name: 'Move alpha' })).toBeInTheDocument();
+  });
+
+  it('offers a way back to the shared order while sorted', async () => {
+    render(wrap(<NodesPage />));
+    await userEvent.click(within(screen.getByRole('columnheader', { name: 'Server' })).getByRole('button'));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to the shared order' }));
+    expect(screen.getByRole('button', { name: 'Move alpha' })).toBeInTheDocument();
+  });
+});
