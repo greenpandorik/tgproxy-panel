@@ -467,3 +467,12 @@ func TestOnlyGrowingCountersAreLifetimeCounters(t *testing.T) {
 		}
 	}
 }
+
+func TestWebRejectionsNameOnlyReasonsThatHappened(t *testing.T) {
+	check := webRejections(telemt.WebMetrics{Rejections: telemt.LabelCounters{Present: true, Values: map[string]float64{
+		"quota": 0, "body_reader_capacity": 5, "rate": 0,
+	}}})
+	if check.Status != domain.CheckWarn || check.Detail == nil || *check.Detail != "rejection reasons: body_reader_capacity" {
+		t.Fatalf("got %s %v", check.Status, check.Detail)
+	}
+}

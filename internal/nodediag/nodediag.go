@@ -503,7 +503,7 @@ func webRejections(m telemt.WebMetrics) domain.DiagnosticCheck {
 	if total == 0 {
 		return ok("web_rejections", value, "no WEB session has been rejected")
 	}
-	return warn("web_rejections", value, "rejection reasons: "+joinStrings(m.Rejections.Labels()))
+	return warn("web_rejections", value, "rejection reasons: "+joinStrings(sortedCarriers(m.Rejections.Values)))
 }
 
 func telemtGroup(t Target, n nodeFacts) domain.DiagnosticGroup {

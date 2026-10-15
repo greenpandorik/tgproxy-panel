@@ -44,6 +44,8 @@ type WebLimits struct {
 	NewStreamsPerMinute        int64
 	NewStreamsBurst            int64
 	MaxStreamHandshakes        int64
+	MaxBodyReaders             int64
+	MaxBodyBytesGlobal         int64
 	MaxTombstonesPerSession    int64
 	ControlBytesGlobal         int64
 	PendingBytesGlobal         int64
@@ -62,7 +64,7 @@ var webCapacityPresets = map[int]WebCapacity{
 		NewBootstrapsPerMinute: 1200, NewBootstrapsBurst: 256,
 		NewSessionsPerMinute: 600, NewSessionsBurst: 128,
 		NewStreamsPerMinute: 6000, NewStreamsBurst: 512,
-		MaxStreamHandshakes: 256, MaxTombstonesPerSession: 4096,
+		MaxStreamHandshakes: 256, MaxTombstonesPerSession: 4096, MaxBodyReaders: 32, MaxBodyBytesGlobal: 64 * mib,
 		ControlBytesGlobal: 16 * mib, PendingBytesGlobal: 512 * mib, PendingItemsGlobal: 256 * 1024,
 		WebsocketBytesGlobal: 256 * mib, MemoryEnvelopeBytes: 1280 * mib,
 	}},
@@ -73,7 +75,7 @@ var webCapacityPresets = map[int]WebCapacity{
 		NewBootstrapsPerMinute: 2400, NewBootstrapsBurst: 512,
 		NewSessionsPerMinute: 1200, NewSessionsBurst: 256,
 		NewStreamsPerMinute: 12000, NewStreamsBurst: 1024,
-		MaxStreamHandshakes: 512, MaxTombstonesPerSession: 2048,
+		MaxStreamHandshakes: 512, MaxTombstonesPerSession: 2048, MaxBodyReaders: 64, MaxBodyBytesGlobal: 128 * mib,
 		ControlBytesGlobal: 32 * mib, PendingBytesGlobal: 640 * mib, PendingItemsGlobal: 512 * 1024,
 		WebsocketBytesGlobal: 320 * mib, MemoryEnvelopeBytes: 1536 * mib,
 	}},
@@ -84,7 +86,7 @@ var webCapacityPresets = map[int]WebCapacity{
 		NewBootstrapsPerMinute: 4800, NewBootstrapsBurst: 1024,
 		NewSessionsPerMinute: 2400, NewSessionsBurst: 512,
 		NewStreamsPerMinute: 24000, NewStreamsBurst: 2048,
-		MaxStreamHandshakes: 1024, MaxTombstonesPerSession: 1024,
+		MaxStreamHandshakes: 1024, MaxTombstonesPerSession: 1024, MaxBodyReaders: 128, MaxBodyBytesGlobal: 256 * mib,
 		ControlBytesGlobal: 64 * mib, PendingBytesGlobal: 768 * mib, PendingItemsGlobal: 1024 * 1024,
 		WebsocketBytesGlobal: 384 * mib, MemoryEnvelopeBytes: 2048 * mib,
 	}},
@@ -95,7 +97,7 @@ var webCapacityPresets = map[int]WebCapacity{
 		NewBootstrapsPerMinute: 9600, NewBootstrapsBurst: 2048,
 		NewSessionsPerMinute: 4800, NewSessionsBurst: 1024,
 		NewStreamsPerMinute: 48000, NewStreamsBurst: 4096,
-		MaxStreamHandshakes: 2048, MaxTombstonesPerSession: 512,
+		MaxStreamHandshakes: 2048, MaxTombstonesPerSession: 512, MaxBodyReaders: 256, MaxBodyBytesGlobal: 512 * mib,
 		ControlBytesGlobal: 128 * mib, PendingBytesGlobal: 1024 * mib, PendingItemsGlobal: 2048 * 1024,
 		WebsocketBytesGlobal: 512 * mib, MemoryEnvelopeBytes: 2560 * mib,
 	}},
@@ -106,9 +108,9 @@ var webCapacityPresets = map[int]WebCapacity{
 		NewBootstrapsPerMinute: 19200, NewBootstrapsBurst: 4096,
 		NewSessionsPerMinute: 9600, NewSessionsBurst: 2048,
 		NewStreamsPerMinute: 96000, NewStreamsBurst: 8192,
-		MaxStreamHandshakes: 4096, MaxTombstonesPerSession: 256,
+		MaxStreamHandshakes: 4096, MaxTombstonesPerSession: 256, MaxBodyReaders: 512, MaxBodyBytesGlobal: 1024 * mib,
 		ControlBytesGlobal: 256 * mib, PendingBytesGlobal: 1536 * mib, PendingItemsGlobal: 4096 * 1024,
-		WebsocketBytesGlobal: 768 * mib, MemoryEnvelopeBytes: 3584 * mib,
+		WebsocketBytesGlobal: 768 * mib, MemoryEnvelopeBytes: 4032 * mib,
 	}},
 }
 
@@ -142,6 +144,8 @@ func (l WebLimits) Fields() []WebLimitField {
 		{"new_streams_per_minute", l.NewStreamsPerMinute},
 		{"new_streams_burst", l.NewStreamsBurst},
 		{"max_stream_handshakes", l.MaxStreamHandshakes},
+		{"max_body_readers", l.MaxBodyReaders},
+		{"max_body_bytes_global", l.MaxBodyBytesGlobal},
 		{"max_tombstones_per_session", l.MaxTombstonesPerSession},
 		{"control_bytes_global", l.ControlBytesGlobal},
 		{"pending_bytes_global", l.PendingBytesGlobal},
