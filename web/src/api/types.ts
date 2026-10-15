@@ -226,6 +226,10 @@ export interface NodeHealth {
   dc_data_available?: boolean;
   /** The WEB runtime as the last heartbeat carried it. Null when the node reported none. */
   web_runtime?: WebRuntime | null;
+  /** WEB sessions telemt is configured to admit at once. Absent from older agents. */
+  web_capacity?: number;
+  /** telemt's server.max_connections: TCP connections Fake-TLS clients and WEB backends share. */
+  max_connections?: number;
 }
 
 export interface NodeCheckResult {
@@ -282,7 +286,14 @@ export interface Node {
   people_online?: number | null;
   /** Connections from the same snapshot. */
   connections?: number | null;
+  /** The WEB capacity preset chosen in the panel; null while telemt keeps its own limits. */
+  web_capacity?: WebCapacity | null;
+  /** Whether the node's agent and telemt can apply a capacity preset. */
+  web_capacity_supported?: boolean;
 }
+
+/** Simultaneous WEB sessions a telemt node admits; mirrors domain.WebCapacityPresets. */
+export type WebCapacity = 128 | 256 | 512 | 1024;
 
 export interface CreateNodeInput {
   name: string;
@@ -303,6 +314,7 @@ export interface PatchNodeInput {
   tls_domains?: string[];
   classic_port?: number;
   ad_tag?: string;
+  web_capacity?: WebCapacity;
 }
 
 export interface CreateNodeResult {

@@ -523,7 +523,18 @@
     "detail_logs_docs_file": "docs/runbook.md",
     "detail_history_last": "{{status}}, {{ago}}",
     "detail_danger_title": "Removing the server",
-    "detail_danger_hint": "The server leaves the panel together with its profiles. The VPS and the proxy on it keep running until you stop them."
+    "detail_danger_hint": "The server leaves the panel together with its profiles. The VPS and the proxy on it keep running until you stop them.",
+    "capacity_title": "WEB capacity",
+    "capacity_summary": "up to {{people}} people",
+    "capacity_option": "up to {{people}} people over WEB and {{connections}} Fake-TLS connections",
+    "capacity_standard": "standard",
+    "capacity_current": "On the server now: up to {{people}} people over WEB and {{connections}} Fake-TLS connections.",
+    "capacity_current_unknown": "The server has not reported its limits yet: that needs agent 2.17.4 or newer.",
+    "capacity_unsupported": "Changing the capacity needs agent 2.17.4 or newer and Telemt 3.5.14 or newer. Update them on the Maintenance tab.",
+    "capacity_restart_note": "Changing it restarts telemt; connected people reconnect within a few seconds.",
+    "capacity_memory_note": "More capacity makes telemt reserve more of the server's memory for WEB. 1024 is meant for servers with at least 4 GB of RAM.",
+    "capacity_saved": "Capacity saved. The next apply restarts telemt.",
+    "capacity_confirm_title": "Change WEB capacity?"
   },
   "keys": {
     "title": "Keys",

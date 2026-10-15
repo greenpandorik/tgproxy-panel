@@ -531,7 +531,18 @@
     "detail_logs_docs_file": "docs/runbook.ru.md",
     "detail_history_last": "{{status}}, {{ago}}",
     "detail_danger_title": "Удаление сервера",
-    "detail_danger_hint": "Сервер исчезнет из панели вместе с его профилями. Сам VPS и прокси на нём продолжат работать, пока вы их не остановите."
+    "detail_danger_hint": "Сервер исчезнет из панели вместе с его профилями. Сам VPS и прокси на нём продолжат работать, пока вы их не остановите.",
+    "capacity_title": "Ёмкость WEB",
+    "capacity_summary": "до {{people}} человек",
+    "capacity_option": "до {{people}} человек по WEB и до {{connections}} соединений Fake-TLS",
+    "capacity_standard": "стандарт",
+    "capacity_current": "Сейчас на сервере: до {{people}} человек по WEB и до {{connections}} соединений Fake-TLS.",
+    "capacity_current_unknown": "Сервер ещё не сообщил свои пределы: для этого нужен агент 2.17.4 или новее.",
+    "capacity_unsupported": "Менять ёмкость можно с агентом 2.17.4 или новее и Telemt 3.5.14 или новее. Обновите их на вкладке «Обслуживание».",
+    "capacity_restart_note": "При смене telemt перезапустится, подключённые люди переподключатся за несколько секунд.",
+    "capacity_memory_note": "Чем больше ёмкость, тем больше памяти сервера telemt резервирует под WEB. 1024 рассчитано на серверы, где не меньше 4 ГБ RAM.",
+    "capacity_saved": "Ёмкость сохранена. Следующее применение перезапустит telemt.",
+    "capacity_confirm_title": "Сменить ёмкость WEB?"
   },
   "keys": {
     "title": "Ключи",

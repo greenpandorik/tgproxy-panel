@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 
 import { NodeListenersCard } from './NodeListenersCard';
 import { NodeReliability } from './NodeReliability';
+import { NodeWebCapacity } from './NodeWebCapacity';
+import { webCapacityPeople } from './webCapacity';
 
 import type { Summary } from './sectionSummaries';
 import type { Node } from '@/api/types';
@@ -53,6 +55,14 @@ export function NodeProxyTab({ node, canEdit }: { node: Node; canEdit: boolean }
       <Panel>
         <CollapsibleSection title={t('web.policy_title')} summary={policy.text} tone={policy.tone} keepMounted>
           <WebPolicyCard nodeId={node.id} capability={capability} />
+        </CollapsibleSection>
+        <CollapsibleSection
+          title={t('nodes.capacity_title')}
+          summary={t('nodes.capacity_summary', { people: webCapacityPeople(node) })}
+          tone="neutral"
+          keepMounted
+        >
+          <NodeWebCapacity node={node} canEdit={canEdit} />
         </CollapsibleSection>
         <CollapsibleSection title={t('reliability.title')} summary={reliability.text} tone={reliability.tone} keepMounted>
           <NodeReliability node={node} />
