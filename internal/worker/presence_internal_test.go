@@ -206,3 +206,29 @@ func TestPresenceRingCarriesANodeThatWasNotRead(t *testing.T) {
 		t.Fatalf("presence = %+v: after presenceCarry the old reading only counts in the window", p)
 	}
 }
+
+func TestPresenceSplitsKeysByNode(t *testing.T) {
+	team, ivan := uuid.New(), uuid.New()
+	a := nodeReading{NodeID: uuid.New(), Connections: 7, Keys: []keyReading{
+		shared(team, 4, "203.0.113.1", "203.0.113.2"),
+		personal(ivan, 3, "198.51.100.7"),
+	}}
+	b := nodeReading{NodeID: uuid.New(), Connections: 3, Keys: []keyReading{
+		shared(team, 3, "203.0.113.2", "203.0.113.3", "203.0.113.4"),
+		personal(ivan, 0),
+	}}
+	p := computePresence([][]nodeReading{{a, b}})
+	k := p.Keys[team]
+	if !k.Shared || k.Devices != 4 || len(k.Nodes) != 2 {
+		t.Fatalf("team = %+v", k)
+	}
+	if n := k.Nodes[a.NodeID]; n.People != 2 || n.Connections != 4 {
+		t.Fatalf("team on a = %+v", n)
+	}
+	if n := k.Nodes[b.NodeID]; n.People != 3 || n.Connections != 3 {
+		t.Fatalf("team on b = %+v", n)
+	}
+	if got := p.Keys[ivan]; got.Shared || len(got.Nodes) != 1 || got.Nodes[a.NodeID].People != 1 {
+		t.Fatalf("ivan = %+v, want one person on a only", got)
+	}
+}

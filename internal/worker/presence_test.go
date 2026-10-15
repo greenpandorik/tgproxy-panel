@@ -2,6 +2,7 @@ package worker_test
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -239,5 +240,100 @@ func TestStatsCountsTproxySessionsAsPeople(t *testing.T) {
 	fleet, _ := f.st.Q.LatestFleetSnapshot(ctx, time.Now().Add(-time.Minute))
 	if fleet.PeopleOnline != 2 || fleet.Connections != 2 {
 		t.Fatalf("fleet = %+v", fleet)
+	}
+}
+
+type presenceSample struct {
+	people, connections int
+	nodes               map[uuid.UUID]struct {
+		People      int `json:"people"`
+		Connections int `json:"connections"`
+	}
+}
+
+func presenceSamples(t *testing.T, p presenceFleet, key uuid.UUID) []presenceSample {
+	t.Helper()
+	rows, err := p.f.st.Pool.Query(context.Background(),
+		`SELECT people, connections, nodes FROM key_presence_samples WHERE access_key_id = $1 ORDER BY taken_at, id`, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []presenceSample
+	for rows.Next() {
+		var s presenceSample
+		var raw []byte
+		if err := rows.Scan(&s.people, &s.connections, &raw); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(raw, &s.nodes); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+func TestStatsKeepsHistoryForSharedKeysOnly(t *testing.T) {
+	p := newPresenceFleet(t)
+	ctx := context.Background()
+	idle, err := p.f.keys.Create(ctx, keys.CreateInput{Label: "idle", Type: domain.KeyShared, CarrierMode: "https", NodeIDs: []uuid.UUID{p.a}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	paused, err := p.f.keys.Create(ctx, keys.CreateInput{Label: "paused", Type: domain.KeyShared, CarrierMode: "https", NodeIDs: []uuid.UUID{p.a}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.f.st.Pool.Exec(ctx, `UPDATE access_keys SET disabled_at = now() WHERE id = $1`, paused.ID); err != nil {
+		t.Fatal(err)
+	}
+	p.mock.SetStats(p.a, p.userStats("7",
+		map[uuid.UUID][]string{p.ivan: {"198.51.100.7"}, p.team: {"203.0.113.1", "203.0.113.2"}},
+		map[uuid.UUID]string{p.ivan: "3", p.team: "4"}))
+	p.mock.SetStats(p.b, p.userStats("5",
+		map[uuid.UUID][]string{p.team: {"203.0.113.2", "203.0.113.3", "203.0.113.4"}},
+		map[uuid.UUID]string{p.team: "5"}))
+	s := worker.NewStats(p.f.st, p.mock, 90*time.Second, slog.New(slog.DiscardHandler))
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	team := presenceSamples(t, p, p.team)
+	if len(team) != 1 || team[0].people != 4 || team[0].connections != 9 || len(team[0].nodes) != 2 {
+		t.Fatalf("team samples = %+v", team)
+	}
+	if n := team[0].nodes[p.a]; n.People != 2 || n.Connections != 4 {
+		t.Fatalf("team on a = %+v", n)
+	}
+	if n := team[0].nodes[p.b]; n.People != 3 || n.Connections != 5 {
+		t.Fatalf("team on b = %+v", n)
+	}
+	if got := presenceSamples(t, p, p.ivan); len(got) != 0 {
+		t.Fatalf("personal key has %d samples", len(got))
+	}
+	if got := presenceSamples(t, p, idle.ID); len(got) != 1 || got[0].people != 0 || len(got[0].nodes) != 0 {
+		t.Fatalf("an idle shared key records a zero, got %+v", got)
+	}
+	if got := presenceSamples(t, p, paused.ID); len(got) != 0 {
+		t.Fatalf("a turned off shared key has %d samples", len(got))
+	}
+
+	var leaked int
+	if err := p.f.st.Pool.QueryRow(ctx, `SELECT count(*) FROM key_presence_samples WHERE nodes::text LIKE '%203.0.113%'`).Scan(&leaked); err != nil {
+		t.Fatal(err)
+	}
+	if leaked != 0 {
+		t.Fatalf("%d samples kept addresses", leaked)
+	}
+
+	p.mock.SetStats(p.a, p.userStats("0", map[uuid.UUID][]string{p.team: {}}, map[uuid.UUID]string{p.team: "0"}))
+	p.mock.SetStats(p.b, p.userStats("0", map[uuid.UUID][]string{p.team: {}}, map[uuid.UUID]string{p.team: "0"}))
+	if err := s.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	team = presenceSamples(t, p, p.team)
+	if len(team) != 2 || team[1].people != 0 || team[1].connections != 0 || len(team[1].nodes) != 0 {
+		t.Fatalf("after everyone left: %+v", team)
 	}
 }

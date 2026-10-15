@@ -26,9 +26,17 @@ type nodeReading struct {
 }
 
 type keyPresence struct {
+	Shared      bool
 	Connections int
 	Devices     int
 	Devices15m  int
+	// Nodes splits the current reading by node.
+	Nodes map[uuid.UUID]nodeKeyPresence
+}
+
+type nodeKeyPresence struct {
+	People      int
+	Connections int
 }
 
 type presence struct {
@@ -77,10 +85,15 @@ func nodePeople(n nodeReading) int {
 // computePresence counts the fleet over a window of sweeps, oldest first, the last one being now.
 func computePresence(window [][]nodeReading) presence {
 	out := presence{Keys: map[uuid.UUID]keyPresence{}}
+	type nodeKey struct {
+		connections int
+		addrs       addrTally
+	}
 	type sweepKey struct {
 		shared      bool
 		connections int
 		addrs       addrTally
+		nodes       map[uuid.UUID]*nodeKey
 	}
 	type windowKey struct {
 		shared bool
@@ -104,12 +117,19 @@ func computePresence(window [][]nodeReading) presence {
 				}
 				sk := keys[k.KeyID]
 				if sk == nil {
-					sk = &sweepKey{}
+					sk = &sweepKey{nodes: map[uuid.UUID]*nodeKey{}}
 					keys[k.KeyID] = sk
 				}
 				sk.shared = k.Shared
 				sk.connections += k.Connections
 				sk.addrs.add(k)
+				nk := sk.nodes[n.NodeID]
+				if nk == nil {
+					nk = &nodeKey{}
+					sk.nodes[n.NodeID] = nk
+				}
+				nk.connections += k.Connections
+				nk.addrs.add(k)
 			}
 		}
 		for id, sk := range keys {
@@ -127,7 +147,15 @@ func computePresence(window [][]nodeReading) presence {
 				continue
 			}
 			devices := sk.addrs.devices()
-			out.Keys[id] = keyPresence{Connections: sk.connections, Devices: devices}
+			nodes := make(map[uuid.UUID]nodeKeyPresence, len(sk.nodes))
+			for nodeID, nk := range sk.nodes {
+				people := 1
+				if sk.shared {
+					people = nk.addrs.devices()
+				}
+				nodes[nodeID] = nodeKeyPresence{People: people, Connections: nk.connections}
+			}
+			out.Keys[id] = keyPresence{Shared: sk.shared, Connections: sk.connections, Devices: devices, Nodes: nodes}
 			if sk.shared {
 				out.People += devices
 			} else {
@@ -141,6 +169,7 @@ func computePresence(window [][]nodeReading) presence {
 	for id, wk := range seen {
 		devices := max(1, len(wk.named)+wk.peak)
 		kp := out.Keys[id]
+		kp.Shared = wk.shared
 		kp.Devices15m = devices
 		out.Keys[id] = kp
 		if wk.shared {

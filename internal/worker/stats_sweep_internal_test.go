@@ -109,6 +109,35 @@ func countRows(t *testing.T, st *store.Store, table string) int {
 	return n
 }
 
+func TestSweepKeyStatsTrimsPresenceSamples(t *testing.T) {
+	st := store.OpenTest(t)
+	ctx := context.Background()
+	var keyID uuid.UUID
+	if err := st.Pool.QueryRow(ctx,
+		`INSERT INTO access_keys (label, type, secret_enc) VALUES ('k', 'SHARED', '\x00') RETURNING id`).Scan(&keyID); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	old := now.Add(-retention - 48*time.Hour)
+	if _, err := st.Pool.Exec(ctx,
+		`INSERT INTO key_presence_samples (access_key_id, taken_at, people, connections)
+		 SELECT $1, $2::timestamptz + (g || ' seconds')::interval, g, g FROM generate_series(1, $3::int) AS g`,
+		keyID, old, keyStatsSweepBatch+10); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Pool.Exec(ctx,
+		`INSERT INTO key_presence_samples (access_key_id, taken_at, people, connections) VALUES ($1, $2, 3, 5)`,
+		keyID, now.Add(-retention+time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	s := NewStats(st, nil, 90*time.Second, slog.New(slog.DiscardHandler))
+	s.now = func() time.Time { return now }
+	s.sweepKeyStats(ctx)
+	if n := countRows(t, st, "key_presence_samples"); n != 1 {
+		t.Fatalf("key_presence_samples has %d rows, want only the one inside retention", n)
+	}
+}
+
 func TestSweepHistoryTrimsAuditAndApplyJobs(t *testing.T) {
 	st := store.OpenTest(t)
 	ctx := context.Background()

@@ -33,6 +33,27 @@ func (q *Queries) DeleteOldFleetSnapshots(ctx context.Context, takenAt time.Time
 	return err
 }
 
+const deleteOldKeyPresenceSamples = `-- name: DeleteOldKeyPresenceSamples :execrows
+DELETE FROM key_presence_samples s
+WHERE s.id IN (
+  SELECT b.id FROM key_presence_samples b
+  WHERE b.taken_at < $1 ORDER BY b.taken_at LIMIT $2
+)
+`
+
+type DeleteOldKeyPresenceSamplesParams struct {
+	Before time.Time `json:"before"`
+	Batch  int32     `json:"batch"`
+}
+
+func (q *Queries) DeleteOldKeyPresenceSamples(ctx context.Context, arg DeleteOldKeyPresenceSamplesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldKeyPresenceSamples, arg.Before, arg.Batch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteOldKeyStatsSnapshots = `-- name: DeleteOldKeyStatsSnapshots :execrows
 DELETE FROM key_stats_snapshots s
 WHERE s.id IN (
@@ -216,6 +237,43 @@ func (q *Queries) InsertFleetSnapshot(ctx context.Context, arg InsertFleetSnapsh
 	return err
 }
 
+const insertKeyPresenceSamples = `-- name: InsertKeyPresenceSamples :exec
+INSERT INTO key_presence_samples (access_key_id, taken_at, people, connections, nodes)
+SELECT k.id, $1::timestamptz, coalesce(u.people, 0), coalesce(u.connections, 0),
+       coalesce(u.nodes::jsonb, '{}'::jsonb)
+FROM access_keys k
+LEFT JOIN (
+  SELECT unnest($2::uuid[]) AS access_key_id,
+         unnest($3::int[]) AS people,
+         unnest($4::int[]) AS connections,
+         unnest($5::text[]) AS nodes
+) u ON u.access_key_id = k.id
+WHERE k.type = 'SHARED'
+  AND (u.access_key_id IS NOT NULL OR (k.status <> 'revoked' AND k.disabled_at IS NULL
+    AND (k.expires_at IS NULL OR k.expires_at > $1::timestamptz)))
+`
+
+type InsertKeyPresenceSamplesParams struct {
+	TakenAt     time.Time   `json:"taken_at"`
+	KeyIds      []uuid.UUID `json:"key_ids"`
+	People      []int32     `json:"people"`
+	Connections []int32     `json:"connections"`
+	Nodes       []string    `json:"nodes"`
+}
+
+// InsertKeyPresenceSamples records a sample for every shared key that was given a reading or is
+// live; personal keys get none. nodes holds {"<node id>": {"people", "connections"}} as text.
+func (q *Queries) InsertKeyPresenceSamples(ctx context.Context, arg InsertKeyPresenceSamplesParams) error {
+	_, err := q.db.Exec(ctx, insertKeyPresenceSamples,
+		arg.TakenAt,
+		arg.KeyIds,
+		arg.People,
+		arg.Connections,
+		arg.Nodes,
+	)
+	return err
+}
+
 const insertKeyStatsSnapshot = `-- name: InsertKeyStatsSnapshot :exec
 INSERT INTO key_stats_snapshots (access_key_id, node_id, connections, total_octets, quota_used_bytes, active_ips)
 VALUES ($1, $2, $3,
@@ -371,6 +429,111 @@ func (q *Queries) KeyPresenceForKeys(ctx context.Context, arg KeyPresenceForKeys
 			&i.Devices,
 			&i.Devices15m,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const keyPresenceNodes = `-- name: KeyPresenceNodes :many
+WITH latest AS (
+  SELECT s.nodes FROM key_presence_samples s
+  WHERE s.access_key_id = $1 AND s.taken_at > $2
+  ORDER BY s.taken_at DESC LIMIT 1
+)
+SELECT n.id AS node_id, n.name AS node_name,
+       coalesce((l.nodes -> n.id::text ->> 'people')::int, 0)::int AS people,
+       coalesce((l.nodes -> n.id::text ->> 'connections')::int, 0)::int AS connections
+FROM nodes n LEFT JOIN latest l ON true
+WHERE EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = $1 AND b.node_id = n.id)
+   OR (l.nodes -> n.id::text) IS NOT NULL
+ORDER BY n.sort_order, n.created_at
+`
+
+type KeyPresenceNodesParams struct {
+	AccessKeyID uuid.UUID `json:"access_key_id"`
+	Since       time.Time `json:"since"`
+}
+
+type KeyPresenceNodesRow struct {
+	NodeID      uuid.UUID `json:"node_id"`
+	NodeName    string    `json:"node_name"`
+	People      int32     `json:"people"`
+	Connections int32     `json:"connections"`
+}
+
+// KeyPresenceNodes splits a key's newest sample after since by server, over the servers it is
+// bound to or was seen on, in the shared server order.
+func (q *Queries) KeyPresenceNodes(ctx context.Context, arg KeyPresenceNodesParams) ([]KeyPresenceNodesRow, error) {
+	rows, err := q.db.Query(ctx, keyPresenceNodes, arg.AccessKeyID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []KeyPresenceNodesRow{}
+	for rows.Next() {
+		var i KeyPresenceNodesRow
+		if err := rows.Scan(
+			&i.NodeID,
+			&i.NodeName,
+			&i.People,
+			&i.Connections,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const keyPresenceSeries = `-- name: KeyPresenceSeries :many
+SELECT (ceil(extract(epoch FROM taken_at - $1::timestamptz) / $2::bigint) - 1)::int AS bucket,
+       round(avg(people))::int AS people,
+       round(avg(connections))::int AS connections
+FROM key_presence_samples
+WHERE access_key_id = $3
+  AND taken_at > $1::timestamptz AND taken_at <= $4::timestamptz
+GROUP BY 1
+ORDER BY 1
+`
+
+type KeyPresenceSeriesParams struct {
+	FromAt      time.Time `json:"from_at"`
+	Step        int64     `json:"step"`
+	AccessKeyID uuid.UUID `json:"access_key_id"`
+	ToAt        time.Time `json:"to_at"`
+}
+
+type KeyPresenceSeriesRow struct {
+	Bucket      int32 `json:"bucket"`
+	People      int32 `json:"people"`
+	Connections int32 `json:"connections"`
+}
+
+// KeyPresenceSeries averages a key's samples in (from_at, to_at] over buckets of step seconds,
+// numbered from 0 at from_at.
+func (q *Queries) KeyPresenceSeries(ctx context.Context, arg KeyPresenceSeriesParams) ([]KeyPresenceSeriesRow, error) {
+	rows, err := q.db.Query(ctx, keyPresenceSeries,
+		arg.FromAt,
+		arg.Step,
+		arg.AccessKeyID,
+		arg.ToAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []KeyPresenceSeriesRow{}
+	for rows.Next() {
+		var i KeyPresenceSeriesRow
+		if err := rows.Scan(&i.Bucket, &i.People, &i.Connections); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

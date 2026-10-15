@@ -362,6 +362,40 @@ func (s *Stats) recordPresence(ctx context.Context, due []uuid.UUID, readings []
 	if err := s.st.Q.ClearKeyPresence(ctx, ids); err != nil {
 		s.log.Error("clear key presence", "err", err)
 	}
+	s.recordKeySamples(ctx, p.Keys)
+}
+
+type nodeSampleJSON struct {
+	People      int `json:"people"`
+	Connections int `json:"connections"`
+}
+
+// recordKeySamples keeps the history of shared keys: counts per key and per node, never addresses.
+func (s *Stats) recordKeySamples(ctx context.Context, keys map[uuid.UUID]keyPresence) {
+	params := db.InsertKeyPresenceSamplesParams{
+		TakenAt: s.clock(), KeyIds: []uuid.UUID{}, People: []int32{}, Connections: []int32{}, Nodes: []string{},
+	}
+	for id, k := range keys {
+		if !k.Shared {
+			continue
+		}
+		nodes := make(map[string]nodeSampleJSON, len(k.Nodes))
+		for nodeID, n := range k.Nodes {
+			nodes[nodeID.String()] = nodeSampleJSON(n)
+		}
+		raw, err := json.Marshal(nodes)
+		if err != nil {
+			s.log.Error("key presence sample", "err", err)
+			continue
+		}
+		params.KeyIds = append(params.KeyIds, id)
+		params.People = append(params.People, int32(k.Devices))
+		params.Connections = append(params.Connections, int32(k.Connections))
+		params.Nodes = append(params.Nodes, string(raw))
+	}
+	if err := s.st.Q.InsertKeyPresenceSamples(ctx, params); err != nil {
+		s.log.Error("key presence samples", "err", err)
+	}
 }
 
 // collectNode gathers one node's snapshot and its reading for the head count, nil when there was
@@ -577,19 +611,26 @@ func (s *Stats) sweepKeyStats(ctx context.Context) {
 	}
 	s.lastKeyStatsSweep = now
 	before := now.Add(-retention)
+	s.deleteInBatches("key stats", func() (int64, error) {
+		return s.st.Q.DeleteOldKeyStatsSnapshots(ctx, db.DeleteOldKeyStatsSnapshotsParams{Before: before, Batch: keyStatsSweepBatch})
+	})
+	s.deleteInBatches("key presence samples", func() (int64, error) {
+		return s.st.Q.DeleteOldKeyPresenceSamples(ctx, db.DeleteOldKeyPresenceSamplesParams{Before: before, Batch: keyStatsSweepBatch})
+	})
+}
+
+func (s *Stats) deleteInBatches(what string, batch func() (int64, error)) {
 	for i := 0; i < keyStatsSweepMaxBatches; i++ {
-		n, err := s.st.Q.DeleteOldKeyStatsSnapshots(ctx, db.DeleteOldKeyStatsSnapshotsParams{
-			Before: before, Batch: keyStatsSweepBatch,
-		})
+		n, err := batch()
 		if err != nil {
-			s.log.Error("delete old key stats", "err", err)
+			s.log.Error("delete old "+what, "err", err)
 			return
 		}
 		if n < keyStatsSweepBatch {
 			return
 		}
 	}
-	s.log.Warn("key stats retention sweep hit its batch limit; the rest is taken by the next sweep")
+	s.log.Warn(what + " retention sweep hit its batch limit; the rest is taken by the next sweep")
 }
 
 // retention is how long the snapshot tables are kept.

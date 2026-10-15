@@ -284,6 +284,58 @@ WHERE NOT (access_key_id = ANY(coalesce(sqlc.arg('keep')::uuid[], '{}'::uuid[]))
 SELECT access_key_id, connections, devices, devices_15m FROM key_presence
 WHERE access_key_id = ANY(sqlc.arg('key_ids')::uuid[]) AND updated_at > sqlc.arg('since');
 
+-- InsertKeyPresenceSamples records a sample for every shared key that was given a reading or is
+-- live; personal keys get none. nodes holds {"<node id>": {"people", "connections"}} as text.
+-- name: InsertKeyPresenceSamples :exec
+INSERT INTO key_presence_samples (access_key_id, taken_at, people, connections, nodes)
+SELECT k.id, sqlc.arg('taken_at')::timestamptz, coalesce(u.people, 0), coalesce(u.connections, 0),
+       coalesce(u.nodes::jsonb, '{}'::jsonb)
+FROM access_keys k
+LEFT JOIN (
+  SELECT unnest(sqlc.arg('key_ids')::uuid[]) AS access_key_id,
+         unnest(sqlc.arg('people')::int[]) AS people,
+         unnest(sqlc.arg('connections')::int[]) AS connections,
+         unnest(sqlc.arg('nodes')::text[]) AS nodes
+) u ON u.access_key_id = k.id
+WHERE k.type = 'SHARED'
+  AND (u.access_key_id IS NOT NULL OR (k.status <> 'revoked' AND k.disabled_at IS NULL
+    AND (k.expires_at IS NULL OR k.expires_at > sqlc.arg('taken_at')::timestamptz)));
+
+-- KeyPresenceSeries averages a key's samples in (from_at, to_at] over buckets of step seconds,
+-- numbered from 0 at from_at.
+-- name: KeyPresenceSeries :many
+SELECT (ceil(extract(epoch FROM taken_at - sqlc.arg('from_at')::timestamptz) / sqlc.arg('step')::bigint) - 1)::int AS bucket,
+       round(avg(people))::int AS people,
+       round(avg(connections))::int AS connections
+FROM key_presence_samples
+WHERE access_key_id = sqlc.arg('access_key_id')
+  AND taken_at > sqlc.arg('from_at')::timestamptz AND taken_at <= sqlc.arg('to_at')::timestamptz
+GROUP BY 1
+ORDER BY 1;
+
+-- KeyPresenceNodes splits a key's newest sample after since by server, over the servers it is
+-- bound to or was seen on, in the shared server order.
+-- name: KeyPresenceNodes :many
+WITH latest AS (
+  SELECT s.nodes FROM key_presence_samples s
+  WHERE s.access_key_id = sqlc.arg('access_key_id') AND s.taken_at > sqlc.arg('since')
+  ORDER BY s.taken_at DESC LIMIT 1
+)
+SELECT n.id AS node_id, n.name AS node_name,
+       coalesce((l.nodes -> n.id::text ->> 'people')::int, 0)::int AS people,
+       coalesce((l.nodes -> n.id::text ->> 'connections')::int, 0)::int AS connections
+FROM nodes n LEFT JOIN latest l ON true
+WHERE EXISTS (SELECT 1 FROM key_bindings b WHERE b.access_key_id = sqlc.arg('access_key_id') AND b.node_id = n.id)
+   OR (l.nodes -> n.id::text) IS NOT NULL
+ORDER BY n.sort_order, n.created_at;
+
+-- name: DeleteOldKeyPresenceSamples :execrows
+DELETE FROM key_presence_samples s
+WHERE s.id IN (
+  SELECT b.id FROM key_presence_samples b
+  WHERE b.taken_at < sqlc.arg('before') ORDER BY b.taken_at LIMIT sqlc.arg('batch')
+);
+
 -- name: LatestKeyStatsSnapshots :many
 SELECT DISTINCT ON (node_id) * FROM key_stats_snapshots WHERE access_key_id = $1 ORDER BY node_id, taken_at DESC;
 

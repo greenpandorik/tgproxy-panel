@@ -542,6 +542,15 @@ type KeyPresence struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type KeyPresenceSample struct {
+	ID          int64     `json:"id"`
+	AccessKeyID uuid.UUID `json:"access_key_id"`
+	TakenAt     time.Time `json:"taken_at"`
+	People      int32     `json:"people"`
+	Connections int32     `json:"connections"`
+	Nodes       []byte    `json:"nodes"`
+}
+
 type KeyStatsSnapshot struct {
 	ID             uuid.UUID   `json:"id"`
 	AccessKeyID    uuid.UUID   `json:"access_key_id"`
