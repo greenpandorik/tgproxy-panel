@@ -59,6 +59,7 @@ var managementAPIRoutes = []APIRoute{
 	{Method: "GET", Path: "/api/v1/keys/summary", Scope: "users:read", Summary: "Get user summary", OwnerOnly: false},
 	{Method: "GET", Path: "/api/v1/keys/{id}", Scope: "users:read", Summary: "Get user", OwnerOnly: false},
 	{Method: "GET", Path: "/api/v1/keys/{id}/stats", Scope: "users:read", Summary: "Get user statistics", OwnerOnly: false},
+	{Method: "GET", Path: "/api/v1/keys/{id}/presence", Scope: "users:read", Summary: "Get people online for a user", OwnerOnly: false},
 	{Method: "POST", Path: "/api/v1/keys", Scope: "users:write", Summary: "Create user", OwnerOnly: false},
 	{Method: "POST", Path: "/api/v1/keys/batch", Scope: "users:write", Summary: "Create users in batch", OwnerOnly: false},
 	{Method: "POST", Path: "/api/v1/keys/import", Scope: "users:write", Summary: "Import users", OwnerOnly: false},

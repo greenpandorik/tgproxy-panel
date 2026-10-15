@@ -261,6 +261,9 @@ func openAPIParameters(route APIRoute) []any {
 		query("from", apiSchema{"type": "string", "format": "date-time"}, "Range start in RFC3339; monitoring defaults to 24 hours ago, at most 31 days.")
 		query("to", apiSchema{"type": "string", "format": "date-time"}, "Range end in RFC3339; monitoring defaults to now.")
 	}
+	if path == "/keys/{id}/presence" {
+		query("range", apiSchema{"type": "string", "enum": []string{"24h", "7d"}, "default": "24h"}, "Series window, split into 96 buckets.")
+	}
 	if path == "/monitoring/overview" {
 		query("step", apiSchema{"type": "integer", "minimum": 1}, "Aggregation step in seconds; default chosen from range span.")
 	}

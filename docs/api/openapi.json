@@ -4891,6 +4891,125 @@
         "x-required-scope": "users:write"
       }
     },
+    "/api/v1/keys/{id}/presence": {
+      "get": {
+        "description": "Requires scope `users:read` and the current account role allowed by this endpoint. Write scopes do not imply read scopes.",
+        "operationId": "get_api_v1_keys_id_presence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Series window, split into 96 buckets.",
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "default": "24h",
+              "enum": [
+                "24h",
+                "7d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success. Read-only tokens omit proxy secrets and subscription URLs from user records."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed request."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Missing, invalid, expired or revoked API token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Missing scope or insufficient current account role."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Resource not found."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Operation conflicts with current state or unsupported capability."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Field validation failed; error.fields contains details."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Internal server error."
+          }
+        },
+        "summary": "Get people online for a user",
+        "tags": [
+          "users"
+        ],
+        "x-owner-only": false,
+        "x-required-scope": "users:read"
+      }
+    },
     "/api/v1/keys/{id}/qr": {
       "get": {
         "description": "Requires scope `users:write` and the current account role allowed by this endpoint. Write scopes do not imply read scopes.",

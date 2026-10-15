@@ -31,6 +31,7 @@ func (s *Server) mountKeys(r chi.Router) {
 	r.Route("/keys/{id}", func(r chi.Router) {
 		r.Get("/", s.handleGetKey)
 		r.Get("/stats", s.handleKeyStats)
+		r.Get("/presence", s.handleKeyPresence)
 		r.With(RequireRole(writers...)).Patch("/", s.handlePatchKey)
 		r.With(RequireRole(writers...)).Delete("/", s.handleDeleteKey)
 		r.With(RequireRole(writers...)).Post("/revoke", s.handleRevokeKey)
