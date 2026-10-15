@@ -66,6 +66,9 @@ How the panel counts people online:
 - tproxy servers do not report who is connected, so they count WEB sessions instead.
 - The panel keeps addresses only in memory, to count people over the last 15 minutes. Only the
   counts reach the database.
+- For each shared user the panel also stores a sample a minute: its people, its connections and
+  the same two numbers per server, kept for 30 days. The Statistics tab of the user window
+  charts it, and the Monitoring overview lists the shared users with the most people online.
 
 How to read the WEB transport numbers:
 

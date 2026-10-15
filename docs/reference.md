@@ -274,7 +274,7 @@ The Monitoring page holds charts and history. Its views:
 
 | View | What it shows |
 |---|---|
-| Overview | Servers online, people online with the connections under it, the slowest route to Telegram, the certificate that expires first, current traffic, and a card for each server: people online, processor, memory, latency to Telegram, days left on the certificate, time since the last reboot, how long unapplied changes have waited, an available telemt update |
+| Overview | Servers online, people online with the connections under it, the slowest route to Telegram, the certificate that expires first, current traffic, the shared users with the most people online now, and a card for each server: people online, processor, memory, latency to Telegram, days left on the certificate, time since the last reboot, how long unapplied changes have waited, an available telemt update |
 | By server | For each server: sessions and streams, upload and download rate, and CPU, RAM and disk. A telemt server has lines for people online and connections instead, and one for traffic |
 | WEB transport | WEB carriers across all telemt servers |
 
@@ -510,6 +510,17 @@ On telemt servers the panel also counts traffic per user. The user window shows 
 over 30 days and whether the person is online, from about how many devices (distinct IP
 addresses across all servers) and over how many connections, or when they last connected.
 The Statistics tab draws a chart over 24 hours or 7 days.
+
+For a shared user the Statistics tab starts with People online: about how many people are on
+it now, how many over the last 15 minutes, the connections, and each server with its people and
+its share of their sum, then a chart of people online over the same 24 hours or 7 days. The
+panel counts the distinct IP addresses connected to the user across all servers, so several
+people behind one router or behind a mobile carrier's shared address count as one, and one
+person on two networks counts as two. The numbers are approximate. An address on two servers
+counts once in the total and on each of the servers, so the servers can add up to more than the
+total. For this chart the panel keeps one sample a minute for every shared user that is not
+turned off, revoked or expired, for 30 days like the other snapshots, and the samples hold
+counts only, never addresses. A personal user counts as one person and has no such history.
 
 ### Subscription page
 
@@ -1140,6 +1151,7 @@ The routes below include these other authentication types as well as automation 
 | `GET /api/v1/subpage/pages/{token}`, `POST /api/v1/subpage/heartbeat` | Service token | One page's data and the "online" signal, for the subscription page service |
 | `GET /api/v1/keys` | Any role | The list of users. Parameters `q`, `type`, `node`, `state`, `page`, `per_page` |
 | `GET /api/v1/keys/summary` | Any role | The counts for the state buttons above the list: `{total, active, expiring, expired, disabled, revoked}` |
+| `GET /api/v1/keys/{id}/presence?range` | Any role | People online on one user: now, by server and over `24h` or `7d` |
 | `POST /api/v1/keys`, `PATCH /api/v1/keys/{id}` | Owner, admin | Create or change a user |
 | `POST /api/v1/keys/{id}/disable`, `POST /api/v1/keys/{id}/enable` | Owner, admin | Turn access off or on |
 | `POST /api/v1/keys/bulk` | Owner, admin | One action on several users: `extend`, `disable`, `enable`, `revoke` or `delete` |
@@ -1187,6 +1199,16 @@ line answers 422 with `items.<index>` in `error.fields`, including a secret anot
 has; nothing is created then.
 `GET /api/v1/keys/{id}/subscription/qr` takes `size` from 128 to 1024 (256 by default), and with
 `short=1` it draws the short address.
+
+`GET /api/v1/keys/{id}/presence` answers
+`{shared, range, step, now: {people, people_15m, connections}, nodes: [{node_id, node_name, people, connections}], points: [{t, people, connections}]}`.
+`range` is `24h` (the default) or `7d`; anything else answers 400. `now` is the newest count of
+the last three minutes, and all zeros without one. `nodes` has the servers the user is on, plus
+any other server it was seen on, in the shared server order, with the people and connections of
+the newest sample of the last three minutes. `points` always has 96 buckets of `step` seconds
+that end now: `t` is the end of the bucket and the counts are its average, or `null` when the
+bucket has no sample. A personal user answers `shared: false` with `now` counted as one person
+and empty `nodes` and `points`. An API token needs `users:read`.
 
 `GET /api/v1/monitoring/overview` returns
 `{nodes: [{node_id, node_name, hostname, status, cert_expires_at}], series: {<node_id>: [{t, sessions_live, streams_live, people_online, bytes_up_rate, bytes_down_rate}]}, fleet: {people_online, people_online_15m, connections}}`.
