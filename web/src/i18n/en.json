@@ -728,7 +728,12 @@
     "link_which_hint": "Which link to send: Fake-TLS connects in any Telegram app. WEB goes through the server site over HTTPS and is harder to block, but for now it works only in Telegram Desktop and recent Android versions.",
     "subscription_customize": "Customize the page",
     "subscription_hidden": "The link is shown only when it is created. To send it again, press Rotate link; the old one will stop opening.",
-    "stats_chart_empty": "Not enough data for a chart yet."
+    "stats_chart_empty": "Not enough data for a chart yet.",
+    "people_15m": "last 15 minutes: {{value}}",
+    "people_by_server": "By server",
+    "people_chart_24h": "People online, last 24 hours",
+    "people_chart_7d": "People online, last 7 days",
+    "people_hint": "The numbers are approximate. For a shared user the panel counts distinct IP addresses across all servers, so several people behind one router or behind a mobile carrier's shared address count as one. An address connected to two servers counts on each, so the servers can add up to more than the total. Updated every minute."
   },
   "sites": {
     "title": "Cover websites",
@@ -839,6 +844,8 @@
     "view_overview": "Overview",
     "view_nodes": "By server",
     "view_web": "WEB transport",
+    "shared_title": "Shared subscriptions",
+    "shared_all": "All ({{value}})",
     "fleet_title": "Fleet health",
     "fleet_online": "Servers online",
     "fleet_traffic": "Traffic now",
@@ -1851,7 +1858,7 @@
           "columns": {
             "name": "Columns",
             "what": "The Columns button hides and shows columns: activity, expiry, traffic for 30 days, servers, type, link and creation date. The choice is remembered in this browser.",
-            "tip": "The Activity column shows whether the person is online and from about how many devices (distinct IP addresses), with their connections below; when offline, when they last connected. Only telemt servers count this."
+            "tip": "The Activity column shows whether the person is online and from about how many devices (distinct IP addresses), with their connections below; when offline, when they last connected. Only telemt servers count this. For a shared user the devices are distinct IP addresses across all servers, which is roughly the number of people; the split by server and the chart are on the Statistics tab of its window."
           },
           "search": {
             "name": "Search and filters",
@@ -2112,9 +2119,14 @@
             "name": "Limits",
             "what": "Traffic quota, speed, and the number of IP addresses and connections for telemt servers, plus the extended limits for tproxy. An empty field means no limit."
           },
+          "people": {
+            "name": "People online",
+            "what": "Shared users only, at the top of the Statistics tab: how many people are online now, for example \"≈ 12,345\" (zero is written without \"≈\"), how many there were over the last 15 minutes, the connections, and the servers with the people on each and their share of the sum. Below is a chart of people online over 24 hours or 7 days, following the same range switch. A gap in the chart means the panel recorded nothing at that time.",
+            "tip": "For a shared user the panel counts distinct IP addresses across all servers. Several people behind one router or behind a mobile carrier's shared address count as one, and one person on a phone and a laptop in different networks counts as two. So the numbers are approximate. The history is kept for 30 days."
+          },
           "stats": {
             "name": "Statistics",
-            "what": "Connections right now, traffic over 24 hours or 7 days, and a chart for each server. Only telemt servers count these."
+            "what": "Connections right now, traffic over 24 hours or 7 days, and a chart for each server; a shared user has a People online block above them. Only telemt servers count these."
           },
           "save": {
             "name": "Save",
@@ -2273,6 +2285,10 @@
           "people": {
             "name": "People online",
             "what": "In the summary, how many people are online across all servers at once: someone connected to two servers counts once. On a telemt server's chart, how many people were on that server. A personal user with at least one connection is one person; a shared user counts as many as its distinct IP addresses. History recorded before this panel version has no such line."
+          },
+          "shared": {
+            "name": "Shared subscriptions",
+            "what": "In the summary, the shared users with the most people online right now, most first, up to eight; clicking one opens it. People are counted the same way as in the user window: distinct IP addresses across all servers, approximately. The block is hidden when there are no shared users."
           },
           "sessions": {
             "name": "Live sessions",
@@ -2928,12 +2944,12 @@
     "column_online": "Activity",
     "column_expires": "Expires",
     "column_created": "Created",
-    "online_now_one": "{{count}} connection",
-    "online_now_other": "{{count}} connections",
-    "online_devices_one": "Online, ≈ {{count}} device",
-    "online_devices_other": "Online, ≈ {{count}} devices",
-    "devices_15m_one": "≈ {{count}} device in the last 15 minutes",
-    "devices_15m_other": "≈ {{count}} devices in the last 15 minutes",
+    "online_now_one": "{{value}} connection",
+    "online_now_other": "{{value}} connections",
+    "online_devices_one": "Online, ≈ {{value}} device",
+    "online_devices_other": "Online, ≈ {{value}} devices",
+    "devices_15m_one": "≈ {{value}} device in the last 15 minutes",
+    "devices_15m_other": "≈ {{value}} devices in the last 15 minutes",
     "never_seen": "Not connected yet",
     "traffic_unmeasured": "tproxy servers do not count traffic",
     "empty_title": "No users yet",

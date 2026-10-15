@@ -48,7 +48,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toast';
 import { HelpButton } from '@/help';
 import { ApiError } from '@/lib/api';
-import { formatBytes, formatDate, formatDateTime, formatRelativeTime } from '@/lib/format';
+import { formatBytes, formatDate, formatDateTime, formatNumber, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { BatchResultDialog } from './BatchResultDialog';
@@ -144,12 +144,20 @@ function OnlineCell({ user }: { user: AccessKey }) {
   const { t, i18n } = useTranslation();
   if (user.live.online) {
     return (
-      <span className="inline-flex flex-col" title={t('users.devices_15m', { count: user.live.devices_15m })}>
+      <span
+        className="inline-flex flex-col"
+        title={t('users.devices_15m', {
+          count: user.live.devices_15m,
+          value: formatNumber(user.live.devices_15m, i18n.language),
+        })}
+      >
         <span className="inline-flex items-center gap-2 text-label text-ok">
           <span className="size-[7px] rounded-pill bg-online" aria-hidden="true" />
-          {t('users.online_devices', { count: user.live.devices })}
+          {t('users.online_devices', { count: user.live.devices, value: formatNumber(user.live.devices, i18n.language) })}
         </span>
-        <span className="pl-[15px] text-micro text-mute">{t('users.online_now', { count: user.live.connections })}</span>
+        <span className="pl-[15px] text-micro text-mute">
+          {t('users.online_now', { count: user.live.connections, value: formatNumber(user.live.connections, i18n.language) })}
+        </span>
       </span>
     );
   }
@@ -226,7 +234,9 @@ function StateChip({
       )}
     >
       {label}
-      {count !== undefined && <span className={cn('mono text-mono', pressed ? 'text-foreground' : (tone ?? 'text-mute'))}>{count}</span>}
+      {count !== undefined && (
+        <span className={cn('mono text-mono', pressed ? 'text-foreground' : (tone ?? 'text-mute'))}>{count}</span>
+      )}
     </button>
   );
 }
@@ -350,7 +360,9 @@ export function UsersPage() {
   const telemtIds = new Set(nodes.filter((n) => n.engine === 'telemt').map((n) => n.id));
   const measured = (u: AccessKey) => u.nodes.some((n) => telemtIds.has(n.node_id));
   const summary = summaryQuery.data;
-  const nodeName = node ? (nodes.find((n) => n.id === node)?.name ?? (nodesQuery.isLoading ? '…' : t('users.filter_server_unknown'))) : '';
+  const nodeName = node
+    ? (nodes.find((n) => n.id === node)?.name ?? (nodesQuery.isLoading ? '…' : t('users.filter_server_unknown')))
+    : '';
   const typeName = type === 'SHARED' ? t('users.filter_type_shared') : t('users.filter_type_personal');
 
   const pageGone = !!usersQuery.data && !usersQuery.isPlaceholderData && items.length === 0 && total > 0 && page > 1;
@@ -544,7 +556,10 @@ export function UsersPage() {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>{t('users.filter_server')}</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={node ?? 'all'} onValueChange={(v) => setFilter('node', v === 'all' ? null : String(v))}>
+                  <DropdownMenuRadioGroup
+                    value={node ?? 'all'}
+                    onValueChange={(v) => setFilter('node', v === 'all' ? null : String(v))}
+                  >
                     <DropdownMenuRadioItem value="all" closeOnClick>
                       {t('keys.filter_node_all')}
                     </DropdownMenuRadioItem>
@@ -723,7 +738,11 @@ export function UsersPage() {
                     >
                       {isWriter && (
                         <TableCell className="w-0 pr-0" data-row-ignore="">
-                          <Checkbox checked={selected.has(u.id)} onCheckedChange={(v) => toggleOne(u.id, !!v)} aria-label={u.label} />
+                          <Checkbox
+                            checked={selected.has(u.id)}
+                            onCheckedChange={(v) => toggleOne(u.id, !!v)}
+                            aria-label={u.label}
+                          />
                         </TableCell>
                       )}
                       <TableCell className="max-w-64">
@@ -777,7 +796,9 @@ export function UsersPage() {
                         </TableCell>
                       )}
                       {show('created') && (
-                        <TableCell className="mono text-right text-mono text-mute">{formatDate(u.created_at, i18n.language)}</TableCell>
+                        <TableCell className="mono text-right text-mono text-mute">
+                          {formatDate(u.created_at, i18n.language)}
+                        </TableCell>
                       )}
                       {isWriter && (
                         <TableCell className="w-0 px-0 text-right" data-row-ignore="">
@@ -852,7 +873,12 @@ export function UsersPage() {
         onBatchCreated={setBatchResult}
       />
 
-      <UserDialog open={!!openId} onOpenChange={(o) => !o && openUser(null)} keyId={openId} welcome={!!openId && welcomeId === openId} />
+      <UserDialog
+        open={!!openId}
+        onOpenChange={(o) => !o && openUser(null)}
+        keyId={openId}
+        welcome={!!openId && welcomeId === openId}
+      />
 
       {batchResult && (
         <BatchResultDialog

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { HelpButton } from '@/help';
-import { formatBytes, formatDate, formatDateTime, formatRelativeTime } from '@/lib/format';
+import { formatBytes, formatDate, formatDateTime, formatNumber, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { TONE_TEXT, expiryTone } from './userState';
@@ -20,9 +20,12 @@ export function UserPresence({ user }: { user: AccessKey }) {
   const { t, i18n } = useTranslation();
   if (user.live.online) {
     return (
-      <span className="inline-flex items-center gap-2 text-ok" title={t('users.online_now', { count: user.live.connections })}>
+      <span
+        className="inline-flex items-center gap-2 text-ok"
+        title={t('users.online_now', { count: user.live.connections, value: formatNumber(user.live.connections, i18n.language) })}
+      >
         <span className="size-[7px] shrink-0 rounded-pill bg-online" aria-hidden="true" />
-        {t('users.online_devices', { count: user.live.devices })}
+        {t('users.online_devices', { count: user.live.devices, value: formatNumber(user.live.devices, i18n.language) })}
       </span>
     );
   }
@@ -78,7 +81,7 @@ export function UserFacts({ user, measured, nodesTotal }: { user: AccessKey; mea
   const seen = user.live.online
     ? {
         value: t('users.fact_seen_now'),
-        sub: `${t('users.online_now', { count: user.live.connections })} · ${t('users.devices_15m', { count: user.live.devices_15m })}`,
+        sub: `${t('users.online_now', { count: user.live.connections, value: formatNumber(user.live.connections, i18n.language) })} · ${t('users.devices_15m', { count: user.live.devices_15m, value: formatNumber(user.live.devices_15m, i18n.language) })}`,
       }
     : user.last_seen_at
       ? { value: formatRelativeTime(user.last_seen_at, lang), sub: formatDateTime(user.last_seen_at, lang) }

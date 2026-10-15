@@ -108,6 +108,43 @@ describe('UserDialog tabs', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: 'Статистика' }));
     expect(await screen.findByText('Трафик и соединения')).toBeInTheDocument();
+    expect(screen.queryByText('Люди онлайн')).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes('/presence'))).toBe(false);
+  });
+
+  it("puts people online at the top of a shared user's statistics", async () => {
+    const team = {
+      ...MARIA,
+      type: 'SHARED',
+      label: 'ComfyPublic',
+      live: { online: true, connections: 30_000, devices: 12_345, devices_15m: 15_000, ips: 12_345 },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/auth/me')) return json({ id: 'a1', username: 'root', role: 'owner', features: { totp: false } });
+        if (url.endsWith('/api/v1/keys/u-1')) return json(team);
+        if (url.includes('/api/v1/keys/u-1/presence')) {
+          return json({
+            shared: true,
+            range: '24h',
+            step: 900,
+            now: { people: 12_345, people_15m: 15_000, connections: 30_000 },
+            nodes: [],
+            points: [],
+          });
+        }
+        if (url.includes('/api/v1/nodes')) return json({ items: [NODE], total: 1 });
+        return json({ items: [], total: 0 });
+      }),
+    );
+    renderDialog();
+
+    expect(await screen.findByText('В сети, ≈ 12 345 устр.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Статистика' }));
+    expect(await screen.findByText('Люди онлайн')).toBeInTheDocument();
+    expect(await screen.findByTestId('key-people-now')).toHaveTextContent('≈ 12 345');
   });
 
   it('allows saving only after something changed', async () => {
@@ -128,7 +165,9 @@ describe('UserDialog tabs', () => {
   });
 
   it('takes you to the tab of a field the server rejected and marks it', async () => {
-    mockApi(() => json({ error: { code: 'validation', message: 'invalid', fields: { telemt_limits: 'quota is too large' } } }, 422));
+    mockApi(() =>
+      json({ error: { code: 'validation', message: 'invalid', fields: { telemt_limits: 'quota is too large' } } }, 422),
+    );
     renderDialog();
 
     await userEvent.type(await screen.findByLabelText('Имя'), ' Петрова');

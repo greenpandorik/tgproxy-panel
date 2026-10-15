@@ -25,6 +25,7 @@ import { FleetCarriersCard } from './FleetCarriersCard';
 import { FleetSummary } from './FleetSummary';
 import { inServerOrder } from './fleetFacts';
 import { ServerStatusCards } from './ServerStatusCards';
+import { SharedPeopleCard } from './SharedPeopleCard';
 
 import type { ReactNode } from 'react';
 import type { MonitoringRange } from '@/api/monitoring';
@@ -203,6 +204,7 @@ function MonitoringView() {
     return (
       <div className="space-y-6">
         <FleetSummary nodes={servers} overview={overviewQuery.data} />
+        <SharedPeopleCard />
         <section aria-labelledby="monitoring-servers" className="space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 id="monitoring-servers" className="text-title text-foreground">

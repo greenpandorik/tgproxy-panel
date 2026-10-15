@@ -592,6 +592,31 @@ export interface KeyStats {
   };
 }
 
+export interface KeyPresenceNode {
+  node_id: string;
+  node_name: string;
+  people: number;
+  connections: number;
+}
+
+export interface KeyPresencePoint {
+  t: string;
+  /** Null when no sample fell into the bucket. */
+  people: number | null;
+  connections: number | null;
+}
+
+/** People online on one user; history and the split by server exist for shared users only. */
+export interface KeyPresence {
+  shared: boolean;
+  range: string;
+  /** Bucket width in seconds. */
+  step: number;
+  now: { people: number; people_15m: number; connections: number };
+  nodes: KeyPresenceNode[];
+  points: KeyPresencePoint[];
+}
+
 // --- site templates ---------------------------------------------------
 
 export interface SiteTemplate {

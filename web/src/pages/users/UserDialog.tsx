@@ -46,6 +46,7 @@ import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 import { KeyLinkDialog } from './KeyLinkDialog';
+import { KeyPeopleSection } from './KeyPeopleSection';
 import { KeyStatsSection } from './KeyStatsSection';
 import { StateBadge } from './StateBadge';
 import { transportScope } from './transport';
@@ -482,6 +483,7 @@ export function UserDialog({ open, onOpenChange, keyId, welcome }: UserDialogPro
                         />
                       )}
                     </div>
+                    {measured && user.type === 'SHARED' && <KeyPeopleSection keyId={user.id} range={statsRange} />}
                     <KeyStatsSection keyId={user.id} hasTelemtNode={measured} range={statsRange} />
                   </TabsContent>
                 </>

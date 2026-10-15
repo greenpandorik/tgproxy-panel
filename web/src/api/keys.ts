@@ -10,6 +10,7 @@ import type {
   KeyFilters,
   KeyInput,
   KeyLinksResult,
+  KeyPresence,
   KeyStats,
   KeySummary,
   LinkKind,
@@ -25,6 +26,7 @@ export const keyKeys = {
   one: (id: string) => ['keys', id] as const,
   links: (id: string) => ['keys', id, 'links'] as const,
   stats: (id: string, range: KeyStatsRange) => ['keys', id, 'stats', range] as const,
+  presence: (id: string, range: KeyStatsRange) => ['keys', id, 'presence', range] as const,
 };
 
 /** The two windows the key drawer charts. Both fit inside the 30-day snapshot retention. */
@@ -64,7 +66,12 @@ export const useKeySummary = () =>
   });
 
 export const useKey = (id: string) =>
-  useQuery({ queryKey: keyKeys.one(id), queryFn: () => api.get<AccessKey>(`/api/v1/keys/${id}`), enabled: !!id, refetchInterval: 15_000 });
+  useQuery({
+    queryKey: keyKeys.one(id),
+    queryFn: () => api.get<AccessKey>(`/api/v1/keys/${id}`),
+    enabled: !!id,
+    refetchInterval: 15_000,
+  });
 
 // Every link of a key, grouped by node.
 export const useKeyLinks = (id: string, enabled = true) =>
@@ -85,6 +92,14 @@ export const useKeyStats = (id: string, range: KeyStatsRange, enabled = true) =>
       const q = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
       return api.get<KeyStats>(`/api/v1/keys/${id}/stats?${q.toString()}`);
     },
+    enabled: !!id && enabled,
+    refetchInterval: 60_000,
+  });
+
+export const useKeyPresence = (id: string, range: KeyStatsRange, enabled = true) =>
+  useQuery({
+    queryKey: keyKeys.presence(id, range),
+    queryFn: () => api.get<KeyPresence>(`/api/v1/keys/${id}/presence?range=${range}`),
     enabled: !!id && enabled,
     refetchInterval: 60_000,
   });

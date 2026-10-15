@@ -107,7 +107,20 @@ export const HELP_TOPICS = {
     docs: 'engine',
   },
   'keys.detail': {
-    fields: ['header', 'overview', 'subscription', 'direct_links', 'about', 'access', 'limits', 'stats', 'save', 'manage', 'danger'],
+    fields: [
+      'header',
+      'overview',
+      'subscription',
+      'direct_links',
+      'about',
+      'access',
+      'limits',
+      'people',
+      'stats',
+      'save',
+      'manage',
+      'danger',
+    ],
     docs: 'keys',
   },
   'keys.link': {
@@ -133,7 +146,7 @@ export const HELP_TOPICS = {
   },
 
   monitoring: {
-    fields: ['people', 'worst_route', 'certs', 'cards', 'range', 'sessions', 'streams', 'traffic', 'connections'],
+    fields: ['people', 'shared', 'worst_route', 'certs', 'cards', 'range', 'sessions', 'streams', 'traffic', 'connections'],
     docs: 'monitoring',
   },
   audit: {
