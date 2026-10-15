@@ -3,6 +3,7 @@ package worker_test
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -223,5 +224,78 @@ func TestDesiredStateCarriesTheWebPolicyForTelemtOnly(t *testing.T) {
 	}
 	if tpDes.Req.WebPolicy != nil {
 		t.Fatalf("a tproxy node has no WEB policy: %+v", tpDes.Req.WebPolicy)
+	}
+}
+
+func setNodeVersions(t *testing.T, f *fixture, agent, telemt string) {
+	t.Helper()
+	if _, err := f.st.Pool.Exec(context.Background(), `UPDATE nodes SET agent_version=$2, telemt_version=$3 WHERE id=$1`, f.node.ID, agent, telemt); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func setWebCapacity(t *testing.T, f *fixture, capacity int32) {
+	t.Helper()
+	if _, err := f.st.Q.SetNodeWebCapacity(context.Background(), db.SetNodeWebCapacityParams{
+		ID: f.node.ID, TelemtWebCapacity: pgtype.Int4{Int32: capacity, Valid: capacity != 0},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDesiredStateCarriesWebCapacityAndProfileCap(t *testing.T) {
+	ctx := context.Background()
+	tel := newTelemtFixture(t)
+	des, err := worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if des.Req.WebCapacity != 0 {
+		t.Fatalf("no choice means no opinion, got %d", des.Req.WebCapacity)
+	}
+	if des.Req.MaxProfiles != uint32(tel.node.MaxProfiles) || des.Req.MaxProfiles == 0 {
+		t.Fatalf("the key cap travels with every telemt apply: %d", des.Req.MaxProfiles)
+	}
+
+	setNodeVersions(t, tel, "2.17.4", "3.5.14")
+	setWebCapacity(t, tel, 1024)
+	des, err = worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if des.Req.WebCapacity != 1024 {
+		t.Fatalf("capacity = %d", des.Req.WebCapacity)
+	}
+
+	tp := newFixture(t)
+	tpDes, err := worker.DesiredState(ctx, tp.st, tp.box, tp.node.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tpDes.Req.WebCapacity != 0 || tpDes.Req.MaxProfiles != 0 {
+		t.Fatalf("a tproxy node has no telemt limits: %+v", tpDes.Req)
+	}
+}
+
+func TestDesiredStateRefusesWebCapacityOnAnOldAgent(t *testing.T) {
+	ctx := context.Background()
+	tel := newTelemtFixture(t)
+	setNodeVersions(t, tel, "2.17.3", "3.5.14")
+	setWebCapacity(t, tel, 512)
+	if _, err := worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID); err == nil || !strings.Contains(err.Error(), "agent 2.17.4 or newer") {
+		t.Fatalf("an agent that ignores the preset must be reported, got %v", err)
+	}
+	setNodeVersions(t, tel, "2.17.4", "3.5.13")
+	if _, err := worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID); err == nil || !strings.Contains(err.Error(), "Telemt 3.5.14") {
+		t.Fatalf("an old telemt must be reported, got %v", err)
+	}
+	setNodeVersions(t, tel, "2.17.3", "3.5.14")
+	setWebCapacity(t, tel, domain.WebCapacityStandard)
+	des, err := worker.DesiredState(ctx, tel.st, tel.box, tel.node.ID)
+	if err != nil {
+		t.Fatalf("the standard preset is what an old agent already runs: %v", err)
+	}
+	if des.Req.WebCapacity != 0 {
+		t.Fatalf("nothing to send an agent that cannot apply it: %d", des.Req.WebCapacity)
 	}
 }

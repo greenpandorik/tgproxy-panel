@@ -40,6 +40,10 @@ WHERE id = $1 RETURNING *;
 -- name: SetNodeWebPolicy :one
 UPDATE nodes SET telemt_web_policy = $2 WHERE id = $1 RETURNING *;
 
+-- SetNodeWebCapacity stores the node-wide WEB session ceiling; NULL leaves telemt's [web.limits] alone.
+-- name: SetNodeWebCapacity :one
+UPDATE nodes SET telemt_web_capacity = $2 WHERE id = $1 RETURNING *;
+
 -- name: SetNodeInstallToken :exec
 UPDATE nodes SET install_token_hash = $2, install_token_expires = $3 WHERE id = $1;
 

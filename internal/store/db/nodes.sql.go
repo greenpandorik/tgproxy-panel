@@ -49,7 +49,7 @@ VALUES ($1, $2, $3, $4, $5, $6,
   COALESCE($8::text, ''),
   COALESCE($9::int, 8443),
   (SELECT COALESCE(max(sort_order), 0) + 1 FROM nodes))
-RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path
+RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity
 `
 
 type CreateNodeParams struct {
@@ -114,6 +114,7 @@ func (q *Queries) CreateNode(ctx context.Context, arg CreateNodeParams) (Node, e
 		&i.SortOrder,
 		&i.DirtySince,
 		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
 	)
 	return i, err
 }
@@ -128,7 +129,7 @@ func (q *Queries) DeleteNode(ctx context.Context, id uuid.UUID) error {
 }
 
 const getNode = `-- name: GetNode :one
-SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path FROM nodes WHERE id = $1
+SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity FROM nodes WHERE id = $1
 `
 
 func (q *Queries) GetNode(ctx context.Context, id uuid.UUID) (Node, error) {
@@ -168,12 +169,13 @@ func (q *Queries) GetNode(ctx context.Context, id uuid.UUID) (Node, error) {
 		&i.SortOrder,
 		&i.DirtySince,
 		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
 	)
 	return i, err
 }
 
 const getNodeByAgentToken = `-- name: GetNodeByAgentToken :one
-SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path FROM nodes WHERE agent_token_hash = $1
+SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity FROM nodes WHERE agent_token_hash = $1
 `
 
 func (q *Queries) GetNodeByAgentToken(ctx context.Context, agentTokenHash *string) (Node, error) {
@@ -213,12 +215,13 @@ func (q *Queries) GetNodeByAgentToken(ctx context.Context, agentTokenHash *strin
 		&i.SortOrder,
 		&i.DirtySince,
 		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
 	)
 	return i, err
 }
 
 const getNodeByHostname = `-- name: GetNodeByHostname :one
-SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path FROM nodes WHERE hostname = $1
+SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity FROM nodes WHERE hostname = $1
 `
 
 func (q *Queries) GetNodeByHostname(ctx context.Context, hostname string) (Node, error) {
@@ -258,12 +261,13 @@ func (q *Queries) GetNodeByHostname(ctx context.Context, hostname string) (Node,
 		&i.SortOrder,
 		&i.DirtySince,
 		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
 	)
 	return i, err
 }
 
 const getNodeByInstallToken = `-- name: GetNodeByInstallToken :one
-SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path FROM nodes WHERE install_token_hash = $1 AND install_token_expires > now()
+SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity FROM nodes WHERE install_token_hash = $1 AND install_token_expires > now()
 `
 
 func (q *Queries) GetNodeByInstallToken(ctx context.Context, installTokenHash *string) (Node, error) {
@@ -303,12 +307,13 @@ func (q *Queries) GetNodeByInstallToken(ctx context.Context, installTokenHash *s
 		&i.SortOrder,
 		&i.DirtySince,
 		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
 	)
 	return i, err
 }
 
 const listDirtyNodesAny = `-- name: ListDirtyNodesAny :many
-SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path FROM nodes WHERE dirty = true
+SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity FROM nodes WHERE dirty = true
 `
 
 // ListDirtyNodesAny returns every dirty node regardless of status: the apply
@@ -357,6 +362,7 @@ func (q *Queries) ListDirtyNodesAny(ctx context.Context) ([]Node, error) {
 			&i.SortOrder,
 			&i.DirtySince,
 			&i.TelemtWebAppliedBasePath,
+			&i.TelemtWebCapacity,
 		); err != nil {
 			return nil, err
 		}
@@ -369,7 +375,7 @@ func (q *Queries) ListDirtyNodesAny(ctx context.Context) ([]Node, error) {
 }
 
 const listNodes = `-- name: ListNodes :many
-SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path FROM nodes ORDER BY sort_order, created_at
+SELECT id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity FROM nodes ORDER BY sort_order, created_at
 `
 
 // ListNodes is every node in the operator's order.
@@ -416,6 +422,7 @@ func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
 			&i.SortOrder,
 			&i.DirtySince,
 			&i.TelemtWebAppliedBasePath,
+			&i.TelemtWebCapacity,
 		); err != nil {
 			return nil, err
 		}
@@ -428,7 +435,7 @@ func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
 }
 
 const listNodesWithCounts = `-- name: ListNodesWithCounts :many
-SELECT n.id, n.name, n.hostname, n.public_ip, n.acme_email, n.status, n.agent_token_hash, n.install_token_hash, n.install_token_expires, n.tproxy_version, n.agent_version, n.max_profiles, n.dirty, n.last_seen_at, n.last_apply_at, n.last_health, n.created_at, n.dirty_seq, n.last_check, n.engine, n.tls_domain, n.classic_port, n.telemt_version, n.ad_tag, n.telemt_build, n.telemt_capabilities, n.telemt_capabilities_checked_at, n.telemt_update_available, n.telemt_web_policy, n.tls_domains, n.sort_order, n.dirty_since, n.telemt_web_applied_base_path, (SELECT count(*) FROM profiles p WHERE p.node_id = n.id) AS profile_count
+SELECT n.id, n.name, n.hostname, n.public_ip, n.acme_email, n.status, n.agent_token_hash, n.install_token_hash, n.install_token_expires, n.tproxy_version, n.agent_version, n.max_profiles, n.dirty, n.last_seen_at, n.last_apply_at, n.last_health, n.created_at, n.dirty_seq, n.last_check, n.engine, n.tls_domain, n.classic_port, n.telemt_version, n.ad_tag, n.telemt_build, n.telemt_capabilities, n.telemt_capabilities_checked_at, n.telemt_update_available, n.telemt_web_policy, n.tls_domains, n.sort_order, n.dirty_since, n.telemt_web_applied_base_path, n.telemt_web_capacity, (SELECT count(*) FROM profiles p WHERE p.node_id = n.id) AS profile_count
 FROM nodes n ORDER BY n.sort_order, n.created_at
 `
 
@@ -482,6 +489,7 @@ func (q *Queries) ListNodesWithCounts(ctx context.Context) ([]ListNodesWithCount
 			&i.Node.SortOrder,
 			&i.Node.DirtySince,
 			&i.Node.TelemtWebAppliedBasePath,
+			&i.Node.TelemtWebCapacity,
 			&i.ProfileCount,
 		); err != nil {
 			return nil, err
@@ -786,8 +794,60 @@ func (q *Queries) SetNodeWebAppliedBasePath(ctx context.Context, arg SetNodeWebA
 	return err
 }
 
+const setNodeWebCapacity = `-- name: SetNodeWebCapacity :one
+UPDATE nodes SET telemt_web_capacity = $2 WHERE id = $1 RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity
+`
+
+type SetNodeWebCapacityParams struct {
+	ID                uuid.UUID   `json:"id"`
+	TelemtWebCapacity pgtype.Int4 `json:"telemt_web_capacity"`
+}
+
+// SetNodeWebCapacity stores the node-wide WEB session ceiling; NULL leaves telemt's [web.limits] alone.
+func (q *Queries) SetNodeWebCapacity(ctx context.Context, arg SetNodeWebCapacityParams) (Node, error) {
+	row := q.db.QueryRow(ctx, setNodeWebCapacity, arg.ID, arg.TelemtWebCapacity)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Hostname,
+		&i.PublicIp,
+		&i.AcmeEmail,
+		&i.Status,
+		&i.AgentTokenHash,
+		&i.InstallTokenHash,
+		&i.InstallTokenExpires,
+		&i.TproxyVersion,
+		&i.AgentVersion,
+		&i.MaxProfiles,
+		&i.Dirty,
+		&i.LastSeenAt,
+		&i.LastApplyAt,
+		&i.LastHealth,
+		&i.CreatedAt,
+		&i.DirtySeq,
+		&i.LastCheck,
+		&i.Engine,
+		&i.TlsDomain,
+		&i.ClassicPort,
+		&i.TelemtVersion,
+		&i.AdTag,
+		&i.TelemtBuild,
+		&i.TelemtCapabilities,
+		&i.TelemtCapabilitiesCheckedAt,
+		&i.TelemtUpdateAvailable,
+		&i.TelemtWebPolicy,
+		&i.TlsDomains,
+		&i.SortOrder,
+		&i.DirtySince,
+		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
+	)
+	return i, err
+}
+
 const setNodeWebPolicy = `-- name: SetNodeWebPolicy :one
-UPDATE nodes SET telemt_web_policy = $2 WHERE id = $1 RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path
+UPDATE nodes SET telemt_web_policy = $2 WHERE id = $1 RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity
 `
 
 type SetNodeWebPolicyParams struct {
@@ -834,6 +894,7 @@ func (q *Queries) SetNodeWebPolicy(ctx context.Context, arg SetNodeWebPolicyPara
 		&i.SortOrder,
 		&i.DirtySince,
 		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
 	)
 	return i, err
 }
@@ -844,7 +905,7 @@ UPDATE nodes SET name = $2, public_ip = $3, max_profiles = $4, acme_email = $5,
   classic_port = COALESCE($7::int, classic_port),
   ad_tag = COALESCE($8::text, ad_tag),
   tls_domains = COALESCE($9::text[], tls_domains)
-WHERE id = $1 RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path
+WHERE id = $1 RETURNING id, name, hostname, public_ip, acme_email, status, agent_token_hash, install_token_hash, install_token_expires, tproxy_version, agent_version, max_profiles, dirty, last_seen_at, last_apply_at, last_health, created_at, dirty_seq, last_check, engine, tls_domain, classic_port, telemt_version, ad_tag, telemt_build, telemt_capabilities, telemt_capabilities_checked_at, telemt_update_available, telemt_web_policy, tls_domains, sort_order, dirty_since, telemt_web_applied_base_path, telemt_web_capacity
 `
 
 type UpdateNodeParams struct {
@@ -906,6 +967,7 @@ func (q *Queries) UpdateNode(ctx context.Context, arg UpdateNodeParams) (Node, e
 		&i.SortOrder,
 		&i.DirtySince,
 		&i.TelemtWebAppliedBasePath,
+		&i.TelemtWebCapacity,
 	)
 	return i, err
 }

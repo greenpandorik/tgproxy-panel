@@ -47,6 +47,10 @@ type HealthReport struct {
 	// not report a capability set.
 	Capabilities TelemtCapabilities
 	TelemtBuild  string
+	// WebCapacity and MaxConnections are telemt's configured WEB session and TCP connection
+	// ceilings; zero when the agent did not report them.
+	WebCapacity    int `json:",omitempty"`
+	MaxConnections int `json:",omitempty"`
 }
 
 // DcLatency is one Telegram datacenter's latency EMA as telemt measures it.
@@ -87,6 +91,10 @@ type ApplyRequest struct {
 	// node's WEB config is left alone.
 	WebPolicy      *domain.WebPolicy
 	ManagedWebHost string
+	// WebCapacity is the WEB session preset; 0 leaves the node's [web.limits] alone.
+	WebCapacity uint32
+	// MaxProfiles is the node's key cap, which telemt's web.limits.max_profiles must stay above.
+	MaxProfiles uint32
 }
 
 type ApplyResult struct {

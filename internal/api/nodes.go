@@ -21,6 +21,7 @@ import (
 	"tgwebproxy/internal/domain"
 	"tgwebproxy/internal/nodecheck"
 	"tgwebproxy/internal/nodedriver"
+	"tgwebproxy/internal/nodesvc"
 	"tgwebproxy/internal/store/db"
 	"tgwebproxy/internal/updates"
 )
@@ -64,6 +65,11 @@ type nodeJSON struct {
 	// or while the node is offline.
 	PeopleOnline *int32 `json:"people_online"`
 	Connections  *int32 `json:"connections"`
+	// WebCapacity is the chosen WEB session preset, null while the panel leaves telemt's own
+	// limits alone. The values the node runs with are in health.web_capacity and
+	// health.max_connections.
+	WebCapacity          *int `json:"web_capacity"`
+	WebCapacitySupported bool `json:"web_capacity_supported"`
 }
 
 func (s *Server) nodeJSON(r *http.Request, n db.Node) nodeJSON {
@@ -91,7 +97,11 @@ func (s *Server) nodeJSONWithCount(r *http.Request, n db.Node, count int64) node
 		TelemtCapabilitiesCheckedAt: n.TelemtCapabilitiesCheckedAt,
 		TProxyVersion:               n.TproxyVersion, AgentVersion: n.AgentVersion,
 		MaxProfiles: int(n.MaxProfiles), ProfileCount: int(count), Dirty: n.Dirty, DirtySince: n.DirtySince, LastSeenAt: n.LastSeenAt, LastApplyAt: n.LastApplyAt,
-		CreatedAt: n.CreatedAt,
+		CreatedAt:            n.CreatedAt,
+		WebCapacitySupported: nodesvc.WebCapacitySupported(n),
+	}
+	if c := nodesvc.WebCapacityOf(n); c != 0 {
+		out.WebCapacity = &c
 	}
 	if len(n.LastHealth) > 0 {
 		var h nodedriver.HealthReport
@@ -312,6 +322,7 @@ type patchNodeReq struct {
 	TLSDomains  *[]string `json:"tls_domains"`
 	ClassicPort *int      `json:"classic_port"`
 	AdTag       *string   `json:"ad_tag"`
+	WebCapacity *int      `json:"web_capacity"`
 }
 
 func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
@@ -345,11 +356,25 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 		n.AcmeEmail = *req.ACMEEmail
 	}
 	if req.MaxProfiles != nil {
-		if *req.MaxProfiles < 1 || *req.MaxProfiles > 1024 {
-			validation(w, map[string]string{"max_profiles": "1..1024"})
+		if *req.MaxProfiles < 1 || *req.MaxProfiles > domain.MaxNodeProfiles {
+			validation(w, map[string]string{"max_profiles": "1.." + strconv.Itoa(domain.MaxNodeProfiles)})
 			return
 		}
 		n.MaxProfiles = int32(*req.MaxProfiles)
+	}
+	capacityChanged := false
+	if req.WebCapacity != nil {
+		if !domain.ValidWebCapacity(*req.WebCapacity) {
+			validation(w, map[string]string{"web_capacity": "one of 128, 256, 512, 1024"})
+			return
+		}
+		if *req.WebCapacity != nodesvc.WebCapacityOf(n) {
+			if msg := nodesvc.WebCapacityUnsupported(n); msg != "" {
+				validation(w, map[string]string{"web_capacity": msg})
+				return
+			}
+			capacityChanged = true
+		}
 	}
 	listeners := db.UpdateNodeParams{ID: n.ID, Name: n.Name, PublicIp: n.PublicIp, MaxProfiles: n.MaxProfiles, AcmeEmail: n.AcmeEmail}
 	if req.TLSDomain != nil {
@@ -401,6 +426,16 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 		internal(w)
 		return
 	}
+	if capacityChanged {
+		updated, err = s.store.Q.SetNodeWebCapacity(r.Context(), db.SetNodeWebCapacityParams{
+			ID: n.ID, TelemtWebCapacity: pgtype.Int4{Int32: int32(*req.WebCapacity), Valid: true},
+		})
+		if err != nil {
+			internal(w)
+			return
+		}
+		dirty = true
+	}
 	if dirty {
 		if err := s.store.Q.SetNodeDirty(r.Context(), db.SetNodeDirtyParams{ID: n.ID, Dirty: true}); err != nil {
 			s.log.Error("mark node dirty", "err", err)
@@ -411,7 +446,11 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.Audit(r.Context(), "node.update", "node", n.ID.String(), nil)
+	var meta map[string]any
+	if capacityChanged {
+		meta = map[string]any{"web_capacity": *req.WebCapacity}
+	}
+	s.Audit(r.Context(), "node.update", "node", n.ID.String(), meta)
 	writeJSON(w, 200, s.nodeJSON(r, updated))
 }
 
@@ -561,6 +600,12 @@ func healthJSON(h nodedriver.HealthReport) map[string]any {
 		if v != nil {
 			out[key] = *v
 		}
+	}
+	if h.WebCapacity > 0 {
+		out["web_capacity"] = h.WebCapacity
+	}
+	if h.MaxConnections > 0 {
+		out["max_connections"] = h.MaxConnections
 	}
 	return out
 }

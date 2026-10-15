@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"tgwebproxy/internal/domain"
+	"tgwebproxy/internal/nodesvc"
 	"tgwebproxy/internal/reliability"
 )
 
@@ -133,6 +134,10 @@ func openAPIRequest(route APIRoute) map[string]any {
 		schema["properties"].(map[string]any)["classic_port"] = apiSchema{"type": "integer", "minimum": 1024, "maximum": 65535, "default": 8443}
 	case "PATCH /nodes/{id}":
 		schema = openAPISchema(reflect.TypeOf(patchNodeReq{}))
+		schema["properties"].(map[string]any)["web_capacity"] = apiSchema{
+			"type": "integer", "enum": domain.WebCapacityPresets,
+			"description": "Simultaneous WEB sessions the telemt node admits; each preset also sets the matching [web.limits] and server.max_connections. Applying a change restarts telemt. Requires agent >=" + nodesvc.MinAgentForWebCapacity + " and Telemt >=3.5.14.",
+		}
 	case "PUT /nodes/order":
 		schema = openAPISchema(reflect.TypeOf(reorderNodesReq{}))
 		schema["required"] = []string{"ids"}

@@ -54,6 +54,7 @@ func (g *Gateway) Apply(ctx context.Context, id uuid.UUID, req ApplyRequest) (Ap
 		ApplyProfiles: req.ApplyProfiles, MtproxySecrets: req.MTProxySecrets,
 		TlsDomain: req.TLSDomain, TlsDomains: req.TLSDomains, ClassicPort: req.ClassicPort, PublicIp: req.PublicIP,
 		AdTag: req.AdTag, WebPolicy: WebPolicyToProto(req.WebPolicy), ManagedWebHost: req.ManagedWebHost,
+		WebCapacity: req.WebCapacity, MaxProfiles: req.MaxProfiles,
 	}
 	for _, p := range req.Profiles {
 		pr.Profiles = append(pr.Profiles, ProfileToProto(p))
