@@ -477,13 +477,15 @@ cat > /etc/caddy/Caddyfile <<EOF
 	email $ACME_EMAIL
 	servers {
 		trusted_proxies static private_ranges
+		protocols h1 h2
 	}
 }
 
 $NODE_HOSTNAME {
-	encode zstd gzip
 	reverse_proxy 127.0.0.1:18080 {
 		header_up X-Forwarded-For {remote_host}
+		flush_interval -1
+		stream_close_delay 5m
 	}
 }
 EOF

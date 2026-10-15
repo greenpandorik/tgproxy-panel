@@ -40,6 +40,9 @@ func Run(ctx context.Context, cfg Config, h *Handler, log *slog.Logger) error {
 	if err := h.ensureTelemtConntrackFix(ctx, DefaultTelemtUnitPath); err != nil {
 		log.Warn("telemt conntrack drop-in not written", "err", err)
 	}
+	if err := h.ensureCaddyWebTuning(ctx, DefaultCaddyfilePath); err != nil {
+		log.Warn("caddy WEB settings not updated", "err", err)
+	}
 	go h.runRecovery(ctx)
 	u, err := url.Parse(cfg.PanelURL)
 	if err != nil {

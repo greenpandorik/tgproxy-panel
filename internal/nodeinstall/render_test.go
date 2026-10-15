@@ -132,7 +132,7 @@ func TestRenderTelemtBranch(t *testing.T) {
 		`\"public_ip\":\"$PUBLIC_IP\"`,
 		// Caddy in front of the loopback WEB listener; telemt serves the decoy itself.
 		"reverse_proxy 127.0.0.1:18080 {", "header_up X-Forwarded-For {remote_host}",
-		"trusted_proxies static private_ranges", "encode zstd gzip",
+		"trusted_proxies static private_ranges", "protocols h1 h2", "flush_interval -1", "stream_close_delay 5m",
 		// Firewall.
 		"table inet tgwp_telemt", "tcp dport { 9090, 9091, 18080 } drop", "iif lo accept",
 		// Agent env and start order.
