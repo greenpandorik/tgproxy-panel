@@ -42,6 +42,7 @@
   "Get user proxy QR code": "Получить QR-код ссылки прокси пользователя",
   "Get user proxy links": "Получить ссылки прокси пользователя",
   "Get user statistics": "Получить статистику пользователя",
+  "Get people online for a user": "Получить людей онлайн у пользователя",
   "Get user subscription QR code": "Получить QR-код подписки пользователя",
   "Get user summary": "Получить сводку по пользователям",
   "Import site template": "Импортировать шаблон сайта",
