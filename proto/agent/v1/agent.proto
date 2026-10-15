@@ -69,6 +69,10 @@ message HealthReport {
   bytes reliability_json = 27;
   // firewall is the blocklist the node enforces, without per-entry counters; absent from older agents.
   FirewallStatus firewall = 28;
+  // web_capacity is telemt's [web.limits] max_sessions_global; 0 when the agent could not read it.
+  uint32 web_capacity = 29;
+  // max_connections is telemt's server.max_connections; 0 when the agent could not read it.
+  uint32 max_connections = 30;
 }
 
 // WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
@@ -278,6 +282,8 @@ message ApplyRequest {
   WebPolicy web_policy = 9;   // nil = leave the node's WEB policy untouched
   string managed_web_host = 11;
   repeated string tls_domains = 10;   // extra Fake-TLS domains; reconciled only when tls_domain is set
+  uint32 web_capacity = 12;   // WEB session preset for [web.limits]; 0 = leave the node's limits untouched
+  uint32 max_profiles = 13;   // the node's key cap; web.limits.max_profiles is kept above it, 0 = no opinion
 }
 // UpdateTelemtRequest asks the node to replace its telemt binary with the build the panel
 // pinned. sha256 is the panel's pin for the artifact at url and the node refuses a download

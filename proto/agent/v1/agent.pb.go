@@ -304,9 +304,13 @@ type HealthReport struct {
 	// Versioned operational readings; absent from older agents, never assumed healthy.
 	ReliabilityJson []byte `protobuf:"bytes,27,opt,name=reliability_json,json=reliabilityJson,proto3" json:"reliability_json,omitempty"`
 	// firewall is the blocklist the node enforces, without per-entry counters; absent from older agents.
-	Firewall      *FirewallStatus `protobuf:"bytes,28,opt,name=firewall,proto3" json:"firewall,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Firewall *FirewallStatus `protobuf:"bytes,28,opt,name=firewall,proto3" json:"firewall,omitempty"`
+	// web_capacity is telemt's [web.limits] max_sessions_global; 0 when the agent could not read it.
+	WebCapacity uint32 `protobuf:"varint,29,opt,name=web_capacity,json=webCapacity,proto3" json:"web_capacity,omitempty"`
+	// max_connections is telemt's server.max_connections; 0 when the agent could not read it.
+	MaxConnections uint32 `protobuf:"varint,30,opt,name=max_connections,json=maxConnections,proto3" json:"max_connections,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *HealthReport) Reset() {
@@ -533,6 +537,20 @@ func (x *HealthReport) GetFirewall() *FirewallStatus {
 		return x.Firewall
 	}
 	return nil
+}
+
+func (x *HealthReport) GetWebCapacity() uint32 {
+	if x != nil {
+		return x.WebCapacity
+	}
+	return 0
+}
+
+func (x *HealthReport) GetMaxConnections() uint32 {
+	if x != nil {
+		return x.MaxConnections
+	}
+	return 0
 }
 
 // WebCounterSample is one Prometheus sample of a telemt_web_* family. carrier, label and phase
@@ -2440,7 +2458,9 @@ type ApplyRequest struct {
 	AdTag          string                 `protobuf:"bytes,8,opt,name=ad_tag,json=adTag,proto3" json:"ad_tag,omitempty"`
 	WebPolicy      *WebPolicy             `protobuf:"bytes,9,opt,name=web_policy,json=webPolicy,proto3" json:"web_policy,omitempty"` // nil = leave the node's WEB policy untouched
 	ManagedWebHost string                 `protobuf:"bytes,11,opt,name=managed_web_host,json=managedWebHost,proto3" json:"managed_web_host,omitempty"`
-	TlsDomains     []string               `protobuf:"bytes,10,rep,name=tls_domains,json=tlsDomains,proto3" json:"tls_domains,omitempty"` // extra Fake-TLS domains; reconciled only when tls_domain is set
+	TlsDomains     []string               `protobuf:"bytes,10,rep,name=tls_domains,json=tlsDomains,proto3" json:"tls_domains,omitempty"`     // extra Fake-TLS domains; reconciled only when tls_domain is set
+	WebCapacity    uint32                 `protobuf:"varint,12,opt,name=web_capacity,json=webCapacity,proto3" json:"web_capacity,omitempty"` // WEB session preset for [web.limits]; 0 = leave the node's limits untouched
+	MaxProfiles    uint32                 `protobuf:"varint,13,opt,name=max_profiles,json=maxProfiles,proto3" json:"max_profiles,omitempty"` // the node's key cap; web.limits.max_profiles is kept above it, 0 = no opinion
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2550,6 +2570,20 @@ func (x *ApplyRequest) GetTlsDomains() []string {
 		return x.TlsDomains
 	}
 	return nil
+}
+
+func (x *ApplyRequest) GetWebCapacity() uint32 {
+	if x != nil {
+		return x.WebCapacity
+	}
+	return 0
+}
+
+func (x *ApplyRequest) GetMaxProfiles() uint32 {
+	if x != nil {
+		return x.MaxProfiles
+	}
+	return 0
 }
 
 // UpdateTelemtRequest asks the node to replace its telemt binary with the build the panel
@@ -4031,7 +4065,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x0etproxy_version\x18\x02 \x01(\tR\rtproxyVersion\x12\x1a\n" +
 	"\bhostname\x18\x03 \x01(\tR\bhostname\";\n" +
 	"\tHeartbeat\x12.\n" +
-	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\x98\n" +
+	"\x06health\x18\x01 \x01(\v2\x16.agent.v1.HealthReportR\x06health\"\xe4\n" +
 	"\n" +
 	"\fHealthReport\x12!\n" +
 	"\frelay_active\x18\x01 \x01(\bR\vrelayActive\x12%\n" +
@@ -4063,7 +4097,9 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x0eload_average_5\x18\x19 \x01(\x01H\x02R\floadAverage5\x88\x01\x01\x12+\n" +
 	"\x0fload_average_15\x18\x1a \x01(\x01H\x03R\rloadAverage15\x88\x01\x01\x12)\n" +
 	"\x10reliability_json\x18\x1b \x01(\fR\x0freliabilityJson\x124\n" +
-	"\bfirewall\x18\x1c \x01(\v2\x18.agent.v1.FirewallStatusR\bfirewallB\x1a\n" +
+	"\bfirewall\x18\x1c \x01(\v2\x18.agent.v1.FirewallStatusR\bfirewall\x12!\n" +
+	"\fweb_capacity\x18\x1d \x01(\rR\vwebCapacity\x12'\n" +
+	"\x0fmax_connections\x18\x1e \x01(\rR\x0emaxConnectionsB\x1a\n" +
 	"\x18_cpu_utilisation_percentB\x11\n" +
 	"\x0f_load_average_1B\x11\n" +
 	"\x0f_load_average_5B\x12\n" +
@@ -4229,7 +4265,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\"\x0f\n" +
 	"\rHealthRequest\"\x14\n" +
-	"\x12GetProfilesRequest\"\xac\x03\n" +
+	"\x12GetProfilesRequest\"\xf2\x03\n" +
 	"\fApplyRequest\x12%\n" +
 	"\x0eapply_profiles\x18\x01 \x01(\bR\rapplyProfiles\x12-\n" +
 	"\bprofiles\x18\x02 \x03(\v2\x11.agent.v1.ProfileR\bprofiles\x12'\n" +
@@ -4245,7 +4281,9 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x10managed_web_host\x18\v \x01(\tR\x0emanagedWebHost\x12\x1f\n" +
 	"\vtls_domains\x18\n" +
 	" \x03(\tR\n" +
-	"tlsDomains\"\xac\x01\n" +
+	"tlsDomains\x12!\n" +
+	"\fweb_capacity\x18\f \x01(\rR\vwebCapacity\x12!\n" +
+	"\fmax_profiles\x18\r \x01(\rR\vmaxProfiles\"\xac\x01\n" +
 	"\x13UpdateTelemtRequest\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
 	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12\x10\n" +

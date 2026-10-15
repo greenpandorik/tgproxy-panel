@@ -277,7 +277,8 @@ type telemtRollback struct {
 	publicAddrChanged bool
 	prevMiddleProxy   *bool // nil = untouched
 	prevWebPolicy     map[string]any
-	irreversible      []string // mutations telemt cannot undo from the information we hold
+	irreversible      []string            // mutations telemt cannot undo from the information we hold
+	config            *telemtConfigBackup // telemt.toml before the capacity step (nil = untouched)
 }
 
 // telemtFakeTLSListener returns the index of the Fake-TLS listener inside `server.listeners`.
@@ -623,15 +624,35 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 		if err := h.forgetWebPrefix(req.ManagedWebHost); err != nil {
 			lg.f("forget loaded WEB prefix: %v", err)
 		}
-		restored := len(rb.irreversible) == 0
-		if !restored {
-			lg.f("cannot be undone: %s", strings.Join(rb.irreversible, "; "))
+		finish := func(restored bool) *agentv1.ApplyResult {
+			res.Ok, res.RolledBack = false, restored
+			res.DeferredFields, res.RestartRequired = nil, false
+			if !restored {
+				lg.f("rollback incomplete; the panel must re-apply the desired state")
+			}
+			res.Log = lg.b.String()
+			return res
 		}
+		restored := true
 		step := func(desc string, err error) {
 			if err != nil {
 				lg.f("rollback step failed: %s: %v", desc, err)
 				restored = false
 			}
+		}
+		if rb.config != nil {
+			step("restore telemt config", writeAtomicKeepOwner(h.cfg.TelemtConfigPath, rb.config.data, rb.config.mode))
+			if rb.siteBackup != "" {
+				step("restore decoy site", h.swapSiteDir(rb.siteBackup))
+			}
+			if restored {
+				step("restart telemt with the previous config", h.restartTelemt(ctx))
+			}
+			return finish(restored)
+		}
+		if len(rb.irreversible) > 0 {
+			restored = false
+			lg.f("cannot be undone: %s", strings.Join(rb.irreversible, "; "))
 		}
 		reloadAfterRestore := false
 		if rb.prevVhosts != nil {
@@ -681,15 +702,13 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 			_, err := h.tm.Reload(ctx, telemt.ReloadRequest{})
 			step("reload restored WEB configuration", err)
 		}
-		res.Ok, res.RolledBack = false, restored
-		res.DeferredFields, res.RestartRequired = nil, false
-		if !restored {
-			lg.f("rollback incomplete; the panel must re-apply the desired state")
-		}
-		res.Log = lg.b.String()
-		return res
+		return finish(restored)
 	}
 
+	capacityChanged, err := h.reconcileTelemtCapacity(ctx, lg, req, rb)
+	if err != nil {
+		return rollback(err)
+	}
 	changed := false
 	reloadNeeded := false
 	if req.ApplyProfiles {
@@ -742,7 +761,7 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	}
 	res.DeferredFields, res.RestartRequired = deferred, len(deferred) > 0
 	reloadNeeded = reloadNeeded || webReload
-	restartNeeded := listenersChanged || addrChanged || mpRestart
+	restartNeeded := listenersChanged || addrChanged || mpRestart || capacityChanged
 	changed = changed || restartNeeded || mpChanged || webChanged
 
 	runtimeRevision := ""
@@ -781,7 +800,7 @@ func (h *Handler) applyTelemt(ctx context.Context, req *agentv1.ApplyRequest) *a
 	}
 
 	if restartNeeded {
-		lg.f("restarting telemt: the Fake-TLS listener and the vhost address are process-owned")
+		lg.f("restarting telemt: listeners, the vhost address and node limits are process-owned")
 		if err := h.restartTelemt(ctx); err != nil {
 			return rollback(err)
 		}
@@ -1258,6 +1277,7 @@ func (h *Handler) healthTelemt(ctx context.Context) *agentv1.HealthReport {
 	if users, err := h.tm.ListUsers(ctx); err == nil {
 		rep.ProfileCount = int32(len(users))
 	}
+	h.telemtCapacityReport(ctx, rep)
 	var upstreams *telemt.UpstreamsStats
 	if st, err := h.tm.UpstreamsStats(ctx); err == nil && st.Enabled {
 		fillDcConnectivity(rep, st)
