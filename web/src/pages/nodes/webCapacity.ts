@@ -6,6 +6,7 @@ export const WEB_CAPACITY_PRESETS: readonly { people: WebCapacity; connections: 
   { people: 256, connections: 15000 },
   { people: 512, connections: 20000 },
   { people: 1024, connections: 40000 },
+  { people: 2048, connections: 80000 },
 ];
 
 /** telemt's own defaults: 128 WEB sessions and 10 000 TCP connections. */

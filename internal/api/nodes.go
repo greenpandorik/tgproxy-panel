@@ -365,11 +365,11 @@ func (s *Server) handlePatchNode(w http.ResponseWriter, r *http.Request) {
 	capacityChanged := false
 	if req.WebCapacity != nil {
 		if !domain.ValidWebCapacity(*req.WebCapacity) {
-			validation(w, map[string]string{"web_capacity": "one of 128, 256, 512, 1024"})
+			validation(w, map[string]string{"web_capacity": "one of 128, 256, 512, 1024, 2048"})
 			return
 		}
 		if *req.WebCapacity != nodesvc.WebCapacityOf(n) {
-			if msg := nodesvc.WebCapacityUnsupported(n); msg != "" {
+			if msg := nodesvc.WebCapacityPresetUnsupported(n, *req.WebCapacity); msg != "" {
 				validation(w, map[string]string{"web_capacity": msg})
 				return
 			}

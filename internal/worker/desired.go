@@ -131,11 +131,11 @@ func desiredState(ctx context.Context, q desiredQuerier, box *crypto.Box, nodeID
 		req.ManagedWebHost = node.Hostname
 		req.MaxProfiles = uint32(node.MaxProfiles)
 		if capacity := nodesvc.WebCapacityOf(node); capacity != 0 {
-			switch {
-			case nodesvc.WebCapacitySupported(node):
+			switch msg := nodesvc.WebCapacityPresetUnsupported(node, capacity); {
+			case msg == "":
 				req.WebCapacity = uint32(capacity)
 			case capacity != domain.WebCapacityStandard:
-				return Desired{}, errors.New(nodesvc.WebCapacityUnsupported(node))
+				return Desired{}, errors.New(msg)
 			}
 		}
 	}

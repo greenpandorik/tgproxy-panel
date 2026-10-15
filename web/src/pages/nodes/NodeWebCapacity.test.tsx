@@ -45,13 +45,14 @@ describe('NodeWebCapacity', () => {
     vi.mocked(usePatchNode).mockReturnValue({ mutateAsync, isPending: false } as unknown as ReturnType<typeof usePatchNode>);
   });
 
-  it('offers the four presets with both ceilings and shows what the server runs now', () => {
+  it('offers the presets with both ceilings and shows what the server runs now', () => {
     render(wrap(<NodeWebCapacity node={base} canEdit />));
     const select = screen.getByLabelText('Ёмкость WEB');
     expect(select).toHaveValue('128');
     const options = within(select).getAllByRole('option');
-    expect(options.map((o) => o.getAttribute('value'))).toEqual(['128', '256', '512', '1024']);
+    expect(options.map((o) => o.getAttribute('value'))).toEqual(['128', '256', '512', '1024', '2048']);
     expect(options[3].textContent?.replace(/\s/g, ' ')).toBe('до 1024 человек по WEB и до 40 000 соединений Fake-TLS');
+    expect(options[4].textContent?.replace(/\s/g, ' ')).toBe('до 2048 человек по WEB и до 80 000 соединений Fake-TLS');
     expect(options[0].textContent).toContain('стандарт');
     expect(screen.getByTestId('web-capacity-current').textContent?.replace(/\s/g, ' ')).toBe(
       'Сейчас на сервере: до 128 человек по WEB и до 10 000 соединений Fake-TLS.',
@@ -59,7 +60,7 @@ describe('NodeWebCapacity', () => {
     expect(
       screen.getByText('При смене telemt перезапустится, подключённые люди переподключатся за несколько секунд.'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/не меньше 4 ГБ RAM/)).toBeInTheDocument();
+    expect(screen.getByText(/с 8 ГБ и больше/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
   });
 

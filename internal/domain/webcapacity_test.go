@@ -466,12 +466,12 @@ func TestHTTPSLanesNeedFourHandlers(t *testing.T) {
 }
 
 func TestValidWebCapacity(t *testing.T) {
-	for _, n := range []int{128, 256, 512, 1024} {
+	for _, n := range []int{128, 256, 512, 1024, 2048} {
 		if !ValidWebCapacity(n) {
 			t.Fatalf("%d is a preset", n)
 		}
 	}
-	for _, n := range []int{0, 64, 200, 2048} {
+	for _, n := range []int{0, 64, 200, 4096} {
 		if ValidWebCapacity(n) {
 			t.Fatalf("%d is not a preset", n)
 		}

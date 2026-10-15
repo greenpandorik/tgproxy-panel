@@ -293,7 +293,7 @@ export interface Node {
 }
 
 /** Simultaneous WEB sessions a telemt node admits; mirrors domain.WebCapacityPresets. */
-export type WebCapacity = 128 | 256 | 512 | 1024;
+export type WebCapacity = 128 | 256 | 512 | 1024 | 2048;
 
 export interface CreateNodeInput {
   name: string;

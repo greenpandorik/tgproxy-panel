@@ -4,7 +4,7 @@ package domain
 const WebCapacityStandard = 128
 
 // WebCapacityPresets are the node-wide WEB session ceilings an operator can pick.
-var WebCapacityPresets = []int{128, 256, 512, 1024}
+var WebCapacityPresets = []int{128, 256, 512, 1024, 2048}
 
 // MaxNodeProfiles is the largest key cap a node can be given.
 const MaxNodeProfiles = 1024
@@ -98,6 +98,17 @@ var webCapacityPresets = map[int]WebCapacity{
 		MaxStreamHandshakes: 2048, MaxTombstonesPerSession: 512,
 		ControlBytesGlobal: 128 * mib, PendingBytesGlobal: 1024 * mib, PendingItemsGlobal: 2048 * 1024,
 		WebsocketBytesGlobal: 512 * mib, MemoryEnvelopeBytes: 2560 * mib,
+	}},
+	2048: {MaxConnections: 80000, Limits: WebLimits{
+		MaxSessionsGlobal: 2048, MaxSessionsPerIP: 96, MaxStreamsGlobal: 65536,
+		MaxHTTPConnections: 16384, MaxHTTPHandlers: 8192, MaxHTTPOverloadConnections: 1024,
+		MaxBootstrapsGlobal: 8192, MaxBootstrapsPerIP: 384,
+		NewBootstrapsPerMinute: 19200, NewBootstrapsBurst: 4096,
+		NewSessionsPerMinute: 9600, NewSessionsBurst: 2048,
+		NewStreamsPerMinute: 96000, NewStreamsBurst: 8192,
+		MaxStreamHandshakes: 4096, MaxTombstonesPerSession: 256,
+		ControlBytesGlobal: 256 * mib, PendingBytesGlobal: 1536 * mib, PendingItemsGlobal: 4096 * 1024,
+		WebsocketBytesGlobal: 768 * mib, MemoryEnvelopeBytes: 3584 * mib,
 	}},
 }
 
